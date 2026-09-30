@@ -1,0 +1,101 @@
+# Monomachia
+
+A one-on-one weapon duel: two fighters, first to win three rounds. These are the words the design docs, specs and code use for its concepts.
+
+## People and loadouts
+
+**Fighter**:
+One of the eight selectable characters (Fantasy Knight, Samurai, Orc, Rogue, Aristocrat, Hunter, Monk, Skeleton Knight). A fighter brings a body, a personality, an intro and a bare-hand style, but not a weapon.
+_Avoid_: Character (except in the screen name "Character Select"), hero, champion
+
+**Weapon**:
+One of the nine weapons a fighter can wield. The weapon owns the armed moveset, the parry window and the ultimate.
+_Avoid_: Class, style
+
+**Weapon class**:
+The size group a weapon belongs to: small, medium or colossal. It sets how fast and heavy the weapon feels.
+_Avoid_: Weight, tier
+
+**Loadout**:
+The weapon and its two chosen block abilities, one on light and one on heavy, picked before a match.
+_Avoid_: Build, kit
+
+**Signature weapon**:
+The weapon a fighter is offered by default at character select.
+
+## Attacking
+
+**Light attack** / **Heavy attack**:
+The two attack buttons' moves: quick pressure, or slow and powerful.
+
+**Charged heavy**:
+A heavy attack held before release. At 2.5 seconds it releases by itself as a **power attack**.
+
+**String**:
+A sequence of attacks that flow into one another when the player keeps pressing.
+_Avoid_: Combo (outside the phrase "combo breaker"), chain
+
+**Follow-up**:
+An optional next attack that a specific attack flows into. The player may take it or not.
+
+**Movement attack**:
+An attack whose shape depends on the movement before it: out of a sprint, a dodge, a backstep or a jump.
+
+**Block ability**:
+One of the two moves a player triggers by holding block and pressing light or heavy.
+
+**Unblockable**:
+A slow, telegraphed thrust, sweep or overhead slam. Blocking it doesn't stop it, and dodge invincibility doesn't avoid it; each one has its own **counter**.
+
+**Ultimate**:
+The once-per-round signature move a fighter can use at 25% HP or less.
+
+## Defending
+
+**Block**:
+Holding the block button to protect HP from blockable attacks; posture still fills.
+
+**Parry**:
+Tapping block just before an attack lands, so the weapons bounce off each other.
+_Avoid_: Deflect (as a separate mechanic), guard break
+
+**Counter**:
+The specific answer to an unblockable: **stomp** (dodge into a thrust), **leap** (jump over a sweep) or **evade** (back-dash from a slam, then lunge).
+
+**Redirect**:
+A disarmed fighter's timed hand counter, which replaces the parry.
+
+**Flash**:
+The katana's block ability: a parry stance with a wide window that stuns.
+
+## Posture and disarm
+
+**Posture**:
+The meter under HP that fills under pressure. A full meter is the danger state.
+_Avoid_: Stamina, guard meter
+
+**Disarm**:
+What happens to a fighter whose posture is full when they are parried, or when they block a power attack, an unblockable or an ultimate: the weapon flies away.
+
+**Bare hands**:
+Fighting while disarmed, with the fighter's own hand-to-hand moves.
+_Avoid_: Unarmed mode, fists mode
+
+## Matches
+
+**Round** / **Match**:
+A round ends when a fighter's HP reaches zero; a match is won by the first fighter to win three rounds.
+
+**Arena**:
+The walled, floating stage a match is fought on.
+_Avoid_: Map, level
+
+**Lock in**:
+Confirming a fighter and loadout at character select.
+
+**Gate**:
+The giant oriental portal a fighter walks through after locking in, and out of at the match intro.
+_Avoid_: Portal (in docs)
+
+**Match intro**:
+The skippable sequence before the first round in which each fighter walks out of their gate and performs their intro.

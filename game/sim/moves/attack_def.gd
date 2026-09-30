@@ -1,0 +1,206 @@
+class_name AttackDef
+extends RefCounted
+## Port of the attack half of src/sim/moves/types.ts (AttackDef, finalizeMoves,
+## totalFrames). The weapon half is in weapon_def.gd.
+##
+## Data definitions for attacks and weapons. Every move in the game is a record
+## of numbers, so new weapons are mostly "filling in a form".
+##
+## Port notes:
+## - Move files write each move as a Dictionary literal with the TS keys in
+##   snake_case; finalize_moves() applies the TS defaults to those records and
+##   builds the AttackDef objects, so "unset" is a missing key until then.
+## - Optional TS fields that finalizeMoves does not fill keep a sentinel after
+##   it, chosen so the TS tests read the same way:
+##     min_range 0.0, lunge 0.0, hop 0.0 (the TS only tests them for truthiness
+##       or uses `?? 0`);
+##     lunge_start 0 (TS `lungeStart ?? 0`);
+##     lunge_end -1 (unset: the TS uses startup + active);
+##     dodge_cancel_from -1 (TS `!== undefined`: test `>= 0`);
+##     multi_hit 0 (TS truthiness), multi_interval -1 (TS `?? 3`);
+##     guard_crush -1.0 (TS `?? blockMitigation`: test `>= 0.0`);
+##     counter, chain_light, chain_heavy, special, sound &"" (TS truthiness or
+##       `?? 'blade'` for sound);
+##     invuln an empty array (TS undefined);
+##     the booleans false.
+##   finalize_moves always sets hand, track_startup, track_active, hitstun,
+##   blockstun, hitstop, trail and (for unblockables) undodgeable; before it,
+##   the int ones read -1, the floats -1.0 and the names &"".
+## - undodgeable is tri-state in the TS: u_impale is unblockable but explicitly
+##   dodgeable. finalize_moves sees that as a present "undodgeable": false key.
+## - String unions are StringNames equal to the TS literals:
+##     AttackType: slash overhead thrust sweep slam spin bash stab punch kick
+##     CounterKind: thrust sweep slam
+##     Hand: R L both
+##     AttackKind: light heavy ability special ultimate
+##     HitSound: blade colossal dagger fist
+##     special: flash shadowStep counterLunge breakerPalm
+##     trail: normal danger ult
+
+const ATTACK_TYPES: Array[StringName] = [
+	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
+]
+const COUNTER_KINDS: Array[StringName] = [&"thrust", &"sweep", &"slam"]
+const HANDS: Array[StringName] = [&"R", &"L", &"both"]
+const ATTACK_KINDS: Array[StringName] = [&"light", &"heavy", &"ability", &"special", &"ultimate"]
+const HIT_SOUNDS: Array[StringName] = [&"blade", &"colossal", &"dagger", &"fist"]
+const SPECIALS: Array[StringName] = [&"flash", &"shadowStep", &"counterLunge", &"breakerPalm"]
+const TRAILS: Array[StringName] = [&"normal", &"danger", &"ult"]
+
+var id: StringName = &""
+var name: String = ""
+var kind: StringName = &""
+var type: StringName = &""
+## Animation archetype key used by the renderer
+var anim: StringName = &""
+var hand: StringName = &""
+var startup: int = 0
+var active: int = 0
+var recovery: int = 0
+var damage: float = 0.0
+var posture: float = 0.0
+## metres of pushback on a clean hit
+var knockback: float = 0.0
+## reach from the attacker's centre to the target's surface (m)
+var range: float = 0.0
+var min_range: float = 0.0
+## full cone angle in degrees
+var arc: float = 0.0
+## metres travelled forward between lungeStart and lungeEnd
+var lunge: float = 0.0
+var lunge_start: int = 0
+var lunge_end: int = -1
+## turn rate while winding up (rad/s)
+var track_startup: float = -1.0
+## turn rate while active (rad/s)
+var track_active: float = -1.0
+var hitstun: int = -1
+var blockstun: int = -1
+var hitstop: int = -1
+var unblockable: bool = false
+var counter: StringName = &""
+var jumpable: bool = false
+var undodgeable: bool = false
+## counts as a "power attack" for the disarm rules
+var power: bool = false
+var chain_light: StringName = &""
+var chain_heavy: StringName = &""
+## light-attack recovery may be cancelled into a dodge after this frame
+var dodge_cancel_from: int = -1
+var multi_hit: int = 0
+var multi_interval: int = -1
+## performed in the air (jump attacks)
+var airborne: bool = false
+## posture multiplier through a block (overrides the defender's mitigation)
+var guard_crush: float = -1.0
+var special: StringName = &""
+## heavy starters can be held to charge
+var chargeable: bool = false
+var sound: StringName = &""
+## visual trail colour class
+var trail: StringName = &""
+## i-frames during the move (frames from start, inclusive range); empty = none
+var invuln: PackedInt32Array = PackedInt32Array()
+## vertical hop applied at lungeStart (m/s), for leaping attacks
+var hop: float = 0.0
+
+## Every key a move record may have: the fields above, in order.
+const KEYS: Array[String] = [
+	"id", "name", "kind", "type", "anim", "hand", "startup", "active", "recovery", "damage",
+	"posture", "knockback", "range", "min_range", "arc", "lunge", "lunge_start", "lunge_end",
+	"track_startup", "track_active", "hitstun", "blockstun", "hitstop", "unblockable", "counter",
+	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
+	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
+	"trail", "invuln", "hop",
+]
+
+
+## Builds an AttackDef from a move record (snake_case keys). Missing keys keep
+## the sentinels above. Does not apply the defaults: see finalize_moves().
+static func from_dict(d: Dictionary) -> AttackDef:
+	for key: Variant in d:
+		if not KEYS.has(String(key)):
+			push_error("AttackDef: unknown key %s in move %s" % [key, d.get("id", "?")])
+	var m: AttackDef = AttackDef.new()
+	m.id = StringName(d.get("id", &""))
+	m.name = String(d.get("name", ""))
+	m.kind = StringName(d.get("kind", &""))
+	m.type = StringName(d.get("type", &""))
+	m.anim = StringName(d.get("anim", &""))
+	m.hand = StringName(d.get("hand", &""))
+	m.startup = int(d.get("startup", 0))
+	m.active = int(d.get("active", 0))
+	m.recovery = int(d.get("recovery", 0))
+	m.damage = float(d.get("damage", 0.0))
+	m.posture = float(d.get("posture", 0.0))
+	m.knockback = float(d.get("knockback", 0.0))
+	m.range = float(d.get("range", 0.0))
+	m.min_range = float(d.get("min_range", 0.0))
+	m.arc = float(d.get("arc", 0.0))
+	m.lunge = float(d.get("lunge", 0.0))
+	m.lunge_start = int(d.get("lunge_start", 0))
+	m.lunge_end = int(d.get("lunge_end", -1))
+	m.track_startup = float(d.get("track_startup", -1.0))
+	m.track_active = float(d.get("track_active", -1.0))
+	m.hitstun = int(d.get("hitstun", -1))
+	m.blockstun = int(d.get("blockstun", -1))
+	m.hitstop = int(d.get("hitstop", -1))
+	m.unblockable = bool(d.get("unblockable", false))
+	m.counter = StringName(d.get("counter", &""))
+	m.jumpable = bool(d.get("jumpable", false))
+	m.undodgeable = bool(d.get("undodgeable", false))
+	m.power = bool(d.get("power", false))
+	m.chain_light = StringName(d.get("chain_light", &""))
+	m.chain_heavy = StringName(d.get("chain_heavy", &""))
+	m.dodge_cancel_from = int(d.get("dodge_cancel_from", -1))
+	m.multi_hit = int(d.get("multi_hit", 0))
+	m.multi_interval = int(d.get("multi_interval", -1))
+	m.airborne = bool(d.get("airborne", false))
+	m.guard_crush = float(d.get("guard_crush", -1.0))
+	m.special = StringName(d.get("special", &""))
+	m.chargeable = bool(d.get("chargeable", false))
+	m.sound = StringName(d.get("sound", &""))
+	m.trail = StringName(d.get("trail", &""))
+	m.invuln = PackedInt32Array(d.get("invuln", []))
+	m.hop = float(d.get("hop", 0.0))
+	return m
+
+
+## Fill in derived defaults so move files can stay terse.
+## Takes { id: move record } and returns { id: AttackDef } in the same order.
+## Each `not m.has(key)` is the TS `m.key === undefined`.
+static func finalize_moves(moves: Dictionary) -> Dictionary[StringName, AttackDef]:
+	var out: Dictionary[StringName, AttackDef] = {}
+	for move_id: Variant in moves:
+		var m: Dictionary = (moves[move_id] as Dictionary).duplicate()
+		var is_unblockable: bool = bool(m.get("unblockable", false))
+		var move_kind: StringName = StringName(m.get("kind", &""))
+		if not m.has("track_startup"):
+			m["track_startup"] = 5.0 if is_unblockable else 7.0
+		if not m.has("track_active"):
+			m["track_active"] = 1.2
+		if not m.has("hitstun"):
+			m["hitstun"] = (
+				18 if move_kind == &"light" else (26 if move_kind == &"heavy" else (40 if move_kind == &"ultimate" else 24))
+			)
+		if not m.has("blockstun"):
+			m["blockstun"] = 10 if move_kind == &"light" else (16 if move_kind == &"heavy" else 14)
+		if not m.has("hitstop"):
+			m["hitstop"] = 4 if move_kind == &"light" else (7 if move_kind == &"heavy" else 6)
+		if is_unblockable and not m.has("undodgeable"):
+			m["undodgeable"] = true
+		if is_unblockable and not m.has("trail"):
+			m["trail"] = &"danger"
+		if move_kind == &"ultimate" and not m.has("trail"):
+			m["trail"] = &"ult"
+		if not m.has("trail"):
+			m["trail"] = &"normal"
+		if not m.has("hand"):
+			m["hand"] = &"R"
+		out[StringName(move_id)] = from_dict(m)
+	return out
+
+
+## totalFrames(m)
+func total_frames() -> int:
+	return startup + active + recovery

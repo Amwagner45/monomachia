@@ -51,7 +51,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - a CI job that installs Godot 4.7.2 and runs the Godot tests.
   - Blocked by: none.
   - Check: a trivial GUT test passes from `npm test` locally and in CI, and `npm run typecheck` catches a deliberately broken script.
-- [ ] **2. Port the rules foundations.** Constants, math, the Mulberry32 random generator (bit-exact), the input tracker, events, the move schema with its defaults, and the four weapons' move data, all faithful.
+- [x] **2. Port the rules foundations.** Constants, math, the Mulberry32 random generator (bit-exact), the input tracker, events, the move schema with its defaults, and the four weapons' move data, all faithful.
   - Blocked by: 1.
   - Check: the ported input tests (step, sprint latch, slow second push, buffering) pass; the random generator matches the TypeScript output for 1,000 draws; every move loads with the same values as `finalizeMoves` produces.
 - [ ] **3. Port the fighter, the world and the match.** The full state machine, the hit evaluation and application, dropped weapons, the Moonsplitter wave, scripted ultimate hits, the round flow, and the test helpers.

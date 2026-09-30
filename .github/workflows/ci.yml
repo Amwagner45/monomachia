@@ -1,5 +1,6 @@
-# Runs the rule tests and builds the game on every push and pull request.
-# The built game is kept for 30 days as a download on the run's page.
+# Runs the rule tests (web and Godot) and builds the web game on every push and
+# pull request. The built web game is kept for 30 days as a download on the
+# run's page.
 name: CI
 
 on:
@@ -12,14 +13,21 @@ permissions:
 jobs:
   test-and-build:
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
+      - uses: chickensoft-games/setup-godot@v2
+        with:
+          version: 4.7.2
+          use-dotnet: false
+          include-templates: false
       - run: npm ci
       - run: npm test
+      - run: npm run typecheck
       - run: npm run build
       - run: cp dist/index.html Monomachia.html
       - uses: actions/upload-artifact@v7

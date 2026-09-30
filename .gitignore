@@ -7,3 +7,9 @@ coverage/
 Thumbs.db
 .vscode/
 .idea/
+
+# Godot
+game/.godot/
+game/reports/
+build/
+audio_src/

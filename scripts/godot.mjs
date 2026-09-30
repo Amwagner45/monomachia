@@ -45,8 +45,13 @@ export function findGodot() {
     const p = onPath(name);
     if (p) return p;
   }
-  const local = join(ROOT, '.godot-path');
-  if (existsSync(local)) {
+  // In a linked git worktree, the untracked file lives in the main checkout.
+  const roots = [ROOT];
+  const common = spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: ROOT, encoding: 'utf8' });
+  if (common.status === 0 && common.stdout.trim()) roots.push(dirname(common.stdout.trim()));
+  for (const root of roots) {
+    const local = join(root, '.godot-path');
+    if (!existsSync(local)) continue;
     const p = readFileSync(local, 'utf8').trim();
     if (p && existsSync(p)) return p;
   }

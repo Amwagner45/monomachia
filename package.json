@@ -15,6 +15,7 @@
     "typecheck:web": "tsc --noEmit",
     "typecheck:godot": "node scripts/godot.mjs typecheck",
     "soak": "tsx scripts/soak.ts",
+    "golden:record": "tsx scripts/golden/record.ts",
     "godot": "node scripts/godot.mjs",
     "godot:dev": "node scripts/godot.mjs dev",
     "godot:run": "node scripts/godot.mjs run",

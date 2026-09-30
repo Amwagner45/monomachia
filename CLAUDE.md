@@ -2,6 +2,15 @@
 
 A one-on-one weapon duel in the browser, built with three.js, TypeScript and Vite. See README.md for the game design, controls and folder layout.
 
+## Design documents
+
+Read these before changing gameplay or planning new features:
+
+- `docs/design.md`: the full game design document, the vision for the finished game (all 9 weapons, arenas, progression, online play).
+- `docs/mvp-spec.md`: the MVP plan and spec, what the current demo builds and how. Its "Decisions", "Scope" and "Gaps in the design doc" tables record the choices made so far, and its combat numbers match the code.
+
+When building toward the full game, use `docs/design.md` for what to build and `docs/mvp-spec.md` for how the existing systems work. If a change contradicts either doc (for example, new tuning numbers or a different answer to a "Gaps" question), update the doc in the same branch.
+
 ## Publishing every change to GitHub
 
 This repo is public at https://github.com/Arod231/monomachia. The main branch is `master`.

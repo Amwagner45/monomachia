@@ -4,20 +4,25 @@ A one-on-one weapon duel in the browser, built with three.js, TypeScript and Vit
 
 ## Publishing every change to GitHub
 
-This repo is public at https://github.com/Arod231/monomachia. The branch is `master`.
+This repo is public at https://github.com/Arod231/monomachia. The main branch is `master`.
 
-After you finish each change I ask for:
+Every change goes on its own branch first and reaches `master` only after I approve it.
 
-1. Run `npm test` and `npm run typecheck`. If either fails, fix it before committing. If you can't fix it, tell me and don't push.
-2. Stage the change and commit it with a clear message that says what changed and why (for example, "Shorten greatsword heavy startup by 4 frames").
-3. Push to `origin master`.
-4. Tell me in one line what you pushed.
+For each change I ask for:
+
+1. Before editing, create a new branch from an up-to-date `master` with a short descriptive name (for example, `tune/greatsword-heavy-startup` or `docs/controls`). Never commit directly to `master`.
+2. When the change is done, run `npm test` and `npm run typecheck`. If either fails, fix it before committing. If you can't fix it, tell me and don't push.
+3. Stage the change and commit it on the branch with a clear message that says what changed and why (for example, "Shorten greatsword heavy startup by 4 frames").
+4. Push the branch to `origin` and tell me in one line what's on it. Then ask me to approve the merge.
+5. Only after I approve: update `master` (`git pull origin master`), merge the branch into it, rerun the tests, push `master` to `origin`, and delete the branch locally and on `origin`.
+6. Tell me in one line what you merged.
 
 Rules:
 - Never commit secrets, API keys, tokens or passwords. Never commit anything that `.gitignore` excludes (node_modules, dist, shots, coverage, logs).
 - Never force-push or rewrite history on `master`.
-- If `git push` is rejected because GitHub has newer commits, run `git pull --rebase origin master`, rerun the tests, then push again.
-- If I say "don't push" or "just try something", commit locally or leave the change uncommitted, whichever I ask for, and don't push.
+- Approval of one merge doesn't cover the next. Ask again for each branch.
+- If `git push` to `master` is rejected because GitHub has newer commits, run `git pull --rebase origin master`, rerun the tests, then push again.
+- If I say "don't push" or "just try something", commit locally on the branch or leave the change uncommitted, whichever I ask for, and don't push.
 
 ## Commands
 

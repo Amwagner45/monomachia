@@ -15,11 +15,10 @@
 //   build                  export the Windows build to build/windows/
 //
 // Godot is found through the GODOT environment variable, then `godot` or
-// `godot4` on PATH, then common install folders (including Downloads).
+// `godot4` on PATH, then a local `.godot-path` file (see findGodot).
 
 import { spawn, spawnSync } from 'node:child_process';
-import { existsSync, readdirSync, statSync, mkdirSync } from 'node:fs';
-import { homedir } from 'node:os';
+import { existsSync, readFileSync, mkdirSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -34,59 +33,22 @@ function onPath(name) {
   return first ? first.trim() : null;
 }
 
-/** Depth-limited search for a Godot 4.7 executable under a folder. */
-function searchDir(dir, depth) {
-  if (!existsSync(dir) || depth < 0) return null;
-  let entries;
-  try {
-    entries = readdirSync(dir);
-  } catch {
-    return null;
-  }
-  const hits = [];
-  for (const e of entries) {
-    if (!/godot/i.test(e)) continue;
-    const p = join(dir, e);
-    let st;
-    try {
-      st = statSync(p);
-    } catch {
-      continue;
-    }
-    if (st.isFile() && /^Godot_v4\.7[^/\\]*(_console\.exe|\.exe|\.x86_64)$/i.test(e) && !/\.zip$/i.test(e)) hits.push(p);
-    else if (st.isDirectory()) {
-      const inner = searchDir(p, depth - 1);
-      if (inner) hits.push(inner);
-    }
-  }
-  // Prefer the console wrapper on Windows: it forwards stdout and the exit code.
-  hits.sort((a, b) => Number(/_console\.exe$/i.test(b)) - Number(/_console\.exe$/i.test(a)));
-  return hits[0] ?? null;
-}
-
+/**
+ * Godot is found through, in order: the GODOT environment variable, `godot` or
+ * `godot4` on PATH, or a one-line `.godot-path` file at the repo root (not
+ * committed) holding the executable's path. On Windows, point it at the
+ * *_console.exe file, which forwards output and the exit code.
+ */
 export function findGodot() {
   if (process.env.GODOT && existsSync(process.env.GODOT)) return process.env.GODOT;
   for (const name of ['godot', 'godot4']) {
     const p = onPath(name);
     if (p) return p;
   }
-  const home = homedir();
-  const dirs = [
-    join(home, 'Downloads'),
-    join(home, 'Desktop'),
-    join(home, 'Documents'),
-    join(home, 'AppData', 'Local', 'Programs'),
-    join(home, 'AppData', 'Local'),
-    'C:\\Program Files',
-    'C:\\Program Files (x86)',
-    join(home, 'scoop', 'apps'),
-    join(home, 'Applications'),
-    '/Applications',
-    '/usr/local/bin',
-  ];
-  for (const d of dirs) {
-    const p = searchDir(d, 2);
-    if (p) return p;
+  const local = join(ROOT, '.godot-path');
+  if (existsSync(local)) {
+    const p = readFileSync(local, 'utf8').trim();
+    if (p && existsSync(p)) return p;
   }
   return null;
 }
@@ -143,8 +105,8 @@ async function main() {
   const godot = findGodot();
   if (!godot) {
     die(
-      'godot.mjs: Godot 4.7 not found. Install it, then either put it on PATH as `godot` or set the GODOT ' +
-        'environment variable to the executable (on Windows, the *_console.exe file).',
+      'godot.mjs: Godot 4.7 not found. Put it on PATH as `godot`, set the GODOT environment variable, or ' +
+        "write the executable's path into a .godot-path file at the repo root (on Windows, the *_console.exe file).",
     );
   }
 

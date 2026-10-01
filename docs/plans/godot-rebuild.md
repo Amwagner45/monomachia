@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2. Next: 16.3.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2 and 16.3. Next: 16.4.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -136,12 +136,15 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
     - CI runs a 4-match soak and exports the Windows build as the `Monomachia-windows` artifact, which passes `--smoke`;
     - `npm run shots` fails on shader and script errors, `tools/shot_scenes/shader_check.tscn` draws every shader, and `test_scene_smoke.gd` loads every scene.
-  - The look's first piece (16.2): `MeshKit` and `MeshKitSet` build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0.
-- **Checks after 16.2:**
-  - 451 Godot tests: rules 138, input 118, audio 31, core 14, view 98, content 49, and 3 project-wide smoke tests;
+  - The look's first pieces:
+    - `MeshKit` and `MeshKitSet` (16.2) build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0;
+    - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw.
+- **Checks after 16.3:**
+  - 463 Godot tests: rules 138, input 118, audio 31, core 14, view 110, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 126 scripts cleanly;
-  - CI passes on the latest push (ced763d), both the tests and the Windows export;
+  - the typecheck loads 132 scripts cleanly;
+  - CI passed on the last push before 16.3 (0bfe40c), both the tests and the Windows export;
+  - `shader_check` and `outline_check` pass in a real window (CI can't run them);
   - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
 - **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
@@ -773,15 +776,40 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - every triangle of 19 shapes is checked against both its own normals and the shape's inside (the worktree's test only compared triangles with their normals, and let 3% disagree);
       - tube rings keep their radius;
       - grid colours, CUSTOM0, multimeshes and `MeshKitSet` are each checked.
-  - [ ] **16.3 Toon material and ink outlines.** The toon shader (three soft bands, brushed terminator, cold shadow fill, rim, hard specular); inverted-hull outlines sized in pixels at 1080p; `ToonMaterials` for fighter, weapon and prop classes; `LookNoise`; and a trimmed `LookPalette`. A look bench shot shows toon capsules and props near and 14 m back, with outlines on and off. The outlines are widened for the owner's review.
+  - [x] **16.3 Toon material and ink outlines.** The toon shader (three soft bands, brushed terminator, cold shadow fill, rim, hard specular); inverted-hull outlines sized in pixels at 1080p; `ToonMaterials` for fighter, weapon and prop classes; `LookNoise`; and a trimmed `LookPalette`. A look bench shot shows toon capsules and props near and 14 m back, with outlines on and off. The outlines are widened for the owner's review.
     - Check: the material tests pass; the shader check passes; bench shots reviewed (bands, rim, outlines visible near and far).
     - Owner: the outline width.
     - Blocked by: 16.2 · Stories: 46
+    - Done: `shaders/toon.gdshader`, `toon_light.gdshaderinc`, `outline.gdshader`, `look_noise.gdshaderinc`, and `view/look/toon_materials.gd`, `look_noise.gd` and `look_palette.gd` come from the worktree, reviewed. The worktree's outline had three faults:
+      - **The outlines never drew.** Godot's Vulkan projection flips Y, so the shader's pixel-to-metre factor came out negative and every hull was clamped to its 1.5 mm minimum. That is why the worktree's comparison showed its outline, stencil and no-outline columns alike. The shader now takes the size of the projection's y scale.
+      - **The hulls drew into the shadow maps,** where the light's projection pushed them to the 6 cm cap. An outlined sphere's shadow came out 40 px wider, and a blade's shadow across a body about 20 px instead of 4. The shader now collapses the hull whenever it draws for a view other than the main camera (`MAIN_CAM_INV_VIEW_MATRIX`).
+      - **Box and rim lines came out thin.** A unit smoothed normal moved a box face out by only 1/√3 of the width. MeshKit now stores a miter in CUSTOM0.w (√3 at a box corner, at most `MeshKit.MAX_MITER`), so every face moves out by the whole width.
+    - `tools/shot_scenes/outline_check.tscn` guards all three. It measures the ink rings around an outlined sphere and an outlined MeshKit box, and compares the outlined sphere's shadow with a plain one's. It exits 1 on any miss. Before the fixes: rings 0 px, then 4 of 7.5 px on the box; shadows 274 against 234 px. After: 11 of 10, 8 of 7.5, 235 against 234. Run it with `shader_check` before visual commits; headless tests can't render.
+    - The widths are widened for the owner's review: fighters 4 px, weapons 3.2 and props 3 at 1080p (they were 3, 2.4 and 2.2). The old widths never drew, so the owner judges these fresh.
+    - Review changes:
+      - `OutlineClass` became `OutlineKind`, since the glossary's Weapon class means the weapon's size group;
+      - `has_outline` became `is_outlined`, which is true while the outline is on;
+      - the width comes from the kind.
+    - Dropped:
+      - the shaders' unused UV scale and light scale;
+      - the noise include's two lookups that only the ink-wash pass uses (they come back with it in 16.4);
+      - LookPalette's fighter colours (the fighters have their own palettes), the petal, and 12 other colours that nothing in the worktree's later code uses.
+    - `tests/view/test_look.gd` has 11 tests:
+      - each kind's lighting and outline, with every parameter checked against the uniforms its shader declares;
+      - switching outlines off and on;
+      - the shared noise texture on every material;
+      - LookNoise being deterministic, seamless, mipmapped, and on the include's lattice.
+    - `test_mesh_kit.gd` checks that the miter moves every face out by the whole width.
+    - `tools/shot_scenes/look_bench.tscn` shows outlines on and off, near and 14 m back; `--width-scale=` scales every outline, for comparing widths. Reviewed: three bands with a brushed terminator, cold fill, rim, the steel highlight, and outlines near and far. At 20 m the 0.06 m cap thins a fighter's line to about 3 px.
   - [ ] **16.4 Ink-wash post pass and colour grade.** Distance mist, depth ink lines, dry-brush breaks, paper grain and a brushy vignette, in full and lite variants (with their stale comments fixed). `InkWashPass` picks its variant by quality. `InkGrade` bakes the colour grade into a LUT, and the night environment is added.
     - Check: the pass and grade tests pass; the shader check passes; bench shots with the pass off, lite, lines and full are reviewed.
     - Owner: the ink-line strength.
     - Blocked by: 16.3 · Stories: 46
-  - [ ] **16.5 Low, Medium and High presets, and the saved setting.** `GraphicsPreset` (High by default) and `GraphicsApplier` act through node groups and outline classes. `GameSettings` in `game/core`, owned by `GameServices`, saves the preset id to `user://settings.cfg` and applies it at start. The spec's Look paragraph is updated from the worktree's decisions (FXAA, glow off, outlines always on for fighters and weapons and on props only on High).
+    - Notes from 16.3:
+      - The worktree's outlines looked "faint" because they never drew. Its ink lines were judged faint too, so measure them in a shot, as `outline_check` does, before tuning their strength.
+      - The pass's shaders need `look_noise_lod0()` and `look_white()` back in `look_noise.gdshaderinc` (see the worktree's copy).
+      - The worktree's grade test uses `LookPalette.FIGHTER_RED` and `FIGHTER_BLUE`, which are gone: use `FighterStandin.PALETTES`.
+  - [ ] **16.5 Low, Medium and High presets, and the saved setting.** `GraphicsPreset` (High by default) and `GraphicsApplier` act through node groups and outline kinds (`ToonMaterials.OutlineKind`). `GameSettings` in `game/core`, owned by `GameServices`, saves the preset id to `user://settings.cfg` and applies it at start. The spec's Look paragraph is updated from the worktree's decisions: the presets' contents, FXAA, glow off, and the target laptop. 16.3 already added the outline decision and the noise texture.
     - Check: the preset tests pass (monotonic from Low to High, fighters always outlined, each preset applies); settings save and load, and an unknown id falls back to High; bench shots at the three presets reviewed.
     - Blocked by: 16.4 · Stories: 46, 57
   - [ ] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
@@ -790,6 +818,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. Palettes then recolour the toon materials, since `apply_palette` and `test_palettes` only handle `BaseMaterial3D` today. The weapons and the Katana's own shaders get toon versions. The art budget (56.4 of 60 MB after 13.1) covers any new textures.
     - Check: content tests that every fighter and weapon surface is toon, outlined and on layer 2, and that the palettes still differ; lineup and mirror shots at Low and High reviewed, with no split outlines at seams.
     - Blocked by: 13.1, 16.6 · Stories: 43, 45, 46
+    - Note from 16.3: CUSTOM0 doesn't follow skinning, so the research notes' fallback for split outlines (smoothed normals baked into CUSTOM0) won't work on the skinned fighters. If seams split, weld the normals at import, or give each fighter a second skinned outline mesh.
 - [ ] **17. The floating Moonlit Shrine.**
   - Delivers:
     - the platform at radius 15 with its parapet, torii, lanterns and pillars;

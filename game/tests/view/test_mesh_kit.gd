@@ -170,6 +170,37 @@ func test_outline_normals_close_the_hull_at_hard_edges() -> void:
 	assert_lt(worst, 1e-3, "corner normals off the diagonal by up to %f" % worst)
 
 
+## The least and the most that a mesh's hull pushes each vertex out along its
+## own face's normal, in outline widths (CUSTOM0's direction times its w).
+static func _face_reach(mesh: ArrayMesh) -> Vector2:
+	var arrays: Array = mesh.surface_get_arrays(0)
+	var norms: PackedVector3Array = arrays[Mesh.ARRAY_NORMAL]
+	var custom: PackedFloat32Array = arrays[Mesh.ARRAY_CUSTOM0]
+	var least: float = INF
+	var most: float = 0.0
+	for i: int in norms.size():
+		var push := Vector3(custom[i * 4], custom[i * 4 + 1], custom[i * 4 + 2]) * custom[i * 4 + 3]
+		least = minf(least, push.dot(norms[i]))
+		most = maxf(most, push.dot(norms[i]))
+	return Vector2(least, most)
+
+
+## The hull moves every face out by the whole outline width. Along a bare unit
+## diagonal a box corner reached only 1/sqrt(3) of it, so box lines came out
+## thin; CUSTOM0's w now stretches the push to make up for that.
+func test_outline_normals_push_every_face_out_by_the_full_width() -> void:
+	var box := MeshKit.new()
+	box.box(Transform3D.IDENTITY, Vector3.ONE)
+	var reach: Vector2 = _face_reach(box.commit(true))
+	assert_almost_eq(reach.x, 1.0, 1e-3, "a box face moves out by the whole width")
+	assert_almost_eq(reach.y, 1.0, 1e-3, "and no further")
+	var lathe := MeshKit.new()
+	lathe.lathe(Transform3D.IDENTITY, PackedVector2Array([Vector2(0.4, 0), Vector2(0.6, 1), Vector2(0.3, 2)]), 8, true, false)
+	reach = _face_reach(lathe.commit(true))
+	assert_gt(reach.x, 1.0 - 1e-3, "no face of a flat-shaded lathe falls short")
+	assert_lt(reach.y, MeshKit.MAX_MITER + 1e-3, "and no corner spikes")
+
+
 func test_multimesh_draws_the_mesh_at_every_transform_with_its_colour() -> void:
 	var spots: Array[Transform3D] = [Transform3D.IDENTITY, Transform3D(Basis(), Vector3(2, 0, 0))]
 	var mat := StandardMaterial3D.new()

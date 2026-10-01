@@ -20,6 +20,9 @@ extends RefCounted
 ## Positions that round to the same point of this grid (2 mm) share one
 ## smoothed outline normal.
 const WELD_STEPS_PER_METRE: float = 500.0
+## The furthest a hull may push a vertex, in outline widths. A box corner
+## needs sqrt(3); a sharper edge would need more and would spike.
+const MAX_MITER: float = 3.0
 
 var color: Color = Color.WHITE
 var _st: SurfaceTool
@@ -372,10 +375,13 @@ func commit(outline_normals: bool = false) -> ArrayMesh:
 	return m
 
 
-## Returns a copy of mesh whose surfaces carry smoothed normals in CUSTOM0:
-## the sum of the distinct normals met at each position, so a face split into
-## more triangles doesn't pull the result its way. Made for MeshKit's own
-## static meshes: blend shapes and skinning flags are not carried over.
+## Returns a copy of mesh whose surfaces carry smoothed normals in CUSTOM0.
+## xyz is the direction to push each position: the sum of the distinct
+## normals met there, so a face split into more triangles doesn't pull it its
+## way. w is how far to push, in outline widths, so that every face there
+## moves out by the whole width (sqrt(3) at a box corner), at most MAX_MITER.
+## Made for MeshKit's own static meshes: blend shapes and skinning flags are
+## not carried over.
 static func _with_outline_normals(source: ArrayMesh) -> ArrayMesh:
 	var out := ArrayMesh.new()
 	for s: int in source.get_surface_count():
@@ -392,22 +398,29 @@ static func _with_outline_normals(source: ArrayMesh) -> ArrayMesh:
 			if not known:
 				found.append(norms[i])
 				distinct[key] = found
-		var sums: Dictionary[Vector3i, Vector3] = {}
+		var pushes: Dictionary[Vector3i, Vector4] = {}
 		for key: Vector3i in distinct:
 			var sum := Vector3.ZERO
 			for m: Vector3 in distinct[key]:
 				sum += m
-			sums[key] = sum
+			var dir: Vector3 = sum.normalized()
+			# The face the direction leans away from most needs the longest push.
+			var least: float = 1.0
+			for m: Vector3 in distinct[key]:
+				least = minf(least, dir.dot(m))
+			var miter: float = MAX_MITER if least * MAX_MITER <= 1.0 else 1.0 / least
+			pushes[key] = Vector4(dir.x, dir.y, dir.z, miter)
 		var custom := PackedFloat32Array()
 		custom.resize(verts.size() * 4)
 		for i: int in verts.size():
-			var n: Vector3 = sums[_weld_key(verts[i])].normalized()
-			if n == Vector3.ZERO:
-				n = norms[i]
-			custom[i * 4] = n.x
-			custom[i * 4 + 1] = n.y
-			custom[i * 4 + 2] = n.z
-			custom[i * 4 + 3] = 1.0
+			var push: Vector4 = pushes[_weld_key(verts[i])]
+			if Vector3(push.x, push.y, push.z) == Vector3.ZERO:
+				# Opposite faces cancelled out: push along this one alone.
+				push = Vector4(norms[i].x, norms[i].y, norms[i].z, 1.0)
+			custom[i * 4] = push.x
+			custom[i * 4 + 1] = push.y
+			custom[i * 4 + 2] = push.z
+			custom[i * 4 + 3] = push.w
 		arrays[Mesh.ARRAY_CUSTOM0] = custom
 		var flags: int = Mesh.ARRAY_CUSTOM_RGBA_FLOAT << Mesh.ARRAY_FORMAT_CUSTOM0_SHIFT
 		out.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays, [], {}, flags)

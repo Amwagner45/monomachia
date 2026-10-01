@@ -24,8 +24,6 @@ GameServices="*res://core/game_services.gd"
 [debug]
 
 gdscript/warnings/untyped_declaration=1
-gdscript/warnings/unsafe_property_access=0
-gdscript/warnings/unsafe_method_access=0
 
 [display]
 
@@ -40,10 +38,8 @@ enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
 [physics]
 
-common/physics_ticks_per_second=60
 3d/physics_engine="Jolt Physics"
 
 [rendering]
 
-renderer/rendering_method="forward_plus"
 anti_aliasing/quality/msaa_3d=2

@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1. Next: 25.2.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2. Next: 25.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -147,7 +147,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: outline width and ink lines (16.3, 16.4), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), outline width and ink lines (16.3, 16.4), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -1044,18 +1044,19 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: it passes on the branch (allowing the 10.58 MB ambience loop) and fails on a scratch 11 MB file; CI prints the sizes.
     - Blocked by: 13.1 · Stories: 60, 63
     - Done: the repo comes to 99.9 MB (the spec's estimate was about 100), with game/assets at 73.0 MB (30.4 of it audio), game/fighters 13.7 and game/weapons 0.2. `--include` checks a file before it is added. The guard sees only the tracked tip: a large file added and removed within one push stays in history unnoticed, and CI reports after the push rather than preventing it.
-  - [ ] **25.2 Windows export preset, a smoke flag and a local build.** `game/export_presets.cfg`: x86_64 release with the pack embedded, the Shader Baker on, and `tests`, `tools`, `addons/gut` and `_probe` excluded. A `--smoke` flag plays a computer-vs-computer match to the results and exits 0.
+  - [x] **25.2 Windows export preset, a smoke flag and a local build.** `game/export_presets.cfg`: x86_64 release with the pack embedded, the Shader Baker on, and `tests`, `tools`, `addons/gut` and `_probe` excluded. A `--smoke` flag plays a computer-vs-computer match to the results and exits 0.
     - Check: `npm run godot -- build` exports with no errors; the exe run with `--smoke` reaches the results and exits 0; `user://controls.cfg` survives between two runs.
     - Owner: plays a Duel in the exe.
     - Blocked by: 25.1 · Stories: 1, 64
-  - [ ] **25.3 CI exports the Windows build and runs a short soak.** The export templates installed and cached; a 4-match soak; the export uploaded as a zip artifact.
+    - Done: `npm run build` exports a 179 MB `build/windows/Monomachia.exe` (pack embedded, 528 shaders baked; the dev-only fighter preview left out). The export runs in a window, since baking needs a GPU, and the editor it opens rewrites `project.godot` without its default-valued lines, so the file is committed that way. `Monomachia.exe --smoke` (`SmokeRun`) plays a Watch match to the results in about 3 s and exits 0. It exits 1 on any logged engine or script error, on running out of steps or 120 s, or if the match stops, and resumes a match the window's focus loss paused. Two smoke runs both reported a planted controls profile.
+  - [ ] **25.3 CI exports the Windows build and runs a short soak.** The export templates installed and cached; a 4-match soak; the export uploaded as a zip artifact. CI has no GPU, so its export runs headless and can't bake the shaders: its build compiles them on first use (the PC's `npm run build` bakes them).
     - Check: CI is green and its run page offers the zip; the downloaded zip's exe passes `--smoke`.
     - Blocked by: 25.2 · Stories: 60, 62, 64
   - [ ] **25.4 Credits and licence notices with the build.** A tool writes the engine's licence notices. A credits file lists Quaternius (CC0), the Sonniss terms, the fonts (OFL), GUT (dev only) and the project's licence. The build places both beside the exe.
     - Check: the build output has both files, and every asset folder's licence is listed.
     - Owner: approves the wording and picks the project's licence.
     - Blocked by: 22.1, 25.3 · Stories: 64
-  - [ ] **25.5 Release workflow; Pages removed.** On a published release it tests, exports and attaches `Monomachia-<tag>-windows.zip`; a manual run uploads an artifact instead. `pages.yml` goes.
+  - [ ] **25.5 Release workflow; Pages removed.** On a published release it tests, exports and attaches `Monomachia-<tag>-windows.zip`; a manual run uploads an artifact instead. `pages.yml` goes. Like CI's, its build has no baked shaders; the README says a build from `npm run build` has them.
     - Check: a manual run on the branch produces the zip, and its exe passes `--smoke`.
     - Blocked by: 25.3 · Stories: 1, 64
   - [ ] **25.6 CLAUDE.md for Godot, and mvp-spec marked as the web record.** The intro, design-docs paragraph, commands and code notes rewritten for the Godot game; `mvp-spec.md` marked as the record of the demo at `v0.1-web-mvp`.

@@ -8,6 +8,9 @@ extends Node
 ##
 ## Duel is the Rogue with the katana (you) against the Hunter with the
 ## greatsword (Normal); Watch is katana against daggers, both Normal.
+##
+## With --smoke on the command line the game plays a Watch match to the
+## results at once and quits with its outcome (see SmokeRun).
 
 enum Screen { TITLE, MENU, PLAYING, PAUSED, RESULTS }
 
@@ -23,6 +26,8 @@ var results_screen: ResultsScreen
 var last_config: MatchConfig
 ## The demo's per-match seed sequence (see MatchConfig.next_seed).
 var _seed: int = 1
+## The --smoke run, when the flag is given.
+var _smoke: SmokeRun
 
 
 func _ready() -> void:
@@ -60,6 +65,21 @@ func _ready() -> void:
 	host.seed_source = _next_seed
 	start_attract()
 	show_title()
+	# _process only ticks a smoke run.
+	set_process(false)
+	if SmokeRun.requested(OS.get_cmdline_args() + OS.get_cmdline_user_args()):
+		_smoke = SmokeRun.new(self)
+		_smoke.start()
+		set_process(true)
+
+
+func _process(_delta: float) -> void:
+	if _smoke == null or _smoke.tick() == SmokeRun.Status.RUNNING:
+		return
+	print(_smoke.report())
+	get_tree().quit(_smoke.exit_code())
+	_smoke = null
+	set_process(false)
 
 
 func _next_seed() -> int:

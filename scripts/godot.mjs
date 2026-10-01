@@ -194,11 +194,16 @@ async function main() {
       await importProject(godot);
       const outDir = join(ROOT, 'build', 'windows');
       mkdirSync(outDir, { recursive: true });
+      // The export preset bakes the shaders, which needs a GPU: on a PC the
+      // export runs in a window (it flashes up briefly). CI has no GPU, so it
+      // exports headless and the build compiles its shaders on first use.
+      const headless = process.env.CI ? ['--headless'] : [];
       const r = await runGodot(
         godot,
-        ['--headless', '--path', PROJECT, '--export-release', 'Windows Desktop', join(outDir, 'Monomachia.exe')],
+        [...headless, '--path', PROJECT, '--export-release', 'Windows Desktop', join(outDir, 'Monomachia.exe')],
         { timeoutMs: 1800000 },
       );
+      if (r.code === 0 && hasScriptErrors(r.output)) die('godot.mjs: the export reported script errors.');
       if (r.code !== 0 && /No export template found/.test(r.output)) {
         die(
           'godot.mjs: Windows export templates are not installed. In the Godot editor, open Editor → Manage Export ' +

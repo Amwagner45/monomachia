@@ -52,11 +52,12 @@ static func load_id(weapon_id: StringName) -> WeaponLook:
 	return load(path_for(weapon_id)) as WeaponLook
 
 
-## Instantiates the model and puts it in `socket` at the grip offset, turned
-## first by `hold` (a fighter's way of holding it: see WeaponHold).
-func attach(socket: Node3D, hold: Transform3D = Transform3D.IDENTITY) -> Node3D:
+## Instantiates the model and puts it in `socket`: placed by the grip offset,
+## then turned by `grip`, a fighter's way of holding it (see
+## WeaponHold.grip_transform()).
+func attach(socket: Node3D, grip: Transform3D = Transform3D.IDENTITY) -> Node3D:
 	var weapon: Node3D = scene.instantiate()
-	weapon.transform = hold * grip_offset
+	weapon.transform = grip * grip_offset
 	socket.add_child(weapon)
 	return weapon
 

@@ -107,8 +107,7 @@ static func _bounds(w: Node3D) -> AABB:
 	return out
 
 
-## The blade surfaces of a weapon built from the pack: [body, edge] meshes'
-## surface indices.
+## The index of the surface with this name, or -1.
 static func _surface(mesh: Mesh, surface_name: String) -> int:
 	for s: int in mesh.get_surface_count():
 		if mesh.surface_get_name(s) == surface_name:

@@ -15,7 +15,7 @@ extends Resource
 ## cloth wrap made from the head (skinned like it) and a hat on the Head bone.
 ## The skin is roughed up by tools/bake_skins.gd from the skin settings.
 
-## The fighters that have a look, in fighter-select order. Fighter `id`'s
+## The fighters that have a look, in character-select order. Fighter `id`'s
 ## look is fighters/<id>/<id>.tres and its scene fighters/<id>/<id>.tscn.
 const IDS: Array[StringName] = [&"rogue", &"hunter"]
 
@@ -46,7 +46,7 @@ const IDS: Array[StringName] = [&"rogue", &"hunter"]
 ## Exactly two: the first is the default, the second dresses the second
 ## fighter of a mirror match.
 @export var palettes: Array[FighterPalette] = []
-## The weapon offered by default at fighter select (a WeaponDef id).
+## The weapon offered by default at character select (a WeaponDef id).
 @export var signature_weapon: StringName = &""
 ## Clip names in the shared animation library (without the library prefix).
 ## The idle clip is the one played with no weapon, or with a weapon that has

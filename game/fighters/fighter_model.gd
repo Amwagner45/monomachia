@@ -52,7 +52,7 @@ const LEFT_SOCKET: Transform3D = Transform3D(
 	set(value):
 		palette = value
 		if _built:
-			apply_palette(value)
+			_dress(value)
 ## Play the idle clip on entering the tree.
 @export var autoplay_idle: bool = true
 
@@ -111,10 +111,11 @@ func build() -> void:
 	hand_grip = HandGrip.new()
 	hand_grip.name = &"HandGrip"
 	skeleton.add_child(hand_grip)
-	apply_palette(palette)
+	_dress(palette)
 
 
-## Throws the built model away and assembles it again from the look.
+## Throws the built model away and assembles it again from the look, in the
+## same palette, idling again if it idles on entering the tree.
 func rebuild() -> void:
 	for child: Node in [skeleton, animation_player]:
 		if child != null:
@@ -133,10 +134,16 @@ func rebuild() -> void:
 	_materials.clear()
 	_built = false
 	build()
+	if autoplay_idle and _built and is_inside_tree():
+		play_idle(0.0)
 
 
-## Dresses the fighter in one of the look's palettes.
+## Dresses the fighter in one of the look's palettes, and remembers it.
 func apply_palette(index: int) -> void:
+	palette = index
+
+
+func _dress(index: int) -> void:
 	if look == null or look.palettes.is_empty():
 		return
 	var p: FighterPalette = look.palettes[clampi(index, 0, look.palettes.size() - 1)]
@@ -187,11 +194,16 @@ func play(clip: StringName, blend: float = 0.2) -> void:
 ## Puts a weapon in the hands: one copy in the right hand, and another in
 ## the left for a paired weapon, held the way the look's hold for it says
 ## (grip, wrists and idle clip), and closes those hands. Removes any weapon
-## held before. A left hand that holds a weapon always has its wrist set (to
-## straight, if the hold doesn't say), because the clips leave the left hand
-## open and turned for a free hand. (The off hand of a two-handed weapon is
-## placed on its OffHandGrip by the arm IK, which comes with the guard poses.)
+## held before, and builds the model first if needed. A left hand that holds
+## a weapon has its wrist set (to straight when there is no hold) unless the
+## hold says to keep the clip's, because the clips leave the left hand open
+## and turned for a free hand. (The off hand of a two-handed weapon is placed
+## on its OffHandGrip by the arm IK, which comes with the guard poses.)
 func attach_weapon(weapon: WeaponLook) -> Array[Node3D]:
+	build()
+	if not _built:
+		push_error("FighterModel.attach_weapon: there is no look to build the fighter from")
+		return weapons
 	detach_weapons()
 	hold = look.hold_for(weapon.id)
 	var grip: Transform3D = hold.grip_transform() if hold != null else Transform3D.IDENTITY
@@ -213,9 +225,10 @@ func detach_weapons() -> void:
 		w.free()
 	weapons.clear()
 	hold = null
-	hand_grip.right_hand = false
-	hand_grip.left_hand = false
-	hand_grip.clear_wrists()
+	if hand_grip != null:
+		hand_grip.right_hand = false
+		hand_grip.left_hand = false
+		hand_grip.clear_wrists()
 
 
 ## Instantiates a part, keeps its skeleton (with the part's meshes on it) as

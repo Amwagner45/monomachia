@@ -130,6 +130,37 @@ func test_every_fighter_has_two_different_palettes() -> void:
 		assert_eq(_outfit_texture(f), b.outfit_albedo, "%s wears palette B" % id)
 
 
+func test_a_palette_change_is_remembered_across_a_rebuild() -> void:
+	var f: FighterModel = _fighter(&"rogue")
+	f.apply_palette(1)
+	assert_eq(f.palette, 1, "apply_palette records the palette")
+	f.rebuild()
+	assert_eq(_outfit_texture(f), f.look.palettes[1].outfit_albedo, "the rebuilt model keeps palette B")
+
+
+func test_a_rebuilt_fighter_idles_again() -> void:
+	var f: FighterModel = _fighter(&"hunter")
+	f.rebuild()
+	assert_true(f.animation_player.is_playing(), "the new player idles")
+	assert_eq(f.animation_player.current_animation, "ual/" + String(f.idle_clip()))
+
+
+func test_a_fighter_made_in_code_takes_a_weapon_before_entering_the_tree() -> void:
+	var f: FighterModel = FighterModel.new()
+	f.look = load(FighterLook.path_for(&"rogue"))
+	autofree(f)
+	var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(&"katana"))
+	assert_eq(held.size(), 1, "attach_weapon builds the model first")
+	assert_eq(held[0].get_parent(), f.right_hand)
+
+
+func test_detaching_from_an_unbuilt_fighter_is_harmless() -> void:
+	var f: FighterModel = FighterModel.new()
+	autofree(f)
+	f.detach_weapons()
+	assert_eq(f.weapons.size(), 0)
+
+
 func _outfit_texture(f: FighterModel) -> Texture2D:
 	for node: Node in f.skeleton.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = node

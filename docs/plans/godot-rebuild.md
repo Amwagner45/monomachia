@@ -125,19 +125,19 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Next: 13.1.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1. Next: 25.1.
 
 - **Done and merged on `feature/godot-rebuild`:**
-  - tasks 1–6 and 21;
+  - tasks 1–6, 13 and 21;
   - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
-  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`).
-- **Checks at 51dcfb0:**
-  - 382 Godot tests: rules 138, input 118, audio 31, core 14, view 79;
+  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`). The Rogue and the Hunter and the three weapon models are in the project, shown by `fighters/preview/preview.tscn`, but not yet in the match (14.2).
+- **Checks after 13.1:**
+  - 431 Godot tests: rules 138, input 118, audio 31, core 14, view 79, content 49;
   - 112 web tests;
-  - the typecheck loads 96 scripts cleanly;
-  - CI passes on the latest push.
-- **Waiting on their own branches:**
-  - **Task 13: done, not merged** (`fighters-and-weapons`, commits 1f574a2 and fcfb8d8). Merging it is 13.1.
+  - the typecheck loads 119 scripts cleanly;
+  - CI passes on the latest push, including its first import of the art;
+  - the art comes to 56.4 MB of its 60 MB budget.
+- **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
     - None of it is reviewed. Tasks 16.1–17.9 salvage it piece by piece.
@@ -523,7 +523,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 
 ### Phase D: fighters and animation
 
-- [ ] **13. Assets and fighter models.**
+- [x] **13. Assets and fighter models.**
   - Delivers:
     - the chosen Quaternius files copied into `game/assets`, with textures scaled down;
     - humanoid bone-map import settings;
@@ -546,7 +546,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The Rogue lost the pauldrons and gained a cloth face mask and a band of dark paint across the eyes. The Hunter swapped the hood for a tricorn and a neck scarf, and has a scar. `build_headwear.gd` makes the mask and the scarf from each head mesh, and the tricorn from scratch; `bake_skins.gd` roughs up the faces.
       - `WeaponHold` gives each fighter a stand-in idle per weapon until task 14: the clip, a reverse grip and blade tilt, and set wrists. The Rogue holds her daggers reversed along her forearms; the Hunter idles in a raised guard (`Idle_Shield`) with the greatsword trailing behind him. A test checks that no blade runs into its fighter's torso or thighs.
       - `build_pack_weapons.gd` rebuilds the Greatsword (1.72 m, blade 15% broader and thicker) and the Dagger from the pack, with a widened bright edge band on a dark blade body. The Katana's curve is one arc about 1.8 cm deep, its blade tapers from 3.2 to 2.2 cm, and its point is a defined kissaki.
-  - [ ] **13.1 Merge the fighters-and-weapons branch; task 13 ticked.**
+  - [x] **13.1 Merge the fighters-and-weapons branch; task 13 ticked.**
     - Delivers:
       - The branch (1f574a2, fcfb8d8) merged with a merge commit. The plan and spec conflicts are resolved by keeping this plan, and adding the branch's done notes and its Fighters, Weapon models and presentation bullets.
       - A code review of its runtime scripts (`fighter_model.gd`, `fighter_look.gd`, `fighter_palette.gd`, `hand_grip.gd`, `weapon_hold.gd`, `weapon_look.gd`), with fixes.
@@ -557,6 +557,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The preview sheet renders and matches the art-reviewed sheets.
       - The first CI run after the push passes; it is CI's first import of about 43 MB of assets.
     - Blocked by: none · Stories: 43, 44, 45, 63
+    - Done (merge c2ecab7, review fixes after it): the import was clean, and the review sheets matched the art-reviewed set. The branch's asset budget now counts the art only (the audio has its own cap) and includes the baked textures in `game/fighters` and `game/weapons`; data maps are found whatever their case. The code review fixed `FighterModel`: a palette set through `apply_palette` is remembered across a rebuild, a rebuilt fighter idles again, `attach_weapon` builds the model first, and `detach_weapons` is safe before a build. It also fixed the glossary term in `FighterLook` and a parameter name and doc in `WeaponLook.attach`, and added the Hunter's `Idle_Shield` to the looping clips. The review's other findings went to the tasks that own them: 14.1 (posed weapons instead of hand sockets), 14.2 (one source for two-handed weapons) and 16.7 (palettes on toon materials). The worktree and branch are removed.
 - [ ] **14. Fighter animation core.** Production version of the spike (its code is the starting point), on one fighter with the Katana.
   - Delivers:
     - the modifier stack (body layer, arm and leg IK, hands and fingers);
@@ -577,7 +578,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - from the gameplay camera, a contact sheet per move where slash, overhead, thrust and sweep are told apart in the first third of the wind-up;
     - the wrist-limit and self-collision test passes;
     - an art-direction review of the sheets passes before task 15.
-  - [ ] **14.1 Fighter rig: the skeleton modifier stack.** Production `BodyLayer` and `FighterRig` from the spike: arm and leg IK, hand frames locked to the handle, forearm twist, clavicle, and `HandGrip` for the fingers. The weapon is placed in fighter space by a pose rather than a hand socket. Grip points come from WeaponLook (the off hand on `OffHandGrip`, two transforms for paired daggers), and arm lengths and poles are read from each skeleton.
+  - [ ] **14.1 Fighter rig: the skeleton modifier stack.** Production `BodyLayer` and `FighterRig` from the spike: arm and leg IK, hand frames locked to the handle, forearm twist, clavicle, and `HandGrip` for the fingers. The weapon is placed in fighter space by a pose rather than a hand socket. Grip points come from WeaponLook (the off hand on `OffHandGrip`, two transforms for paired daggers), and arm lengths and poles are read from each skeleton. `HandGrip` keeps closing the fingers but leaves the wrists alone wherever IK drives a hand, and task 13's socket tests (`test_every_fighter_has_hand_sockets`, `test_attaching_weapons_fills_the_right_hands`) change to the posed weapon.
     - Check: on both fighters, wrists land within 1 cm of their targets and grips within 1 cm of the WeaponLook points; same input, same pose; one-handed, two-handed and paired weapons each fill the right hands; guard grip shots reviewed (palms on the handle, fingertips tight).
     - Blocked by: 16.7 · Stories: 43, 44
   - [ ] **14.2 Real fighters in the match.**
@@ -585,6 +586,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - `FighterView` replaces `FighterStandin`: the side's fighter in its toon look and palette with its weapon models, placed from the host's display position and yaw, and posed from StickPose through the rig until swings exist.
       - The body flash is a material overlay timed on rules frames.
       - Side colours move to a shared constant, and the stand-in is deleted.
+      - `WeaponLook.two_handed` replaces the hard-coded two-handed checks in `fighter_standin.gd` and `stick_pose.gd`.
       - Models are cached across rematches.
       - The camera is re-checked with real bodies at 3.5, 2.5 and 1.5 m.
     - Check:
@@ -769,7 +771,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
     - Check: the view tests pass, including the no-stray-nodes test; the skeleton shots are re-rendered and reviewed.
     - Blocked by: 16.5 · Stories: 46
-  - [ ] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. The weapons and the Katana's own shaders get toon versions.
+  - [ ] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. Palettes then recolour the toon materials, since `apply_palette` and `test_palettes` only handle `BaseMaterial3D` today. The weapons and the Katana's own shaders get toon versions. The art budget (56.4 of 60 MB after 13.1) covers any new textures.
     - Check: content tests that every fighter and weapon surface is toon, outlined and on layer 2, and that the palettes still differ; lineup and mirror shots at Low and High reviewed, with no split outlines at seams.
     - Blocked by: 13.1, 16.6 · Stories: 43, 45, 46
 - [ ] **17. The floating Moonlit Shrine.**

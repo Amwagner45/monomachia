@@ -6,7 +6,7 @@ const LIBRARY: String = "res://assets/quaternius/animations/ual_library.res"
 
 const LOOPING: Array[StringName] = [
 	&"Idle", &"Sword_Idle", &"Walk", &"Walk_Formal", &"Jog_Fwd", &"Sprint", &"Jump", &"NinjaJump_Idle",
-	&"Dance", &"Idle_FoldArms",
+	&"Dance", &"Idle_FoldArms", &"Idle_Shield",
 ]
 const ONE_SHOT: Array[StringName] = [
 	&"Jump_Start", &"Jump_Land", &"NinjaJump_Start", &"NinjaJump_Land",

@@ -1,12 +1,17 @@
 extends GutTest
-## Size budgets and import hygiene for the imported art in game/assets:
-## the art stays under 60 MB with no file over 10 MB, textures are scaled
-## down, every texture a model references exists, and every skinned model is
-## retargeted through the humanoid bone map. The audio in game/assets/audio has
-## its own budget (under 40 MB, checked by the Node tests in tests/audio).
+## Size budgets and import hygiene for the art: the files in game/assets plus
+## the baked textures and meshes in game/fighters and game/weapons stay under
+## 60 MB with no file over 10 MB, textures are scaled down, every texture a
+## model references exists, and every skinned model is retargeted through the
+## humanoid bone map. The audio in game/assets/audio has its own budget (under
+## 40 MB, checked by the Node tests in tests/audio).
 
 const ASSETS: String = "res://assets"
 const AUDIO: String = "res://assets/audio"
+## Folders of baked art beside game/assets (palettes, skins, weapon meshes).
+const BAKED: Array[String] = ["res://fighters", "res://weapons"]
+## Binary art in the baked folders; their scenes and scripts aren't counted.
+const BAKED_EXTENSIONS: Array[String] = ["png", "res", "exr"]
 const MAX_TOTAL_BYTES: int = 60 * 1024 * 1024
 const MAX_FILE_BYTES: int = 10 * 1024 * 1024
 const MAX_BASE_COLOR: int = 2048
@@ -25,12 +30,16 @@ static func _files(dir_path: String, out: Array[String]) -> Array[String]:
 	return out
 
 
-## Every file in game/assets except the audio.
+## Every file in game/assets except the audio, and the baked art beside it.
 static func _art_files() -> Array[String]:
 	var art: Array[String] = []
 	for path: String in _files(ASSETS, []):
 		if not path.begins_with(AUDIO + "/"):
 			art.append(path)
+	for root: String in BAKED:
+		for path: String in _files(root, []):
+			if BAKED_EXTENSIONS.has(path.get_extension()):
+				art.append(path)
 	return art
 
 
@@ -48,7 +57,7 @@ func test_the_art_stays_under_60_mb() -> void:
 	var total: int = 0
 	for path: String in _art_files():
 		total += FileAccess.get_size(path)
-	gut.p("game/assets holds %.1f MB of art" % (total / 1048576.0))
+	gut.p("the art comes to %.1f MB" % (total / 1048576.0))
 	assert_lt(total, MAX_TOTAL_BYTES)
 
 
@@ -67,7 +76,8 @@ func test_textures_are_scaled_down() -> void:
 	for path: String in pngs:
 		var size: Vector2i = _png_size(path)
 		var file: String = path.get_file()
-		var data_map: bool = file.contains("_Normal") or file.contains("_ORM") or file.contains("_Roughness")
+		var lower: String = file.to_lower()
+		var data_map: bool = lower.contains("_normal") or lower.contains("_orm") or lower.contains("_roughness")
 		var limit: int = MAX_DATA_MAP if data_map else MAX_BASE_COLOR
 		assert_true(size.x <= limit and size.y <= limit, "%s is %dx%d (limit %d)" % [file, size.x, size.y, limit])
 

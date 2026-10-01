@@ -30,11 +30,12 @@ const OUTLINE_SHADER: Shader = preload("res://shaders/outline.gdshader")
 const META_OUTLINE: StringName = &"look_outline"
 const META_KIND: StringName = &"look_outline_kind"
 
-## Outline width in pixels at 1080p, per kind.
+## Outline width in pixels at 1080p, per kind (the owner's pick from the look
+## bench).
 const OUTLINE_WIDTH: Dictionary[OutlineKind, float] = {
-	OutlineKind.FIGHTER: 4.0,
-	OutlineKind.WEAPON: 3.2,
-	OutlineKind.PROP: 3.0,
+	OutlineKind.FIGHTER: 3.0,
+	OutlineKind.WEAPON: 2.4,
+	OutlineKind.PROP: 2.25,
 }
 
 

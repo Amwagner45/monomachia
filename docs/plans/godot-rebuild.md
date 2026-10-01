@@ -94,7 +94,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - The unblockable reach effect is a red ink arc on the floor during the wind-up.
 - The parry push-in is a short dolly on top of the existing field-of-view kick; reduce-flashes turns both off.
 - The ultimate aura uses the side colours. The worktree's petals are dropped unless the owner wants them.
-- Outlines and ink lines are widened for the owner's look review.
+- Outlines and ink lines are widened for the owner's look review. Outlines are settled: the owner picked 3, 2.4 and 2.25 px at 1080p for fighters, weapons and props (16.3).
 - Shot scenes live in `game/tools/shot_scenes`. Screenshot runs fail on shader compile errors, since headless runs never compile shaders.
 
 **Sound and music (19, 20)**
@@ -156,7 +156,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), outline width and ink lines (16.3, 16.4), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), the ink lines (16.4), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -785,7 +785,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - **The hulls drew into the shadow maps,** where the light's projection pushed them to the 6 cm cap. An outlined sphere's shadow came out 40 px wider, and a blade's shadow across a body about 20 px instead of 4. The shader now collapses the hull whenever it draws for a view other than the main camera (`MAIN_CAM_INV_VIEW_MATRIX`).
       - **Box and rim lines came out thin.** A unit smoothed normal moved a box face out by only 1/√3 of the width. MeshKit now stores a miter in CUSTOM0.w (√3 at a box corner, at most `MeshKit.MAX_MITER`), so every face moves out by the whole width.
     - `tools/shot_scenes/outline_check.tscn` guards all three. It measures the ink rings around an outlined sphere and an outlined MeshKit box, and compares the outlined sphere's shadow with a plain one's. It exits 1 on any miss. Before the fixes: rings 0 px, then 4 of 7.5 px on the box; shadows 274 against 234 px. After: 11 of 10, 8 of 7.5, 235 against 234. Run it with `shader_check` before visual commits; headless tests can't render.
-    - The widths are widened for the owner's review: fighters 4 px, weapons 3.2 and props 3 at 1080p (they were 3, 2.4 and 2.2). The old widths never drew, so the owner judges these fresh.
+    - Outline widths: the owner reviewed the look bench at 4, 3.2 and 3 px and at 0.75 times that, and picked 0.75 on Oct 1. The widths are now fighters 3 px, weapons 2.4 and props 2.25 at 1080p.
     - Review changes:
       - `OutlineClass` became `OutlineKind`, since the glossary's Weapon class means the weapon's size group;
       - `has_outline` became `is_outlined`, which is true while the outline is on;

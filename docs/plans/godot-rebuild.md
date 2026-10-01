@@ -31,6 +31,39 @@ The Godot build plays everything the web demo plays, on the new direction in the
   - Reach: lunges must be 0.7–0.8 m so the blade really reaches a defender 2.5 m away.
 - Phase C is reordered: the new strings come before weapon swings, so swing paths are authored once, for the final moves.
 - The 4.7.2 export templates are installed on the owner's PC, so `npm run build` can export locally; CI exports too.
+- The match host owns the input host (one set of devices for the whole game, pause on focus loss, profiles picked up on resume), so task 6 did that part of task 22.
+
+## Progress
+
+Sep 30, 2026. **Paused by the owner after task 6 was merged.** Nothing is running.
+
+- **Done and merged on `feature/godot-rebuild`:**
+  - tasks 1–6 and 21;
+  - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
+  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`).
+- **Checks at c400858:**
+  - 382 Godot tests: rules 138, input 118, audio 31, core 14, view 79;
+  - 112 web tests;
+  - the typecheck loads 96 scripts cleanly;
+  - CI passes on the latest push.
+- **Waiting on their own branches:**
+  - **Task 13: done, not merged** (`fighters-and-weapons`, commits 1f574a2 and fcfb8d8).
+    - Built and refined after an art review: the Rogue and the Hunter with two palettes each, the Katana, Greatsword and Daggers models, and the import tools.
+    - Merging it conflicts only in this plan and the spec.
+  - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree).
+    - Most of both tasks exists:
+      - the toon material, outlines, ink-wash pass and three presets;
+      - the arena data and the floating shrine with its underside, sky, landscape, embers and ash;
+      - four test files;
+      - screenshots from the gameplay, Watch and menu cameras, and a preset benchmark (High about 62 fps at 1080p on the target laptop).
+    - None of it is reviewed, and a `game/_probe/` scratch folder must not be committed.
+    - Its files don't overlap task 6's: task 6 already loads `res://arenas/moonlit_shrine/moonlit_shrine.tscn` when it exists.
+- **Next, on resume:**
+  1. Merge task 13.
+  2. Review and finish tasks 16 and 17, or rebuild them.
+  3. Task 8, then 9–11, then 7, then 12.
+  4. Alongside: menus (22) and wiring sound and music into the match (the rest of 19 and 20).
+- **Waiting on the owner:** a listening pass on the sound and music, and a first playtest of the stand-in Duel.
 
 ## Not yet specified
 
@@ -89,8 +122,8 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - arena data with spawn points and gate anchors.
   - Blocked by: 5 (input devices from task 21 are already merged).
   - Check: a scripted run plays a full match headless; screenshots of the duel from the gameplay camera.
-  - Done on its own branch (`playable-skeleton`):
-    - `game/core`: the `MatchConfig` and `MatchSide` resources, `MatchResults`, and the `GameServices` autoload, which owns one `ControlProfiles` and one `InputDevices` with its `InputFeed` for the whole game and pauses a match when the window loses focus.
+  - Done (built on the `playable-skeleton` branch, merged in c400858):
+    - `game/core`: the `MatchConfig` and `MatchSide` resources, `MatchResults`, and the `GameServices` autoload, which owns one `ControlProfiles` and one `InputDevices` with its `InputFeed` for the whole game and pauses a match when the window loses focus. `MatchHost` calls `set_profile` and `rearm_pause` on resume and `unbind_seats` on quit to menu.
     - `game/view/match`: `MatchHost` (the fixed-step host, with `step(n)` for tests and screenshots), `MatchView`, `CameraRig` (follow at 4.6 m back and 1.35 m right with 60° field of view, swinging further right by 0.8 m per metre when the fighters stand closer than 3.5 m; Watch side-on, menu orbit, shake and field-of-view kicks; the arena's camera radius and far clip from its `ArenaDef`; every number exported), `FighterStandin` posed by `StickPose`, and the stand-in arena.
     - Arenas load by id through `ArenaScenes`: `moonlit_shrine`, the default arena of every match, points at `res://arenas/moonlit_shrine/moonlit_shrine.tscn` and falls back to the stand-in until that scene exists. The stand-in only carries Spawn and Gate markers; the arena data itself comes with task 17.
     - `game/ui`: the minimal HUD, and the title, main menu, pause and results screens that task 22 replaces. `game/scenes/main.tscn` runs title, menu, Duel or Watch, results.
@@ -148,6 +181,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - a credits file.
   - Blocked by: 1.
   - Check: screenshots of both fighters in rest pose, with each weapon; no missing textures; import is clean in headless.
+  - Progress: built and refined after an art review on branch `fighters-and-weapons`. It's waiting to be merged; the branch records the details.
 - [ ] **14. Fighter animation core.** Production version of the spike (its code is the starting point), on one fighter with the Katana.
   - Delivers:
     - the modifier stack (body layer, arm and leg IK, hands and fingers);
@@ -201,7 +235,24 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 - [ ] **16. Toon, outline and ink-wash look.** The toon material, inverted-hull outlines, the ink-wash post pass, and graphics presets.
   - Blocked by: 13.
   - Check: side-by-side screenshots of each preset; no shader errors in headless loading.
+  - Progress: built on branch `look-and-arena`, uncommitted and unreviewed, stopped when work paused.
+    - Done there:
+      - the toon material;
+      - outlines that are always on for fighters and weapons and on for props only on High;
+      - the ink-wash pass;
+      - Low, Medium and High presets;
+      - screenshots of each preset and of the outline comparison.
+    - High holds about 62 fps at 1080p on the target laptop.
 - [ ] **17. The floating Moonlit Shrine.**
+  - Progress: built on branch `look-and-arena` with task 16, uncommitted and unreviewed.
+    - Done there:
+      - the arena data (`ArenaDef`);
+      - the platform, parapet, torii, lanterns and pillars;
+      - the underside;
+      - the sky, moon, mountains, pagodas and waterfalls;
+      - embers and ash;
+      - screenshots from the gameplay, Watch, menu and top-down cameras.
+    - Not done: the radius check, which waits for task 8.
   - Delivers:
     - the platform at radius 15 with its parapet, torii, lanterns and pillars;
     - the rocky underside;
@@ -226,12 +277,14 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 ### Phase F: sound and music
 
 - [ ] **19. Sound effects.** The Sonniss extraction and processing script with its sources list; generated gap-fill sounds; the event-to-sound table with variations; buses; 3D impacts; footsteps; arena ambience.
-  - Progress: the assets, the sound bank and the bus layout were built early on their own branch and verified by measurement; what remains is playback wired to the match host (players, 3D placement, ducking) and a listening pass by the owner.
+  - Progress: the assets, the sound bank and the bus layout were built early on their own branch, verified by measurement and merged. Nothing plays in a match yet.
+    - What remains: playback wired to the match host (players, 3D placement, ducking) and a listening pass by the owner.
   - Blocked by: 6.
   - Check: every event in the demo's audio table has a sound; a headless run logs no missing sound files; the committed audio is under 40 MB.
 - [ ] **20. Placeholder music.** Generated menu (110 BPM), battle (140 BPM) and match-point (160 BPM) tracks; a music director that switches at the round call; volume settings.
   - Blocked by: 19.
-  - Progress: the tracks and the music director are built and measured (110.00 / 139.99 / 160.01 BPM); what remains is the player, with 10–20 ms fades because the loops start mid-signal.
+  - Progress: the tracks and the music director are built, measured (110.00 / 139.99 / 160.01 BPM) and merged.
+    - What remains: the player, with 10–20 ms fades because the loops start mid-signal.
   - Check: tempos measured from the files; switching happens when a fighter reaches two wins.
 
 ### Phase G: screens and modes
@@ -251,7 +304,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - results;
     - the ink-wash UI theme and bundled fonts;
     - the Controls screen with rebinding capture, and the Versus device and profile pickers;
-    - the input host from task 21: one `InputDevices` and its `InputFeed` kept for the whole game, a pause when `focus_lost` fires during a match, `set_profile` and `rearm_pause` on resume (the pause menu's Controls screen can pick another profile), and `unbind_seats` on quit to menu.
+    - the input host from task 21: one `InputDevices` and its `InputFeed` kept for the whole game, a pause when `focus_lost` fires during a match, `set_profile` and `rearm_pause` on resume (the pause menu's Controls screen can pick another profile), and `unbind_seats` on quit to menu. Task 6 already built this in `GameServices` and `MatchHost`. What remains is the pause menu's Controls screen, which uses it.
   - The fighter select uses the design doc's final layout, without the gate cinematic or intros:
     - a fighter grid;
     - the hovered fighter's model on the right, in a 3D preview;
@@ -260,6 +313,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - lock in.
   - Blocked by: 21.
   - Check: screenshots of every screen; the whole flow is navigable with keyboard only and with controller only.
+  - Progress: task 6 left stand-in title, main menu, pause and results screens (`game/ui/menus`) that this task replaces.
 - [ ] **23. Training, Watch and Versus.** The training panel with dummy behaviours, refill and parry timing feedback; Watch with the side-on camera; Versus split screen with per-player cameras and prompts.
   - Blocked by: 22.
   - Check: screenshots of each mode; Versus runs smoothly with two controllers or a shared keyboard.

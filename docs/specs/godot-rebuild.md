@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Sep 30, 2026 · status: approved for build · branch `feature/godot-rebuild`
+Sep 30, 2026 · status: in build, paused after the playable skeleton (see the plan's Progress section) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -154,10 +154,15 @@ A Godot 4.7 PC game (Windows) that plays the same duel with the same rules and c
 
 **Two layers.** The rules layer knows nothing about graphics, input devices or sound: it is a set of plain GDScript classes (world, fighter, match, input tracker, computer brains and move data) advanced exactly 60 times per second. The presentation layer (nodes, animation, camera, effects, sound, menus) reads the rules layer's state and events and never changes them. A host node runs the fixed-step loop with an accumulator, applies slow motion by scaling the accumulator (not the engine's time scale), feeds each player's input, and gives the presentation an interpolation fraction, which it holds still during hit-stop.
 
-**Faithful port first.** The TypeScript rules are ported module by module with the same names and numbers, including the known quirks (update order, last-write-wins hit-stop, JS rounding and the Mulberry32 generator). The port is proven by:
+**Faithful port first.** The TypeScript rules are ported module by module with the same names and numbers, including the known quirks (update order, last-write-wins hit-stop, JS rounding and the Mulberry32 generator). Two details make whole runs match bit for bit:
+- the rules keep positions in their own 64-bit vector classes, because Godot's built-in vectors are 32-bit;
+- `game/sim/js_math.gd` computes `sin`, `cos`, `atan2` and `hypot` exactly as V8 does (a port of its fdlibm), instead of using the platform's C library.
+
+The port is proven by:
 
 - the 47 existing rule tests, rewritten for GUT;
-- golden replays: a Node script runs the TypeScript rules on a set of scripted input sequences and computer-vs-computer matches and records every event and each fighter's state per frame; a GUT test feeds the same inputs to the Godot rules and compares them, within 1e-6 on positions and exactly on events.
+- golden replays: a Node script runs the TypeScript rules on 29 scripted duels and 6 computer-vs-computer matches and records every event and each fighter's state per frame; a GUT test feeds the same inputs to the Godot rules and compares them, within 1e-6 on positions (the margin covers Godot's JSON reader, not the rules) and exactly on events;
+- the Godot computer opponent producing the recorded inputs for all six matches, and the 40-match soak printing the same numbers as the TypeScript soak.
 
 The goldens guard the faithful port only. Once the rules change on purpose, they are replaced by tests of the new behaviour.
 
@@ -240,14 +245,14 @@ Swings are stored as sampled data, so a move can later take its path from an aut
 - The variations the sound bank picks between for one event are matched in loudness (their loudest 100 ms, with a peak ceiling), so no variation stands out.
 - Only the processed files are committed, under 40 MB in all.
 
-**Input.** Each player reads one device: keyboard and mouse, the arrow-key layout, controller 1 or controller 2. That player's profile maps the device to the demo's eight rule buttons plus pause. Profiles are saved in the user folder. Controller button names follow the detected controller.
+**Input.** Each player reads one device: keyboard and mouse, the arrow-key layout, controller 1 or controller 2. That player's profile maps the device to the demo's eight rule buttons plus pause. Profiles are saved in the user folder (`user://controls.cfg`). Controller button names follow the detected controller. One set of devices and profiles lives for the whole game in the `GameServices` autoload, which pauses a match when the window loses focus.
 
 **Screens.**
 
 - Title (with a live background duel), main menu, fighter and loadout select (per side: fighter, weapon, two block abilities, computer difficulty; devices and profiles in Versus), controls, settings, how to play and move list, pause, results, and the HUD.
 - The UI uses an ink-wash theme with the demo's fonts (Zen Antique, Zen Kaku Gothic New; open font licence), bundled.
 
-**Build and tools.** The npm scripts become a task runner that finds Godot through a `GODOT` environment variable or a known install path:
+**Build and tools.** The npm scripts become a task runner (`scripts/godot.mjs`). It finds Godot through a `GODOT` environment variable, then `godot` or `godot4` on PATH, then an untracked `.godot-path` file holding the executable's path. Until the web code is deleted, `test` and `typecheck` run the web and Godot checks side by side, and the Godot soak, run and editor commands are `soak:godot`, `godot:run` and `godot:dev`. At the end the scripts are:
 
 - `test`: GUT, headless.
 - `typecheck`: loads every script and fails on any error.
@@ -315,6 +320,15 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;
   - every new move and chain: Katana four-light string, Iai vertical and horizontal by stick, Iai follow-ups, strafing while sheathed, sheathed auto-release, dodge cancelling the stance; Greatsword L-L-H, Low Sweep unblockable and jumpable, dodge thrusts; Daggers alternating string, dodge-cancel timing, no light loop from Twin Fang, Passing Cut direction;
   - string continuity: every chain's `side_end` matches the next move's `side_start`.
+- **Input (GUT, headless):** a fake device stands in for the keyboard, mouse and controllers. Tests cover the bindings, profiles and saving, rebinding capture, button names, per-player seats and pause, and the feed into the rules.
+- **Sound:**
+  - Node tests check the processing tools and measure the processed files: sharp attacks, no DC offset, clean tails, and variations matched in loudness.
+  - GUT tests check:
+    - every event has a sound and every file loads;
+    - the bus layout;
+    - the music director switches at match point;
+    - the tracks have the design tempos and loop for exactly their bars.
+- **Host and camera (GUT, headless):** the fixed step, hit-stop and slow motion, pause and focus loss, the camera's distances, the HUD's timing, and the flow from title to results, all driven through `step()` without a window.
 - **Soak:** 40 computer-vs-computer matches must finish without errors or impossible values (NaN, a fighter outside the arena, posture out of range). They report round length, parries, counters, disarms and ultimates per round, and each weapon's win rate. Target after tuning: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55% of its matches.
 - **Presentation:** scripted screenshot scenes, rendered in a window from the command line:
   - a pose gallery of every attack at wind-up, contact and follow-through, for each weapon, on each fighter;

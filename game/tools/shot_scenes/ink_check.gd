@@ -27,7 +27,9 @@ const FLOOR_DISTANCE: float = 13.0
 ## white (the dry-brush breaks thin them), and the bleed halo around them
 ## about 0.94.
 const INK_LUMA: float = 0.75
-const MIN_LINE: int = 1
+## InkWashPass.LINE_WIDTH_PX is 2: a line measures 2 px against the sky
+## (whose side is never inked) and about 4 px against the floor.
+const MIN_LINE: int = 2
 ## Columns this close to the box's sides, and between them, are left out of
 ## the floor count (its base meets the floor in a crease, which rightly draws
 ## a line).

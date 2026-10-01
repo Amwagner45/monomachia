@@ -59,6 +59,16 @@ func test_the_pass_is_a_screen_quad_drawn_first_among_the_transparent() -> void:
 	assert_eq(ink.get_material().get_shader_parameter(LookNoise.PARAM), LookNoise.texture())
 
 
+func test_the_ink_lines_are_the_owners_pick() -> void:
+	assert_eq(InkWashPass.LINE_WIDTH_PX, 2.0, "picked by the owner on Oct 1")
+	assert_eq(InkWashPass.LINE_STRENGTH, 0.85)
+	var m: ShaderMaterial = _ink().get_material()
+	assert_eq(m.get_shader_parameter(&"line_width_px"), InkWashPass.LINE_WIDTH_PX)
+	assert_eq(m.get_shader_parameter(&"line_strength"), InkWashPass.LINE_STRENGTH)
+	var include := load("res://shaders/ink_wash.gdshaderinc") as ShaderInclude
+	assert_string_contains(include.code, "line_width_px : hint_range(0.5, 4.0) = %.1f;" % InkWashPass.LINE_WIDTH_PX, "the shader's default agrees")
+
+
 func test_quality_sets_the_shaders_quality_and_off_hides_the_pass() -> void:
 	var ink: InkWashPass = _ink()
 	assert_eq(ink.quality, InkWashPass.Quality.FULL, "full by default")

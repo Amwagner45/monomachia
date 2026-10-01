@@ -38,7 +38,7 @@ uniform vec4 mist_color : source_color = vec4(0.22, 0.24, 0.31, 1.0);
 
 group_uniforms lines;
 uniform float line_strength : hint_range(0.0, 1.0) = 0.85;
-uniform float line_width_px : hint_range(0.5, 4.0) = 1.2;
+uniform float line_width_px : hint_range(0.5, 4.0) = 2.0;
 uniform float depth_threshold : hint_range(0.0, 1.0) = 0.12;
 #ifdef INK_NORMALS
 uniform float normal_threshold : hint_range(0.0, 2.0) = 0.45;

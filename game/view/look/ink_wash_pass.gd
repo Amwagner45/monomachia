@@ -34,6 +34,12 @@ enum Quality {
 const SHADER_NORMALS: Shader = preload("res://shaders/ink_wash.gdshader")
 const SHADER_DEPTH: Shader = preload("res://shaders/ink_wash_lite.gdshader")
 const GROUP: StringName = &"look_post"
+## The ink lines' width in pixels and their strength (coverage at a full
+## break, blended in linear light, so 0.85 reads about 0.43 on white). The
+## owner picked 2 px at 0.85 from look bench renders on Oct 1; at 1.2 px the
+## lines barely read at a duel's distance, and at 3 px they turn ragged.
+const LINE_WIDTH_PX: float = 2.0
+const LINE_STRENGTH: float = 0.85
 
 @export var quality: Quality = Quality.FULL:
 	set = set_quality
@@ -61,6 +67,8 @@ func _init() -> void:
 	add_to_group(GROUP)
 	_update_shader()
 	set_param(LookNoise.PARAM, LookNoise.texture())
+	set_param(&"line_width_px", LINE_WIDTH_PX)
+	set_param(&"line_strength", LINE_STRENGTH)
 
 
 ## Sets what the pass draws; OFF hides it.

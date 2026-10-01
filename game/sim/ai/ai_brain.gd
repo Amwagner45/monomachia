@@ -16,7 +16,7 @@ extends RefCounted
 ##   twice inside one expression or argument list (left to right), the draws
 ##   are split into locals in that order, and every TS short-circuit (&&, ||,
 ##   ?:) that guards a draw is kept as one.
-## - Math.round is SimMath.js_round; Math.hypot(x, z) is sqrt(x * x + z * z).
+## - Math.round is SimMath.js_round; Math.hypot(x, z) is JsMath.hypot(x, z).
 ## - dispose() is new: it breaks the reference to the fighter (me), which
 ##   points back through the world. Call it when the brain is no longer needed.
 
@@ -631,7 +631,7 @@ func _think_guard_weapon(frame: int, d: float) -> RawInput:
 	# stand between the opponent and their weapon, and punish attempts
 	var gx: float = wpn.pos.x + (opp.pos.x - wpn.pos.x) * 0.35
 	var gz: float = wpn.pos.z + (opp.pos.z - wpn.pos.z) * 0.35
-	var to_guard: float = sqrt((gx - me.pos.x) * (gx - me.pos.x) + (gz - me.pos.z) * (gz - me.pos.z))
+	var to_guard: float = JsMath.hypot(gx - me.pos.x, gz - me.pos.z)
 	if opp.state == &"pickup" and d < me.moveset().reach + 1.5:
 		_start_combo(frame, 3, true)
 		return _output(frame)

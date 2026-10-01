@@ -8,7 +8,8 @@ extends RefCounted
 ## - Vec2 and Vec3 live in v2.gd and v3.gd; v2() and v3() are V2.make() and V3.make().
 ## - TS dist2 and yawTo accept Vec2 | Vec3; every caller passes a Vec3, so here
 ##   they take V3.
-## - Math.hypot is written as sqrt(x*x + z*z), as in len2.
+## - Math.sin, Math.cos and Math.atan2 are JsMath.sin, JsMath.cos and
+##   JsMath.atan2: V8's exact results (see js_math.gd). Math.sqrt is sqrt.
 ## - js_round() is the JS Math.round, which GDScript's round() is not (it rounds
 ##   halves away from zero; JS rounds them toward +infinity).
 
@@ -40,17 +41,17 @@ static func norm2(x: float, z: float) -> V2:
 
 ## Forward unit vector for a yaw angle. yaw=0 faces +Z; positive yaw turns toward +X.
 static func fwd(yaw: float) -> V2:
-	return V2.make(sin(yaw), cos(yaw))
+	return V2.make(JsMath.sin(yaw), JsMath.cos(yaw))
 
 
 ## Right-hand unit vector for a yaw angle (fighter's own right side).
 static func right(yaw: float) -> V2:
 	# right = forward x up = (-fz, fx)
-	return V2.make(-cos(yaw), sin(yaw))
+	return V2.make(-JsMath.cos(yaw), JsMath.sin(yaw))
 
 
 static func yaw_to(from: V3, to: V3) -> float:
-	return atan2(to.x - from.x, to.z - from.z)
+	return JsMath.atan2(to.x - from.x, to.z - from.z)
 
 
 static func wrap_angle(a: float) -> float:

@@ -15,8 +15,10 @@ extends RefCounted
 ## - startAttack's startedBy null is -1; attackPhase's null is &"".
 ## - opp and world point back at the other fighter and the World: a reference
 ##   cycle that World.dispose() breaks.
-## - Math.hypot(x, z) is sqrt(x * x + z * z); Math.round is SimMath.js_round;
-##   every TS division of two ints is written as a float division.
+## - Math.hypot, Math.sin, Math.cos and Math.atan2 are JsMath.hypot, .sin, .cos
+##   and .atan2 (V8's exact results, see js_math.gd); Math.round is
+##   SimMath.js_round; every TS division of two ints is written as a float
+##   division.
 
 ## FState
 const STATES: Array[StringName] = [
@@ -418,7 +420,7 @@ func _locomotion() -> void:
 	var inp: InputTracker = input
 	var mx: float = inp.mx
 	var my: float = inp.my
-	var mag: float = sqrt(mx * mx + my * my)
+	var mag: float = JsMath.hypot(mx, my)
 	if mag > 1.0:
 		mx /= mag
 		my /= mag
@@ -451,7 +453,7 @@ func _locomotion() -> void:
 		sprint_frames = 0
 	var dvx: float = tx - vel.x
 	var dvz: float = tz - vel.z
-	var dl: float = sqrt(dvx * dvx + dvz * dvz)
+	var dl: float = JsMath.hypot(dvx, dvz)
 	var rate: float = (SimConst.MOVE_ACCEL if active else SimConst.MOVE_DECEL) * SimConst.DT
 	if dl <= rate:
 		vel.x = tx
@@ -605,8 +607,8 @@ func _plan_shadow_step() -> void:
 	var o: V3 = opp.pos
 	var dx: float = pos.x - o.x
 	var dz: float = pos.z - o.z
-	var r0: float = maxf(1.0, sqrt(dx * dx + dz * dz))
-	var a0: float = atan2(dx, dz)
+	var r0: float = maxf(1.0, JsMath.hypot(dx, dz))
+	var a0: float = JsMath.atan2(dx, dz)
 	# circle toward the held side, default to the right
 	var side: float = -1.0 if input.mx < -0.3 else 1.0
 	atk.path_from = AttackState.PathPoint.make(a0, r0)
@@ -654,7 +656,7 @@ func _update_attack() -> void:
 
 	# Lunge forward along our facing.
 	var ls: int = def.lunge_start
-	var le: int = def.lunge_end if def.lunge_end >= 0 else S + A
+	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else S + A
 	if a.lunge_total > 0.0 and f > ls and f <= le:
 		var per: float = a.lunge_total / float(maxi(1, le - ls))
 		var d: float = SimMath.dist2(pos, opp.pos)
@@ -700,7 +702,7 @@ func _update_attack() -> void:
 		return
 
 	# Dodge-cancel the recovery of quick attacks.
-	if def.dodge_cancel_from >= 0 and f >= def.dodge_cancel_from and inp.buffered(Btn.DODGE):
+	if def.dodge_cancel_from != AttackDef.UNSET and f >= def.dodge_cancel_from and inp.buffered(Btn.DODGE):
 		inp.consume(Btn.DODGE)
 		start_dodge()
 		return
@@ -721,8 +723,8 @@ func _update_shadow_step(f: int) -> void:
 		var t: float = SimMath.ease_out_cubic(float(f - S) / float(A))
 		var ang: float = a.path_from.ang + (a.path_to.ang - a.path_from.ang) * t
 		var r: float = a.path_from.r + (a.path_to.r - a.path_from.r) * t
-		pos.x = opp.pos.x + sin(ang) * r
-		pos.z = opp.pos.z + cos(ang) * r
+		pos.x = opp.pos.x + JsMath.sin(ang) * r
+		pos.z = opp.pos.z + JsMath.cos(ang) * r
 		yaw = SimMath.yaw_to(pos, opp.pos)
 		if f == S + A:
 			opp.blind_until = world.frame + 6
@@ -827,7 +829,7 @@ func _update_jump() -> void:
 		var d: V2 = world_dir(inp.mx, inp.my)
 		vel.x += d.x * 6.0 * SimConst.DT
 		vel.z += d.z * 6.0 * SimConst.DT
-		var s: float = sqrt(vel.x * vel.x + vel.z * vel.z)
+		var s: float = JsMath.hypot(vel.x, vel.z)
 		var cap: float = SimConst.MOVE_SPRINT * speed_mult()
 		if s > cap:
 			vel.x *= cap / s
@@ -852,7 +854,7 @@ func _integrate() -> void:
 	if keep > 0.0 and keep < 9.0:
 		var dx: float = pos.x - opp.pos.x
 		var dz: float = pos.z - opp.pos.z
-		var d: float = sqrt(dx * dx + dz * dz)
+		var d: float = JsMath.hypot(dx, dz)
 		if d > 1e-6:
 			pos.x = opp.pos.x + (dx / d) * keep
 			pos.z = opp.pos.z + (dz / d) * keep
@@ -929,7 +931,7 @@ func _update_posture() -> void:
 			and W.frame - last_posture_damage >= SimConst.POSTURE_RECOVER_DELAY
 			and posture > 0.0
 		):
-			var is_moving: bool = sqrt(vel.x * vel.x + vel.z * vel.z) > 0.3
+			var is_moving: bool = JsMath.hypot(vel.x, vel.z) > 0.3
 			var base: float = SimConst.POSTURE_RECOVER_MOVE if is_moving else SimConst.POSTURE_RECOVER_STAND
 			var hp_f: float = SimConst.POSTURE_RECOVER_HP_FLOOR + (1.0 - SimConst.POSTURE_RECOVER_HP_FLOOR) * hp_frac()
 			posture = maxf(0.0, posture - base * hp_f * SimConst.DT)
@@ -1026,7 +1028,7 @@ func _update_stomp() -> void:
 	var e: float = SimMath.ease_out_cubic(t)
 	pos.x = script_from.x + (script_to.x - script_from.x) * e
 	pos.z = script_from.z + (script_to.z - script_from.z) * e
-	pos.y = sin(t * PI) * 0.35 if sf < 8 else 0.0
+	pos.y = JsMath.sin(t * PI) * 0.35 if sf < 8 else 0.0
 	yaw = SimMath.yaw_to(pos, opp.pos)
 	if sf >= actionable_after and try_actions():
 		return
@@ -1061,7 +1063,7 @@ func _update_leap() -> void:
 		var start: V3 = V3.make(o.x - to.x * 0.55, 1.55, o.z - to.z * 0.55)
 		pos.x = start.x + (script_to.x - start.x) * t
 		pos.z = start.z + (script_to.z - start.z) * t
-		pos.y = maxf(0.0, start.y + 1.2 * sin(t * PI) * (1.0 - t) - start.y * t * t)
+		pos.y = maxf(0.0, start.y + 1.2 * JsMath.sin(t * PI) * (1.0 - t) - start.y * t * t)
 	yaw = SimMath.yaw_to(pos, o)
 	if f >= state_dur:
 		pos.y = 0.0
@@ -1164,7 +1166,7 @@ func _ult_impaler(u: UltState) -> void:
 				):
 					_set_ult_phase(&"recover")
 			W.queue_scripted_hit(self, o, Moves.ULT_HITS[&"u_impale"], cb)
-		var r: float = sqrt(pos.x * pos.x + pos.z * pos.z)
+		var r: float = JsMath.hypot(pos.x, pos.z)
 		if u.pf >= 40 or r > 10.8 or (gap < 0.6 and along < -0.5):
 			_set_ult_phase(&"recover")
 	elif u.phase == &"impale":

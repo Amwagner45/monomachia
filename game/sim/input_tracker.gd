@@ -8,16 +8,17 @@ extends RefCounted
 ## InputTracker turns that into edges, buffered presses, taps and double-taps.
 ##
 ## Port notes: dirIndex, dirVector and sameSector are static funcs here.
+## Math.hypot, Math.atan2, Math.sin and Math.cos are JsMath's (V8's results).
 ## dir_vector returns a RawInput with only mx and my set (TS: { mx, my }).
 ## The getters sprinting and moving are functions.
 
 
 ## 8-way direction index: 0 = forward, 1 = forward-right, 2 = right ... 7 = forward-left. -1 = neutral.
 static func dir_index(mx: float, my: float) -> int:
-	var m: float = sqrt(mx * mx + my * my)
+	var m: float = JsMath.hypot(mx, my)
 	if m < SimConst.DIR_DEADZONE:
 		return -1
-	var a: float = atan2(mx, my) # 0 = forward, +pi/2 = right
+	var a: float = JsMath.atan2(mx, my) # 0 = forward, +pi/2 = right
 	return ((SimMath.js_round(a / (PI / 4.0)) % 8) + 8) % 8
 
 
@@ -25,7 +26,7 @@ static func dir_vector(d: int) -> RawInput:
 	if d < 0:
 		return RawInput.make(0.0, 0.0)
 	var a: float = float(d) * (PI / 4.0)
-	return RawInput.make(sin(a), cos(a))
+	return RawInput.make(JsMath.sin(a), JsMath.cos(a))
 
 
 static func same_sector(a: int, b: int) -> bool:

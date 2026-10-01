@@ -1,8 +1,9 @@
 extends GutTest
 ## Spot checks of the math helpers against values computed by the TypeScript
-## (game/tests/fixtures/math.json, written by scripts/sim-fixtures.ts). sin,
-## cos and atan2 may differ in the last bit between V8 and the C runtime, so
-## floats are compared within 1e-12.
+## (game/tests/fixtures/math.json, written by scripts/sim-fixtures.ts). The
+## fixture holds plain JSON numbers, which Godot's JSON reader can read a unit
+## in the last place off, so floats are compared within 1e-12 (the bit-exact
+## checks of JsMath are in test_port_regressions.gd).
 
 const EPS: float = 1e-12
 

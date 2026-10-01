@@ -23,15 +23,11 @@ extends GutTest
 ## Never re-record the files or widen TOL to make a replay pass.
 ##
 ## Why floats need a tolerance at all: the port is bit-identical to the
-## TypeScript wherever both sides compute with + - * / and sqrt, but
-## - V8's Math.atan2, sin and cos and Godot's differ in the last bit for some
-##   arguments, and Math.hypot (normalised, Kahan-summed) differs from the
-##   port's sqrt(x * x + z * z) the same way;
-## - Godot's JSON reader is not correctly rounded: it reads some recorded
-##   numbers (inputs included) a few units in the last place off.
-## These differences drift to about 1e-12 over a 15,000-step match, far below
-## TOL. Fed V8's exact doubles and V8's results for those four functions, every
-## replay matches to the last bit.
+## TypeScript (JsMath gives V8's Math.hypot, sin, cos and atan2;
+## test_port_regressions.gd checks whole runs bit for bit), but Godot's JSON
+## reader is not correctly rounded: it reads some recorded numbers (inputs
+## included) a unit in the last place off. That drifts to about 1e-13 over a
+## 15,000-step match, far below TOL.
 
 const DIR: String = "res://tests/golden/"
 ## Absolute tolerance for floats. Ints, names and bools are compared exactly.

@@ -10,7 +10,7 @@ const UNSET: Dictionary = {
 	"min_range": 0.0,
 	"lunge": 0.0,
 	"lunge_start": 0,
-	"lunge_end": -1,
+	"lunge_end": AttackDef.UNSET,
 	"unblockable": false,
 	"counter": &"",
 	"jumpable": false,
@@ -18,11 +18,11 @@ const UNSET: Dictionary = {
 	"power": false,
 	"chain_light": &"",
 	"chain_heavy": &"",
-	"dodge_cancel_from": -1,
+	"dodge_cancel_from": AttackDef.UNSET,
 	"multi_hit": 0,
-	"multi_interval": -1,
+	"multi_interval": AttackDef.UNSET,
 	"airborne": false,
-	"guard_crush": -1.0,
+	"guard_crush": NAN,
 	"special": &"",
 	"chargeable": false,
 	"sound": &"",
@@ -56,6 +56,8 @@ static func _norm(v: Variant) -> Variant:
 static func _same(a: Variant, b: Variant) -> bool:
 	var na: Variant = _norm(a)
 	var nb: Variant = _norm(b)
+	if typeof(na) == TYPE_FLOAT and typeof(nb) == TYPE_FLOAT and is_nan(na) and is_nan(nb):
+		return true # the NAN sentinel
 	return typeof(na) == typeof(nb) and na == nb
 
 

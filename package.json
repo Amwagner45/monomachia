@@ -21,7 +21,7 @@
     "godot:dev": "node scripts/godot.mjs dev",
     "godot:run": "node scripts/godot.mjs run",
     "shots": "node scripts/godot.mjs shots",
-    "godot:fixtures": "tsx scripts/sim-fixtures.ts"
+    "godot:fixtures": "tsx scripts/sim-fixtures.ts && tsx scripts/port-fixtures.ts"
   },
   "dependencies": {
     "three": "^0.186.1"

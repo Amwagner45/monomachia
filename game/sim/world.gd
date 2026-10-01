@@ -12,6 +12,8 @@ extends RefCounted
 ## - Events are Dictionaries (see events.gd); events is an Array[Dictionary].
 ## - The getter timeScale is time_scale().
 ## - The markDone closure in apply() is the _mark_done() method.
+## - Math.hypot, Math.sin, Math.cos and Math.atan2 are JsMath.hypot, .sin, .cos
+##   and .atan2 (V8's exact results, see js_math.gd).
 ## - Scripted-hit callbacks are Callables taking the outcome (StringName).
 ## - dispose() is new: it breaks the reference cycles (Fighter.opp,
 ##   Fighter.world, Fighter.impaled_by, SlashWave.owner) so the world can be
@@ -161,7 +163,7 @@ func _separate() -> void:
 		return
 	var dx: float = b.pos.x - a.pos.x
 	var dz: float = b.pos.z - a.pos.z
-	var d: float = sqrt(dx * dx + dz * dz)
+	var d: float = JsMath.hypot(dx, dz)
 	var min_d: float = SimConst.FIGHTER_RADIUS * 2.0
 	if d >= min_d:
 		return
@@ -176,7 +178,7 @@ func _separate() -> void:
 func _clamp_arena() -> void:
 	var max_r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
 	for f: Fighter in fighters:
-		var r: float = sqrt(f.pos.x * f.pos.x + f.pos.z * f.pos.z)
+		var r: float = JsMath.hypot(f.pos.x, f.pos.z)
 		if r > max_r:
 			f.pos.x *= max_r / r
 			f.pos.z *= max_r / r
@@ -200,8 +202,9 @@ func _resolve_combat() -> void:
 		if f <= def.startup or f > def.startup + def.active:
 			continue
 		if def.multi_hit != 0:
-			var interval: int = def.multi_interval if def.multi_interval >= 0 else 3
-			if (f - def.startup - 1) % interval != 0 or at.hits_done >= def.multi_hit:
+			var interval: int = def.multi_interval if def.multi_interval != AttackDef.UNSET else 3
+			# JS: x % 0 is NaN, and NaN !== 0, so an interval of 0 skips every frame
+			if interval == 0 or (f - def.startup - 1) % interval != 0 or at.hits_done >= def.multi_hit:
 				continue
 		elif at.hit_done:
 			continue
@@ -385,13 +388,13 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 		&"block":
 			_mark_done(atk, def)
 			var charge_mult: float = 1.0 + 0.8 * charge_f
-			var mult: float = def.guard_crush if def.guard_crush >= 0.0 else b.weapon.block_mitigation
+			var mult: float = def.guard_crush if not is_nan(def.guard_crush) else b.weapon.block_mitigation
 			b.add_posture(def.posture * mult * charge_mult)
-			b.set_state(&"blockstun", (def.blockstun if def.blockstun >= 0 else 12) + SimMath.js_round(8.0 * charge_f))
+			b.set_state(&"blockstun", (def.blockstun if def.blockstun != AttackDef.UNSET else 12) + SimMath.js_round(8.0 * charge_f))
 			b.blocking = true
 			b.knock(a.pos.x, a.pos.z, def.knockback * 0.45 * charge_mult, 10)
 			b.stats.blocks += 1
-			hitstop = maxi(3, (def.hitstop if def.hitstop >= 0 else 4) - 2)
+			hitstop = maxi(3, (def.hitstop if def.hitstop != AttackDef.UNSET else 4) - 2)
 			emit({
 				"t": &"block",
 				"attacker": a.id,
@@ -446,9 +449,9 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 				b.knock(a.pos.x, a.pos.z, def.knockback, 12)
 				emit({"t": &"stagger", "f": b.id})
 			elif b.state != &"impaled":
-				b.enter_hitstun((def.hitstun if def.hitstun >= 0 else 20) + SimMath.js_round(12.0 * charge_f))
+				b.enter_hitstun((def.hitstun if def.hitstun != AttackDef.UNSET else 20) + SimMath.js_round(12.0 * charge_f))
 				b.knock(a.pos.x, a.pos.z, def.knockback * (1.0 + 1.2 * charge_f), 12)
-			hitstop = (def.hitstop if def.hitstop >= 0 else 4) + SimMath.js_round(4.0 * charge_f)
+			hitstop = (def.hitstop if def.hitstop != AttackDef.UNSET else 4) + SimMath.js_round(4.0 * charge_f)
 			return
 
 
@@ -529,7 +532,7 @@ func _update_waves() -> void:
 
 func spawn_dropped_weapon(victim: Fighter, by: Fighter) -> void:
 	var away: V2 = SimMath.norm2(victim.pos.x - by.pos.x, victim.pos.z - by.pos.z)
-	var ang: float = atan2(away.x, away.z) + rng.range(-0.7, 0.7)
+	var ang: float = JsMath.atan2(away.x, away.z) + rng.range(-0.7, 0.7)
 	var sp: float = rng.range(5.0, 7.0)
 	var kept: Array[DroppedWeapon] = []
 	for w: DroppedWeapon in weapons:
@@ -541,7 +544,7 @@ func spawn_dropped_weapon(victim: Fighter, by: Fighter) -> void:
 			victim.id,
 			victim.weapon.id,
 			V3.make(victim.pos.x, 1.3, victim.pos.z),
-			V3.make(sin(ang) * sp, 5.5, cos(ang) * sp),
+			V3.make(JsMath.sin(ang) * sp, 5.5, JsMath.cos(ang) * sp),
 			rng,
 		)
 	)
@@ -572,7 +575,7 @@ func _update_weapons() -> void:
 		w.pos.y += w.vel.y * SimConst.DT
 		w.pos.z += w.vel.z * SimConst.DT
 		w.tumble += w.spin * SimConst.DT
-		var r: float = sqrt(w.pos.x * w.pos.x + w.pos.z * w.pos.z)
+		var r: float = JsMath.hypot(w.pos.x, w.pos.z)
 		if r > max_r:
 			var nx: float = w.pos.x / r
 			var nz: float = w.pos.z / r
@@ -598,7 +601,7 @@ func _update_weapons() -> void:
 			w.vel.x *= 0.86
 			w.vel.z *= 0.86
 			w.spin *= 0.8
-			if sqrt(w.vel.x * w.vel.x + w.vel.z * w.vel.z) < 0.25 and absf(w.vel.y) < 0.01:
+			if JsMath.hypot(w.vel.x, w.vel.z) < 0.25 and absf(w.vel.y) < 0.01:
 				w.grounded = true
 				w.tumble = float(SimMath.js_round(w.tumble / PI)) * PI # lie flat
 

@@ -24,7 +24,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - Hits come from weapon paths; the same paths drive the animation.
 - The web version is tagged `v0.1-web-mvp` and deleted at the end.
 - Tracker: local Markdown in `docs/` (see `docs/agents/issue-tracker.md`).
-- The port is exact: the Godot rules reproduce all 35 golden recordings of the TypeScript rules, the Godot computer opponent produces the recorded inputs for six full matches, and the 40-match soak prints identical numbers.
+- The port is exact: the Godot rules reproduce all 35 golden recordings of the TypeScript rules, the Godot computer opponent produces the recorded inputs for six full matches, and the 40-match soak prints identical numbers. The rules compute `Math.hypot`, `sin`, `cos` and `atan2` exactly as V8 does (`game/sim/js_math.gd`, a port of V8's fdlibm), so whole runs match the TypeScript bit for bit and do not depend on the platform's C math library.
 - A throwaway animation spike ran early (in scratch, before tasks 7 and 14).
   - Verdict: weapon-path animation on the Quaternius fighters works, with conditions, which are now requirements of tasks 7, 14, 14b and 15.
   - Camera: the side offset is 1.3–1.4 m, because 0.9 m hides the opponent.
@@ -53,7 +53,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - a Godot 4.7 project in `game/` (Forward+, 60 physics ticks, 1600×900 window, the autoload and folder layout from the spec);
     - GUT vendored in `game/addons`;
     - `scripts/godot.mjs`, which finds Godot through `GODOT`, PATH or an untracked `.godot-path` file, and fails the run when a test script doesn't parse;
-    - npm scripts `test`, `typecheck`, `soak`, `build`, `dev` and `shots`, which run the old Vitest tests and the Godot tests side by side until the web code is deleted;
+    - npm scripts `test` and `typecheck`, which run the old Vitest tests and the Godot tests side by side until the web code is deleted, plus `soak:godot`, `shots`, `godot:dev` and `godot:run` for the Godot side (`soak`, `build` and `dev` still run the web version until then);
     - `.gitignore` and `.gitattributes` updates (the `.godot/` cache, exports, LF line endings);
     - a CI job that installs Godot 4.7.2 and runs the Godot tests.
   - Blocked by: none.

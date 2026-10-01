@@ -15,17 +15,20 @@ extends RefCounted
 ##     min_range 0.0, lunge 0.0, hop 0.0 (the TS only tests them for truthiness
 ##       or uses `?? 0`);
 ##     lunge_start 0 (TS `lungeStart ?? 0`);
-##     lunge_end -1 (unset: the TS uses startup + active);
-##     dodge_cancel_from -1 (TS `!== undefined`: test `>= 0`);
-##     multi_hit 0 (TS truthiness), multi_interval -1 (TS `?? 3`);
-##     guard_crush -1.0 (TS `?? blockMitigation`: test `>= 0.0`);
+##     multi_hit 0 (TS truthiness);
 ##     counter, chain_light, chain_heavy, special, sound &"" (TS truthiness or
-##       `?? 'blade'` for sound);
-##     invuln an empty array (TS undefined);
+##       `?? 'blade'` for sound; '' is not a member of those unions);
+##     invuln an empty array (TS undefined; its type [number, number] rules
+##       out an explicit []);
 ##     the booleans false.
+##   Where the TS tells undefined apart from every number (`??` or
+##   `!== undefined`), the sentinel is a value no move can hold, and the
+##   readers compare with it, so a zero or negative value still counts as set:
+##     lunge_end, dodge_cancel_from, multi_interval: UNSET (an int);
+##     guard_crush: NAN (`not is_nan(guard_crush)` is the TS `!== undefined`).
 ##   finalize_moves always sets hand, track_startup, track_active, hitstun,
 ##   blockstun, hitstop, trail and (for unblockables) undodgeable; before it,
-##   the int ones read -1, the floats -1.0 and the names &"".
+##   the ints read UNSET, the floats NAN and the names &"".
 ## - undodgeable is tri-state in the TS: u_impale is unblockable but explicitly
 ##   dodgeable. finalize_moves sees that as a present "undodgeable": false key.
 ## - String unions are StringNames equal to the TS literals:
@@ -46,6 +49,9 @@ const ATTACK_KINDS: Array[StringName] = [&"light", &"heavy", &"ability", &"speci
 const HIT_SOUNDS: Array[StringName] = [&"blade", &"colossal", &"dagger", &"fist"]
 const SPECIALS: Array[StringName] = [&"flash", &"shadowStep", &"counterLunge", &"breakerPalm"]
 const TRAILS: Array[StringName] = [&"normal", &"danger", &"ult"]
+
+## An int field the TS leaves undefined (no move can hold it). Unset floats are NAN.
+const UNSET: int = -0x7FFFFFFFFFFFFFFF - 1
 
 var id: StringName = &""
 var name: String = ""
@@ -69,14 +75,14 @@ var arc: float = 0.0
 ## metres travelled forward between lungeStart and lungeEnd
 var lunge: float = 0.0
 var lunge_start: int = 0
-var lunge_end: int = -1
+var lunge_end: int = UNSET
 ## turn rate while winding up (rad/s)
-var track_startup: float = -1.0
+var track_startup: float = NAN
 ## turn rate while active (rad/s)
-var track_active: float = -1.0
-var hitstun: int = -1
-var blockstun: int = -1
-var hitstop: int = -1
+var track_active: float = NAN
+var hitstun: int = UNSET
+var blockstun: int = UNSET
+var hitstop: int = UNSET
 var unblockable: bool = false
 var counter: StringName = &""
 var jumpable: bool = false
@@ -86,13 +92,13 @@ var power: bool = false
 var chain_light: StringName = &""
 var chain_heavy: StringName = &""
 ## light-attack recovery may be cancelled into a dodge after this frame
-var dodge_cancel_from: int = -1
+var dodge_cancel_from: int = UNSET
 var multi_hit: int = 0
-var multi_interval: int = -1
+var multi_interval: int = UNSET
 ## performed in the air (jump attacks)
 var airborne: bool = false
 ## posture multiplier through a block (overrides the defender's mitigation)
-var guard_crush: float = -1.0
+var guard_crush: float = NAN
 var special: StringName = &""
 ## heavy starters can be held to charge
 var chargeable: bool = false
@@ -139,12 +145,12 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.arc = float(d.get("arc", 0.0))
 	m.lunge = float(d.get("lunge", 0.0))
 	m.lunge_start = int(d.get("lunge_start", 0))
-	m.lunge_end = int(d.get("lunge_end", -1))
-	m.track_startup = float(d.get("track_startup", -1.0))
-	m.track_active = float(d.get("track_active", -1.0))
-	m.hitstun = int(d.get("hitstun", -1))
-	m.blockstun = int(d.get("blockstun", -1))
-	m.hitstop = int(d.get("hitstop", -1))
+	m.lunge_end = int(d.get("lunge_end", UNSET))
+	m.track_startup = float(d.get("track_startup", NAN))
+	m.track_active = float(d.get("track_active", NAN))
+	m.hitstun = int(d.get("hitstun", UNSET))
+	m.blockstun = int(d.get("blockstun", UNSET))
+	m.hitstop = int(d.get("hitstop", UNSET))
 	m.unblockable = bool(d.get("unblockable", false))
 	m.counter = StringName(d.get("counter", &""))
 	m.jumpable = bool(d.get("jumpable", false))
@@ -152,11 +158,11 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.power = bool(d.get("power", false))
 	m.chain_light = StringName(d.get("chain_light", &""))
 	m.chain_heavy = StringName(d.get("chain_heavy", &""))
-	m.dodge_cancel_from = int(d.get("dodge_cancel_from", -1))
+	m.dodge_cancel_from = int(d.get("dodge_cancel_from", UNSET))
 	m.multi_hit = int(d.get("multi_hit", 0))
-	m.multi_interval = int(d.get("multi_interval", -1))
+	m.multi_interval = int(d.get("multi_interval", UNSET))
 	m.airborne = bool(d.get("airborne", false))
-	m.guard_crush = float(d.get("guard_crush", -1.0))
+	m.guard_crush = float(d.get("guard_crush", NAN))
 	m.special = StringName(d.get("special", &""))
 	m.chargeable = bool(d.get("chargeable", false))
 	m.sound = StringName(d.get("sound", &""))

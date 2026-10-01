@@ -1,11 +1,19 @@
 extends Node3D
 ## The look bench: toon fighters, blades and a stone lantern under a moon key
-## light, for judging the toon bands, the rim light and the ink outlines by
-## eye. Outlines are on in the left half and off in the right. Each half has a
-## group at a duel's distance from the camera and another FAR metres further
-## back, to show how the line width holds up far away. Render with
-##   node scripts/godot.mjs shots res://tools/shot_scenes/look_bench.tscn <out.png> 20 [--width-scale=0.75]
-## where --width-scale multiplies every outline width, for comparing widths.
+## light in the night environment, for judging the toon bands, the rim light,
+## the ink outlines and the ink-wash finish by eye. Outlines are on in the left
+## half and off in the right. Each half has a group at a duel's distance from
+## the camera and another FAR metres further back, to show how the lines hold
+## up far away. Render with
+##   node scripts/godot.mjs shots res://tools/shot_scenes/look_bench.tscn <out.png> 20 [args]
+## where the args are any of:
+## - --width-scale=<x> multiplies every outline width, for comparing widths;
+## - --ink=off|lite|lines|full sets the ink-wash pass's quality (full by
+##   default; anything else fails the run);
+## - --ink-strength=<x> and --ink-width=<px> set the ink lines' strength and
+##   width (the shader's defaults otherwise);
+## - --no-grade leaves the colour grade off.
+## The pass covers the whole screen; the label at the top says how it's set.
 
 ## How far behind the near groups the far ones stand.
 const FAR: float = 14.0
@@ -27,7 +35,8 @@ func _ready() -> void:
 	var floor_kit := MeshKit.new()
 	floor_kit.disc(Transform3D.IDENTITY, 40.0, 48, 4)
 	add_child(MeshKit.instance(floor_kit.commit(), ToonMaterials.prop(LookPalette.STONE_DARK, 0.35, false), false))
-	var width_scale: float = _width_scale()
+	var width_scale: float = _arg(&"width-scale", "1").to_float()
+	_add_label(_ink_label(), Vector3(0, 2.95, 0))
 	for outlined: bool in [true, false]:
 		var x: float = -HALF_GAP if outlined else HALF_GAP
 		var materials: Array[ShaderMaterial] = []
@@ -35,13 +44,7 @@ func _ready() -> void:
 		materials.append_array(_add_group(Vector3(x * 0.6, 0, -FAR), FighterStandin.PALETTES[1]))
 		for m: ShaderMaterial in materials:
 			ToonMaterials.set_outline(m, outlined, width_scale)
-		var label := Label3D.new()
-		label.text = "outlines on (x%.2f)" % width_scale if outlined else "outlines off"
-		label.font_size = 40
-		label.pixel_size = 0.005
-		label.modulate = LookPalette.BONE
-		label.position = Vector3(x, 2.45, 0)
-		add_child(label)
+		_add_label("outlines on (x%.2f)" % width_scale if outlined else "outlines off", Vector3(x, 2.45, 0))
 	var camera := Camera3D.new()
 	camera.fov = CAMERA_FOV
 	camera.position = CAMERA_POSITION
@@ -50,26 +53,44 @@ func _ready() -> void:
 	camera.make_current()
 
 
-## The --width-scale=<x> argument, or 1.
-static func _width_scale() -> float:
+func _add_label(text: String, at: Vector3) -> void:
+	var label := Label3D.new()
+	label.text = text
+	label.font_size = 40
+	label.pixel_size = 0.005
+	label.modulate = LookPalette.BONE
+	label.position = at
+	add_child(label)
+
+
+## How the ink-wash pass and the grade are set, for the top label.
+static func _ink_label() -> String:
+	var text: String = "ink %s" % _arg(&"ink", "full")
+	for param: StringName in [&"ink-strength", &"ink-width"]:
+		if not _arg(param, "").is_empty():
+			text += ", %s %s" % [String(param).trim_prefix("ink-"), _arg(param, "")]
+	return text + (", no grade" if _flag(&"no-grade") else "")
+
+
+## The value of the --<name>=<value> argument, or fallback.
+static func _arg(name: StringName, fallback: String) -> String:
 	for arg: String in OS.get_cmdline_user_args():
-		if arg.begins_with("--width-scale="):
-			return arg.trim_prefix("--width-scale=").to_float()
-	return 1.0
+		if arg.begins_with("--%s=" % name):
+			return arg.trim_prefix("--%s=" % name)
+	return fallback
 
 
-## A night like the arena's: a dark sky colour, cold ambient light and a moon
-## key light from the right that casts shadows.
+## Whether the bare --<name> flag was given.
+static func _flag(name: StringName) -> bool:
+	return OS.get_cmdline_user_args().has("--%s" % name)
+
+
+## The night environment, graded, with a moon key light from the right that
+## casts shadows, and the ink-wash pass.
 func _add_environment() -> void:
-	var env := Environment.new()
-	env.background_mode = Environment.BG_COLOR
-	env.background_color = Color(0.045, 0.05, 0.075)
-	env.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	env.ambient_light_color = Color(0.36, 0.42, 0.6)
-	env.ambient_light_energy = 0.42
-	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
-	env.tonemap_exposure = 1.05
-	env.tonemap_white = 6.0
+	var env := (load("res://view/look/ink_night_environment.tres") as Environment).duplicate() as Environment
+	if not _flag(&"no-grade"):
+		InkGrade.apply(env)
 	var world := WorldEnvironment.new()
 	world.environment = env
 	add_child(world)
@@ -79,6 +100,19 @@ func _add_environment() -> void:
 	moon.shadow_enabled = true
 	add_child(moon)
 	moon.look_at_from_position(Vector3.ZERO, Vector3(-0.95, -1.05, -0.25), Vector3.UP)
+	var ink := InkWashPass.new()
+	var quality: String = _arg(&"ink", "full").to_upper()
+	if not InkWashPass.Quality.has(quality):
+		# Named with its .gd, so `godot.mjs shots` fails the run once the shot
+		# is saved (quitting this early in a shot run hangs Godot instead).
+		push_error("look_bench.gd: --ink must be off, lite, lines or full, not '%s'" % quality.to_lower())
+		return
+	ink.set_quality(InkWashPass.Quality[quality])
+	var params: Dictionary[StringName, StringName] = {&"ink-strength": &"line_strength", &"ink-width": &"line_width_px"}
+	for arg: StringName in params:
+		if not _arg(arg, "").is_empty():
+			ink.set_param(params[arg], _arg(arg, "").to_float())
+	add_child(ink)
 
 
 ## A fighter (a body capsule and a head) holding a blade across its body, so

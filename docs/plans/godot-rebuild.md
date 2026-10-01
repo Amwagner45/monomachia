@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2 and 16.3. Next: 16.4.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3 and 16.4. Next: 16.5.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -138,13 +138,14 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - `npm run shots` fails on shader and script errors, `tools/shot_scenes/shader_check.tscn` draws every shader, and `test_scene_smoke.gd` loads every scene.
   - The look's first pieces:
     - `MeshKit` and `MeshKitSet` (16.2) build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0;
-    - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw.
-- **Checks after 16.3:**
-  - 463 Godot tests: rules 138, input 118, audio 31, core 14, view 110, content 49, and 3 project-wide smoke tests;
+    - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw;
+    - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else.
+- **Checks after 16.4:**
+  - 477 Godot tests: rules 138, input 118, audio 31, core 14, view 124, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 132 scripts cleanly;
+  - the typecheck loads 136 scripts cleanly;
   - CI passed on the last push before 16.3 (0bfe40c), both the tests and the Windows export;
-  - `shader_check` and `outline_check` pass in a real window (CI can't run them);
+  - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
 - **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
@@ -156,7 +157,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), the ink lines (16.4), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), the ink lines' width and strength (16.4; see its Done notes), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -801,7 +802,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - LookNoise being deterministic, seamless, mipmapped, and on the include's lattice.
     - `test_mesh_kit.gd` checks that the miter moves every face out by the whole width.
     - `tools/shot_scenes/look_bench.tscn` shows outlines on and off, near and 14 m back; `--width-scale=` scales every outline, for comparing widths. Reviewed: three bands with a brushed terminator, cold fill, rim, the steel highlight, and outlines near and far. At 20 m the 0.06 m cap thins a fighter's line to about 3 px.
-  - [ ] **16.4 Ink-wash post pass and colour grade.** Distance mist, depth ink lines, dry-brush breaks, paper grain and a brushy vignette, in full and lite variants (with their stale comments fixed). `InkWashPass` picks its variant by quality. `InkGrade` bakes the colour grade into a LUT, and the night environment is added.
+  - [x] **16.4 Ink-wash post pass and colour grade.** Distance mist, depth ink lines, dry-brush breaks, paper grain and a brushy vignette, in full and lite variants (with their stale comments fixed). `InkWashPass` picks its variant by quality. `InkGrade` bakes the colour grade into a LUT, and the night environment is added.
     - Check: the pass and grade tests pass; the shader check passes; bench shots with the pass off, lite, lines and full are reviewed.
     - Owner: the ink-line strength.
     - Blocked by: 16.3 · Stories: 46
@@ -809,9 +810,31 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The worktree's outlines looked "faint" because they never drew. Its ink lines were judged faint too, so measure them in a shot, as `outline_check` does, before tuning their strength.
       - The pass's shaders need `look_noise_lod0()` and `look_white()` back in `look_noise.gdshaderinc` (see the worktree's copy).
       - The worktree's grade test uses `LookPalette.FIGHTER_RED` and `FIGHTER_BLUE`, which are gone: use `FighterStandin.PALETTES`.
+    - Done: `shaders/ink_wash.gdshaderinc`, `ink_wash.gdshader`, `ink_wash_lite.gdshader`, `view/look/ink_wash_pass.gd`, `ink_grade.gd` and `ink_night_environment.tres` come from the worktree, reviewed:
+      - **The jittered lines drew along flat floors.** At full quality the edge test sampled its neighbours at the jittered spot but its centre at the pixel itself, so a floor seen at a grazing angle (within about 16 px of the horizon) read as a depth break. The centre now moves with its neighbours. `ink_check` found 949 stray ink pixels on an open floor before the fix and none after.
+      - **InkGrade's tuning never reached its table.** Its numbers were static variables, but `lut()` caches the table, so changing them did nothing. They are constants now, which also keeps static state from leaking between tests.
+      - **Stale comments fixed.** The shaders' headers said High uses normal lines, and the pass's doc said quality picks the shader. Normal lines pick it, and no preset turns them on. The constants are now `SHADER_NORMALS` and `SHADER_DEPTH`, so they don't read like `Quality.FULL`. `normal_threshold` moved under `INK_NORMALS` with the normal buffer.
+      - The quality enum lives in the pass as `InkWashPass.Quality` (OFF, LITE, LINES, FULL), the way outline kinds live in `ToonMaterials`. `set_param` rejects a name neither variant declares.
+      - `look_noise_lod0()` and `look_white()` are back in `look_noise.gdshaderinc`. `look_white` wraps at the texture's size instead of a hard-coded 256.
+      - The night environment has glow off (it cost about 2 ms on the target laptop), with the worktree's subtle glow kept for when a preset turns it on.
+    - `tests/view/test_ink_wash.gd` has 14 tests:
+      - the two variants load, and only the normals variant reads the normal buffer;
+      - the pass is a screen quad drawn first in the transparent pass, quality sets the shader's quality, and OFF hides it;
+      - normal lines pick the variant only when lines are drawn, and parameters survive a swap;
+      - the grade keeps the fighters' red and blue, mutes the rest, inks the blacks, and keeps greys in order;
+      - the LUT is the grade sampled on a 24-cube, and `apply` leaves the other adjustments neutral;
+      - the night environment is tuned.
+    - `tools/shot_scenes/ink_check.tscn` renders a white box on a white floor that runs to the horizon. It measures the ink lines at the box's edge against the sky (1 px, since the sky side is never inked) and against a floor 13 m away (2 px). It checks there is no ink on the open floor, and no line at LITE. It exits 1 on any miss.
+    - The look bench uses the night environment and the grade, and takes `--ink=off|lite|lines|full`, `--ink-strength=`, `--ink-width=` and `--no-grade`. Shots at off, lite, lines and full were reviewed: grain and vignette stay weak in the middle, and the lines show on silhouettes.
+    - **Why the lines look faint, measured:**
+      - The pass blends in linear light, so a 0.85-strength line on white comes out at about 0.43 on screen, and the dry-brush breaks lift parts of it to about 0.65.
+      - At the default 1.2 px a line is 1–2 px wide.
+      - At a duel's distance the lines also draw over the fighters' rim light.
+      - Bench renders at widths 1.2, 2 and 3 px and strengths 0.85 and 1.0 went to the owner (`look_bench.tscn ... --ink-width=2 --ink-strength=0.85` and so on). 2 px reads clearly, and 3 px turns ragged. The defaults stay 1.2 px and 0.85 until the owner picks.
   - [ ] **16.5 Low, Medium and High presets, and the saved setting.** `GraphicsPreset` (High by default) and `GraphicsApplier` act through node groups and outline kinds (`ToonMaterials.OutlineKind`). `GameSettings` in `game/core`, owned by `GameServices`, saves the preset id to `user://settings.cfg` and applies it at start. The spec's Look paragraph is updated from the worktree's decisions: the presets' contents, FXAA, glow off, and the target laptop. 16.3 already added the outline decision and the noise texture.
     - Check: the preset tests pass (monotonic from Low to High, fighters always outlined, each preset applies); settings save and load, and an unknown id falls back to High; bench shots at the three presets reviewed.
     - Blocked by: 16.4 · Stories: 46, 57
+    - Note from 16.4: the presets' post quality is `InkWashPass.Quality`; the worktree's `GraphicsPreset.PostQuality` (whose comments were stale) is not brought over, and `test_graphics_presets` changes to match. The night environment already has glow off.
   - [ ] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
     - Check: the view tests pass, including the no-stray-nodes test; the skeleton shots are re-rendered and reviewed.
     - Blocked by: 16.5 · Stories: 46

@@ -9,17 +9,28 @@ extends RefCounted
 ## Devices report held state only: the rules layer's InputTracker turns taps
 ## into steps and double-tap-and-hold into a sprint.
 ##
-## A match host sets the players up at match start, then samples every
-## simulation tick:
+## The host keeps one InputDevices for the whole game, with an InputFeed in the
+## tree that hands it every event (labels follow the last device used, even in
+## menus) and reports the window losing focus:
 ##   var input := InputDevices.new()                  # reads Godot's Input
+##   var feed := InputFeed.new(input)
+##   add_child(feed)
+##   feed.focus_lost.connect(pause)                   # pause a match on focus loss
+## It sets the players up at match start, then samples every simulation tick:
 ##   input.set_single_player(profiles.active_profile())          # Duel, Training
 ##   input.set_versus([InputDevices.KBM, InputDevices.PAD0], [p1, p2])   # Versus
 ##   var raw: RawInput = input.sample(0)
-##   if input.any_pause_pressed(): pause()
-##   input.rearm_pause()                              # on resume
+##   if input.any_pause_pressed(): pause()            # also Esc and Start on any controller
 ##   prompt.text = "Pick up: " + input.label("interact", 0)
-## and forwards unhandled events so labels follow the last device used:
-##   func _unhandled_input(event): input.note_event(event)
+## On resume from the pause menu (whose Controls screen may pick another
+## profile) and on leaving a match:
+##   input.set_profile(0, profiles.active_profile())  # Duel, Training
+##   input.rearm_pause()
+##   input.unbind_seats()                             # on quit to menu
+##
+## Movement on a controller comes from its bindings only. The demo also added
+## the D-pad, left stick and hat switches of controllers the browser didn't
+## map; Godot already turns hats into D-pad buttons, which the defaults bind.
 
 ## Keyboard, mouse and the first controller together (single player).
 const ALL: String = "all"
@@ -36,8 +47,11 @@ const DEVICES: Array[String] = [ALL, KBM, KB_ARROWS, PAD0, PAD1]
 const STICK_DEADZONE: float = 0.25
 const STICK_SPAN: float = 0.6
 const STICK_FLOOR: float = 0.35
-## A trigger (L2/R2, LT/RT) past this counts as held.
-const TRIGGER_THRESHOLD: float = 0.4
+## A trigger (L2/R2, LT/RT) past this counts as held. The demo read triggers as
+## buttons, and browsers report a trigger as pressed past XInput's trigger
+## threshold, 30/255 (about 0.12), so a light pull starts a heavy and easing
+## off keeps a charge until the trigger is nearly let go.
+const TRIGGER_THRESHOLD: float = 30.0 / 255.0
 ## An action value past this holds its rule button.
 const HELD: float = 0.5
 ## Joypad motion past this makes the controller the last device used.
@@ -59,7 +73,6 @@ var _pause_prev: Dictionary = {}
 ## p_state: a DeviceState; Godot's Input when omitted.
 func _init(p_state: DeviceState = null) -> void:
 	state = p_state if p_state != null else GodotDeviceState.new()
-	state.joy_connection_changed.connect(_on_joy_connection_changed)
 
 
 # ------------------------------------------------------------------ players
@@ -82,6 +95,16 @@ func set_versus(devices: Array[String], profiles: Array[ControlProfile]) -> void
 	_profiles = profiles.duplicate()
 	_pause_prev.clear()
 	bind_seats()
+
+
+## Swaps one player's profile mid-match, touching neither the controller seats
+## nor the pause edges. The demo looked profiles up on every tick, so call this
+## on resume when the pause menu's Controls screen picked another profile:
+##   input.set_profile(0, profiles.active_profile())        # Duel, Training
+## A player who isn't set up is ignored.
+func set_profile(player: int, profile: ControlProfile) -> void:
+	if player >= 0 and player < _profiles.size():
+		_profiles[player] = profile
 
 
 func player_count() -> int:
@@ -121,20 +144,31 @@ func pause_pressed(player: int) -> bool:
 	return pause_edge(profile_of(player), device_of(player), excluded_tokens(player))
 
 
-## pause_pressed() for every player (each device's edge is updated).
+## True on the tick Esc or Start on any connected controller goes down. These
+## pause during play whatever the bindings, as in the demo (where Esc was the
+## menus' "back" and Start their "pause").
+func system_pause_pressed() -> bool:
+	var pressed: bool = _edge("sys:esc", state.is_key_pressed(KEY_ESCAPE))
+	for id: int in state.connected_joypads():
+		if _edge("sys:start:%d" % id, state.joy_button_pressed(id, JOY_BUTTON_START)):
+			pressed = true
+	return pressed
+
+
+## The host's pause check during play: pause_pressed() for every player, plus
+## system_pause_pressed() (every edge is updated).
 func any_pause_pressed() -> bool:
-	var pressed: bool = false
+	var pressed: bool = system_pause_pressed()
 	for p: int in player_count():
 		if pause_pressed(p):
 			pressed = true
 	return pressed
 
 
-## On resume: notes each player's pause binding as already down, so a button
-## still held from the menu doesn't pause again.
+## On resume: notes each player's pause binding, Esc and every Start button as
+## already down, so a button still held from the menu doesn't pause again.
 func rearm_pause() -> void:
-	for p: int in player_count():
-		pause_pressed(p)
+	any_pause_pressed()
 
 
 ## The name of the input a player presses for an action, for HUD prompts:
@@ -158,9 +192,12 @@ func label(action: String, player: int = 0) -> String:
 	return BindingLabels.first_label(tokens, style, excluded_tokens(player))
 
 
-## Tracks the last device used (for labels in single player). Forward input
-## events here.
+## Sees every input event: tracks the last device used (for labels in single
+## player) and which key of a pair (left or right Shift) is held. An InputFeed
+## in the scene tree forwards events here from _input(), before any Control
+## can take them.
 func note_event(event: InputEvent) -> void:
+	state.note_event(event)
 	if event is InputEventKey:
 		if (event as InputEventKey).pressed and not (event as InputEventKey).echo:
 			last_used = LastUsed.KEYBOARD
@@ -173,6 +210,12 @@ func note_event(event: InputEvent) -> void:
 	elif event is InputEventJoypadMotion:
 		if absf((event as InputEventJoypadMotion).axis_value) > ACTIVITY_AXIS:
 			last_used = LastUsed.PAD
+
+
+## Forgets every held key, as when the window loses focus (InputFeed calls
+## this; the demo cleared its keys on blur).
+func release_keys() -> void:
+	state.release_keys()
 
 
 # ------------------------------------------------------------------ sampling
@@ -219,9 +262,13 @@ func action_value(profile: ControlProfile, action: String, device: String, exclu
 
 ## True when the pause binding goes down (edge per device).
 func pause_edge(profile: ControlProfile, device: String, exclude: Dictionary = {}) -> bool:
-	var held: bool = action_value(profile, "pause", device, exclude) > HELD
-	var edge: bool = held and not bool(_pause_prev.get(device, false))
-	_pause_prev[device] = held
+	return _edge(device, action_value(profile, "pause", device, exclude) > HELD)
+
+
+## True when held goes from false to true since the last call with this key.
+func _edge(key: String, held: bool) -> bool:
+	var edge: bool = held and not bool(_pause_prev.get(key, false))
+	_pause_prev[key] = held
 	return edge
 
 
@@ -256,7 +303,7 @@ func _pad_of(device: String) -> int:
 func _keyboard_value(token: String) -> float:
 	match InputToken.kind(token):
 		InputToken.KEY:
-			return 1.0 if state.is_key_pressed(InputToken.code(token)) else 0.0
+			return 1.0 if state.is_key_pressed(InputToken.code(token), InputToken.key_location(token)) else 0.0
 		InputToken.MOUSE:
 			return 1.0 if state.is_mouse_pressed(InputToken.code(token)) else 0.0
 	return 0.0
@@ -302,8 +349,10 @@ func seats_bound() -> bool:
 
 ## The controller device id for seat 0 or 1, or -1 when none is connected
 ## there. With seats bound, an empty seat takes the first controller the other
-## seat doesn't hold; a seat whose controller is unplugged stays empty until
-## that controller comes back.
+## seat doesn't hold when it is asked for (as padAt() did), so a controller
+## plugged in mid-match goes to the seat a player reads, never to an unused
+## one. A seat whose controller is unplugged stays empty until that controller
+## comes back.
 func pad_for(seat: int) -> int:
 	if seat < 0 or seat > 1:
 		return -1
@@ -343,15 +392,3 @@ func pad_style() -> int:
 	if pad < 0:
 		return PadStyle.GENERIC
 	return PadStyle.detect(state.joy_name(pad), state.joy_info(pad))
-
-
-## A controller plugged in mid-match takes the first empty seat.
-func _on_joy_connection_changed(device: int, connected: bool) -> void:
-	if not _seated or not connected:
-		return
-	if _seats.has(device):
-		return
-	for seat: int in 2:
-		if _seats[seat] < 0:
-			_seats[seat] = device
-			return

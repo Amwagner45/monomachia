@@ -24,7 +24,7 @@ func _assert_move(raw: RawInput, mx: float, my: float, note: String = "") -> voi
 
 func test_keyboard_defaults_hold_each_rule_button() -> void:
 	var cases: Array = [
-		[KEY_J, Btn.LIGHT], [KEY_K, Btn.HEAVY], [KEY_SHIFT, Btn.BLOCK], [KEY_L, Btn.BLOCK],
+		[KEY_J, Btn.LIGHT], [KEY_K, Btn.HEAVY], [KEY_L, Btn.BLOCK],
 		[KEY_SPACE, Btn.DODGE], [KEY_F, Btn.JUMP], [KEY_I, Btn.JUMP], [KEY_E, Btn.INTERACT],
 		[KEY_Q, Btn.ULTIMATE], [KEY_U, Btn.ULTIMATE],
 	]
@@ -34,6 +34,28 @@ func test_keyboard_defaults_hold_each_rule_button() -> void:
 		var raw: RawInput = input.sample_device(profile, InputDevices.KBM)
 		assert_eq(raw.buttons, Btn.bit(c[1]), OS.get_keycode_string(c[0]))
 		_assert_move(raw, 0.0, 0.0)
+
+
+## The demo bound the left Shift only (ShiftLeft).
+func test_left_shift_blocks_and_right_shift_does_not() -> void:
+	assert_eq(profile.kb["block"][0], InputToken.key(KEY_SHIFT, KEY_LOCATION_LEFT))
+	fake.press_key(KEY_SHIFT, KEY_LOCATION_LEFT)
+	assert_eq(input.sample_device(profile, InputDevices.KBM).buttons, Btn.bit(Btn.BLOCK))
+	fake.press_key(KEY_SHIFT, KEY_LOCATION_RIGHT)
+	fake.release_key(KEY_SHIFT, KEY_LOCATION_LEFT)
+	assert_eq(input.sample_device(profile, InputDevices.KBM).buttons, 0, "right Shift is not block")
+
+
+## Right Shift sits next to the up arrow on many laptops.
+func test_player_2_on_the_arrows_pressing_right_shift_does_not_make_player_1_block() -> void:
+	var devices: Array[String] = [InputDevices.KBM, InputDevices.KB_ARROWS]
+	var profiles: Array[ControlProfile] = [profile, ControlProfile.create("Player 2")]
+	input.set_versus(devices, profiles)
+	fake.press_key(KEY_SHIFT, KEY_LOCATION_RIGHT)
+	assert_eq(input.sample(0).buttons, 0)
+	fake.press_key(KEY_SHIFT, KEY_LOCATION_LEFT)
+	fake.release_key(KEY_SHIFT, KEY_LOCATION_RIGHT)
+	assert_eq(input.sample(0).buttons, Btn.bit(Btn.BLOCK), "releasing right Shift leaves player 1's left Shift held")
 
 
 func test_mouse_left_is_light_and_right_is_heavy() -> void:
@@ -89,16 +111,22 @@ func test_controller_defaults_hold_each_rule_button() -> void:
 	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, 0, "pause is not a rule button")
 
 
-func test_right_trigger_is_heavy_past_the_threshold() -> void:
+## The demo read triggers as buttons, and browsers report a trigger as pressed
+## past XInput's threshold of 30/255 (about 0.12).
+func test_right_trigger_is_heavy_past_the_browser_press_point() -> void:
 	fake.plug_pad(0)
-	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.3)
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.1)
 	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, 0)
-	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.4)
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 30.0 / 255.0)
 	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, 0, "the threshold itself does not count")
-	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.41)
-	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, Btn.bit(Btn.HEAVY))
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.12)
+	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, Btn.bit(Btn.HEAVY), "a light pull starts the heavy")
 	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 1.0)
 	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, Btn.bit(Btn.HEAVY))
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.3)
+	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, Btn.bit(Btn.HEAVY), "easing off keeps the charge")
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 0.1)
+	assert_eq(input.sample_device(profile, InputDevices.PAD0).buttons, 0, "letting go releases it")
 
 
 func test_dpad_moves() -> void:

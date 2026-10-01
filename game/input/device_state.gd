@@ -11,8 +11,23 @@ signal joy_connection_changed(device: int, connected: bool)
 
 
 ## A key, by physical keycode (its position on a US QWERTY keyboard).
-func is_key_pressed(_physical_keycode: int) -> bool:
+## location: a KeyLocation; LEFT or RIGHT asks for one key of a pair (Shift,
+## Ctrl, Alt, Meta), UNSPECIFIED for either.
+func is_key_pressed(_physical_keycode: int, _location: int = KEY_LOCATION_UNSPECIFIED) -> bool:
 	return false
+
+
+## Sees every input event after Godot's Input has (see InputFeed). A state
+## that tracks more than Input does, such as which Shift key is down, updates
+## itself here.
+func note_event(_event: InputEvent) -> void:
+	pass
+
+
+## Forgets every held key, as when the window loses focus (Godot's Input
+## releases its own keys then, but not what note_event() tracked).
+func release_keys() -> void:
+	pass
 
 
 ## A MouseButton (1 left, 2 right, 3 middle, 8 and 9 the side buttons).

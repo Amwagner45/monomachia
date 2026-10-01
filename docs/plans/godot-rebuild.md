@@ -196,7 +196,8 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - how to play and a move list generated from the data;
     - pause;
     - results;
-    - the ink-wash UI theme and bundled fonts.
+    - the ink-wash UI theme and bundled fonts;
+    - the input host from task 21: one `InputDevices` and its `InputFeed` kept for the whole game, a pause when `focus_lost` fires during a match, `set_profile` and `rearm_pause` on resume (the pause menu's Controls screen can pick another profile), and `unbind_seats` on quit to menu.
   - Blocked by: 21.
   - Check: screenshots of every screen; the whole flow is navigable with keyboard only and with controller only.
 - [ ] **23. Training, Watch and Versus.** The training panel with dummy behaviours, refill and parry timing feedback; Watch with the side-on camera; Versus split screen with per-player cameras and prompts.

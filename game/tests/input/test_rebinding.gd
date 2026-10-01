@@ -217,7 +217,7 @@ func test_binding_a_mouse_button_used_elsewhere_moves_it() -> void:
 	var c: RebindCapture = RebindCapture.new(ControlProfile.KB, fake)
 	_send(c, _mouse(MOUSE_BUTTON_LEFT))
 	c.apply_to(profile, "block", 1)
-	assert_eq(profile.slots(ControlProfile.KB, "block"), [InputToken.key(KEY_SHIFT), InputToken.mouse(MOUSE_BUTTON_LEFT)] as Array[String])
+	assert_eq(profile.slots(ControlProfile.KB, "block"), [InputToken.key(KEY_SHIFT, KEY_LOCATION_LEFT), InputToken.mouse(MOUSE_BUTTON_LEFT)] as Array[String])
 	assert_eq(profile.slots(ControlProfile.KB, "light"), [InputToken.key(KEY_J)] as Array[String])
 
 
@@ -252,3 +252,74 @@ func test_moving_a_binding_to_the_other_slot_of_the_same_action() -> void:
 	_send(c, _mouse(MOUSE_BUTTON_LEFT))
 	c.apply_to(profile, "light", 1)
 	assert_eq(profile.slots(ControlProfile.KB, "light"), [InputToken.key(KEY_J), InputToken.mouse(MOUSE_BUTTON_LEFT)] as Array[String])
+
+
+## The demo armed only once every trigger was below the press point (30/255)
+## and bound a trigger on a fresh press, so a trigger eased off to just under
+## half could not leave the capture unable to bind it.
+func test_a_trigger_must_return_past_the_press_point_before_arming() -> void:
+	fake.plug_pad(0)
+	fake.set_axis(0, JOY_AXIS_TRIGGER_RIGHT, 1.0)
+	var c: RebindCapture = RebindCapture.new(ControlProfile.PAD, fake)
+	assert_eq(_send(c, _motion(0, JOY_AXIS_TRIGGER_RIGHT, 0.45)), RebindCapture.Result.LISTENING)
+	assert_false(c.is_armed(), "0.45 is still a held trigger")
+	assert_eq(_send(c, _motion(0, JOY_AXIS_TRIGGER_RIGHT, 0.05)), RebindCapture.Result.LISTENING)
+	assert_true(c.is_armed())
+	assert_eq(_send(c, _motion(0, JOY_AXIS_TRIGGER_RIGHT, 0.2)), RebindCapture.Result.BOUND, "a light pull is a press")
+	assert_eq(c.token, InputToken.joy_axis(JOY_AXIS_TRIGGER_RIGHT, true))
+
+
+func test_letting_go_of_a_stick_held_when_the_capture_arms_binds_nothing() -> void:
+	fake.plug_pad(0)
+	fake.set_axis(0, JOY_AXIS_LEFT_X, -1.0) # held left while the slot was chosen
+	var c: RebindCapture = RebindCapture.new(ControlProfile.PAD, fake)
+	assert_true(c.is_armed())
+	assert_eq(_send(c, _motion(0, JOY_AXIS_LEFT_X, 0.0)), RebindCapture.Result.LISTENING, "back to the centre is not a push right")
+	assert_eq(_send(c, _motion(0, JOY_AXIS_LEFT_X, 0.1)), RebindCapture.Result.LISTENING, "nor is drift")
+	assert_eq(_send(c, _motion(0, JOY_AXIS_LEFT_X, 0.9)), RebindCapture.Result.BOUND)
+	assert_eq(c.token, "a:0+")
+
+
+## Raw (unmapped) controllers can report axes past the SDL layout's 6 and
+## buttons past its 26; the demo recorded every axis and checked every button.
+func test_raw_controller_axes_and_buttons_past_the_sdl_layout() -> void:
+	fake.plug_pad(0, "Raw joystick")
+	fake.set_axis(0, 7, -1.0) # rests at -1
+	fake.press_button(0, 30)
+	var c: RebindCapture = RebindCapture.new(ControlProfile.PAD, fake)
+	assert_false(c.is_armed(), "button 30 is still held")
+	assert_eq(_send(c, _button(0, 30, false)), RebindCapture.Result.LISTENING)
+	assert_true(c.is_armed())
+	assert_eq(_send(c, _motion(0, 7, -0.98)), RebindCapture.Result.LISTENING, "noise at rest")
+	assert_eq(_send(c, _motion(0, 7, 1.0)), RebindCapture.Result.BOUND)
+	assert_eq(c.token, "a:7+")
+
+
+## Godot's Input tracks keys by physical keycode only, so a key event without
+## one (a synthetic event) could be bound but would never read as held.
+func test_a_key_event_without_a_physical_key_is_ignored() -> void:
+	var c: RebindCapture = RebindCapture.new(ControlProfile.KB, fake)
+	var e: InputEventKey = InputEventKey.new()
+	e.keycode = KEY_X
+	e.pressed = true
+	assert_eq(_send(c, e), RebindCapture.Result.LISTENING)
+	assert_false(fake.is_key_pressed(KEY_X), "the fake tracks physical keys only, as Godot's Input does")
+	assert_eq(_send(c, _key(KEY_X)), RebindCapture.Result.BOUND)
+	assert_eq(c.token, InputToken.key(KEY_X))
+
+
+func test_keyboard_tab_records_which_shift_ctrl_or_alt() -> void:
+	var c: RebindCapture = RebindCapture.new(ControlProfile.KB, fake)
+	var e: InputEventKey = _key(KEY_SHIFT)
+	e.location = KEY_LOCATION_RIGHT
+	_send(c, e)
+	assert_eq(c.token, InputToken.key(KEY_SHIFT, KEY_LOCATION_RIGHT))
+	assert_true(fake.is_key_pressed(KEY_SHIFT, KEY_LOCATION_RIGHT))
+	assert_false(fake.is_key_pressed(KEY_SHIFT, KEY_LOCATION_LEFT))
+	c = RebindCapture.new(ControlProfile.KB, fake)
+	e = _key(KEY_CTRL)
+	e.location = KEY_LOCATION_LEFT
+	_send(c, e)
+	assert_eq(c.token, InputToken.key(KEY_CTRL, KEY_LOCATION_LEFT))
+	c.apply_to(profile, "dodge", 1)
+	assert_eq(profile.slots(ControlProfile.KB, "dodge"), [InputToken.key(KEY_SPACE), InputToken.key(KEY_CTRL, KEY_LOCATION_LEFT)] as Array[String])

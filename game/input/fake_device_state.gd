@@ -4,14 +4,30 @@ extends DeviceState
 ## plug and unplug controllers. apply(event) updates it from an InputEvent the
 ## way Godot's Input does before the event reaches the scene.
 
+## physical keycode -> { KeyLocation: true }: LEFT or RIGHT for one key of a
+## pair, UNSPECIFIED for a key pressed with no side (as GodotDeviceState sees
+## a key whose event gave no location).
 var _keys: Dictionary = {}
 var _mouse: Dictionary = {}
 ## device id -> { "name": String, "info": Dictionary, "buttons": Dictionary, "axes": Dictionary }
 var _pads: Dictionary = {}
 
 
-func is_key_pressed(physical_keycode: int) -> bool:
-	return _keys.has(physical_keycode)
+## Answers as GodotDeviceState does: a side is held when its key is; with no
+## side known, a key held without one counts for both sides.
+func is_key_pressed(physical_keycode: int, location: int = KEY_LOCATION_UNSPECIFIED) -> bool:
+	var held: Dictionary = _keys.get(physical_keycode, {})
+	if location == KEY_LOCATION_UNSPECIFIED:
+		return not held.is_empty()
+	if held.has(KEY_LOCATION_LEFT) or held.has(KEY_LOCATION_RIGHT):
+		return held.has(location)
+	return held.has(KEY_LOCATION_UNSPECIFIED)
+
+
+## Forgets every held key and mouse button, as when the window loses focus.
+func release_keys() -> void:
+	_keys.clear()
+	_mouse.clear()
 
 
 func is_mouse_pressed(button: int) -> bool:
@@ -50,12 +66,19 @@ func joy_info(device: int) -> Dictionary:
 
 # ------------------------------------------------------------------ setters
 
-func press_key(physical_keycode: int) -> void:
-	_keys[physical_keycode] = true
+## location: KEY_LOCATION_LEFT or _RIGHT for one key of a pair.
+func press_key(physical_keycode: int, location: int = KEY_LOCATION_UNSPECIFIED) -> void:
+	var held: Dictionary = _keys.get_or_add(physical_keycode, {})
+	held[location] = true
 
 
-func release_key(physical_keycode: int) -> void:
-	_keys.erase(physical_keycode)
+func release_key(physical_keycode: int, location: int = KEY_LOCATION_UNSPECIFIED) -> void:
+	if not _keys.has(physical_keycode):
+		return
+	var held: Dictionary = _keys[physical_keycode]
+	held.erase(location)
+	if held.is_empty():
+		_keys.erase(physical_keycode)
 
 
 func press_mouse(button: int) -> void:
@@ -112,11 +135,14 @@ func release_all() -> void:
 func apply(event: InputEvent) -> void:
 	if event is InputEventKey:
 		var key: InputEventKey = event
-		var code: int = key.physical_keycode if key.physical_keycode != KEY_NONE else key.keycode
+		# Godot's Input tracks keys by physical keycode only.
+		var code: int = key.physical_keycode
+		if code == KEY_NONE or key.echo:
+			return
 		if key.pressed:
-			press_key(code)
+			press_key(code, key.location)
 		else:
-			release_key(code)
+			release_key(code, key.location)
 	elif event is InputEventMouseButton:
 		var mb: InputEventMouseButton = event
 		if mb.pressed:

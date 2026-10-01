@@ -4,6 +4,8 @@ extends RefCounted
 ## Port of the token strings in src/input/bindings.ts, with Godot's codes:
 ##
 ##   "k:<physical keycode>"   a key by its position on a US QWERTY keyboard (k:87 = W)
+##   "k:<keycode><L|R>"       the left or right key of a pair, from InputEventKey.location
+##                            (k:4194325L = left Shift); with no mark, either key of the pair
 ##   "m:<mouse button>"       MouseButton: 1 left, 2 right, 3 middle, 8 and 9 the side buttons
 ##   "b:<joypad button>"      JoyButton in the SDL layout (b:0 = bottom face button, b:10 = right shoulder)
 ##   "a:<joypad axis><+|->"   JoyAxis and direction (a:1- = left stick up, a:5+ = right trigger)
@@ -18,9 +20,27 @@ const MOUSE: String = "m"
 const JOY_BUTTON: String = "b"
 const JOY_AXIS: String = "a"
 
+const _LEFT: String = "L"
+const _RIGHT: String = "R"
 
-static func key(physical_keycode: int) -> String:
-	return "k:%d" % physical_keycode
+
+## location: a KeyLocation; LEFT or RIGHT marks one key of a pair (Shift, Ctrl,
+## Alt, Meta).
+static func key(physical_keycode: int, location: int = KEY_LOCATION_UNSPECIFIED) -> String:
+	var side: String = _LEFT if location == KEY_LOCATION_LEFT else _RIGHT if location == KEY_LOCATION_RIGHT else ""
+	return "k:%d%s" % [physical_keycode, side]
+
+
+## The KeyLocation a key token names: LEFT or RIGHT, or UNSPECIFIED for any
+## other token (either key of a pair).
+static func key_location(token: String) -> int:
+	if kind(token) != KEY:
+		return KEY_LOCATION_UNSPECIFIED
+	if token.ends_with(_LEFT):
+		return KEY_LOCATION_LEFT
+	if token.ends_with(_RIGHT):
+		return KEY_LOCATION_RIGHT
+	return KEY_LOCATION_UNSPECIFIED
 
 
 static func mouse(button: int) -> String:
@@ -48,9 +68,7 @@ static func kind(token: String) -> String:
 
 ## The keycode, mouse button, joypad button or joypad axis.
 static func code(token: String) -> int:
-	if kind(token) == JOY_AXIS:
-		return token.substr(2, token.length() - 3).to_int()
-	return token.substr(2).to_int()
+	return _number(token).to_int()
 
 
 ## +1.0 or -1.0 for an axis token.
@@ -63,11 +81,19 @@ static func is_valid(token: String) -> bool:
 	if k == "":
 		return false
 	if k == JOY_AXIS:
-		var body: String = token.substr(2, token.length() - 3)
 		var dir: String = token[token.length() - 1]
-		return body.is_valid_int() and body.to_int() >= 0 and (dir == "+" or dir == "-")
-	var rest: String = token.substr(2)
-	return rest.is_valid_int() and rest.to_int() >= 0
+		if dir != "+" and dir != "-":
+			return false
+	var body: String = _number(token)
+	return body.is_valid_int() and body.to_int() >= 0
+
+
+## The number in a token: what follows "x:", less an axis direction or a key's
+## side mark.
+static func _number(token: String) -> String:
+	if kind(token) == JOY_AXIS or key_location(token) != KEY_LOCATION_UNSPECIFIED:
+		return token.substr(2, token.length() - 3)
+	return token.substr(2)
 
 
 ## Keyboard and mouse tokens belong on the keyboard-and-mouse tab.

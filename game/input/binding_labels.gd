@@ -55,7 +55,7 @@ const KEY_NAMES: Dictionary = {
 static func token_label(token: String, style: int = PadStyle.GENERIC) -> String:
 	match InputToken.kind(token):
 		InputToken.KEY:
-			return key_name(InputToken.code(token))
+			return key_name(InputToken.code(token), InputToken.key_location(token))
 		InputToken.MOUSE:
 			return mouse_name(InputToken.code(token))
 		InputToken.JOY_BUTTON:
@@ -78,7 +78,12 @@ static func first_label(tokens: Array, style: int = PadStyle.GENERIC, exclude: D
 	return token_label(String(tokens[0]), style)
 
 
-static func key_name(physical_keycode: int) -> String:
+## location: a KeyLocation; one key of a pair is named "L-Shift" or "R-Ctrl".
+static func key_name(physical_keycode: int, location: int = KEY_LOCATION_UNSPECIFIED) -> String:
+	if location == KEY_LOCATION_LEFT:
+		return "L-" + key_name(physical_keycode)
+	if location == KEY_LOCATION_RIGHT:
+		return "R-" + key_name(physical_keycode)
 	if KEY_NAMES.has(physical_keycode):
 		return KEY_NAMES[physical_keycode]
 	if physical_keycode >= KEY_A and physical_keycode <= KEY_Z:

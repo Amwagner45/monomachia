@@ -59,8 +59,8 @@ static var _arrows_tokens: Dictionary = {}
 
 
 ## Keyboard and mouse, Souls-style (DEFAULT_KB). Sprint has no key: double-tap
-## a direction. Block is either Shift key (the demo used left Shift only;
-## Godot's physical keycodes don't tell the two apart).
+## a direction. Block is the left Shift only, as in the demo, so on a shared
+## keyboard player 2 can't block for player 1 with right Shift.
 static func default_kb() -> Dictionary:
 	return {
 		"up": [_k(KEY_W), _k(KEY_UP)],
@@ -69,7 +69,7 @@ static func default_kb() -> Dictionary:
 		"right": [_k(KEY_D), _k(KEY_RIGHT)],
 		"light": [InputToken.mouse(MOUSE_BUTTON_LEFT), _k(KEY_J)],
 		"heavy": [InputToken.mouse(MOUSE_BUTTON_RIGHT), _k(KEY_K)],
-		"block": [_k(KEY_SHIFT), _k(KEY_L)],
+		"block": [InputToken.key(KEY_SHIFT, KEY_LOCATION_LEFT), _k(KEY_L)],
 		"dodge": [_k(KEY_SPACE)],
 		"jump": [_k(KEY_F), _k(KEY_I)],
 		"interact": [_k(KEY_E)],

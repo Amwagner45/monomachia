@@ -92,6 +92,22 @@ func test_hot_plugged_controllers_fill_seat_1_then_seat_2() -> void:
 	assert_eq(input.pad_for(1), 5)
 
 
+## As in the demo, an empty seat takes a new controller when a player reads it,
+## so an unused seat 1 never takes the controller player 2 needs.
+func test_a_hot_plugged_controller_goes_to_the_seat_a_player_reads() -> void:
+	_versus(InputDevices.KBM, InputDevices.PAD1)
+	fake.plug_pad(0)
+	fake.press_button(0, JOY_BUTTON_A)
+	assert_true(_jumping(1), "player 2 gets the first controller plugged in")
+	assert_eq(input.pad_for(1), 0)
+	assert_eq(input.pad_for(0), -1, "seat 1 stays empty")
+	fake.unplug_pad(0)
+	_versus(InputDevices.KB_ARROWS, InputDevices.PAD1)
+	fake.plug_pad(4)
+	fake.press_button(4, JOY_BUTTON_A)
+	assert_true(_jumping(1), "also with player 1 on the arrow layout")
+
+
 func test_an_empty_seat_also_fills_without_the_signal() -> void:
 	fake.plug_pad(0)
 	_versus(InputDevices.PAD0, InputDevices.PAD1)
@@ -175,7 +191,7 @@ func test_pause_edges_are_per_device() -> void:
 	fake.press_button(0, JOY_BUTTON_START)
 	assert_false(input.pause_pressed(0), "player 1 is still holding Esc")
 	assert_true(input.pause_pressed(1), "player 2's first press")
-	assert_false(input.any_pause_pressed())
+	assert_false(input.pause_pressed(1), "player 2 is still holding Start")
 
 
 func test_any_pause_pressed_updates_every_player() -> void:
@@ -186,3 +202,89 @@ func test_any_pause_pressed_updates_every_player() -> void:
 	assert_true(input.any_pause_pressed())
 	assert_false(input.pause_pressed(0))
 	assert_false(input.pause_pressed(1), "both edges were taken by the same call")
+
+
+## The demo paused on Esc and on Start on any controller whatever the
+## bindings (Esc was the menus' "back", Start their "pause").
+func test_esc_pauses_whatever_the_bindings() -> void:
+	fake.plug_pad(0)
+	fake.plug_pad(1)
+	_versus(InputDevices.PAD0, InputDevices.PAD1)
+	fake.press_key(KEY_ESCAPE)
+	assert_true(input.any_pause_pressed(), "Versus on two controllers: Esc still pauses")
+	assert_false(input.any_pause_pressed(), "held")
+	fake.release_key(KEY_ESCAPE)
+	assert_false(input.any_pause_pressed())
+	input.set_single_player(p1)
+	p1.clear_slot(ControlProfile.KB, "pause", 0)
+	p1.clear_slot(ControlProfile.KB, "pause", 0)
+	assert_eq(p1.slots(ControlProfile.KB, "pause"), [] as Array[String])
+	fake.press_key(KEY_P)
+	assert_false(input.any_pause_pressed(), "P is no longer bound")
+	fake.press_key(KEY_ESCAPE)
+	assert_true(input.any_pause_pressed(), "Esc pauses with no pause binding")
+
+
+func test_start_on_any_controller_pauses() -> void:
+	fake.plug_pad(0)
+	fake.plug_pad(1)
+	fake.plug_pad(2)
+	_versus(InputDevices.PAD0, InputDevices.PAD1)
+	fake.press_button(2, JOY_BUTTON_START)
+	assert_true(input.any_pause_pressed(), "a third controller's Start")
+	assert_false(input.any_pause_pressed(), "held")
+	_versus(InputDevices.KBM, InputDevices.KB_ARROWS)
+	fake.release_all()
+	assert_false(input.any_pause_pressed())
+	fake.press_button(0, JOY_BUTTON_START)
+	assert_true(input.any_pause_pressed(), "a controller nobody plays on")
+	p2.clear_slot(ControlProfile.PAD, "pause", 0)
+	fake.release_all()
+	input.set_single_player(p2)
+	assert_false(input.any_pause_pressed())
+	fake.press_button(1, JOY_BUTTON_START)
+	assert_true(input.any_pause_pressed(), "Start pauses with no pause binding")
+
+
+func test_esc_and_start_held_on_resume_do_not_pause_again() -> void:
+	fake.plug_pad(1)
+	_versus(InputDevices.PAD0, InputDevices.KB_ARROWS)
+	fake.press_key(KEY_ESCAPE)
+	fake.press_button(1, JOY_BUTTON_START)
+	input.rearm_pause()
+	assert_false(input.any_pause_pressed())
+	fake.release_key(KEY_ESCAPE)
+	assert_false(input.any_pause_pressed())
+	fake.press_key(KEY_ESCAPE)
+	assert_true(input.any_pause_pressed(), "a fresh press pauses")
+
+
+## The demo looked a player's profile up on every tick, so a profile picked in
+## the pause menu's Controls took effect on resume.
+func test_set_profile_swaps_a_profile_without_touching_seats_or_pause() -> void:
+	fake.plug_pad(0)
+	fake.plug_pad(1)
+	_versus(InputDevices.PAD0, InputDevices.PAD1)
+	fake.unplug_pad(0)
+	fake.press_button(1, JOY_BUTTON_START)
+	assert_true(input.pause_pressed(1))
+	var stick: ControlProfile = ControlProfile.create("Stick")
+	stick.use_fight_stick_layout()
+	input.set_profile(1, stick)
+	assert_eq(input.profile_of(1), stick)
+	assert_eq(input.profile_of(0), p1, "the other player keeps theirs")
+	assert_false(input.pause_pressed(1), "Start is still held, not pressed again")
+	assert_eq(input.pad_for(0), -1, "seat 1 still waits for its own controller")
+	assert_eq(input.pad_for(1), 1)
+	fake.press_button(1, JOY_BUTTON_X)
+	assert_eq(input.sample(1).buttons, Btn.bit(Btn.LIGHT), "the fight-stick layout: square is light")
+
+
+func test_set_profile_in_single_player() -> void:
+	input.set_single_player(p1)
+	p2.clear_slot(ControlProfile.KB, "light", 0)
+	input.set_profile(0, p2)
+	fake.press_mouse(MOUSE_BUTTON_LEFT)
+	assert_eq(input.sample(0).buttons, 0, "the new profile has no Left Click on light")
+	input.set_profile(5, p1)
+	assert_eq(input.profile_of(0), p2, "a player who isn't set up is ignored")

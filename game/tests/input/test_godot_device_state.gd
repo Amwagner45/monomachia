@@ -88,3 +88,47 @@ func test_forwards_controller_connections() -> void:
 	Input.joy_connection_changed.emit(PAD, true)
 	Input.joy_connection_changed.emit(PAD, false)
 	assert_eq(heard, [[PAD, true], [PAD, false]])
+
+
+## Sends a Shift event to Godot's Input, then (when noted) to the input layer,
+## the way InputFeed forwards every event once Input has seen it.
+func _send_shift(location: int, pressed: bool, noted: bool = true) -> void:
+	var e: InputEventKey = InputEventKey.new()
+	e.physical_keycode = KEY_SHIFT
+	e.location = location as KeyLocation
+	e.pressed = pressed
+	_send(e)
+	if noted:
+		input.note_event(e)
+
+
+func test_tells_left_and_right_shift_apart() -> void:
+	input.set_single_player(profile)
+	_send_shift(KEY_LOCATION_RIGHT, true)
+	var right_only: int = input.sample(0).buttons
+	_send_shift(KEY_LOCATION_LEFT, true)
+	_send_shift(KEY_LOCATION_RIGHT, false)
+	var godot_flag: bool = Input.is_physical_key_pressed(KEY_SHIFT)
+	var left_still_held: int = input.sample(0).buttons
+	_send_shift(KEY_LOCATION_LEFT, false)
+	assert_eq(right_only, 0, "right Shift is not block")
+	assert_false(godot_flag, "Godot's Input keeps one flag for both Shift keys")
+	assert_eq(left_still_held, Btn.bit(Btn.BLOCK), "left Shift is still held")
+	assert_eq(input.sample(0).buttons, 0, "released")
+
+
+func test_release_keys_forgets_the_held_sides() -> void:
+	_send_shift(KEY_LOCATION_LEFT, true)
+	_send_shift(KEY_LOCATION_LEFT, false, false) # a release the scene never saw
+	var stale: bool = input.state.is_key_pressed(KEY_SHIFT, KEY_LOCATION_LEFT)
+	input.release_keys()
+	assert_true(stale, "only the events tell which side is up")
+	assert_false(input.state.is_key_pressed(KEY_SHIFT, KEY_LOCATION_LEFT))
+
+
+func test_without_side_events_either_shift_counts() -> void:
+	input.set_single_player(profile)
+	_send_shift(KEY_LOCATION_RIGHT, true, false)
+	var buttons: int = input.sample(0).buttons
+	_send_shift(KEY_LOCATION_RIGHT, false, false)
+	assert_eq(buttons, Btn.bit(Btn.BLOCK), "falls back to Godot's single Shift flag")

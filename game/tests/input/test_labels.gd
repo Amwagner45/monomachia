@@ -100,7 +100,7 @@ func test_keyboard_labels_for_each_action() -> void:
 	input.set_single_player(p1)
 	var expected: Dictionary = {
 		"up": "W", "down": "S", "left": "A", "right": "D",
-		"light": "Left Click", "heavy": "Right Click", "block": "Shift", "dodge": "Space",
+		"light": "Left Click", "heavy": "Right Click", "block": "L-Shift", "dodge": "Space",
 		"jump": "F", "interact": "E", "ultimate": "Q", "sprint": "", "pause": "Esc",
 	}
 	for action: String in Bindings.ACTIONS:
@@ -209,3 +209,14 @@ func test_stick_names() -> void:
 	assert_eq(BindingLabels.token_label("a:2+"), "R-Stick →")
 	assert_eq(BindingLabels.token_label("a:3-"), "R-Stick ↑")
 	assert_eq(BindingLabels.token_label("a:7+"), "Axis 7+")
+
+
+## The demo named the two sides of a key pair (KEY_NAMES ShiftLeft "L-Shift").
+func test_key_names_with_a_side() -> void:
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_SHIFT, KEY_LOCATION_LEFT)), "L-Shift")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_SHIFT, KEY_LOCATION_RIGHT)), "R-Shift")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_CTRL, KEY_LOCATION_LEFT)), "L-Ctrl")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_CTRL, KEY_LOCATION_RIGHT)), "R-Ctrl")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_ALT, KEY_LOCATION_LEFT)), "L-Alt")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_ALT, KEY_LOCATION_RIGHT)), "R-Alt")
+	assert_eq(BindingLabels.token_label(InputToken.key(KEY_SHIFT)), "Shift", "either Shift")

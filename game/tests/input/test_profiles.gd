@@ -217,3 +217,22 @@ func test_every_default_set_covers_every_action_with_at_most_two_valid_tokens() 
 				assert_eq(InputToken.is_joypad(token), set_name == "pad" or set_name == "fight stick", token)
 				assert_false(seen.has(token), "%s: %s bound twice" % [set_name, token])
 				seen[token] = true
+
+
+## Key tokens can name a side ("k:<code>L" or "k:<code>R"), as the demo's
+## ShiftLeft and ShiftRight did.
+func test_key_tokens_can_name_a_side() -> void:
+	var left: String = InputToken.key(KEY_SHIFT, KEY_LOCATION_LEFT)
+	assert_eq(left, "k:%dL" % KEY_SHIFT)
+	assert_eq(InputToken.key(KEY_CTRL, KEY_LOCATION_RIGHT), "k:%dR" % KEY_CTRL)
+	assert_eq(InputToken.key(KEY_W), "k:%d" % KEY_W)
+	assert_true(InputToken.is_valid(left))
+	assert_true(InputToken.is_keyboard_or_mouse(left))
+	assert_eq(InputToken.code(left), KEY_SHIFT)
+	assert_eq(InputToken.key_location(left), KEY_LOCATION_LEFT)
+	assert_eq(InputToken.key_location(InputToken.key(KEY_CTRL, KEY_LOCATION_RIGHT)), KEY_LOCATION_RIGHT)
+	assert_eq(InputToken.key_location(InputToken.key(KEY_W)), KEY_LOCATION_UNSPECIFIED)
+	for bad: String in ["k:L", "k:12X", "k:12LR", "k:-4L", "b:3L"]:
+		assert_false(InputToken.is_valid(bad), bad)
+	var p: ControlProfile = ControlProfile.from_dict({"kb": {"block": [left, "k:12X"]}})
+	assert_eq(p.slots(ControlProfile.KB, "block"), [left] as Array[String], "kept on load")

@@ -17,3 +17,13 @@ npm run golden:record
 The recorder is deterministic: every run writes byte-identical files. `tests/golden.test.ts` replays every file on the TypeScript rules and fails if anything differs. To see one scripted scenario's events, run `npx tsx scripts/golden/record.ts --trace <name>`.
 
 **Do not regenerate these files after the Godot rules deliberately change** (phase C of the plan). They record the web demo's rules exactly. They are the reference for the faithful port, not a snapshot of whatever the rules currently do.
+
+## Replaying on the Godot rules
+
+`game/tests/sim/test_golden_replay.gd` (part of `npm test`) replays every file on the GDScript rules, one GUT test per scenario. Each test stops at its first difference and reports the step, the world frame, the field and both sides' events for that step. Names, ints and bools must match exactly; floats must be within 1e-6. Floats need that margin because V8's `Math.atan2`, `sin`, `cos` and `hypot` differ from Godot's math in the last bit for some arguments, and Godot's JSON reader is not correctly rounded. Over a full match the drift stays around 1e-12.
+
+A new scenario needs its own `test_<name>` function in that file; a guard test fails until it has one. To run one scenario:
+
+```
+node scripts/godot.mjs test -gselect=test_golden_replay -gunit_test_name=<name>
+```

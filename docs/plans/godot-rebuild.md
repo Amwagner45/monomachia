@@ -57,7 +57,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - [x] **3. Port the fighter, the world and the match.** The full state machine, the hit evaluation and application, dropped weapons, the Moonsplitter wave, scripted ultimate hits, the round flow, and the test helpers.
   - Blocked by: 2.
   - Check: all 47 demo tests ported to GUT and passing.
-- [ ] **4. Golden replays against the TypeScript rules.**
+- [x] **4. Golden replays against the TypeScript rules.**
   - Delivers:
     - a Node script that runs the TypeScript rules on scripted scenarios (every test scenario plus six computer-vs-computer matches with fixed seeds) and writes per-frame event and state logs to `game/tests/golden/`;
     - a GUT test that replays them on the Godot rules and compares them.

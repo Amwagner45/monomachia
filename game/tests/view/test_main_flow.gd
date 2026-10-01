@@ -11,6 +11,8 @@ var host: MatchHost
 
 func before_each() -> void:
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	# These tests don't need the shrine: the stand-in keeps them fast.
+	main.set("arena_id", ArenaScenes.STANDIN)
 	add_child_autofree(main)
 	host = main.get_node("MatchHost")
 	host.auto_run = false
@@ -18,6 +20,19 @@ func before_each() -> void:
 
 func _screen() -> int:
 	return int(main.get("screen"))
+
+
+func test_matches_default_to_the_default_arena() -> void:
+	var fresh: Node = autofree((load("res://scenes/main.tscn") as PackedScene).instantiate())
+	assert_eq(fresh.get("arena_id"), MatchConfig.DEFAULT_ARENA)
+
+
+func test_the_duel_behind_the_menus_and_every_match_use_its_arena() -> void:
+	assert_eq(host.config.arena_id, ArenaScenes.STANDIN, "the duel behind the menus")
+	main.call("start_duel")
+	assert_eq(host.config.arena_id, ArenaScenes.STANDIN, "a duel")
+	main.call("start_watch")
+	assert_eq(host.config.arena_id, ArenaScenes.STANDIN, "a watch match")
 
 
 func test_it_opens_on_the_title_over_a_computer_duel() -> void:

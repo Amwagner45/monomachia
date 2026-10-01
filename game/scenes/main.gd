@@ -14,6 +14,11 @@ extends Node
 
 enum Screen { TITLE, MENU, PLAYING, PAUSED, RESULTS }
 
+## The arena the duel behind the menus and every match are fought in, until
+## the arena select (task 22). Tests set the stand-in before the scene enters
+## the tree.
+@export var arena_id: StringName = MatchConfig.DEFAULT_ARENA
+
 @onready var host: MatchHost = $MatchHost
 @onready var ui: CanvasLayer = $Menus
 
@@ -97,7 +102,7 @@ func _close_all() -> void:
 # ------------------------------------------------------------------ screens
 
 func start_attract() -> void:
-	host.start(MatchConfig.attract(_next_seed()), true)
+	host.start(_in_arena(MatchConfig.attract(_next_seed())), true)
 
 
 func show_title() -> void:
@@ -113,11 +118,16 @@ func show_main_menu() -> void:
 
 
 func start_duel() -> void:
-	start_match(MatchConfig.default_duel(_next_seed()))
+	start_match(_in_arena(MatchConfig.default_duel(_next_seed())))
 
 
 func start_watch() -> void:
-	start_match(MatchConfig.default_watch(_next_seed()))
+	start_match(_in_arena(MatchConfig.default_watch(_next_seed())))
+
+
+func _in_arena(cfg: MatchConfig) -> MatchConfig:
+	cfg.arena_id = arena_id
+	return cfg
 
 
 ## Plays a match from a config. A config the host refuses (it reports why)

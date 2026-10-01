@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3, 16.1–16.7, 14.1 and 14.2, which put the real fighters in the match; next is 17.1 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3, 16.1–16.7, 14.1 and 14.2, which put the real fighters in the match, and 17.1, the arena data behind a radius guard; next is 17.2 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 

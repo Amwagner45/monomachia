@@ -19,17 +19,28 @@ func before_each() -> void:
 	hud = host.get_node("Hud")
 
 
+## Computer against computer on the stand-in arena. The tests ask for the
+## stand-in by id unless they need the default arena, so they stay fast and
+## stable once the shrine is every match's arena.
 func _cpu(mode: StringName = MatchConfig.DUEL, seed_value: int = 7) -> MatchConfig:
 	return MatchConfig.make(
 		mode,
 		MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
 		MatchSide.computer(&"hunter", &"daggers", 1, &"hard"),
 		seed_value,
+		ArenaScenes.STANDIN,
 	)
 
 
+func _with_standin(cfg: MatchConfig) -> MatchConfig:
+	cfg.arena_id = ArenaScenes.STANDIN
+	return cfg
+
+
 func test_the_scene_builds_the_stage_from_the_config() -> void:
-	host.start(_cpu())
+	var cfg: MatchConfig = _cpu()
+	cfg.arena_id = MatchConfig.DEFAULT_ARENA
+	host.start(cfg)
 	assert_not_null(view.arena, "an arena")
 	assert_eq(view.arena_id, MatchConfig.DEFAULT_ARENA)
 	assert_eq(MatchConfig.DEFAULT_ARENA, ArenaScenes.MOONLIT_SHRINE, "the shrine by default, so it shows once it lands")
@@ -50,21 +61,19 @@ func test_the_scene_builds_the_stage_from_the_config() -> void:
 	assert_true(hud.visible)
 
 
-func test_an_arena_not_built_yet_falls_back_to_the_standin() -> void:
-	assert_eq(ArenaScenes.scene_path(&"no_such_arena"), ArenaScenes.SCENES[ArenaScenes.STANDIN])
-	if not ResourceLoader.exists(ArenaScenes.SCENES[ArenaScenes.MOONLIT_SHRINE]):
-		assert_eq(ArenaScenes.scene_path(ArenaScenes.MOONLIT_SHRINE), ArenaScenes.SCENES[ArenaScenes.STANDIN])
+func test_an_arena_that_cant_be_drawn_is_the_standin_under_its_own_id() -> void:
 	var cfg: MatchConfig = _cpu()
-	cfg.arena_id = ArenaScenes.MOONLIT_SHRINE
+	cfg.arena_id = &"no_such_arena"
 	host.start(cfg)
-	assert_not_null(view.arena)
-	assert_eq(view.arena_id, ArenaScenes.MOONLIT_SHRINE)
+	assert_eq(view.arena_id, &"no_such_arena")
+	assert_eq(view.arena.scene_file_path, ArenaScenes.STANDIN_SCENE)
+	assert_not_null(view.arena.get_node_or_null("Spawn0"), "with the stand-in's markers")
 
 
 func test_watch_and_menu_pick_their_cameras() -> void:
 	host.start(_cpu(MatchConfig.WATCH))
 	assert_eq(view.camera.mode, CameraRig.Mode.WATCH)
-	host.start(MatchConfig.attract(), true)
+	host.start(_with_standin(MatchConfig.attract()), true)
 	assert_eq(view.camera.mode, CameraRig.Mode.MENU)
 	assert_false(hud.visible, "no HUD behind the menus")
 
@@ -141,7 +150,7 @@ func test_the_hud_calls_the_ko_and_the_round_winner() -> void:
 
 
 func test_the_hud_offers_the_ultimate_to_a_human_player() -> void:
-	var cfg: MatchConfig = MatchConfig.default_duel()
+	var cfg: MatchConfig = _with_standin(MatchConfig.default_duel())
 	host.start(cfg)
 	host.step(Match.INTRO_FRAMES + 1)
 	host.fighter(0).hp = 20.0
@@ -183,7 +192,6 @@ func _fake_arena(max_radius: float, far_plane: float) -> Node3D:
 
 func test_the_camera_takes_the_arenas_camera_data() -> void:
 	var standin: MatchConfig = _cpu()
-	standin.arena_id = ArenaScenes.STANDIN
 	host.start(standin)
 	assert_eq(view.camera.far, view.camera.far_clip, "the stand-in has no data: the defaults")
 	assert_almost_eq(view.camera.arena_limit(), SimConst.ARENA_RADIUS + view.camera.arena_margin, 1e-6)
@@ -202,7 +210,7 @@ func test_the_camera_takes_the_arenas_camera_data() -> void:
 # ------------------------------------------------------------------ the HUD outside the fight
 
 func test_the_ultimate_hint_shows_only_while_the_round_is_fought() -> void:
-	host.start(MatchConfig.default_duel())
+	host.start(_with_standin(MatchConfig.default_duel()))
 	host.fighter(0).hp = 20.0
 	hud._process(1.0 / 60.0)
 	assert_eq(hud.hint_text(), "", "not during the round's intro")
@@ -218,7 +226,7 @@ func test_the_ultimate_hint_shows_only_while_the_round_is_fought() -> void:
 
 
 func test_the_hud_clears_and_hides_when_the_results_open() -> void:
-	host.start(MatchConfig.default_duel())
+	host.start(_with_standin(MatchConfig.default_duel()))
 	host.step(Match.INTRO_FRAMES + 1)
 	hud.announce("Disarmed", "Retrieve your weapon", 300)
 	assert_true(hud.visible)
@@ -226,7 +234,7 @@ func test_the_hud_clears_and_hides_when_the_results_open() -> void:
 	assert_eq(hud.announcement_text(), "")
 	assert_eq(hud.hint_text(), "")
 	assert_false(hud.visible, "the results take the screen")
-	host.start(MatchConfig.default_duel())
+	host.start(_with_standin(MatchConfig.default_duel()))
 	assert_true(hud.visible, "back for the rematch")
 
 
@@ -275,7 +283,7 @@ func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
 		view.render(1.0 / 60.0)
 		assert_gt(view.get_child_count(), baseline.size(), "a flash and a dropped weapon")
 		if k == 1:
-			host.start(MatchConfig.attract(k + 5), true)
+			host.start(_with_standin(MatchConfig.attract(k + 5)), true)
 		else:
 			host.start(_cpu(MatchConfig.DUEL, 7 + k))
 		await get_tree().process_frame
@@ -324,12 +332,12 @@ func test_rematches_keep_the_fighters_models() -> void:
 	host.start(_cpu(MatchConfig.DUEL, 8))
 	assert_eq(view.fighters[0].model, models[0], "the Rogue kept")
 	assert_eq(view.fighters[1].model, models[1], "the Hunter kept")
-	host.start(MatchConfig.make(
+	host.start(_with_standin(MatchConfig.make(
 		MatchConfig.DUEL,
 		MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
 		MatchSide.computer(&"rogue", &"greatsword", 1, &"hard"),
 		9,
-	))
+	)))
 	assert_eq(view.fighters[0].model, models[0], "the Rogue still kept")
 	assert_ne(view.fighters[1].model, models[1], "a Rogue in place of the Hunter")
 	assert_eq(view.fighters[1].model.palette, 1, "in her second palette")

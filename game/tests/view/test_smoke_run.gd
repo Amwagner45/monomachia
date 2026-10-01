@@ -11,6 +11,8 @@ var host: MatchHost
 
 func before_each() -> void:
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
+	# These tests don't need the shrine: the stand-in keeps them fast.
+	main.set("arena_id", ArenaScenes.STANDIN)
 	add_child_autofree(main)
 	host = main.get_node("MatchHost")
 	host.auto_run = false

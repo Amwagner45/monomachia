@@ -20,7 +20,8 @@ const MODES: Array[StringName] = [DUEL, TRAINING, WATCH, VERSUS]
 
 ## The arena every match is fought in until the arena select (task 22): the
 ## Moonlit Shrine, which ArenaScenes draws as the stand-in until its scene
-## lands, so the real arena shows up without another change here.
+## lands and the rules' radius reaches its own (the radius guard), so the
+## real arena shows up without another change here.
 const DEFAULT_ARENA: StringName = &"moonlit_shrine"
 
 @export var mode: StringName = DUEL

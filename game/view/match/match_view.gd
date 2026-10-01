@@ -7,8 +7,8 @@ extends Node3D
 ##
 ## Seams for the other lanes: the real arena replaces the stand-in through
 ## ArenaScenes, and when its root carries an ArenaDef as `def`, the camera
-## takes its camera_max_radius and camera_far (read by name, so this lane
-## doesn't need the class); the fighters are placed and posed in
+## takes its camera_max_radius and camera_far (read by name, so any resource
+## with those two numbers will do); the fighters are placed and posed in
 ## update_fighters(), and swings (task 14.10) take over their posing from
 ## StickPose inside FighterView; the combat effects (task 18) join
 ## _on_sim_event(), where the camera's shake and field-of-view kicks are

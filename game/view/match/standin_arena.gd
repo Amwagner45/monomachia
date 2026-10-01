@@ -151,8 +151,12 @@ func _build_markers(r: float) -> void:
 		"Gate0": Vector3(0.0, 0.0, -(r + 3.0)),
 		"Gate1": Vector3(0.0, 0.0, r + 3.0),
 	}
+	# As in ArenaDef: -Z faces the opponent (spawns) or the centre (gates), so
+	# side 0's markers, at -z, turn round to face +Z.
 	for key: String in spots:
 		var m := Marker3D.new()
 		m.name = key
 		m.position = spots[key]
+		if m.position.z < 0.0:
+			m.rotation.y = PI
 		add_child(m)

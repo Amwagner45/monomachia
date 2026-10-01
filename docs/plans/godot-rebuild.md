@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1, which starts stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.2.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1 and 17.2, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -147,10 +147,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The fighter rig (14.1): `FighterRig` and `BodyLayer` on each fighter's skeleton, with arm and leg IK, hands locked onto a posed weapon's grips, and fists fitted to each handle by `HandGrip`. Weapons are posed in fighter space or carried in the fist, never in hand sockets.
   - Real fighters in the match (14.2): `FighterView` replaces the capsule stand-ins, with flashes and glows as overlays, models kept across rematches, and the real weapon models on the floor when dropped.
   - The arena data and the radius guard (17.1): `ArenaDef` and the shrine's `moonlit_shrine.tres`. `ArenaScenes` draws an arena's own scene only when it exists and its walkable radius is the rules' `ARENA_RADIUS`, so the shrine (15 m) waits behind the stand-in until 8.3. Tests that don't need the shrine ask for the stand-in by id, through `main.gd`'s `arena_id` where they go through the menus.
-- **Checks after 17.1** (the shots, the window checks and the sizes are from 14.2, since 17.1 draws nothing new):
-  - 551 Godot tests (50 s): rules 138, input 118, audio 31, core 22, view 187, content 52, and 3 project-wide smoke tests;
+  - The arena screenshot rig (17.2): `tools/shot_scenes/arena_shot.gd` shoots an arena on a stepped `MatchHost` with the real fighters on its spawns, from the gameplay, Watch and menu cameras, an establishing view and a top-down debug view, at any preset (`arena_gameplay.tscn` … `arena_top_down.tscn`, `--preset=`, `--arena=`). It shoots an arena's own scene past the radius guard.
+- **Checks after 17.2** (the window checks and the sizes are from 14.2):
+  - 559 Godot tests (52 s): rules 138, input 118, audio 31, core 22, view 195, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 150 scripts cleanly;
+  - the typecheck loads 152 scripts cleanly;
+  - the five arena shots render with no leaks at exit;
   - CI passed on the push of 14.1 (6a986cb);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
@@ -1076,9 +1078,22 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - `test_arena_def`: the shrine's ids and its looping ambience; spawns where and facing as `World.reset_round` starts each round; gates past the wall facing the centre; the wall outside the walkable circle; `validate()` catching a wall inside it and a spawn too close to the wall; both sides' starting follow and Watch cameras inside the limit.
         - `test_arena_scenes`: an arena at the rules' radius uses its own scene (`tests/fixtures/arena_fixture.tscn`), one at another radius or without a scene gets the stand-in, and the shrine waits behind the guard while the rules' wall is at 11.5 m. That last test changes with 8.3.
         - `test_main_flow`: main's arena by default, and the stand-in reaches every match when set.
-  - [ ] **17.2 Arena screenshot rig on the match host and CameraRig.** `arena_shot.gd` rebuilt on a stepped `MatchHost`, with the arena put in by `MatchView.set_arena` and the real fighters at the spawns. It shoots the follow, Watch and menu views, an establishing view and a top-down debug overlay, with a preset export. Its scenes live in `game/tools/shot_scenes`.
+  - [x] **17.2 Arena screenshot rig on the match host and CameraRig.** `arena_shot.gd` rebuilt on a stepped `MatchHost`, with the arena put in by `MatchView.set_arena` and the real fighters at the spawns. It shoots the follow, Watch and menu views, an establishing view and a top-down debug overlay, with a preset export. Its scenes live in `game/tools/shot_scenes`.
     - Check: shots of the stand-in arena from every view reviewed.
     - Blocked by: 17.1, 14.2 · Stories: 2, 54, 65
+    - Done:
+      - **`tools/shot_scenes/arena_shot.gd`**, rebuilt from the worktree's rig:
+        - a `MatchHost` stepped without the clock plays a computer duel (the Rogue with the katana against the Hunter with the greatsword), held in the round's intro, so the real fighters stand on the spawns, with the HUD hidden;
+        - `MatchView.set_arena` puts the arena in: its `ArenaDef`'s own scene whenever that exists, past the radius guard, so the shrine can be shot before 8.3; otherwise what `ArenaScenes` draws for the id;
+        - the chosen preset (`preset_id`, or `--preset=`; empty means the saved one) is applied to the renderer, the window and the whole rig. `--arena=` picks the arena, and a bad preset or arena fails the run.
+      - **Views, one scene each** (`arena_gameplay`, `arena_watch`, `arena_menu`, `arena_establishing` and `arena_top_down.tscn`, all on the shrine's id, so they show the stand-in until 17.3 builds the shrine):
+        - gameplay, Watch and menu are `CameraRig`'s own modes, snapped; the menu view stands 10 s into the orbit, where the fighters show three-quarter on;
+        - establishing keeps the worktree's numbers (58 m out at 228°, 5 m below the floor, looking at 13 m below), which frame the shrine's underside. The stand-in, with nothing under its floor, sits small at the top of that frame;
+        - top-down is orthographic (46 m tall) with a legend and a close-up of the wall at +X. It rings the rules' wall and the fighters' centre limit, the arena's walkable circle when it differs from the rules' and its wall's inner face (from its `ArenaDef`), and marks the arena's own Spawn and Gate markers with their facing.
+      - **The stand-in's markers face as `ArenaDef`'s do** (-Z toward the opponent or the centre), so side 0's spawn and gate are turned round. Only the top-down overlay reads their facing.
+      - **The bench mode waits for 17.9.**
+      - **Tests:** `test_arena_shot` (the fighters on the spawns, each view's camera, the menu's orbit time, the overlay's rings and marks, the preset chosen or saved) and a marker test in `test_standin_arena`.
+      - **Shots reviewed:** the stand-in from all five views at High, and the gameplay view at Low.
   - [ ] **17.3 The shrine's courtyard: floor, parapet, gate landings and markers.** (Note from 16.5: the worktree's `moonlit_shrine.gd` calls `GraphicsApplier.current()`, which is gone; apply `GameServices.graphics_preset()` instead.) The shrine scene (environment copy, moon key light, the fighter-only rim light, ink-wash pass, preset), `ShrineLayout` with its data, and the platform builder: stone floor, plinth, parapet, gate landings, rope barriers and pebbles.
     - Check: the shrine tests pass (markers match the data, nothing but pebbles inside the walkable circle, floor at 0 under the spawns, one ink pass, rim light on fighters only); the shader check passes; gameplay, Watch and top-down shots reviewed.
     - Blocked by: 17.2 · Stories: 15, 46, 47

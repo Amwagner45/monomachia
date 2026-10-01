@@ -2,8 +2,8 @@ extends GutTest
 ## The stand-in arena in the toon look: every surface a toon prop material,
 ## the floor on the ground layer, the night environment with the colour grade,
 ## the ink-wash pass, the moon casting the preset's shadows, a rim light that
-## touches fighters only, and the chosen graphics preset applied when the
-## arena loads.
+## touches fighters only, the chosen graphics preset applied when the arena
+## loads, and spawn and gate markers placed and facing as ArenaDef's are.
 
 var _services: Node
 var _saved_preset: StringName
@@ -147,3 +147,17 @@ func test_the_arena_follows_the_rules_radius() -> void:
 	assert_almost_eq(nearest, r, 0.001, "the wall's inner face stands on the wall line")
 	var gate: Node3D = arena.get_node("Gate1")
 	assert_almost_eq(Vector2(gate.position.x, gate.position.z).length(), r + 3.0, 1e-5, "the gates stand past the wall")
+
+
+func test_its_markers_stand_and_face_like_arena_data() -> void:
+	var arena: Node3D = _arena()
+	var world := World.new(FighterConfig.make(Moves.KATANA), FighterConfig.make(Moves.KATANA))
+	for side: int in 2:
+		var spawn: Node3D = arena.get_node("Spawn%d" % side)
+		var f: Fighter = world.fighters[side]
+		assert_almost_eq(spawn.position, Vector3(f.pos.x, f.pos.y, f.pos.z), Vector3.ONE * 1e-5, "spawn %d where the rules start the round" % side)
+		var forward: V2 = SimMath.fwd(f.yaw)
+		assert_almost_eq(-spawn.basis.z, Vector3(forward.x, 0.0, forward.z), Vector3.ONE * 1e-5, "spawn %d faces as the rules face it" % side)
+		var gate: Node3D = arena.get_node("Gate%d" % side)
+		assert_almost_eq(-gate.basis.z, -gate.position.normalized(), Vector3.ONE * 1e-5, "gate %d faces the centre" % side)
+	world.dispose()

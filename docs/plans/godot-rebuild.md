@@ -24,6 +24,13 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - Hits come from weapon paths; the same paths drive the animation.
 - The web version is tagged `v0.1-web-mvp` and deleted at the end.
 - Tracker: local Markdown in `docs/` (see `docs/agents/issue-tracker.md`).
+- The port is exact: the Godot rules reproduce all 35 golden recordings of the TypeScript rules, the Godot computer opponent produces the recorded inputs for six full matches, and the 40-match soak prints identical numbers.
+- A throwaway animation spike ran early (in scratch, before tasks 7 and 14).
+  - Verdict: weapon-path animation on the Quaternius fighters works, with conditions, which are now requirements of tasks 7, 14, 14b and 15.
+  - Camera: the side offset is 1.3–1.4 m, because 0.9 m hides the opponent.
+  - Reach: lunges must be 0.7–0.8 m so the blade really reaches a defender 2.5 m away.
+- Phase C is reordered: the new strings come before weapon swings, so swing paths are authored once, for the final moves.
+- The 4.7.2 export templates are installed on the owner's PC, so `npm run build` can export locally; CI exports too.
 
 ## Not yet specified
 
@@ -41,11 +48,11 @@ The Godot build plays everything the web demo plays, on the new direction in the
 
 ### Phase A: foundation and a faithful port
 
-- [ ] **1. Godot project and tooling.**
+- [x] **1. Godot project and tooling.**
   - Delivers:
     - a Godot 4.7 project in `game/` (Forward+, 60 physics ticks, 1600×900 window, the autoload and folder layout from the spec);
     - GUT vendored in `game/addons`;
-    - `scripts/godot.mjs`, which finds Godot through `GODOT` or known paths;
+    - `scripts/godot.mjs`, which finds Godot through `GODOT`, PATH or an untracked `.godot-path` file, and fails the run when a test script doesn't parse;
     - npm scripts `test`, `typecheck`, `soak`, `build`, `dev` and `shots`, which run the old Vitest tests and the Godot tests side by side until the web code is deleted;
     - `.gitignore` and `.gitattributes` updates (the `.godot/` cache, exports, LF line endings);
     - a CI job that installs Godot 4.7.2 and runs the Godot tests.
@@ -77,24 +84,18 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - keyboard, mouse and controller input for player 1;
     - a flat stand-in arena at the rules' radius;
     - a minimal HUD;
-    - Duel against the computer from launch to results.
-  - Blocked by: 5.
+    - Duel against the computer from launch to results;
+    - a match config carrying each side's fighter id, palette, weapon, abilities and computer difficulty, plus the arena id, from day one;
+    - arena data with spawn points and gate anchors.
+  - Blocked by: 5 (input devices from task 21 are already merged).
   - Check: a scripted run plays a full match headless; screenshots of the duel from the gameplay camera.
 
 ### Phase C: the rule changes
 
-- [ ] **7. Weapon swings drive hits.**
-  - Delivers:
-    - the swing shapes library;
-    - arc interpolation;
-    - a swing on every move (current moves only);
-    - blade-sweep versus hurt-capsule hit tests in the rules;
-    - reach and arc derived from the swings;
-    - a debug view drawing blade sweeps and capsules in the stand-in scene.
+Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 7 (swing paths for the final moves), then 12.
+
+- [ ] **8. Fluid combat rules.** Arena radius 15 m, with the hard-coded values tied to it; blocking walk 60%; momentum carry; eased lunges; the colossal recovery slide; heavy dodge-cancel; light hitstun 14. The golden replays retire here: they record the demo's rules.
   - Blocked by: 6.
-  - Check: the new swing-hit tests from the spec pass; the old tests pass or are updated with a reason in the commit; the soak run is clean; debug screenshots show sweeps matching hits.
-- [ ] **8. Fluid combat rules.** Arena radius 15 m, with the hard-coded values tied to it; blocking walk 60%; momentum carry; eased lunges; the colossal recovery slide; heavy dodge-cancel; light hitstun 14.
-  - Blocked by: 7.
   - Check: the new tests from the spec pass; the soak run is clean.
 - [ ] **9. Katana strings.** The four-light string, the Iai stance (walk while sheathed, direction at release, auto-release, dodge cancels it) and the follow-ups.
   - Blocked by: 8.
@@ -105,8 +106,27 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - [ ] **11. Daggers strings.** The alternating string, dodge-cancel from the first recovery frame, Twin Fang into Spinning Backhand, the removed loop, and the Passing Cut.
   - Blocked by: 8.
   - Check: the Daggers tests from the spec pass.
-- [ ] **12. Computer opponent and balance pass.** The brain and dummy learn the Iai, the new unblockables and the dodge cancels; tuning follows soak data; the spec's numbers are updated.
+- [ ] **7. Weapon swings drive hits.**
+  - Delivers:
+    - the swing data and arc interpolation, starting from the spike's swing code:
+      - the hand drives the blade, with limited wrist bend and deviation;
+      - torso and pelvis coil are keyed;
+      - each move has an entry from guard, an entry from the previous move, and an exit back to guard;
+    - a swing on every final move;
+    - a hurt capsule per fighter in the rules data;
+    - the hit test: a blade sweep (the quad between consecutive ticks) against the hurt capsule, landing on the first touch inside the active frames;
+    - hit, block and parry events carry the blade contact point;
+    - reach and arc derived from the swings, with lunges tuned so the last 15–20 cm of blade enters a defender 2.5 m away;
+    - a debug view drawing blade sweeps and capsules in the stand-in scene.
   - Blocked by: 9, 10, 11.
+  - Check:
+    - the new swing-hit tests from the spec pass;
+    - a test fails any swing frame past the wrist limits, or with the blade within 5 cm of the fighter's own body;
+    - the old tests pass or are updated, with a reason in the commit;
+    - the soak run is clean;
+    - debug screenshots show sweeps matching hits.
+- [ ] **12. Computer opponent and balance pass.** The brain and dummy learn the Iai, the new unblockables and the dodge cancels; tuning follows soak data; the spec's numbers are updated.
+  - Blocked by: 7.
   - Check: soak targets from the spec (rounds 35–60 s, 0.3–0.6 disarms per round, each weapon 45–55%); the counterlab shows every counter reachable.
 
 ### Phase D: fighters and animation
@@ -121,12 +141,34 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - a credits file.
   - Blocked by: 1.
   - Check: screenshots of both fighters in rest pose, with each weapon; no missing textures; import is clean in headless.
-- [ ] **14. Animation spike.** One fighter with the Katana:
-  - locomotion (idle, walk, jog, sprint by speed; hip-turn strafing; backpedal; lean);
-  - the guard pose with hand IK on the grip;
-  - the four-light string played from its swings, with spine and hip follow-through.
+- [ ] **14. Fighter animation core.** Production version of the spike (its code is the starting point), on one fighter with the Katana.
+  - Delivers:
+    - the modifier stack (body layer, arm and leg IK, hands and fingers);
+    - locomotion by speed with hip-turn strafing and backpedal for unguarded movement;
+    - a procedural shuffle step for guard walking (lead foot first, feet never cross, stance width kept, arms on a slight spring);
+    - a grounded stance (knees over toes, front foot to the opponent, rear foot turned out 30–45°, visible weight shift);
+    - a lean that braces when braking;
+    - the four-light string played from its swings:
+      - a 40–60° coil;
+      - a 2–4 frame cocked hold;
+      - firing hips → chest → arms → blade;
+      - elbows 150–160° at contact;
+      - follow-through overshoot and settle;
+      - strong hand-off poses between moves;
+    - blade lag on a spring;
+    - a parry-bounce prototype on the same path system.
   - Blocked by: 6, 7, 13.
-  - Check: a pose-gallery screenshot sheet reviewed for hands on the grip, believable arcs and no clipping. If it doesn't hold up, adjust the approach here before task 15.
+  - Check:
+    - from the gameplay camera, a contact sheet per move where slash, overhead, thrust and sweep are told apart in the first third of the wind-up;
+    - the wrist-limit and self-collision test passes;
+    - an art-direction review of the sheets passes before task 15.
+- [ ] **14b. Swing editor.** An editor plugin that scrubs a move frame by frame on a fighter.
+  - Delivers:
+    - drag path keys, poles and body keys with live preview;
+    - edits saved back to the move data;
+    - the wrist and self-collision checks shown live.
+  - Blocked by: 14.
+  - Check: re-key one Katana move in the editor and the saved data reloads identically; documented in the README.
 - [ ] **15. Full fighter animation.**
   - Delivers:
     - every move of the three weapons and bare hands;
@@ -143,8 +185,9 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - stomp and leap counters;
     - KO, death and victory;
     - the three ultimates' presentation.
-  - Blocked by: 9, 10, 11, 14.
-  - Check: the pose-gallery sheet for every move on both fighters; a match screenshot series.
+  - Defender reactions (flinch, block impact, parry recoil, stagger) are their own system: procedural recoil from the hit direction blended with the pack's flinch clips. Weapon paths don't animate the defender. Ultimates, disarms and the dropped weapon may use keyed motion or physics on top of the paths.
+  - Blocked by: 9, 10, 11, 14, 14b.
+  - Check: the gameplay-camera contact sheet for every move on both fighters, with the wrist and self-collision tests passing for all; a match screenshot series; an art-direction review.
 
 ### Phase E: look, arena and effects
 
@@ -158,7 +201,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - the sky, moon and clouds;
     - the background mountains, pagodas, waterfalls and water;
     - drifting embers and ash.
-  - Blocked by: 8, 16.
+  - Blocked by: 8, 16. (Built early on its own branch together with task 16; its final check runs once task 8 sets the radius in the rules.)
   - Check: screenshots from the gameplay, Watch and menu cameras; frame time within budget.
 - [ ] **18. Combat effects and game feel.**
   - Delivers:
@@ -176,17 +219,20 @@ The Godot build plays everything the web demo plays, on the new direction in the
 ### Phase F: sound and music
 
 - [ ] **19. Sound effects.** The Sonniss extraction and processing script with its sources list; generated gap-fill sounds; the event-to-sound table with variations; buses; 3D impacts; footsteps; arena ambience.
+  - Progress: the assets, the sound bank and the bus layout were built early on their own branch and verified by measurement; what remains is playback wired to the match host (players, 3D placement, ducking) and a listening pass by the owner.
   - Blocked by: 6.
   - Check: every event in the demo's audio table has a sound; a headless run logs no missing sound files; the committed audio is under 40 MB.
 - [ ] **20. Placeholder music.** Generated menu (110 BPM), battle (140 BPM) and match-point (160 BPM) tracks; a music director that switches at the round call; volume settings.
   - Blocked by: 19.
+  - Progress: the tracks and the music director are built and measured (110.00 / 139.99 / 160.01 BPM); what remains is the player, with 10–20 ms fades because the loops start mid-signal.
   - Check: tempos measured from the files; switching happens when a fighter reaches two wins.
 
 ### Phase G: screens and modes
 
-- [ ] **21. Input devices and controls.** Per-player devices (keyboard and mouse, arrow-key layout, controllers 1 and 2), profiles with rebinding, PlayStation and Xbox names, the fight-stick preset, and saving.
+- [x] **21. Input devices and controls.** Per-player devices (keyboard and mouse, arrow-key layout, controllers 1 and 2), profiles with rebinding, PlayStation and Xbox names, the fight-stick preset, and saving.
   - Blocked by: 6.
   - Check: tests for the profile mapping and saving; rebinding every action works on keyboard and controller.
+  - Done early on its own branch: 118 input tests, reviewed for parity with the demo (11 differences fixed). The Controls screen that drives rebinding is part of task 22.
 - [ ] **22. Menus.**
   - Delivers:
     - the title with a live background duel;
@@ -197,7 +243,14 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - pause;
     - results;
     - the ink-wash UI theme and bundled fonts;
+    - the Controls screen with rebinding capture, and the Versus device and profile pickers;
     - the input host from task 21: one `InputDevices` and its `InputFeed` kept for the whole game, a pause when `focus_lost` fires during a match, `set_profile` and `rearm_pause` on resume (the pause menu's Controls screen can pick another profile), and `unbind_seats` on quit to menu.
+  - The fighter select uses the design doc's final layout, without the gate cinematic or intros:
+    - a fighter grid;
+    - the hovered fighter's model on the right, in a 3D preview;
+    - the loadout (weapon and two block abilities) on the left;
+    - an arena slot with one entry plus Random;
+    - lock in.
   - Blocked by: 21.
   - Check: screenshots of every screen; the whole flow is navigable with keyboard only and with controller only.
 - [ ] **23. Training, Watch and Versus.** The training panel with dummy behaviours, refill and parry timing feedback; Watch with the side-on camera; Versus split screen with per-player cameras and prompts.

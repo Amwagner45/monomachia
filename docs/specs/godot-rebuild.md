@@ -139,7 +139,7 @@ A Godot 4.7 PC game (Windows) that plays the same duel with the same rules and c
 | Fighters | Two of the eight to start: the Rogue (female Ranger outfit, dark colours, hood) and the Hunter (male Ranger outfit, brown and ochre, hood). Any fighter can wield any weapon | They are the two fighters the free packs can dress convincingly | The other six wait for their own bodies and outfits |
 | Weapon models | Quaternius Medieval Weapons for the Greatsword and the Daggers, and a Katana built in code (curved single edge, round guard) | The pack has no katana | Flat-colour weapons next to painted characters, softened by the shared toon shader |
 | Look | Toon lighting in three bands, ink outlines, and an ink-wash finish (paper grain, soft edge darkening, muted palette with red accents) | The art direction in the design doc | Shader work up front |
-| Camera | Over the right shoulder, about 4.6 m back, 2.2 m up, 0.9 m to the side, 60° field of view, always locked on; side-on for Watch | "Like For Honor, slightly more zoomed out" | No free camera yet |
+| Camera | Over the right shoulder, about 4.6 m back, 1.3–1.4 m to the side (0.9 m hid the opponent in the spike), low enough that blades read against the sky, 60° field of view, always locked on; side-on for Watch | "Like For Honor, slightly more zoomed out" | No free camera yet |
 | Arena | The Moonlit Shrine rebuilt as a floating walled platform, radius 15 m (was 11.5), over a landscape of mountains, pagodas, waterfalls and water | "Larger", "suspended over a void", oriental backgrounds; walls keep the weapon-drop and knockback rules unchanged | Rounds may run longer; the soak run checks it |
 | Fluid combat | Attacks keep half of your running speed instead of a third; lunges ease in and out; colossal swings end with a short slide; heavies can be dodge-cancelled late in recovery; light hitstun drops from 18 to 14 frames so later string hits can be blocked or parried | These are the rule causes of the stiffness; the last one replaces a combo breaker | Balance shifts; the soak run and tests re-tune it |
 | Blocking walk speed | 60% of running speed (was 45%) | "Walk a bit faster while blocking" | Blocking slightly stronger |
@@ -174,9 +174,26 @@ The goldens guard the faithful port only. Once the rules change on purpose, they
 
 Chains stay as they are: each move names at most one light follow-up and one heavy follow-up, and pressing nothing ends the string.
 
-**Weapon swings.** A swing is a short list of key poses for the weapon in the fighter's own space (grip position, blade direction and edge direction at a given frame of the move), covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade direction turns smoothly. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks. Each weapon supplies its grip-to-tip length and blade thickness.
+**Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
+- the grip position;
+- the hand frame, from which the blade direction follows, within the wrist limits;
+- the edge direction;
+- the torso and pelvis coil.
 
-- The rules layer samples the blade's segment at each active frame and at points in between, and tests the swept blade against the defender's body: an upright capsule 0.35 m in radius from the feet to 1.75 m, raised with the fighter when they jump. The first touch lands the hit, in the same outcome order as the demo (counters, jumped, flash, evade, parry, block, hit).
+Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own.
+
+The early spike (see the plan) proved this works on the Quaternius fighters and set the rules every swing must meet:
+- wrist bend within about ±60° and deviation within ±25°;
+- the blade never within 5 cm of the fighter's own body;
+- a 2–4 frame cocked hold before the strike;
+- elbows at 150–160° at contact, never locked;
+- each move's end pose is a natural start for its follow-up;
+- slash, overhead, thrust and sweep are told apart from the gameplay camera in the first third of the wind-up.
+
+Swings are stored as sampled data, so a move can later take its path from an authored clip instead of hand keys, with the rules unchanged. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks. Each weapon supplies its grip-to-tip length and blade thickness.
+
+- The rules layer takes the blade segment at consecutive ticks and tests the swept quad between them against the defender's hurt capsule. The capsule is part of each fighter's rules data: 0.35 m in radius from the feet to 1.75 m for the first two fighters, raised with the fighter when they jump. The hit lands on the first tick the sweep touches the capsule inside the active frames, in the same outcome order as the demo (counters, jumped, flash, evade, parry, block, hit). Hit, block and parry events carry the contact point, where the sparks and the parry rebound start.
+- Reach comes from arm extension and lunge (0.7–0.8 m on lights, with the front foot landing on the contact frame), so that the last 15–20 cm of the blade enters a defender standing 2.5 m away, the demo's duelling distance.
 - Unblockables use a thicker blade for their longer reach.
 - The counters (stomp, leap, evade), which the demo made deliberately generous, keep their generous cone checks, now measured from each move's path.
 - Each move's reach and arc, which the computer opponent and the move list use, are computed from its path at load.
@@ -194,10 +211,23 @@ Chains stay as they are: each move names at most one light follow-up and one hea
 **Presentation of fighters.**
 
 - Each fighter is a scene built from the Quaternius base body (head only, cut from the full body at import), the outfit parts, hair and palette, all on the shared 65-bone skeleton. Animations are retargeted through Godot's humanoid bone map.
-- An animation tree blends idle, walk, jog and sprint by speed. For strafing and backpedalling, the hips and legs turn toward the direction of travel while the chest keeps facing the opponent, and the cycle runs backwards when retreating.
-- A lean follows acceleration.
+- An animation tree blends idle, walk, jog and sprint by speed. Unguarded strafing and backpedalling turn the hips and legs toward the direction of travel while the chest keeps facing the opponent, and the cycle runs backwards when retreating.
+- Guard walking, where duels spend most of their time, is a procedural shuffle step instead: the lead foot moves first, the trailing foot closes, the feet never cross and the stance width holds. The stance is grounded, with knees over toes, the front foot toward the opponent and the rear foot turned out.
+- A lean follows acceleration, and braces back when braking.
 - Attacks, blocks, parries and guard stances are procedural upper-body layers: the weapon follows its swing, both arms reach for the grip with inverse kinematics (the left hand only on two-handed weapons), and the spine and hips turn toward the swing, with the hips leading so the motion ripples from hips to hands. The pelvis dips on impact.
-- Reactions: flinch clips plus a recoil away from the hit direction; knockdown and death clips; dodge and backstep poses with a ghost trail; a weapon-bounce animation on the parried attacker. Dropped weapons are separate meshes.
+- Weight comes from the presentation:
+  - blade lag on a spring;
+  - follow-through overshoot and settle;
+  - a pelvis dip and camera kick on contact;
+  - hit-stop holding both fighters still.
+- Reactions are their own system, because weapon paths don't animate the defender:
+  - flinch clips plus a recoil away from the hit direction;
+  - block impacts;
+  - knockdown and death clips;
+  - dodge and backstep poses with a ghost trail;
+  - the parried attacker's weapon bouncing back along its path.
+- Dropped weapons are separate meshes.
+- Swings are keyed in a small editor plugin that scrubs a move frame by frame on a fighter, so they can be tuned by eye rather than by editing numbers.
 
 **Look.** One toon material for everything, with a three-band light ramp and a rim light, and inverted-hull ink outlines scaled by camera distance. A full-screen ink-wash pass adds paper grain, edge darkening, colour grading and vignette. The graphics presets turn outline width, shadow size, particle counts and the post pass up or down. The sky, clouds, mountains, pagodas, waterfalls and water are built in code and shaders from simple shapes, so they can be swapped for bought art later.
 

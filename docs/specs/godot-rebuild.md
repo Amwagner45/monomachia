@@ -203,10 +203,11 @@ Chains stay as they are: each move names at most one light follow-up and one hea
 
 **Sound.**
 
-- An event-to-sound table picks randomized variations and sends them to buses (master, music, ambience, combat, UI); impacts play in 3D.
-- A Node script extracts the chosen Sonniss clips from the zips, trims, pitches, converts them to 16-bit mono at 44.1 kHz, and writes them into the project with a sources list.
-- A second script generates the missing sounds and the placeholder music.
-- Only the processed files are committed.
+- An event-to-sound table (`game/audio/sound_bank.gd`) picks randomized variations and sends them to buses (Master > Music, Ambience, SFX > Combat, Foley and an Arena reverb; UI); impacts play in 3D.
+- A Node script (`npm run audio:sonniss`) extracts the chosen Sonniss clips from the zips, trims, pitches and layers them, converts them to 16-bit mono at 44.1 kHz (the arena ambience is a stereo 60 s loop), and writes them into the project with a sources list (`game/assets/audio/SOURCES.md`).
+- A second script (`npm run audio:synth`) generates the missing sounds, and a third (`npm run audio:music`) the placeholder music as seamless stereo loops whose tempos are listed in `game/assets/audio/music/tracks.json`.
+- A music director (`game/audio/music_director.gd`) picks the menu, battle or match-point track; the switch to match point happens at the round call when either fighter has two wins.
+- Only the processed files are committed, under 40 MB in all.
 
 **Input.** Each player reads one device: keyboard and mouse, the arrow-key layout, controller 1 or controller 2. That player's profile maps the device to the demo's eight rule buttons plus pause. Profiles are saved in the user folder. Controller button names follow the detected controller.
 

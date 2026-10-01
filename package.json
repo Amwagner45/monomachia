@@ -18,7 +18,10 @@
     "godot": "node scripts/godot.mjs",
     "godot:dev": "node scripts/godot.mjs dev",
     "godot:run": "node scripts/godot.mjs run",
-    "shots": "node scripts/godot.mjs shots"
+    "shots": "node scripts/godot.mjs shots",
+    "audio:sonniss": "node scripts/audio/extract-sonniss.mjs",
+    "audio:synth": "node scripts/audio/synth.mjs",
+    "audio:music": "node scripts/audio/music.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

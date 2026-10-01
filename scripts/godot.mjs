@@ -145,6 +145,7 @@ async function main() {
       const r = await runGodot(godot, ['--headless', '--path', PROJECT, '--script', 'res://tools/soak.gd', '--', ...rest], {
         timeoutMs: 3600000,
       });
+      if (r.code === 0 && hasScriptErrors(r.output)) die('godot.mjs: soak reported script errors.');
       process.exit(r.code);
       return;
     }

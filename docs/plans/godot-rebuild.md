@@ -146,20 +146,20 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - 494 Godot tests: rules 138, input 118, audio 31, core 22, view 133, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
   - the typecheck loads 141 scripts cleanly;
-  - CI passed on the last push before 16.3 (0bfe40c), both the tests and the Windows export;
+  - CI passed on the push of the ink-line pick (291a947), both the tests and the Windows export; it was still running for 16.5 (494bfb2) when this was written;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
-  - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
+  - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 100.1 MB.
 - **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - None of it is reviewed. Tasks 16.1–17.9 salvage it piece by piece.
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, and the presets. Still to come: the stand-in arena in the look (16.6), the fighters and weapons in the look (16.7), and the shrine (17.x).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -781,7 +781,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - grid colours, CUSTOM0, multimeshes and `MeshKitSet` are each checked.
   - [x] **16.3 Toon material and ink outlines.** The toon shader (three soft bands, brushed terminator, cold shadow fill, rim, hard specular); inverted-hull outlines sized in pixels at 1080p; `ToonMaterials` for fighter, weapon and prop classes; `LookNoise`; and a trimmed `LookPalette`. A look bench shot shows toon capsules and props near and 14 m back, with outlines on and off. The outlines are widened for the owner's review.
     - Check: the material tests pass; the shader check passes; bench shots reviewed (bands, rim, outlines visible near and far).
-    - Owner: the outline width.
+    - Owner: the outline width (settled: 3, 2.4 and 2.25 px).
     - Blocked by: 16.2 · Stories: 46
     - Done: `shaders/toon.gdshader`, `toon_light.gdshaderinc`, `outline.gdshader`, `look_noise.gdshaderinc`, and `view/look/toon_materials.gd`, `look_noise.gd` and `look_palette.gd` come from the worktree, reviewed. The worktree's outline had three faults:
       - **The outlines never drew.** Godot's Vulkan projection flips Y, so the shader's pixel-to-metre factor came out negative and every hull was clamped to its 1.5 mm minimum. That is why the worktree's comparison showed its outline, stencil and no-outline columns alike. The shader now takes the size of the projection's y scale.
@@ -806,7 +806,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - `tools/shot_scenes/look_bench.tscn` shows outlines on and off, near and 14 m back; `--width-scale=` scales every outline, for comparing widths. Reviewed: three bands with a brushed terminator, cold fill, rim, the steel highlight, and outlines near and far. At 20 m the 0.06 m cap thins a fighter's line to about 3 px.
   - [x] **16.4 Ink-wash post pass and colour grade.** Distance mist, depth ink lines, dry-brush breaks, paper grain and a brushy vignette, in full and lite variants (with their stale comments fixed). `InkWashPass` picks its variant by quality. `InkGrade` bakes the colour grade into a LUT, and the night environment is added.
     - Check: the pass and grade tests pass; the shader check passes; bench shots with the pass off, lite, lines and full are reviewed.
-    - Owner: the ink-line strength.
+    - Owner: the ink-line strength (settled: 2 px at 0.85).
     - Blocked by: 16.3 · Stories: 46
     - Notes from 16.3:
       - The worktree's outlines looked "faint" because they never drew. Its ink lines were judged faint too, so measure them in a shot, as `outline_check` does, before tuning their strength.

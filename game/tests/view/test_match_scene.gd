@@ -1,0 +1,291 @@
+extends GutTest
+## The match scene (match_host.tscn) headless: the arena loaded by id, the
+## stand-in fighters following the rules, the camera following the player,
+## and the HUD's announcements timed on rules steps.
+
+var host: MatchHost
+var view: MatchView
+var hud: MatchHud
+
+
+func before_each() -> void:
+	host = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()
+	host.auto_run = false
+	host.use_services = false
+	host.input = InputDevices.new(FakeDeviceState.new())
+	host.profiles = ControlProfiles.new()
+	add_child_autofree(host)
+	view = host.get_node("View")
+	hud = host.get_node("Hud")
+
+
+func _cpu(mode: StringName = MatchConfig.DUEL, seed_value: int = 7) -> MatchConfig:
+	return MatchConfig.make(
+		mode,
+		MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
+		MatchSide.computer(&"hunter", &"daggers", 1, &"hard"),
+		seed_value,
+	)
+
+
+func test_the_scene_builds_the_stage_from_the_config() -> void:
+	host.start(_cpu())
+	assert_not_null(view.arena, "an arena")
+	assert_eq(view.arena_id, MatchConfig.DEFAULT_ARENA)
+	assert_eq(MatchConfig.DEFAULT_ARENA, ArenaScenes.MOONLIT_SHRINE, "the shrine by default, so it shows once it lands")
+	assert_eq(view.arena.scene_file_path, ArenaScenes.scene_path(MatchConfig.DEFAULT_ARENA))
+	assert_not_null(view.arena.get_node_or_null("Spawn0"), "spawn and gate markers")
+	assert_not_null(view.arena.get_node_or_null("Gate1"))
+	assert_eq(view.fighters.size(), 2)
+	assert_eq(view.fighters[0].weapon_id, &"katana")
+	assert_eq(view.fighters[1].weapon_id, &"daggers")
+	assert_ne(view.fighters[0].palette_color(), view.fighters[1].palette_color())
+	assert_true(view.camera.current)
+	assert_eq(view.camera.mode, CameraRig.Mode.FOLLOW)
+	assert_true(hud.visible)
+
+
+func test_an_arena_not_built_yet_falls_back_to_the_standin() -> void:
+	assert_eq(ArenaScenes.scene_path(&"no_such_arena"), ArenaScenes.SCENES[ArenaScenes.STANDIN])
+	if not ResourceLoader.exists(ArenaScenes.SCENES[ArenaScenes.MOONLIT_SHRINE]):
+		assert_eq(ArenaScenes.scene_path(ArenaScenes.MOONLIT_SHRINE), ArenaScenes.SCENES[ArenaScenes.STANDIN])
+	var cfg: MatchConfig = _cpu()
+	cfg.arena_id = ArenaScenes.MOONLIT_SHRINE
+	host.start(cfg)
+	assert_not_null(view.arena)
+	assert_eq(view.arena_id, ArenaScenes.MOONLIT_SHRINE)
+
+
+func test_watch_and_menu_pick_their_cameras() -> void:
+	host.start(_cpu(MatchConfig.WATCH))
+	assert_eq(view.camera.mode, CameraRig.Mode.WATCH)
+	host.start(MatchConfig.attract(), true)
+	assert_eq(view.camera.mode, CameraRig.Mode.MENU)
+	assert_false(hud.visible, "no HUD behind the menus")
+
+
+func test_fighters_and_camera_follow_the_rules() -> void:
+	host.start(_cpu())
+	host.step(900)
+	view.render(1.0 / 60.0)
+	for i: int in 2:
+		var f: Fighter = host.fighter(i)
+		assert_almost_eq(view.fighters[i].position, host.display_position(i), Vector3.ONE * 1e-5)
+		assert_almost_eq(view.fighters[i].rotation.y, wrapf(host.display_yaw(i), -PI, PI), 1e-4)
+		assert_not_null(view.fighters[i].last_pose)
+		assert_false(f.hp != f.hp, "no NaN")
+	view.snap_camera()
+	var p: Vector3 = host.display_position(0)
+	var o: Vector3 = host.display_position(1)
+	var d: Vector3 = Vector3(o.x - p.x, 0.0, o.z - p.z).normalized()
+	var rel: Vector3 = view.camera.rig_position - p
+	assert_lt(Vector3(rel.x, 0.0, rel.z).dot(d), 0.0, "the camera is behind the player")
+
+
+func test_events_shake_and_kick_the_camera() -> void:
+	host.start(_cpu())
+	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
+	host.sim_event.emit({"t": &"hit", "attacker": 0, "target": 1, "heavy": false, "sound": &"blade", "pos": at})
+	assert_eq(view.camera.shake, 0.0, "light hits don't shake")
+	host.sim_event.emit({"t": &"hit", "attacker": 0, "target": 1, "heavy": true, "sound": &"blade", "pos": at})
+	assert_almost_eq(view.camera.shake, view.heavy_hit_shake, 1e-6, "heavy hits do")
+	view.camera.shake = 0.0
+	host.sim_event.emit({"t": &"parry", "parrier": 1, "attacker": 0, "kind": &"parry", "pos": at})
+	assert_almost_eq(view.camera.shake, view.parry_shake, 1e-6)
+	assert_eq(view.camera.fov_kick, 3.0)
+	host.sim_event.emit({"t": &"disarm", "victim": 0, "by": 1, "reason": &"parried", "pos": at})
+	assert_eq(view.camera.fov_kick, 7.0)
+	host.sim_event.emit({"t": &"ko", "loser": 1, "winner": 0})
+	assert_gt(view.camera.ko_orbit, 0.0, "the KO swings the camera out")
+	host.sim_event.emit({"t": &"roundStart", "round": 2})
+	assert_eq(view.camera.ko_orbit, 0.0)
+
+
+func test_the_hud_times_announcements_on_rules_steps() -> void:
+	host.start(_cpu())
+	assert_eq(hud.announcement_text(), "Round 1", "the intro calls the round")
+	host.step(Match.FIGHT_CALL_FRAME - 1)
+	assert_eq(hud.announcement_text(), "Round 1")
+	host.step(1)
+	assert_eq(hud.announcement_text(), "Fight")
+	host.pause()
+	# wall time passing changes nothing while paused
+	for i: int in 30:
+		host.advance(0.1)
+		hud._process(0.1)
+	assert_eq(hud.announcement_text(), "Fight")
+	host.resume()
+	host.step(MatchHud.FIGHT_FRAMES)
+	assert_eq(hud.announcement_text(), "", "gone after its frames")
+
+
+func test_the_hud_calls_the_ko_and_the_round_winner() -> void:
+	host.start(_cpu())
+	var steps: int = 0
+	while host.sim_match.phase != &"roundEnd" and steps < 30000:
+		host.step(1)
+		steps += 1
+	assert_eq(host.sim_match.phase, &"roundEnd")
+	assert_true(hud.announcement_text() == "K.O." or hud.announcement_text() == "Double K.O.")
+	host.step(MatchHud.ROUND_RESULT_DELAY)
+	var winner: int = host.sim_match.round_winner
+	if winner >= 0:
+		assert_eq(hud.announcement_text(), "%s wins the round" % host.fighter(winner).name)
+	else:
+		assert_eq(hud.announcement_text(), "Draw")
+
+
+func test_the_hud_offers_the_ultimate_to_a_human_player() -> void:
+	var cfg: MatchConfig = MatchConfig.default_duel()
+	host.start(cfg)
+	host.step(Match.INTRO_FRAMES + 1)
+	host.fighter(0).hp = 20.0
+	hud._process(1.0 / 60.0)
+	assert_string_contains(hud.hint_text(), "Ultimate ready")
+	assert_string_contains(hud.hint_text(), "Left Click + Right Click")
+	host.fighter(0).hp = 100.0
+	hud._process(1.0 / 60.0)
+	assert_eq(hud.hint_text(), "")
+
+
+func test_a_whole_match_renders_without_errors() -> void:
+	host.start(_cpu(MatchConfig.DUEL, 19))
+	var steps: int = 0
+	while not host.is_finished() and steps < 60 * 60 * 12:
+		host.step(3)
+		steps += 3
+		view.render(1.0 / 20.0)
+		hud._process(1.0 / 20.0)
+	assert_true(host.is_finished())
+
+
+# ------------------------------------------------------------------ arena data
+
+## An arena root carrying an ArenaDef-like `def`, built at run time so this
+## lane needs no ArenaDef class.
+func _fake_arena(max_radius: float, far_plane: float) -> Node3D:
+	var def_script: GDScript = GDScript.new()
+	def_script.source_code = "extends Resource\nvar camera_max_radius: float = %s\nvar camera_far: float = %s\n" % [max_radius, far_plane]
+	def_script.reload()
+	var arena_script: GDScript = GDScript.new()
+	arena_script.source_code = "extends Node3D\nvar def: Resource\n"
+	arena_script.reload()
+	var node: Node3D = Node3D.new()
+	node.set_script(arena_script)
+	node.set("def", def_script.new())
+	return node
+
+
+func test_the_camera_takes_the_arenas_camera_data() -> void:
+	var standin: MatchConfig = _cpu()
+	standin.arena_id = ArenaScenes.STANDIN
+	host.start(standin)
+	assert_eq(view.camera.far, view.camera.far_clip, "the stand-in has no data: the defaults")
+	assert_almost_eq(view.camera.arena_limit(), SimConst.ARENA_RADIUS + view.camera.arena_margin, 1e-6)
+	view.set_arena(_fake_arena(19.5, 3000.0), &"fake")
+	assert_eq(view.arena_id, &"fake")
+	assert_eq(view.camera.far, 3000.0, "the arena's far clip, so its backdrop isn't cut off")
+	assert_eq(view.camera.arena_limit(), 19.5, "the arena's camera radius")
+	var far_out: Vector3 = view.camera.clamp_to_arena(Vector3(30.0, 2.0, 0.0))
+	assert_almost_eq(far_out.x, 19.5, 1e-5)
+	# back to an arena without data: the defaults again
+	host.start(standin)
+	assert_eq(view.camera.far, view.camera.far_clip)
+	assert_almost_eq(view.camera.arena_limit(), SimConst.ARENA_RADIUS + view.camera.arena_margin, 1e-6)
+
+
+# ------------------------------------------------------------------ the HUD outside the fight
+
+func test_the_ultimate_hint_shows_only_while_the_round_is_fought() -> void:
+	host.start(MatchConfig.default_duel())
+	host.fighter(0).hp = 20.0
+	hud._process(1.0 / 60.0)
+	assert_eq(hud.hint_text(), "", "not during the round's intro")
+	host.step(Match.INTRO_FRAMES + 1)
+	hud._process(1.0 / 60.0)
+	assert_string_contains(hud.hint_text(), "Ultimate ready")
+	# the player wins the round on 20 HP with the ultimate unused
+	host.fighter(1).hp = 0.0
+	host.step(2)
+	assert_eq(host.sim_match.phase, &"roundEnd")
+	hud._process(1.0 / 60.0)
+	assert_eq(hud.hint_text(), "", "gone once the round is over")
+
+
+func test_the_hud_clears_and_hides_when_the_results_open() -> void:
+	host.start(MatchConfig.default_duel())
+	host.step(Match.INTRO_FRAMES + 1)
+	hud.announce("Disarmed", "Retrieve your weapon", 300)
+	assert_true(hud.visible)
+	host.match_finished.emit(host.results())
+	assert_eq(hud.announcement_text(), "")
+	assert_eq(hud.hint_text(), "")
+	assert_false(hud.visible, "the results take the screen")
+	host.start(MatchConfig.default_duel())
+	assert_true(hud.visible, "back for the rematch")
+
+
+# ------------------------------------------------------------------ contact flashes and stray nodes
+
+func _flash_nodes() -> Array[Node]:
+	return view.find_children("Flash", "MeshInstance3D", false, false)
+
+
+func test_a_contact_flash_holds_through_its_hit_stop() -> void:
+	host.start(_cpu())
+	host.step(Match.INTRO_FRAMES + 5)
+	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
+	host.world.hitstop = 10
+	host.sim_event.emit({"t": &"parry", "parrier": 1, "attacker": 0, "kind": &"parry", "pos": at})
+	var flash: MeshInstance3D = _flash_nodes()[0]
+	var start_scale: Vector3 = flash.scale
+	host.step(10)
+	view.render(0.0)
+	assert_eq(host.world.hitstop, 0)
+	assert_almost_eq(flash.scale, start_scale, Vector3.ONE * 1e-6, "frozen with the rules")
+	host.step(5)
+	view.render(0.0)
+	assert_gt(flash.scale.x, start_scale.x, "and grows once the frame moves")
+
+
+func _child_names() -> Array[String]:
+	var out: Array[String] = []
+	for c: Node in view.get_children():
+		if not c.is_queued_for_deletion():
+			out.append(String(c.name))
+	out.sort()
+	return out
+
+
+func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
+	host.start(_cpu())
+	await get_tree().process_frame
+	var baseline: Array[String] = _child_names()
+	assert_eq(baseline.size(), 4, "the arena, the camera and two fighters")
+	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
+	for k: int in 3:
+		host.step(Match.INTRO_FRAMES + 20)
+		host.sim_event.emit({"t": &"parry", "parrier": 1, "attacker": 0, "kind": &"parry", "pos": at})
+		host.world.weapons.append(DroppedWeapon.new(0, &"katana", V3.make(1.0, 0.0, 1.0), V3.make(), Rng.new(k + 1)))
+		view.render(1.0 / 60.0)
+		assert_gt(view.get_child_count(), baseline.size(), "a flash and a dropped weapon")
+		if k == 1:
+			host.start(MatchConfig.attract(k + 5), true)
+		else:
+			host.start(_cpu(MatchConfig.DUEL, 7 + k))
+		await get_tree().process_frame
+		assert_eq(_child_names(), baseline, "match %d: nothing left behind" % k)
+
+
+func test_a_body_flash_fades_with_the_rules_not_the_wall_clock() -> void:
+	host.start(_cpu())
+	host.step(Match.INTRO_FRAMES + 5)
+	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
+	var now: int = host.world.frame
+	host.sim_event.emit({"t": &"hit", "attacker": 0, "target": 1, "heavy": true, "sound": &"blade", "pos": at})
+	var standin: FighterStandin = view.fighters[1]
+	assert_almost_eq(standin.flash_left(now), 0.55, 1e-6, "lit by the heavy hit")
+	view.render(1.0)
+	assert_almost_eq(standin.flash_left(now), 0.55, 1e-6, "a long wall-clock frame doesn't fade it")
+	assert_almost_eq(standin.flash_left(now + 2), 0.35, 1e-6, "it fades by the frame")
+	assert_eq(standin.flash_left(now + 10), 0.0, "gone ten frames on")

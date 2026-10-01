@@ -1,0 +1,6 @@
+[gd_scene format=3]
+
+[ext_resource type="Script" path="res://view/match/fighter_standin.gd" id="1"]
+
+[node name="FighterStandin" type="Node3D"]
+script = ExtResource("1")

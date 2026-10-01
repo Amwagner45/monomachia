@@ -23,6 +23,10 @@ _Avoid_: Build, kit
 **Signature weapon**:
 The weapon a fighter is offered by default at character select.
 
+**Palette**:
+One of a fighter's two colour schemes. In a mirror match the second fighter wears the other one, so the two can be told apart.
+_Avoid_: Skin, costume
+
 ## Attacking
 
 **Light attack** / **Heavy attack**:

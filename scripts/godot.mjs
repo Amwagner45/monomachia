@@ -9,7 +9,7 @@
 //   typecheck              load every script; fail on parse or type errors
 //   soak [matches]         computer-vs-computer matches with balance numbers
 //   script <res://path.gd> [-- user args]   run a SceneTree tool script headless
-//   shots <scene> [out.png] [frames]        render a scene in an off-screen window
+//   shots <scene> [out.png] [frames] [scene args...]   render a scene in an off-screen window
 //   run                    play the game
 //   dev                    open the editor
 //   build                  export the Windows build to build/windows/
@@ -167,7 +167,9 @@ async function main() {
     case 'shots': {
       // Renders a scene in a real (off-screen) window: Movie Maker and viewport
       // capture do not work with --headless.
-      const [scene = 'res://scenes/main.tscn', out = join(ROOT, 'shots', 'shot.png'), frames = '30'] = rest;
+      // Arguments after the frame count are passed on to the scene, which can
+      // read them with OS.get_cmdline_user_args() (for example --mode=sheet).
+      const [scene = 'res://scenes/main.tscn', out = join(ROOT, 'shots', 'shot.png'), frames = '30', ...sceneArgs] = rest;
       mkdirSync(dirname(resolve(out)), { recursive: true });
       await importProject(godot);
       const r = await runGodot(
@@ -175,6 +177,7 @@ async function main() {
         [
           '--path', PROJECT, '--position', '-3000,-3000', '--resolution', '1600x900', '--fixed-fps', '60',
           '--script', 'res://tools/shot.gd', '--', `--scene=${scene}`, `--out=${resolve(out)}`, `--frames=${frames}`,
+          ...sceneArgs,
         ],
         { timeoutMs: 300000 },
       );

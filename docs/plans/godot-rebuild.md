@@ -533,7 +533,19 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - a credits file.
   - Blocked by: 1.
   - Check: screenshots of both fighters in rest pose, with each weapon; no missing textures; import is clean in headless.
-  - Progress: built and refined after an art review on branch `fighters-and-weapons`. It's waiting to be merged; the branch records the details.
+  - Done (built on the `fighters-and-weapons` branch, merged in 13.1):
+    - The tools in `game/tools` rebuild everything from the downloaded packs: `import_assets.gd` (copy, scale, fix references, import settings), `build_bone_map.gd`, `cut_heads.gd`, `build_animation_library.gd`, `bake_palettes.gd` and `build_katana.gd`.
+    - A fighter is a `FighterModel` scene assembled from its `FighterLook` when instantiated. Its skeleton is the outfit's, which the outfit and hair were modelled on; the base body gives only the head. This avoids the male rest-pose mismatch.
+    - Palettes recolour the darker `T_Ranger_3` outfit texture by region (cloth, trim, leather, metal).
+    - Weapon space and markers are documented in `WeaponLook`.
+    - A `HandGrip` modifier closes the hands that hold a weapon.
+    - `fighters/preview/preview.tscn` shows everything; its `--mode=sheet` renders the review screenshots.
+    - Content tests are in `game/tests/content`.
+    - Refined after an art review:
+      - Palettes recolour garment by garment (hood, vest, shirt, sleeves, trousers, leather, boots, metal), from the outfit meshes' UVs. The bake adds wear: occlusion, dust and grime placed on the body, and worn leather edges. A shared matt roughness map kills the vinyl sheen. `test_palettes.gd` renders both palettes in software and checks that they differ from the front, the back and the side.
+      - The Rogue lost the pauldrons and gained a cloth face mask and a band of dark paint across the eyes. The Hunter swapped the hood for a tricorn and a neck scarf, and has a scar. `build_headwear.gd` makes the mask and the scarf from each head mesh, and the tricorn from scratch; `bake_skins.gd` roughs up the faces.
+      - `WeaponHold` gives each fighter a stand-in idle per weapon until task 14: the clip, a reverse grip and blade tilt, and set wrists. The Rogue holds her daggers reversed along her forearms; the Hunter idles in a raised guard (`Idle_Shield`) with the greatsword trailing behind him. A test checks that no blade runs into its fighter's torso or thighs.
+      - `build_pack_weapons.gd` rebuilds the Greatsword (1.72 m, blade 15% broader and thicker) and the Dagger from the pack, with a widened bright edge band on a dark blade body. The Katana's curve is one arc about 1.8 cm deep, its blade tapers from 3.2 to 2.2 cm, and its point is a defined kissaki.
   - [ ] **13.1 Merge the fighters-and-weapons branch; task 13 ticked.**
     - Delivers:
       - The branch (1f574a2, fcfb8d8) merged with a merge commit. The plan and spec conflicts are resolved by keeping this plan, and adding the branch's done notes and its Fighters, Weapon models and presentation bullets.

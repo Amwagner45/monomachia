@@ -9,6 +9,10 @@ extends Control
 ## choose, B for back). Godot's ui_* actions cover the arrows, Enter and the
 ## stick; this adds W/S and the controller's A and B buttons, which the
 ## default ui_accept and ui_cancel lack.
+##
+## The menus act in _unhandled_input(), after the GUI, and never take an
+## event in _input(): the InputFeed (GameServices) sees every event in
+## _input(), and a node that takes one there hides it from the feed.
 
 ## Back (Esc, Backspace, controller B) was pressed while the screen is open.
 signal back_requested
@@ -117,7 +121,7 @@ func _link_focus() -> void:
 		b.focus_neighbor_bottom = b.get_path_to(buttons[(i + 1) % buttons.size()])
 
 
-func _input(event: InputEvent) -> void:
+func _unhandled_input(event: InputEvent) -> void:
 	if not visible or not is_visible_in_tree():
 		return
 	if _is_back(event):

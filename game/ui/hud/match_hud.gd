@@ -3,7 +3,8 @@ extends CanvasLayer
 ## The minimal match HUD (task 24 brings the full one): both fighters' HP bars
 ## with posture under them, round pips and an ultimate badge, the round label,
 ## centre announcements (Round N, Fight, K.O., the round's winner,
-## Disarmed) and a hint line (ultimate ready, pick up your weapon).
+## Disarmed) and a hint line (ultimate ready, pick up your weapon), shown only
+## while the round is being fought. It hides when the results open.
 ##
 ## Announcements are timed on the host's rules steps, not the wall clock, so
 ## they slow down with slow motion and freeze with pause. Port of the
@@ -70,10 +71,12 @@ func bind(p_host: MatchHost) -> void:
 		host.match_started.disconnect(_on_match_started)
 		host.sim_event.disconnect(_on_sim_event)
 		host.stepped.disconnect(_on_stepped)
+		host.match_finished.disconnect(_on_match_finished)
 	host = p_host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
 	host.stepped.connect(_on_stepped)
+	host.match_finished.connect(_on_match_finished)
 	if host.is_started():
 		_on_match_started(host.config)
 
@@ -114,6 +117,16 @@ func _on_match_started(cfg: MatchConfig) -> void:
 			who += " (You)"
 		_plates[i].text = "%s  ·  %s" % [who, Moves.WEAPONS[s.weapon_id].name] if i == 0 else "%s  ·  %s" % [Moves.WEAPONS[s.weapon_id].name, who]
 	_refresh_announcement()
+
+
+## The results take the screen: the HUD clears its centre text and hint and
+## hides until the next match starts.
+func _on_match_finished(_results: MatchResults) -> void:
+	announcement = {}
+	_queued.clear()
+	_refresh_announcement()
+	_hint.text = ""
+	visible = false
 
 
 func _on_sim_event(e: Dictionary) -> void:
@@ -220,7 +233,7 @@ func _process(delta: float) -> void:
 
 func _hints() -> String:
 	var me: int = _me()
-	if me < 0:
+	if me < 0 or not host.sim_match.fighting():
 		return ""
 	var f: Fighter = host.fighter(me)
 	var lines: PackedStringArray = []

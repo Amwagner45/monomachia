@@ -6,10 +6,12 @@ extends Node3D
 ## the rules.
 ##
 ## Seams for the other lanes: the real arena replaces the stand-in through
-## ArenaScenes; the real fighters (tasks 13-15) replace FighterStandin, which
-## is placed and posed in update_fighters(); the combat effects (task 18)
-## join _on_sim_event(), where the camera's shake and field-of-view kicks are
-## already wired.
+## ArenaScenes, and when its root carries an ArenaDef as `def`, the camera
+## takes its camera_max_radius and camera_far (read by name, so this lane
+## doesn't need the class); the real fighters (tasks 13-15) replace
+## FighterStandin, which is placed and posed in update_fighters(); the combat
+## effects (task 18) join _on_sim_event(), where the camera's shake and
+## field-of-view kicks are already wired.
 
 ## The host to follow. The default is the parent (match_host.tscn).
 @export var host_path: NodePath = ^".."
@@ -34,9 +36,10 @@ var fighters: Array[FighterStandin] = []
 
 ## owner side -> Node3D: the dropped weapon stand-ins.
 var _dropped: Dictionary[int, Node3D] = {}
-## Contact flashes: { "node", "mat", "born" (a host step), "life" (steps),
-## "size", "color" }. A stand-in for task 18's sparks; timed on rules steps so
-## they hold through hit-stop and pause.
+## Contact flashes: { "node", "mat", "born" (a world frame), "life" (frames),
+## "size", "color" }. A stand-in for task 18's sparks; timed on the world's
+## frame, which stands still during hit-stop and pause, so they hold through
+## both.
 var _flashes: Array[Dictionary] = []
 var _time: float = 0.0
 var _side_palette: Array[int] = [0, 1]
@@ -131,14 +134,37 @@ func _on_match_started(cfg: MatchConfig) -> void:
 func _load_arena(id: StringName) -> void:
 	if arena != null and arena_id == id:
 		return
+	set_arena(ArenaScenes.instantiate(id), id)
+
+
+## Puts an arena in place of the current one and hands the camera the arena's
+## camera data: the root's `def` (an ArenaDef) camera_max_radius and
+## camera_far, or the camera's defaults when it has none (the stand-in).
+func set_arena(node: Node3D, id: StringName) -> void:
 	if arena != null:
 		remove_child(arena)
 		arena.queue_free()
-	arena = ArenaScenes.instantiate(id)
+	arena = node
 	arena.name = "Arena"
 	add_child(arena)
 	move_child(arena, 0)
 	arena_id = id
+	var data: Dictionary = arena_camera_data(arena)
+	camera.apply_arena(data["max_radius"], data["far"])
+
+
+## { "max_radius", "far" } from an arena root's `def`, 0 for what it lacks.
+static func arena_camera_data(node: Node) -> Dictionary:
+	var out: Dictionary = {"max_radius": 0.0, "far": 0.0}
+	var def: Variant = node.get("def")
+	if def is Object:
+		var r: Variant = (def as Object).get("camera_max_radius")
+		var f: Variant = (def as Object).get("camera_far")
+		if r is float or r is int:
+			out["max_radius"] = float(r)
+		if f is float or f is int:
+			out["far"] = float(f)
+	return out
 
 
 # ------------------------------------------------------------------ events
@@ -149,7 +175,7 @@ func _on_sim_event(e: Dictionary) -> void:
 			var heavy: bool = e["heavy"]
 			camera.add_shake(heavy_hit_shake if heavy else light_hit_shake)
 			var color: Color = Color(1.0, 0.94, 0.88) if e["sound"] == &"fist" else Color(1.0, 0.38, 0.25)
-			fighters[int(e["target"])].flash(color, 0.55 if heavy else 0.4)
+			fighters[int(e["target"])].flash(color, 0.55 if heavy else 0.4, host.world.frame)
 			_spawn_flash(e["pos"], Color(1.0, 0.55, 0.3), 0.7 if heavy else 0.45, 10)
 		&"block":
 			camera.add_shake(heavy_block_shake if e["heavy"] else light_block_shake)
@@ -170,7 +196,7 @@ func _on_sim_event(e: Dictionary) -> void:
 		&"disarm":
 			camera.add_shake(disarm_shake)
 			camera.kick_fov(7.0)
-			fighters[int(e["victim"])].flash(Color.WHITE, 0.6)
+			fighters[int(e["victim"])].flash(Color.WHITE, 0.6, host.world.frame)
 			_spawn_flash(e["pos"], Color.WHITE, 1.3, 20)
 		&"ultStart":
 			camera.kick_fov(8.0)
@@ -187,7 +213,7 @@ func _on_sim_event(e: Dictionary) -> void:
 			camera.add_shake(ko_shake)
 			var loser: int = int(e["loser"])
 			if loser >= 0:
-				fighters[loser].flash(Color.WHITE, 0.8)
+				fighters[loser].flash(Color.WHITE, 0.8, host.world.frame)
 			if host.config.mode != MatchConfig.VERSUS:
 				camera.start_ko_orbit()
 		&"roundStart":
@@ -199,7 +225,7 @@ func _on_sim_event(e: Dictionary) -> void:
 # ------------------------------------------------------------------ contact flashes
 
 ## A glow at a contact point (an event's "pos") that grows and fades over
-## life rules steps.
+## life world frames (frozen through hit-stop).
 func _spawn_flash(at: Dictionary, color: Color, size: float, life: int) -> void:
 	var mat: StandardMaterial3D = StandardMaterial3D.new()
 	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -218,14 +244,14 @@ func _spawn_flash(at: Dictionary, color: Color, size: float, life: int) -> void:
 	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	mi.position = Vector3(float(at["x"]), float(at["y"]), float(at["z"]))
 	add_child(mi)
-	_flashes.append({"node": mi, "mat": mat, "born": host.step_count, "life": life, "size": size, "color": color})
+	_flashes.append({"node": mi, "mat": mat, "born": host.world.frame, "life": life, "size": size, "color": color})
 	_update_flashes()
 
 
 func _update_flashes() -> void:
 	var keep: Array[Dictionary] = []
 	for fl: Dictionary in _flashes:
-		var t: float = float(host.step_count - int(fl["born"])) / float(fl["life"])
+		var t: float = float(host.world.frame - int(fl["born"])) / float(fl["life"])
 		var node: MeshInstance3D = fl["node"]
 		if t >= 1.0:
 			node.queue_free()
@@ -283,8 +309,11 @@ func _make_dropped(side_id: int, weapon_id: StringName) -> Node3D:
 	var length: float = StickPose.LENGTH.get(weapon_id, 0.9)
 	var blade_mat: StandardMaterial3D = StandardMaterial3D.new()
 	blade_mat.albedo_color = FighterStandin.BLADE_COLOR
-	blade_mat.metallic = 0.5
-	blade_mat.roughness = 0.35
+	blade_mat.metallic = 0.15
+	blade_mat.roughness = 0.3
+	blade_mat.emission_enabled = true
+	blade_mat.emission = FighterStandin.BLADE_COLOR
+	blade_mat.emission_energy_multiplier = FighterStandin.BLADE_SHEEN
 	var count: int = 2 if weapon_id == &"daggers" else 1
 	for k: int in count:
 		var blade: MeshInstance3D = MeshInstance3D.new()

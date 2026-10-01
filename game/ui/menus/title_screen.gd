@@ -2,6 +2,8 @@ class_name TitleScreen
 extends Control
 ## The title over the live duel behind it: the name, a line, and "press any
 ## key or button". Any key, mouse button or controller button goes on.
+## Keys and buttons are taken in _unhandled_input() (never in _input(), so the
+## InputFeed sees them too); a click lands on the screen itself.
 
 signal proceed
 
@@ -45,16 +47,26 @@ func _process(delta: float) -> void:
 	_prompt.modulate.a = 0.55 + 0.45 * cos(_time * 3.0)
 
 
-func _input(event: InputEvent) -> void:
-	if not visible:
+func _unhandled_input(event: InputEvent) -> void:
+	if not visible or not is_visible_in_tree():
 		return
-	var go: bool = false
-	if event is InputEventKey:
-		go = (event as InputEventKey).pressed and not (event as InputEventKey).echo
-	elif event is InputEventMouseButton:
-		go = (event as InputEventMouseButton).pressed
-	elif event is InputEventJoypadButton:
-		go = (event as InputEventJoypadButton).pressed
-	if go:
+	if _goes_on(event):
 		get_viewport().set_input_as_handled()
 		proceed.emit()
+
+
+## A click on the title (it stops the mouse, so clicks end here).
+func _gui_input(event: InputEvent) -> void:
+	if visible and event is InputEventMouseButton and _goes_on(event):
+		accept_event()
+		proceed.emit()
+
+
+static func _goes_on(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return (event as InputEventKey).pressed and not (event as InputEventKey).echo
+	if event is InputEventMouseButton:
+		return (event as InputEventMouseButton).pressed
+	if event is InputEventJoypadButton:
+		return (event as InputEventJoypadButton).pressed
+	return false

@@ -5,25 +5,31 @@ extends Camera3D
 ##
 ## - FOLLOW: over the player's right shoulder on the line from the player to
 ##   the opponent, about 4.6 m back (a little more as they separate), 1.35 m
-##   to the right (swinging further out when they stand closer than 2.5 m, so
-##   the player doesn't hide the opponent), at about head height and pitched
-##   nearly level, so raised weapons read against the sky. It looks past the
-##   player's shoulder at the opponent's chest.
+##   to the right at 3.5 m apart and further, swinging further out by 0.8 m
+##   for each metre closer (about 3.5 m at the closest), so the player doesn't
+##   hide the opponent; at about head height and pitched nearly level, so
+##   raised weapons read against the sky. It looks past the player's shoulder
+##   at the opponent's chest.
 ## - WATCH: side-on to the line between the fighters, swaying slowly (Watch
 ##   mode, and the follow camera's swing to the side after a KO).
 ## - MENU: a slow orbit of the arena behind the menus.
 ##
 ## Direction, position and look point are smoothed (exponential damping), the
-## position is clamped inside the arena (ARENA_RADIUS + arena_margin), and
-## shake and field-of-view kicks are hooks for the view (on block, parry,
-## counter, disarm, heavy hits and KO; see MatchView). Every number is an
-## exported tunable.
+## position is clamped inside the arena (the arena's camera_max_radius from
+## apply_arena(), else ARENA_RADIUS + arena_margin), and shake and
+## field-of-view kicks are hooks for the view (on block, parry, counter,
+## disarm, heavy hits and KO; see MatchView). The shake's random offsets come
+## from a fixed seed, so a screenshot with shake is the same on every run.
+## Every number is an exported tunable.
 ##
 ## The math is in follow_target(), watch_target() and menu_target(), which
 ## take positions and return {"pos", "look"}, so tests can check them without
 ## a scene.
 
 enum Mode { FOLLOW, WATCH, MENU }
+
+## The seed of the shake's random offsets.
+const SHAKE_SEED: int = 0x5EED
 
 @export var mode: Mode = Mode.FOLLOW
 
@@ -39,9 +45,11 @@ enum Mode { FOLLOW, WATCH, MENU }
 ## (the demo used 0.5, which hid the opponent behind the player up close).
 @export var follow_close_push: float = 0.0
 ## Extra offset to the right per metre the fighters are closer than
-## follow_close_from, so the opponent stays in view past the shoulder.
+## follow_close_from, so the opponent stays in view past the shoulder: at
+## 0.8 from 3.5 m a 0.35 m half-width (a real fighter's shoulders) on both
+## stays clear down to 1.5 m apart.
 @export var follow_close_side: float = 0.8
-@export var follow_close_from: float = 2.5
+@export var follow_close_from: float = 3.5
 ## Offset to the player's right (m); positive is right.
 @export var follow_side: float = 1.35
 ## Camera height above the floor (m).
@@ -90,11 +98,12 @@ enum Mode { FOLLOW, WATCH, MENU }
 @export_group("Lens")
 @export var base_fov: float = 60.0
 @export var near_clip: float = 0.1
+## The far clip without arena data (an arena's camera_far replaces it).
 @export var far_clip: float = 900.0
 
 @export_group("Arena")
-## The camera stays within ARENA_RADIUS + arena_margin of the centre (15.5 m
-## for the demo's 11.5 m arena), except in MENU.
+## Without arena data the camera stays within ARENA_RADIUS + arena_margin of
+## the centre (15.5 m for the demo's 11.5 m arena), except in MENU.
 @export var arena_margin: float = 4.0
 
 @export_group("Shake and kicks")
@@ -120,20 +129,38 @@ var dir: Vector3 = Vector3(0.0, 0.0, 1.0)
 ## The smoothed position and look point, before shake.
 var rig_position: Vector3 = Vector3(0.0, 3.0, -9.0)
 var rig_look: Vector3 = Vector3(0.0, 1.2, 0.0)
+## The arena's camera data (ArenaDef.camera_max_radius and camera_far), set by
+## apply_arena(); 0 when the arena has none.
+var arena_max_radius: float = 0.0
+var arena_far: float = 0.0
 var _time: float = 0.0
+## The shake's offsets: seeded, so the same shake looks the same every run.
 var _rng: RandomNumberGenerator = RandomNumberGenerator.new()
 
 
 func _init() -> void:
-	fov = base_fov
-	near = near_clip
-	far = far_clip
+	_rng.seed = SHAKE_SEED
+	_apply_lens()
 
 
 func _ready() -> void:
+	_apply_lens()
+
+
+func _apply_lens() -> void:
 	fov = base_fov
 	near = near_clip
-	far = far_clip
+	far = arena_far if arena_far > 0.0 else far_clip
+
+
+## Takes an arena's camera data: how far from the centre the camera may go
+## (ArenaDef.camera_max_radius) and the far clip its backdrop needs
+## (ArenaDef.camera_far). 0 for either restores the default
+## (ARENA_RADIUS + arena_margin, far_clip).
+func apply_arena(max_radius: float, far_plane: float) -> void:
+	arena_max_radius = maxf(0.0, max_radius)
+	arena_far = maxf(0.0, far_plane)
+	far = arena_far if arena_far > 0.0 else far_clip
 
 
 # ------------------------------------------------------------------ hooks
@@ -273,9 +300,15 @@ func menu_target(time: float) -> Dictionary:
 	return {"pos": pos, "look": menu_look}
 
 
-## The arena clamp: no further than ARENA_RADIUS + arena_margin from the centre.
+## How far from the arena's centre the camera may go: the arena's
+## camera_max_radius, else ARENA_RADIUS + arena_margin.
+func arena_limit() -> float:
+	return arena_max_radius if arena_max_radius > 0.0 else SimConst.ARENA_RADIUS + arena_margin
+
+
+## The arena clamp: no further than arena_limit() from the centre.
 func clamp_to_arena(p: Vector3) -> Vector3:
-	var limit: float = SimConst.ARENA_RADIUS + arena_margin
+	var limit: float = arena_limit()
 	var r: float = Vector2(p.x, p.z).length()
 	if r > limit:
 		p.x *= limit / r

@@ -1,8 +1,10 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
 ## title -> main menu (Duel, Watch, Quit) -> a match -> results (Rematch, Main
-## menu), with a pause menu (Resume, Main menu) during play. A computer duel
-## plays behind the title and the menus, seen from the orbiting menu camera.
+## menu), with a pause menu (Resume, Main menu) during play, which Back, Start
+## or the pause binding also closes. A computer duel plays behind the title
+## and the menus, seen from the orbiting menu camera; its restarts and the
+## matches draw their seeds from one sequence (_next_seed).
 ##
 ## Duel is the Rogue with the katana (you) against the Hunter with the
 ## greatsword (Normal); Watch is katana against daggers, both Normal.
@@ -54,6 +56,8 @@ func _ready() -> void:
 
 	host.match_finished.connect(_on_match_finished)
 	host.pause_changed.connect(_on_pause_changed)
+	# the attract restarts draw from the same seed sequence as the matches
+	host.seed_source = _next_seed
 	start_attract()
 	show_title()
 
@@ -96,11 +100,16 @@ func start_watch() -> void:
 	start_match(MatchConfig.default_watch(_next_seed()))
 
 
-func start_match(cfg: MatchConfig) -> void:
+## Plays a match from a config. A config the host refuses (it reports why)
+## goes back to the main menu instead. Returns whether the match started.
+func start_match(cfg: MatchConfig) -> bool:
+	if not host.start(cfg):
+		quit_to_menu()
+		return false
 	_close_all()
 	last_config = cfg
 	screen = Screen.PLAYING
-	host.start(cfg)
+	return true
 
 
 func rematch() -> void:
@@ -109,9 +118,9 @@ func rematch() -> void:
 	start_match(last_config.with_seed(_next_seed()))
 
 
+## Back to the match from the pause menu (Resume, Back). The host's
+## pause_changed closes the menu, as it does when Start resumes.
 func resume() -> void:
-	pause_menu.close()
-	screen = Screen.PLAYING
 	host.resume()
 
 
@@ -130,6 +139,9 @@ func _on_pause_changed(paused: bool) -> void:
 		_close_all()
 		screen = Screen.PAUSED
 		pause_menu.open()
+	elif screen == Screen.PAUSED:
+		pause_menu.close()
+		screen = Screen.PLAYING
 
 
 func _on_match_finished(results: MatchResults) -> void:

@@ -26,12 +26,19 @@ const TONES: Dictionary[StringName, Color] = {
 	&"hunter": Color(0.42, 0.28, 0.15),
 }
 const BLADE_COLOR: Color = Color(0.8, 0.82, 0.88)
+## A blade's own light when nothing glows, so the thin stand-in blades read
+## against a dark arena and sky.
+const BLADE_SHEEN: float = 0.45
 const HILT_COLOR: Color = Color(0.12, 0.1, 0.1)
 const GLOW_COLORS: Dictionary[StringName, Color] = {
 	&"danger": Color(1.0, 0.16, 0.08),
 	&"charge": Color(1.0, 0.85, 0.55),
 	&"ult": Color(1.0, 0.75, 0.2),
 }
+
+## How much of a body flash fades per world frame (the demo faded 6 per
+## second).
+const FLASH_FADE_PER_FRAME: float = 0.1
 
 const HEIGHT: float = 1.8
 const RADIUS: float = 0.28
@@ -53,6 +60,12 @@ var _hilts: Array[MeshInstance3D] = []
 var _fists: Array[MeshInstance3D] = []
 var _arms: Array[MeshInstance3D] = []
 var _floor: Node3D
+## The body flash: its strength when lit, the world frame it was lit on, and
+## what is left of it now. Timed on the rules' frames, not the wall clock, so
+## it holds through hit-stop and a screenshot stepped without rendering
+## doesn't carry stale flashes.
+var _flash_strength: float = 0.0
+var _flash_frame: int = 0
 var _flash: float = 0.0
 var _flash_color: Color = Color.WHITE
 
@@ -75,15 +88,23 @@ func palette_color() -> Color:
 	return PALETTES[posmod(palette, PALETTES.size())]
 
 
-## Briefly lights the body (a hit).
-func flash(color: Color, strength: float) -> void:
+## Briefly lights the body (a hit) from the world frame `frame` on. A weaker
+## flash than what is left of the current one doesn't replace it.
+func flash(color: Color, strength: float, frame: int) -> void:
+	if strength >= flash_left(frame):
+		_flash_strength = strength
+		_flash_frame = frame
 	_flash_color = color
-	_flash = maxf(_flash, strength)
+
+
+## What is left of the body flash at a world frame.
+func flash_left(frame: int) -> float:
+	return maxf(0.0, _flash_strength - FLASH_FADE_PER_FRAME * float(maxi(0, frame - _flash_frame)))
 
 
 ## Places and poses the stand-in for this frame. pos and yaw come from
 ## MatchHost.display_position() and display_yaw(); alpha from MatchHost.alpha().
-func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, delta: float, time: float) -> void:
+func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: float, time: float) -> void:
 	if not _built:
 		_build()
 	position = pos
@@ -111,10 +132,14 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, delta: floa
 
 	var glow: Color = GLOW_COLORS.get(p.glow, Color.BLACK)
 	for m: StandardMaterial3D in _blade_mats:
-		m.emission = glow
-		m.emission_energy_multiplier = 2.5 * p.glow_amount if p.glow != &"" else 0.0
+		if p.glow != &"" and p.glow_amount > 0.0:
+			m.emission = glow
+			m.emission_energy_multiplier = 2.5 * p.glow_amount
+		else:
+			m.emission = BLADE_COLOR
+			m.emission_energy_multiplier = BLADE_SHEEN
 
-	_flash = maxf(0.0, _flash - delta * 6.0)
+	_flash = flash_left(f.world.frame if f.world != null else _flash_frame)
 	var dim: float = 0.55 if f.state == &"ko" else 1.0
 	_torso_mat.albedo_color = (_base_color() * dim).lerp(_flash_color, minf(0.6, _flash))
 	_torso_mat.emission = _flash_color
@@ -254,7 +279,7 @@ func _build() -> void:
 		hand.name = "Hand%s" % ("R" if i == 0 else "L")
 		_body.add_child(hand)
 		_hands.append(hand)
-		var blade_mat: StandardMaterial3D = _material(BLADE_COLOR, 0.5, 0.35)
+		var blade_mat: StandardMaterial3D = _material(BLADE_COLOR, 0.15, 0.3)
 		_blade_mats.append(blade_mat)
 		var blade: BoxMesh = BoxMesh.new()
 		blade.size = Vector3(blade_w, maxf(0.05, length - 0.04), 0.035)

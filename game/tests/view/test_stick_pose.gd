@@ -16,10 +16,35 @@ func _press(W: World, b: int) -> void:
 	W.step([SimHelpers.btn(b), SimHelpers.idle()])
 
 
-func test_the_stick_lengths_follow_the_weapons() -> void:
-	assert_eq(StickPose.LENGTH[&"katana"], 0.95)
-	assert_eq(StickPose.LENGTH[&"greatsword"], 1.6)
-	assert_eq(StickPose.LENGTH[&"daggers"], 0.4)
+func test_each_standin_blade_is_as_long_as_its_stick() -> void:
+	for wid: StringName in [&"katana", &"greatsword", &"daggers"]:
+		var s: FighterStandin = FighterStandin.new()
+		add_child_autofree(s)
+		s.setup(&"rogue", 0, wid, 0)
+		var blade: MeshInstance3D = s.get_node("Body/HandR/Blade")
+		var box: BoxMesh = blade.mesh
+		# the blade starts 0.04 m above the grip and reaches the stick's tip
+		assert_almost_eq(blade.position.y + box.size.y / 2.0, StickPose.LENGTH[wid], 1e-5, String(wid))
+	assert_gt(StickPose.LENGTH[&"greatsword"], StickPose.LENGTH[&"katana"])
+	assert_gt(StickPose.LENGTH[&"katana"], StickPose.LENGTH[&"daggers"])
+
+
+## Overheads and slams come down the body's centre line instead of swinging
+## out round the side, so they read as vertical cuts.
+func test_vertical_attacks_stay_on_the_centre_line() -> void:
+	for anim: StringName in [&"overhead", &"slam", &"leapCleave", &"plunge"]:
+		var keys: Array = StickPose.ARCH[anim]
+		var a: Vector3 = StickPose.local(keys[0]["rh"])
+		var b: Vector3 = StickPose.local(keys[1]["rh"])
+		for k: int in 11:
+			var t: float = float(k) / 10.0
+			var at: Vector3 = StickPose.arc(a, b, t)
+			assert_lt(absf(at.x), StickPose.CENTRE_LINE, "%s at %.1f" % [anim, t])
+	# a slash still sweeps round the body
+	var ka: Vector3 = StickPose.local(StickPose.ARCH[&"slashRL"][0]["rh"])
+	var kb: Vector3 = StickPose.local(StickPose.ARCH[&"slashRL"][1]["rh"])
+	var mid: Vector3 = StickPose.arc(ka, kb, 0.5)
+	assert_gt(Vector2(mid.x, mid.z).length(), Vector2(ka.x, ka.z).lerp(Vector2(kb.x, kb.z), 0.5).length() + 0.01, "an arc, not a chord")
 
 
 func test_a_free_fighter_holds_the_guard() -> void:

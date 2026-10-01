@@ -220,9 +220,38 @@ func test_alpha_holds_still_during_hit_stop() -> void:
 	assert_eq(host.alpha(), 1.0, "frozen on the impact frame")
 	host.advance(DT * 0.25)
 	assert_eq(host.alpha(), 1.0, "still frozen as wall time passes")
+	var frame: int = host.world.frame
 	host.step(3)
 	assert_eq(host.world.hitstop, 0)
-	assert_almost_eq(host.alpha(), 0.75, 1e-6, "back to the accumulator after hit-stop")
+	assert_eq(host.world.frame, frame, "the three hit-stop steps didn't move the frame")
+	assert_eq(host.alpha(), 1.0, "still the impact frame: poses don't step back when the freeze ends")
+	host.step(1)
+	assert_eq(host.world.frame, frame + 1)
+	assert_almost_eq(host.alpha(), 0.75, 1e-6, "back to the accumulator once the frame moves")
+
+
+func test_a_real_hit_stop_ends_without_stepping_back() -> void:
+	var host: MatchHost = _host()
+	host.start(_cpu_config(5))
+	var steps: int = 0
+	while host.world.hitstop == 0 and steps < 20000:
+		host.step(1)
+		steps += 1
+	assert_gt(host.world.hitstop, 0, "a clash happened")
+	host.advance(DT * 0.4)
+	var frame: int = host.world.frame
+	while host.world.hitstop > 0:
+		host.step(1)
+	assert_eq(host.world.frame, frame, "frozen")
+	# the attack or reel on screen is the one at the impact frame, not a
+	# fraction of a frame before it
+	assert_eq(host.alpha(), 1.0)
+	for i: int in 2:
+		var f: Fighter = host.fighter(i)
+		var shown: StickPose.Pose = StickPose.compute(f, host.alpha())
+		var impact: StickPose.Pose = StickPose.compute(f, 1.0)
+		assert_eq(shown.phase, impact.phase)
+		assert_almost_eq(shown.right.pos, impact.right.pos, Vector3.ONE * 1e-6)
 
 
 func test_a_real_hit_stop_shows_the_impact_frame() -> void:
@@ -252,7 +281,7 @@ func test_display_position_blends_the_last_step() -> void:
 		var before: Vector3 = Vector3(f.pos.x, f.pos.y, f.pos.z)
 		host.step(1)
 		var after: Vector3 = Vector3(f.pos.x, f.pos.y, f.pos.z)
-		if host.world.hitstop == 0 and before.distance_to(after) > 0.02 and before.distance_to(after) < MatchHost.SNAP_DISTANCE:
+		if host.world.hitstop == 0 and before.distance_to(after) > 0.02 and before.distance_to(after) < 1.0:
 			assert_almost_eq(host.alpha(), 0.5, 1e-6)
 			assert_almost_eq(host.display_position(0), before.lerp(after, 0.5), Vector3.ONE * 1e-5)
 			return
@@ -314,14 +343,187 @@ func test_a_human_side_reads_its_device() -> void:
 	assert_eq(host.label("light", 1), "", "a computer side has no keys")
 
 
-func test_the_duel_behind_the_menus_restarts_with_the_next_seed() -> void:
+func test_the_duel_behind_the_menus_restarts_with_the_next_seed_from_its_source() -> void:
 	var host: MatchHost = _host()
+	var drawn: Array[int] = []
+	host.seed_source = func() -> int:
+		drawn.append(4242)
+		return 4242
 	host.start(MatchConfig.attract(41), true)
 	var steps: int = 0
 	while host.config.world_seed == 41 and steps < MATCH_LIMIT:
 		host.step(1)
 		steps += 1
-	assert_eq(host.config.world_seed, MatchConfig.next_seed(41))
+	assert_eq(host.config.world_seed, 4242, "the seed came from the source (main's sequence)")
+	assert_eq(drawn.size(), 1, "one seed drawn per restart")
 	assert_true(host.attract)
 	assert_false(host.is_finished(), "no results for the attract duel")
 	assert_lt(host.step_count, 5, "a fresh match")
+
+
+# ------------------------------------------------------------------ rounds
+
+func test_a_new_round_places_the_fighters_instead_of_blending() -> void:
+	var host: MatchHost = _host()
+	host.start(_cpu_config(7))
+	var started: Array[int] = []
+	host.sim_event.connect(func(e: Dictionary) -> void:
+		if e["t"] == &"roundStart":
+			started.append(host.step_count))
+	var steps: int = 0
+	while started.is_empty() and steps < 30000:
+		host.step(1)
+		steps += 1
+	assert_eq(started.size(), 1, "round 2 started")
+	host.advance(DT * 0.3)
+	for i: int in 2:
+		var f: Fighter = host.fighter(i)
+		assert_almost_eq(host.display_position(i), Vector3(f.pos.x, f.pos.y, f.pos.z), Vector3.ONE * 1e-6, "at the spawn at once")
+		assert_almost_eq(host.display_yaw(i), f.yaw, 1e-6)
+
+
+# ------------------------------------------------------------------ menu presses and resume
+
+func _human_free(host: MatchHost) -> void:
+	host.start(MatchConfig.default_duel())
+	host.step(Match.INTRO_FRAMES + 1)
+	assert_eq(host.fighter(0).state, &"free")
+
+
+func test_a_button_pressed_in_the_pause_menu_does_nothing_on_resume() -> void:
+	var host: MatchHost = _host()
+	fake.plug_pad(0)
+	_human_free(host)
+	host.pause()
+	# A chooses Resume in the pause menu: A is also jump
+	fake.press_button(0, JOY_BUTTON_A)
+	host.resume()
+	host.step(3)
+	assert_eq(host.fighter(0).state, &"free", "no jump from the menu's A")
+	host.step(10)
+	assert_eq(host.fighter(0).state, &"free", "nor while it stays held")
+	fake.release_button(0, JOY_BUTTON_A)
+	host.step(1)
+	fake.press_button(0, JOY_BUTTON_A)
+	host.step(2)
+	assert_eq(host.fighter(0).state, &"jump", "a fresh press jumps")
+
+
+func test_a_button_that_started_the_match_does_nothing_until_let_go() -> void:
+	var host: MatchHost = _host()
+	# Space (ui_accept) chose Duel: Space is also dodge
+	fake.press_key(KEY_SPACE)
+	host.start(MatchConfig.default_duel())
+	host.step(Match.INTRO_FRAMES + 5)
+	assert_eq(host.fighter(0).state, &"free", "no dodge from the menu's Space")
+	fake.release_key(KEY_SPACE)
+	host.step(1)
+	fake.press_key(KEY_SPACE)
+	host.step(2)
+	assert_ne(host.fighter(0).state, &"free", "a fresh press dodges")
+
+
+func test_a_block_held_through_the_pause_carries_on() -> void:
+	var host: MatchHost = _host()
+	_human_free(host)
+	fake.press_key(KEY_L) # block in the default profile
+	host.step(3)
+	assert_true(host.fighter(0).blocking)
+	host.pause()
+	host.resume()
+	host.step(3)
+	assert_true(host.fighter(0).blocking, "still blocking after the pause")
+
+
+func test_start_or_the_pause_binding_closes_the_pause() -> void:
+	var host: MatchHost = _host()
+	host.auto_run = true
+	fake.plug_pad(0)
+	host.start(MatchConfig.default_duel())
+	fake.press_key(KEY_ESCAPE)
+	host._process(DT)
+	assert_true(host.is_paused())
+	host._process(DT)
+	assert_true(host.is_paused(), "Esc still held doesn't resume")
+	fake.release_key(KEY_ESCAPE)
+	host._process(DT)
+	fake.press_button(0, JOY_BUTTON_START)
+	host._process(DT)
+	assert_false(host.is_paused(), "Start resumes")
+	host._process(DT)
+	assert_false(host.is_paused(), "and, still held, doesn't pause again")
+	fake.release_button(0, JOY_BUTTON_START)
+	host._process(DT)
+	fake.press_key(KEY_P)
+	host._process(DT)
+	assert_true(host.is_paused(), "the pause binding pauses")
+	fake.release_key(KEY_P)
+	host._process(DT)
+	fake.press_key(KEY_P)
+	host._process(DT)
+	assert_false(host.is_paused(), "and resumes")
+
+
+# ------------------------------------------------------------------ configs, Training and Versus
+
+func test_a_bad_config_starts_nothing() -> void:
+	var host: MatchHost = _host()
+	host.start(MatchConfig.attract(3), true)
+	var bad: MatchConfig = MatchConfig.default_duel()
+	bad.mode = &"ranked"
+	assert_false(host.start(bad))
+	assert_push_error("bad match config")
+	assert_true(host.attract, "the running duel is untouched")
+	assert_eq(host.config.world_seed, 3)
+	assert_true(host.start(MatchConfig.default_duel()))
+
+
+func test_training_is_endless_against_the_dummy() -> void:
+	var host: MatchHost = _host()
+	var dummy: MatchSide = MatchSide.computer(&"hunter", &"greatsword", 1)
+	dummy.controller = MatchSide.DUMMY
+	var cfg: MatchConfig = MatchConfig.make(MatchConfig.TRAINING, MatchSide.human(&"rogue", &"katana", 0), dummy, 5)
+	assert_true(host.start(cfg))
+	assert_true(host.sim_match.endless)
+	assert_eq(host.player_of_side(0), 0)
+	assert_eq(host.player_of_side(1), -1, "the dummy needs no device")
+	host.step(Match.INTRO_FRAMES + 600)
+	assert_eq(host.sim_match.phase, &"fight", "no round ends")
+	assert_false(host.is_finished())
+	assert_eq(host.sim_match.wins, [0, 0] as Array[int])
+
+
+func test_versus_reads_each_player_from_their_own_device() -> void:
+	var host: MatchHost = _host()
+	fake.plug_pad(0)
+	var cfg: MatchConfig = MatchConfig.make(
+		MatchConfig.VERSUS,
+		MatchSide.human(&"rogue", &"katana", 0, InputDevices.KBM),
+		MatchSide.human(&"hunter", &"greatsword", 1, InputDevices.PAD0),
+		9,
+	)
+	assert_true(host.start(cfg))
+	assert_eq(host.player_of_side(0), 0)
+	assert_eq(host.player_of_side(1), 1)
+	host.step(Match.INTRO_FRAMES + 1)
+	fake.press_key(KEY_J) # player 1 light on the keyboard
+	host.step(2)
+	assert_eq(host.fighter(0).state, &"attack")
+	assert_eq(host.fighter(1).state, &"free", "the keyboard doesn't move player 2")
+	fake.press_button(0, JOY_BUTTON_RIGHT_SHOULDER) # player 2 light on the controller
+	host.step(2)
+	assert_eq(host.fighter(1).state, &"attack")
+
+
+func test_versus_players_cant_share_a_device() -> void:
+	var cfg: MatchConfig = MatchConfig.make(
+		MatchConfig.VERSUS,
+		MatchSide.human(&"rogue", &"katana", 0),
+		MatchSide.human(&"hunter", &"greatsword", 1),
+	)
+	assert_string_contains(cfg.problem(), "device")
+	cfg.sides[0].device = InputDevices.PAD0
+	cfg.sides[1].device = InputDevices.PAD0
+	assert_string_contains(cfg.problem(), "share")
+	cfg.sides[1].device = InputDevices.KB_ARROWS
+	assert_eq(cfg.problem(), "")

@@ -18,8 +18,10 @@ const WATCH: StringName = &"watch"
 const VERSUS: StringName = &"versus"
 const MODES: Array[StringName] = [DUEL, TRAINING, WATCH, VERSUS]
 
-## The arena the stand-in view draws when nothing else is chosen.
-const DEFAULT_ARENA: StringName = &"standin"
+## The arena every match is fought in until the arena select (task 22): the
+## Moonlit Shrine, which ArenaScenes draws as the stand-in until its scene
+## lands, so the real arena shows up without another change here.
+const DEFAULT_ARENA: StringName = &"moonlit_shrine"
 
 @export var mode: StringName = DUEL
 ## [side 0, side 1]
@@ -130,6 +132,14 @@ func problem() -> String:
 		return "the dummy only plays in training"
 	if mode == VERSUS and human_count() != 2:
 		return "versus needs two human sides"
+	if mode == VERSUS:
+		# each player on a device of their own: not the shared "all", not both
+		# on the same one
+		for i: int in 2:
+			if sides[i].device == InputDevices.ALL:
+				return "versus needs a device for each player, not %s" % InputDevices.ALL
+		if sides[0].device == sides[1].device:
+			return "versus players can't share the device %s" % sides[0].device
 	if mode == WATCH and human_count() != 0:
 		return "watch has no human sides"
 	if String(arena_id) == "":

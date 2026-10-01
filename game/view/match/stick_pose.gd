@@ -247,14 +247,23 @@ static func turn_dir(a: Vector3, b: Vector3, t: float) -> Vector3:
 	return an.rotated(axis.normalized(), ang * clampf(t, 0.0, 1.0))
 
 
+## Keys this close to the body's centre line (|x|, m) are a vertical swing.
+const CENTRE_LINE: float = 0.15
+
+
 ## Moves a hand from a to b by t on an arc around the body's vertical axis:
 ## the angle round the body, the distance from it and the height each blend,
-## so a slash sweeps round the fighter instead of cutting a chord.
+## so a slash sweeps round the fighter instead of cutting a chord. Two keys
+## on the body's centre line (an overhead, a slam: from behind the head to in
+## front) move straight, in that vertical plane, instead of swinging out round
+## the side.
 static func arc(a: Vector3, b: Vector3, t: float) -> Vector3:
 	t = clampf(t, 0.0, 1.0)
 	var ra: float = Vector2(a.x, a.z).length()
 	var rb: float = Vector2(b.x, b.z).length()
 	if ra < 0.05 or rb < 0.05:
+		return a.lerp(b, t)
+	if absf(a.x) < CENTRE_LINE and absf(b.x) < CENTRE_LINE:
 		return a.lerp(b, t)
 	var aa: float = atan2(a.x, a.z)
 	var ab: float = atan2(b.x, b.z)

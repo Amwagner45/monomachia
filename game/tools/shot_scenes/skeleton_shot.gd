@@ -5,7 +5,9 @@ extends Node
 ##
 ## Gameplay shots run a deterministic computer-against-computer duel (Rogue
 ## with katana against Hunter with greatsword, both Hard, seed SEED), step it
-## without the clock to a chosen moment, snap the camera and hold still.
+## without the clock to a chosen moment, snap the camera and hold still: the
+## view and the HUD stop processing once snapped, so the wall clock (idle bob,
+## shake decay, the menu orbit) can't change the picture between runs.
 
 const SEED: int = 7
 
@@ -17,6 +19,7 @@ var host: MatchHost
 var main: Node
 var _ready_flag: bool = false
 var _parried: bool = false
+var _katana_hit: bool = false
 
 
 func shot_frames() -> int:
@@ -40,8 +43,13 @@ func _ready() -> void:
 			host.sim_event.connect(_on_event)
 			_step_until(func() -> bool: return _parried, 40000, 0)
 		"watch":
+			# the katana (side 0) landing a cut, two steps on: the hit flash,
+			# the defender reeling, held by the hit-stop
 			_gameplay(MatchConfig.WATCH)
-			_step_until(_exchanging, 20000, 600)
+			host.step(600)
+			host.sim_event.connect(_on_event)
+			_step_until(func() -> bool: return _katana_hit, 40000, 0)
+			host.step(2)
 		"results":
 			_main()
 			main.call("start_match", _config(MatchConfig.DUEL))
@@ -53,7 +61,10 @@ func _ready() -> void:
 			host.step(420)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
-	(host.get_node("Hud") as MatchHud).snap_bars()
+	var hud: MatchHud = host.get_node("Hud")
+	hud.snap_bars()
+	view.set_process(false)
+	hud.set_process(false)
 	_ready_flag = true
 
 
@@ -107,3 +118,5 @@ func _exchanging() -> bool:
 func _on_event(e: Dictionary) -> void:
 	if e["t"] == &"parry":
 		_parried = true
+	elif e["t"] == &"hit" and int(e["attacker"]) == 0 and not _katana_hit:
+		_katana_hit = true

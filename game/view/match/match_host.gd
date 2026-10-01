@@ -23,14 +23,27 @@ extends Node
 ##
 ## For drawing between steps the host keeps each fighter's position and yaw
 ## from before and after the last step; display_position() and display_yaw()
-## blend them by alpha(), the fraction of a step in the accumulator. During
-## hit-stop alpha() holds at 1 (the impact frame), so poses don't jitter
-## while the rules stand still.
+## blend them by alpha(), the fraction of a step in the accumulator. While the
+## rules stand still (hit-stop, and after the last hit-stop step until a step
+## moves the world's frame again) alpha() holds at 1, the impact frame, so
+## poses neither jitter nor step back. A new round (roundStart) places the
+## fighters instead of blending them.
+##
+## Pause: the pause binding, Esc or Start pauses a match being played; while
+## it is paused the same press resumes it, as Back does in the pause menu. A
+## rule button pressed while the match stands still (or held when it starts),
+## such as the menu's A, B or Space, is ignored until it is let go, so it
+## doesn't jump or dodge on resume; a button held through the pause carries on.
 ##
 ## A match ends on the results data, 140 frames into the match-end phase (as
 ## the demo): match_finished carries a MatchResults. The duel behind the menus
-## (attract) never finishes: it restarts with a new seed 240 frames after its
-## match ends.
+## (attract) never finishes: it restarts with the next seed (from seed_source)
+## 240 frames after its match ends.
+##
+## Training runs the rules' endless match against the dummy. Its upkeep
+## (refill, the dummy re-arming, getting up after a KO) is task 23's: until
+## then a KO in Training leaves the fallen fighter down. Versus samples two
+## humans on two different devices.
 
 ## The match was (re)started from a config: views rebuild from it.
 signal match_started(config: MatchConfig)
@@ -50,9 +63,6 @@ const MAX_FRAME_DELTA: float = 0.1
 const RESULTS_DELAY: int = 140
 ## Frames into the match-end phase before the attract duel restarts.
 const ATTRACT_RESTART: int = 240
-## A fighter moving further than this in one step (a new round) is placed,
-## not blended.
-const SNAP_DISTANCE: float = 2.0
 
 ## Step with the wall clock in _process(). Off for tests and screenshot scenes,
 ## which call step(n).
@@ -73,6 +83,11 @@ var profiles: ControlProfiles
 var attract: bool = false
 ## Rules steps taken since start(), including hit-stop steps.
 var step_count: int = 0
+## Where the attract duel's next seed comes from when it restarts: returns an
+## int. main.gd hands it its own seed sequence, so the menus' matches and the
+## attract restarts never share a seed. Unset: MatchConfig.next_seed() of the
+## current one.
+var seed_source: Callable = Callable()
 
 ## Per side: an AIBrain, a TrainingBrain, or null for a human.
 var _brains: Array[RefCounted] = [null, null]
@@ -87,17 +102,24 @@ var _prev_pos: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
 var _cur_pos: Array[Vector3] = [Vector3.ZERO, Vector3.ZERO]
 var _prev_yaw: Array[float] = [0.0, 0.0]
 var _cur_yaw: Array[float] = [0.0, 0.0]
+## Did the last step move the world's frame (false for a hit-stop step)?
+var _last_step_moved: bool = true
+## Per side: the rule buttons held at the last sample, and the ones ignored
+## until they are let go (pressed in a menu).
+var _last_buttons: Array[int] = [0, 0]
+var _suppressed: Array[int] = [0, 0]
 
 
 # ------------------------------------------------------------------ lifecycle
 
 ## Builds the rules from a config and starts its first round. A match already
 ## running is thrown away. Dispatches the intro's events (roundStart) at once.
-func start(cfg: MatchConfig, p_attract: bool = false) -> void:
+## Returns false, changing nothing, when the config can't start a match.
+func start(cfg: MatchConfig, p_attract: bool = false) -> bool:
 	var problem: String = cfg.problem()
 	if problem != "":
 		push_error("MatchHost: bad match config: %s" % problem)
-		return
+		return false
 	_teardown()
 	config = cfg
 	attract = p_attract
@@ -126,6 +148,9 @@ func start(cfg: MatchConfig, p_attract: bool = false) -> void:
 	_paused = false
 	_finished = false
 	_restart_pending = false
+	_last_step_moved = true
+	_last_buttons = [0, 0]
+	_suppress_new_presses()
 	_started = true
 	_snapshot(true)
 	var services: Node = _services()
@@ -136,6 +161,7 @@ func start(cfg: MatchConfig, p_attract: bool = false) -> void:
 			services.call("begin_match", self)
 	match_started.emit(cfg)
 	_dispatch(world.drain_events())
+	return true
 
 
 ## Stops the match and frees the rules (quit to menu). The view keeps its last
@@ -175,8 +201,9 @@ func pause() -> void:
 	pause_changed.emit(true)
 
 
-## Restarts the clock, picking up a profile the pause menu may have changed
-## and ignoring a pause button still held from the menu.
+## Restarts the clock, picking up a profile the pause menu may have changed,
+## ignoring a pause button still held from the menu, and ignoring the rule
+## buttons pressed during the pause until they are let go.
 func resume() -> void:
 	if not _paused:
 		return
@@ -187,6 +214,7 @@ func resume() -> void:
 			var p: int = _player_of_side[i]
 			if p >= 0:
 				input.set_profile(p, _profile_for(config.sides[i]))
+		_suppress_new_presses()
 		input.rearm_pause()
 	pause_changed.emit(false)
 
@@ -194,9 +222,15 @@ func resume() -> void:
 func _process(delta: float) -> void:
 	if not auto_run or not _started:
 		return
-	if is_playing() and input != null and input.any_pause_pressed():
-		pause()
-		return
+	if input != null:
+		if _paused:
+			# the pause binding, Esc or Start closes the pause, as Back does
+			if input.any_pause_pressed():
+				resume()
+			return
+		if is_playing() and input.any_pause_pressed():
+			pause()
+			return
 	advance(delta)
 
 
@@ -246,11 +280,13 @@ func step(n: int = 1) -> int:
 
 ## The fraction of a step waiting in the accumulator, 0..1: how far to blend
 ## from the state before the last step to the state after it. Held at 1
-## during hit-stop, so the impact frame shows still.
+## while the rules stand still (hit-stop, and after the last hit-stop step
+## until a step moves the world's frame again), so the impact frame shows
+## still and nothing steps back when the freeze ends.
 func alpha() -> float:
 	if not _started:
 		return 0.0
-	if world.hitstop > 0:
+	if world.hitstop > 0 or not _last_step_moved:
 		return 1.0
 	return clampf(_acc / DT, 0.0, 1.0)
 
@@ -308,12 +344,22 @@ func _step_once() -> void:
 	for i: int in 2:
 		_prev_pos[i] = _cur_pos[i]
 		_prev_yaw[i] = _cur_yaw[i]
+	var frame_before: int = world.frame
 	sim_match.step(inputs)
 	step_count += 1
-	_snapshot(false)
-	_dispatch(world.drain_events())
+	_last_step_moved = world.frame != frame_before
+	var events: Array[Dictionary] = world.drain_events()
+	_snapshot(_has_round_start(events))
+	_dispatch(events)
 	_after_step()
 	stepped.emit(step_count)
+
+
+static func _has_round_start(events: Array[Dictionary]) -> bool:
+	for e: Dictionary in events:
+		if e["t"] == &"roundStart":
+			return true
+	return false
 
 
 func _input_for(i: int) -> RawInput:
@@ -325,7 +371,25 @@ func _input_for(i: int) -> RawInput:
 	var p: int = _player_of_side[i]
 	if attract or _finished or p < 0 or input == null:
 		return RawInput.empty()
-	return input.sample(p)
+	var raw: RawInput = input.sample(p)
+	var held: int = raw.buttons
+	_suppressed[i] &= held
+	raw.buttons = held & ~_suppressed[i]
+	_last_buttons[i] = held
+	return raw
+
+
+## Ignores, until they are let go, the rule buttons a human side holds now but
+## didn't at its last sample: a menu's A (jump), B (dodge) or Space (dodge)
+## that started or resumed the match. A button held through the pause (a
+## block) carries on.
+func _suppress_new_presses() -> void:
+	for i: int in 2:
+		var p: int = _player_of_side[i]
+		if p < 0 or input == null or attract:
+			_suppressed[i] = 0
+			continue
+		_suppressed[i] = input.sample(p).buttons & ~_last_buttons[i]
 
 
 func _dispatch(events: Array[Dictionary]) -> void:
@@ -349,14 +413,17 @@ func _after_step() -> void:
 func _maybe_restart_attract() -> void:
 	if _restart_pending and attract and config != null:
 		_restart_pending = false
-		start(config.with_seed(MatchConfig.next_seed(config.world_seed)), true)
+		var next: int = int(seed_source.call()) if seed_source.is_valid() else MatchConfig.next_seed(config.world_seed)
+		start(config.with_seed(next), true)
 
 
+## Takes the fighters' positions and yaws after a step; reset (match start, a
+## new round) places them instead of blending from the last ones.
 func _snapshot(reset: bool) -> void:
 	for i: int in 2:
 		var f: Fighter = world.fighters[i]
 		var p: Vector3 = Vector3(f.pos.x, f.pos.y, f.pos.z)
-		if reset or p.distance_to(_cur_pos[i]) > SNAP_DISTANCE:
+		if reset:
 			_prev_pos[i] = p
 			_prev_yaw[i] = f.yaw
 		_cur_pos[i] = p

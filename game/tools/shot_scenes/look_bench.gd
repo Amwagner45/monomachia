@@ -12,7 +12,12 @@ extends Node3D
 ##   default; anything else fails the run);
 ## - --ink-strength=<x> and --ink-width=<px> set the ink lines' strength and
 ##   width (the shader's defaults otherwise);
-## - --no-grade leaves the colour grade off.
+## - --no-grade leaves the colour grade off;
+## - --preset=low|medium|high applies that graphics preset to the whole bench
+##   (the left half's outlines and their width, the pass, the shadows and the
+##   anti-aliasing). The bench then puts back what its own arguments say: the
+##   right half's outlines go off again, and an explicit --ink and --no-grade
+##   still win, while --width-scale gives way to the preset's.
 ## The pass covers the whole screen; the label at the top says how it's set.
 
 ## How far behind the near groups the far ones stand.
@@ -25,6 +30,8 @@ const CAMERA_FOV: float = 60.0
 const CAMERA_POSITION: Vector3 = Vector3(0, 1.9, 6.0)
 const CAMERA_TARGET: Vector3 = Vector3(0, 1.2, -2.0)
 
+var _ink: InkWashPass
+
 
 func shot_frames() -> int:
 	return 20
@@ -35,8 +42,15 @@ func _ready() -> void:
 	var floor_kit := MeshKit.new()
 	floor_kit.disc(Transform3D.IDENTITY, 40.0, 48, 4)
 	add_child(MeshKit.instance(floor_kit.commit(), ToonMaterials.prop(LookPalette.STONE_DARK, 0.35, false), false))
-	var width_scale: float = _arg(&"width-scale", "1").to_float()
-	_add_label(_ink_label(), Vector3(0, 2.95, 0))
+	var preset: GraphicsPreset = null
+	var preset_id: String = _arg(&"preset", "")
+	if not preset_id.is_empty():
+		preset = GraphicsPreset.load_id(StringName(preset_id))
+		if preset == null:
+			push_error("look_bench.gd: --preset must be low, medium or high, not '%s'" % preset_id)
+	var width_scale: float = preset.outline_width_scale if preset != null else _arg(&"width-scale", "1").to_float()
+	_add_label(_ink_label(preset), Vector3(0, 2.95, 0))
+	var plain: Array[ShaderMaterial] = []
 	for outlined: bool in [true, false]:
 		var x: float = -HALF_GAP if outlined else HALF_GAP
 		var materials: Array[ShaderMaterial] = []
@@ -44,13 +58,26 @@ func _ready() -> void:
 		materials.append_array(_add_group(Vector3(x * 0.6, 0, -FAR), FighterStandin.PALETTES[1]))
 		for m: ShaderMaterial in materials:
 			ToonMaterials.set_outline(m, outlined, width_scale)
-		_add_label("outlines on (x%.2f)" % width_scale if outlined else "outlines off", Vector3(x, 2.45, 0))
+		if not outlined:
+			plain = materials
+		var on_text: String = ("outlines per preset (x%.2f)" if preset != null else "outlines on (x%.2f)") % width_scale
+		_add_label(on_text if outlined else "outlines off", Vector3(x, 2.45, 0))
 	var camera := Camera3D.new()
 	camera.fov = CAMERA_FOV
 	camera.position = CAMERA_POSITION
 	add_child(camera)
 	camera.look_at(CAMERA_TARGET)
 	camera.make_current()
+	if preset != null:
+		var quality: InkWashPass.Quality = _ink.quality
+		GraphicsApplier.apply(preset, self, get_viewport())
+		for m: ShaderMaterial in plain:
+			ToonMaterials.set_outline(m, false)
+		if not _arg(&"ink", "").is_empty():
+			_ink.set_quality(quality)
+		if _flag(&"no-grade"):
+			var env: Environment = (get_node(^"Environment") as WorldEnvironment).environment
+			env.adjustment_enabled = false
 
 
 func _add_label(text: String, at: Vector3) -> void:
@@ -63,9 +90,14 @@ func _add_label(text: String, at: Vector3) -> void:
 	add_child(label)
 
 
-## How the ink-wash pass and the grade are set, for the top label.
-static func _ink_label() -> String:
-	var text: String = "ink %s" % _arg(&"ink", "full")
+## How the preset, the ink-wash pass and the grade are set, for the top label.
+static func _ink_label(preset: GraphicsPreset) -> String:
+	var ink: String = _arg(&"ink", "")
+	if ink.is_empty():
+		ink = String(InkWashPass.Quality.find_key(preset.post_quality)).to_lower() if preset != null else "full"
+	var text: String = "ink %s" % ink
+	if preset != null:
+		text = "%s preset, %s" % [preset.display_name, text]
 	for param: StringName in [&"ink-strength", &"ink-width"]:
 		if not _arg(param, "").is_empty():
 			text += ", %s %s" % [String(param).trim_prefix("ink-"), _arg(param, "")]
@@ -92,27 +124,29 @@ func _add_environment() -> void:
 	if not _flag(&"no-grade"):
 		InkGrade.apply(env)
 	var world := WorldEnvironment.new()
+	world.name = "Environment"
 	world.environment = env
 	add_child(world)
 	var moon := DirectionalLight3D.new()
 	moon.light_color = Color(0.74, 0.82, 1.0)
 	moon.light_energy = 1.35
 	moon.shadow_enabled = true
+	moon.add_to_group(GraphicsApplier.GROUP_SHADOW_LIGHT)
 	add_child(moon)
 	moon.look_at_from_position(Vector3.ZERO, Vector3(-0.95, -1.05, -0.25), Vector3.UP)
-	var ink := InkWashPass.new()
+	_ink = InkWashPass.new()
+	add_child(_ink)
 	var quality: String = _arg(&"ink", "full").to_upper()
 	if not InkWashPass.Quality.has(quality):
 		# Named with its .gd, so `godot.mjs shots` fails the run once the shot
 		# is saved (quitting this early in a shot run hangs Godot instead).
 		push_error("look_bench.gd: --ink must be off, lite, lines or full, not '%s'" % quality.to_lower())
 		return
-	ink.set_quality(InkWashPass.Quality[quality])
+	_ink.set_quality(InkWashPass.Quality[quality])
 	var params: Dictionary[StringName, StringName] = {&"ink-strength": &"line_strength", &"ink-width": &"line_width_px"}
 	for arg: StringName in params:
 		if not _arg(arg, "").is_empty():
-			ink.set_param(params[arg], _arg(arg, "").to_float())
-	add_child(ink)
+			_ink.set_param(params[arg], _arg(arg, "").to_float())
 
 
 ## A fighter (a body capsule and a head) holding a blade across its body, so

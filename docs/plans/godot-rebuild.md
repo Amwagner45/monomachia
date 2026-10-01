@@ -96,6 +96,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - The ultimate aura uses the side colours. The worktree's petals are dropped unless the owner wants them.
 - Outlines and ink lines are settled by the owner's look review: outlines 3, 2.4 and 2.25 px at 1080p for fighters, weapons and props (16.3), and the ink-wash lines 2 px at strength 0.85 (16.4).
 - Shot scenes live in `game/tools/shot_scenes`. Screenshot runs fail on shader compile errors, since headless runs never compile shaders.
+- The project's own anti-aliasing matches High (FXAA, no MSAA); `GameServices` applies the saved preset at start. Test and shot runs set `MONOMACHIA_DEFAULT_SETTINGS`, so they always use High, whatever a player saved on the machine. Low keeps the owner's outline widths.
 
 **Sound and music (19, 20)**
 - Both fighters' footsteps play in 3D.
@@ -125,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3 and 16.4. Next: 16.5.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3, 16.4 and 16.5. Next: 16.6.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -139,11 +140,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The look's first pieces:
     - `MeshKit` and `MeshKitSet` (16.2) build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0;
     - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw;
-    - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else.
-- **Checks after 16.4:**
-  - 478 Godot tests: rules 138, input 118, audio 31, core 14, view 125, content 49, and 3 project-wide smoke tests;
+    - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else;
+    - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`.
+- **Checks after 16.5:**
+  - 494 Godot tests: rules 138, input 118, audio 31, core 22, view 133, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 136 scripts cleanly;
+  - the typecheck loads 141 scripts cleanly;
   - CI passed on the last push before 16.3 (0bfe40c), both the tests and the Windows export;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
@@ -833,10 +835,45 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - At a duel's distance the lines also draw over the fighters' rim light.
       - Bench renders at widths 1.2, 2 and 3 px and strengths 0.85 and 1.0 went to the owner (`look_bench.tscn ... --ink-width=2 --ink-strength=0.85` and so on). 2 px read clearly, and 3 px turned ragged.
     - Ink lines: the owner picked 2 px at strength 0.85 on Oct 1. `InkWashPass.LINE_WIDTH_PX` and `LINE_STRENGTH` hold them, and the pass sets them on its material (the shader's default agrees). `ink_check` now needs 2 px lines: they measure 2 px against the sky and 4 px against the far floor.
-  - [ ] **16.5 Low, Medium and High presets, and the saved setting.** `GraphicsPreset` (High by default) and `GraphicsApplier` act through node groups and outline kinds (`ToonMaterials.OutlineKind`). `GameSettings` in `game/core`, owned by `GameServices`, saves the preset id to `user://settings.cfg` and applies it at start. The spec's Look paragraph is updated from the worktree's decisions: the presets' contents, FXAA, glow off, and the target laptop. 16.3 already added the outline decision and the noise texture.
+  - [x] **16.5 Low, Medium and High presets, and the saved setting.** `GraphicsPreset` (High by default) and `GraphicsApplier` act through node groups and outline kinds (`ToonMaterials.OutlineKind`). `GameSettings` in `game/core`, owned by `GameServices`, saves the preset id to `user://settings.cfg` and applies it at start. The spec's Look paragraph is updated from the worktree's decisions: the presets' contents, FXAA, glow off, and the target laptop. 16.3 already added the outline decision and the noise texture.
     - Check: the preset tests pass (monotonic from Low to High, fighters always outlined, each preset applies); settings save and load, and an unknown id falls back to High; bench shots at the three presets reviewed.
     - Blocked by: 16.4 · Stories: 46, 57
     - Note from 16.4: the presets' post quality is `InkWashPass.Quality`; the worktree's `GraphicsPreset.PostQuality` (whose comments were stale) is not brought over, and `test_graphics_presets` changes to match. The night environment already has glow off.
+    - Done: `view/look/graphics_preset.gd`, `graphics_applier.gd` and `presets/low|medium|high.tres` come from the worktree, reviewed. `core/game_settings.gd` is new.
+      - **What each preset sets.**
+        - Every preset: FXAA, no MSAA, glow off, no normal lines, and fighters and weapons outlined.
+        - Low: no ink-wash pass, no height fog, a 1024 px orthogonal shadow map out to 22 m, 30% particles, no lantern lights, silhouettes only.
+        - Medium: ink lines, a 2048 px map out to 28 m, 60% particles, props in the distance.
+        - High: the full pass, prop outlines, a 4096 px map out to 34 m, everything.
+      - **No static "current preset".** The worktree's `GraphicsApplier.current()` kept the last preset in a static variable, which leaked between tests. The applier keeps no state now: the chosen preset is `GameSettings`', and a scene applies `GameServices.graphics_preset()` to itself when it loads.
+      - **`GameSettings`** (in `game/core`, owned by `GameServices`):
+        - it saves the preset id to `user://settings.cfg` under `[graphics]`;
+        - an unknown id, whether saved, set or assigned directly, leaves High (or the last good id) in place;
+        - nothing saves by itself, as with `ControlProfiles`.
+      - **Applied at start.** `GameServices` applies the preset to the renderer (the shadow atlas and filtering, which are global) and the root viewport.
+      - **The project's own anti-aliasing changed.** `project.godot` had 4x MSAA since the skeleton; it now has FXAA and no MSAA, to match High. The outline (16.3) and ink-line (16.4) picks were judged under 4x MSAA.
+        - With FXAA, `outline_check` measures the rings at 7 and 5 px (7.5 and 5.6 asked, 8 and 6 before).
+        - `ink_check` measures the ink lines slightly lighter (luma 0.49 against 0.43).
+      - **Test and shot runs use the defaults.** `godot.mjs` sets `MONOMACHIA_DEFAULT_SETTINGS` for them, so a preset a player saved on the machine can't change them. GUT refuses unknown command-line arguments, so it is an environment variable.
+      - **Review changes:**
+        - Low's outline width scale went from 0.9 to 1.0, so the owner's widths hold on every preset;
+        - `GraphicsPreset.outlines_on(kind)` replaced the applier's per-material lookup;
+        - `load_id` returns null for an unknown id instead of trying to load a missing file.
+    - Tests:
+      - `tests/view/test_graphics_presets.gd` has 8 tests:
+        - the three presets load and scale up from Low to High;
+        - fighters and weapons are always outlined, and props only on High;
+        - FXAA is on, and glow and normal lines are off, on every preset;
+        - each preset applies to a scene with one of everything and to a viewport;
+        - height fog comes back;
+        - a scene's own grade is kept;
+        - a shared material is switched consistently.
+      - `tests/core/test_game_settings.gd` has 7 tests: the default, save and load, unknown ids, unreadable files, and a run that asks for the defaults.
+      - `test_game_services.gd` checks that the settings' preset reached the root viewport.
+    - The look bench takes `--preset=low|medium|high`. Shots at the three presets were reviewed:
+      - Low has no ink and unoutlined props;
+      - Medium adds the ink lines;
+      - High adds prop outlines and the full pass.
   - [ ] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
     - Check: the view tests pass, including the no-stray-nodes test; the skeleton shots are re-rendered and reviewed.
     - Blocked by: 16.5 · Stories: 46
@@ -859,7 +896,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **17.2 Arena screenshot rig on the match host and CameraRig.** `arena_shot.gd` rebuilt on a stepped `MatchHost`, with the arena put in by `MatchView.set_arena` and the real fighters at the spawns. It shoots the follow, Watch and menu views, an establishing view and a top-down debug overlay, with a preset export. Its scenes live in `game/tools/shot_scenes`.
     - Check: shots of the stand-in arena from every view reviewed.
     - Blocked by: 17.1, 14.2 · Stories: 2, 54, 65
-  - [ ] **17.3 The shrine's courtyard: floor, parapet, gate landings and markers.** The shrine scene (environment copy, moon key light, the fighter-only rim light, ink-wash pass, preset), `ShrineLayout` with its data, and the platform builder: stone floor, plinth, parapet, gate landings, rope barriers and pebbles.
+  - [ ] **17.3 The shrine's courtyard: floor, parapet, gate landings and markers.** (Note from 16.5: the worktree's `moonlit_shrine.gd` calls `GraphicsApplier.current()`, which is gone; apply `GameServices.graphics_preset()` instead.) The shrine scene (environment copy, moon key light, the fighter-only rim light, ink-wash pass, preset), `ShrineLayout` with its data, and the platform builder: stone floor, plinth, parapet, gate landings, rope barriers and pebbles.
     - Check: the shrine tests pass (markers match the data, nothing but pebbles inside the walkable circle, floor at 0 under the spawns, one ink pass, rim light on fighters only); the shader check passes; gameplay, Watch and top-down shots reviewed.
     - Blocked by: 17.2 · Stories: 15, 46, 47
   - [ ] **17.4 Torii, lanterns, pillars, trees and debris.** The prop builders, lantern lights that skip the ground layer with their flicker and halos, and the `prop_scenes` seam for bought art.

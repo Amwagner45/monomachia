@@ -2,6 +2,11 @@ extends Node
 ## The GameServices autoload: what the whole game shares, kept for as long as
 ## the game runs.
 ##
+## - one GameSettings (the player's settings, user://settings.cfg, or the
+##   defaults when the run sets GameSettings.DEFAULTS_ENV). At start it
+##   applies their graphics preset to the renderer (the shadow atlas and
+##   filtering, which are global) and the root viewport; scenes apply
+##   graphics_preset() to themselves when they load;
 ## - one ControlProfiles (the saved controls profiles, user://controls.cfg);
 ## - one InputDevices, which every match samples, with its InputFeed in the
 ##   tree so labels follow the last device used, even in menus (the shared
@@ -13,6 +18,7 @@ extends Node
 ## and calls end_match() when it stops. No class_name: the autoload's name is
 ## the global.
 
+var settings: GameSettings
 var profiles: ControlProfiles
 var input: InputDevices
 var feed: InputFeed
@@ -24,6 +30,7 @@ var _match: Node = null
 
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
+	settings = GameSettings.load_for_run()
 	profiles = ControlProfiles.load_from()
 	input = InputDevices.new()
 	feed = InputFeed.new(input)
@@ -33,6 +40,12 @@ func _init() -> void:
 func _ready() -> void:
 	add_child(feed)
 	feed.focus_lost.connect(_on_focus_lost)
+	GraphicsApplier.apply(graphics_preset(), null, get_viewport())
+
+
+## The graphics preset the player chose.
+func graphics_preset() -> GraphicsPreset:
+	return settings.graphics_preset()
 
 
 ## A match host starts being played (Duel, Training, Watch or Versus; not the

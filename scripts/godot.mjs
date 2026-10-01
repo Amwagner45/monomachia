@@ -64,6 +64,11 @@ function die(msg) {
   process.exit(1);
 }
 
+// Test and shot runs set this environment variable so the player's saved
+// settings (user://settings.cfg, such as a lower graphics preset) can't change
+// them. GameSettings.DEFAULTS_ENV reads it. (GUT refuses unknown arguments, so
+// it can't be a command-line flag.)
+const DEFAULT_SETTINGS_ENV = { MONOMACHIA_DEFAULT_SETTINGS: '1' };
 const ERROR_PATTERNS = [/SCRIPT ERROR/, /Parse Error/, /Failed to load script/, /^ERROR: .*\.gd/m];
 const SHADER_ERROR_PATTERNS = [/SHADER ERROR/];
 
@@ -71,9 +76,9 @@ const SHADER_ERROR_PATTERNS = [/SHADER ERROR/];
  * Run Godot with a timeout. Resolves with {code, output}. Output is streamed
  * through unless quiet is set.
  */
-function runGodot(godot, args, { timeoutMs = 600000, quiet = false, cwd = PROJECT } = {}) {
+function runGodot(godot, args, { timeoutMs = 600000, quiet = false, cwd = PROJECT, env = {} } = {}) {
   return new Promise((res) => {
-    const child = spawn(godot, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'] });
+    const child = spawn(godot, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } });
     let output = '';
     const onData = (stream) => (buf) => {
       const s = buf.toString();
@@ -130,6 +135,7 @@ async function main() {
       await importProject(godot);
       const r = await runGodot(godot, ['--headless', '--path', PROJECT, '-s', 'res://addons/gut/gut_cmdln.gd', ...rest], {
         timeoutMs: 900000,
+        env: DEFAULT_SETTINGS_ENV,
       });
       if (r.code !== 0) process.exit(r.code);
       if (/Failing Tests|\[Failed\]/.test(r.output)) process.exit(1);
@@ -182,7 +188,7 @@ async function main() {
           '--script', 'res://tools/shot.gd', '--', `--scene=${scene}`, `--out=${resolve(out)}`, `--frames=${frames}`,
           ...sceneArgs,
         ],
-        { timeoutMs: 300000 },
+        { timeoutMs: 300000, env: DEFAULT_SETTINGS_ENV },
       );
       // Shaders compile only in a real window, so this is where their errors
       // show; a scene that draws a broken shader still saves its shot.

@@ -1,7 +1,7 @@
 extends GutTest
-## The GameServices autoload: one ControlProfiles, one InputDevices with its
-## InputFeed in the tree for the whole game, and a pause when the window loses
-## focus during a match.
+## The GameServices autoload: the settings (their graphics preset applied at
+## start), one ControlProfiles, one InputDevices with its InputFeed in the tree
+## for the whole game, and a pause when the window loses focus during a match.
 
 
 func _services() -> Node:
@@ -35,6 +35,19 @@ func test_it_owns_one_input_with_its_feed_in_the_tree() -> void:
 	assert_eq(feed.get_parent(), services)
 	assert_same(feed.input, input, "the feed hands events to the shared input")
 	assert_eq(services.process_mode, Node.PROCESS_MODE_ALWAYS)
+
+
+func test_it_owns_the_settings_and_applied_their_preset_at_start() -> void:
+	var services: Node = _services()
+	var settings: GameSettings = services.get("settings")
+	assert_not_null(settings)
+	var preset: GraphicsPreset = services.call("graphics_preset")
+	assert_eq(preset.id, settings.graphics_preset_id)
+	assert_eq(preset.id, GraphicsPreset.DEFAULT_ID, "test runs use the default settings (godot.mjs sets %s)" % GameSettings.DEFAULTS_ENV)
+	var root: Viewport = get_tree().root
+	assert_eq(root.screen_space_aa, preset.screen_space_aa, "the root viewport follows the preset")
+	assert_eq(root.msaa_3d, preset.msaa_3d)
+	assert_almost_eq(root.scaling_3d_scale, preset.render_scale, 0.001)
 
 
 func test_a_host_without_its_own_input_takes_the_shared_one() -> void:

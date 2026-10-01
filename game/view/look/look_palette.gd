@@ -1,11 +1,22 @@
 class_name LookPalette
 extends RefCounted
 ## The look's muted colours (ink blacks, bone and paper whites, stone greys,
-## lacquer red) and the render layers the look relies on. Colours are sRGB,
-## as picked; shader uniforms marked source_color convert them. The fighters'
-## palettes (FighterPalette, and FighterStandin's for the stand-ins) are the
+## lacquer red), the side colours, and the render layers the look relies on.
+## Colours are sRGB, as picked; shader uniforms marked source_color convert
+## them. The fighters' palettes (FighterPalette) and the side colours are the
 ## only saturated colours near the fighting area, so the fighters pop from the
 ## arena.
+
+## Each side's colour, by its palette index (MatchSide.palette): side 0
+## takes 0 (red) and side 1 takes 1 (blue) by default, as the demo's two
+## fighters did. The floor ring under a fighter, the beam over its dropped
+## weapon and its name on the results screen.
+const SIDE_COLORS: Array[Color] = [
+	Color(0.7, 0.16, 0.13),
+	Color(0.18, 0.4, 0.72),
+	Color(0.18, 0.58, 0.45),
+	Color(0.78, 0.58, 0.16),
+]
 
 const INK: Color = Color("0e0e14")
 const INK_SOFT: Color = Color("1c1c26")
@@ -31,3 +42,8 @@ const FIGHTER_LAYER: int = 2
 const GROUND_LAYER: int = 8
 ## Cull mask for small lights: every layer but the ground.
 const SMALL_LIGHT_MASK: int = 0xFFFFF & ~GROUND_LAYER
+
+
+## The colour of a side with palette index `palette`.
+static func side_color(palette: int) -> Color:
+	return SIDE_COLORS[posmod(palette, SIDE_COLORS.size())]

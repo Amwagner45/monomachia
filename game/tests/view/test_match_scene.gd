@@ -1,6 +1,6 @@
 extends GutTest
 ## The match scene (match_host.tscn) headless: the arena loaded by id, the
-## stand-in fighters following the rules, the camera following the player,
+## fighters following the rules, the camera following the player,
 ## and the HUD's announcements timed on rules steps.
 
 var host: MatchHost
@@ -39,7 +39,12 @@ func test_the_scene_builds_the_stage_from_the_config() -> void:
 	assert_eq(view.fighters.size(), 2)
 	assert_eq(view.fighters[0].weapon_id, &"katana")
 	assert_eq(view.fighters[1].weapon_id, &"daggers")
-	assert_ne(view.fighters[0].palette_color(), view.fighters[1].palette_color())
+	assert_ne(view.fighters[0].side_color(), view.fighters[1].side_color())
+	for i: int in 2:
+		var model: FighterModel = view.fighters[i].model
+		assert_eq(model.look.id, host.config.sides[i].fighter_id, "side %d is its fighter" % i)
+		assert_eq(model.palette, host.config.sides[i].palette, "in its palette")
+		assert_eq(model.weapon_look.id, host.config.sides[i].weapon_id, "holding its weapon")
 	assert_true(view.camera.current)
 	assert_eq(view.camera.mode, CameraRig.Mode.FOLLOW)
 	assert_true(hud.visible)
@@ -282,18 +287,19 @@ func test_a_dropped_weapon_is_in_the_toon_look() -> void:
 	host.step(Match.INTRO_FRAMES + 5)
 	host.world.weapons.append(DroppedWeapon.new(1, &"daggers", V3.make(1.0, 0.0, 1.0), V3.make(), Rng.new(3)))
 	view.render(1.0 / 60.0)
-	var blades: Array[Node] = view.get_node("Dropped1/Stick").get_children()
-	assert_eq(blades.size(), 2, "a pair of daggers")
-	for node: Node in blades:
-		var blade: MeshInstance3D = node as MeshInstance3D
-		var m: ShaderMaterial = blade.material_override as ShaderMaterial
-		assert_not_null(m)
-		if m == null:
-			continue
-		assert_eq(m.shader, ToonMaterials.TOON_SHADER, "a toon blade")
-		assert_eq(ToonMaterials.outline_kind_of(m), ToonMaterials.OutlineKind.WEAPON)
-		assert_true(ToonMaterials.is_outlined(m), "weapons are outlined on every preset")
-		assert_eq(blade.layers, 1 | LookPalette.FIGHTER_LAYER, "on the fighters' layer, so the rim light finds it")
+	var daggers: Array[Node] = view.get_node("Dropped1/Stick").get_children()
+	assert_eq(daggers.size(), 2, "a pair of daggers")
+	for dagger: Node in daggers:
+		var meshes: Array[Node] = dagger.find_children("*", "MeshInstance3D", true, false)
+		assert_gt(meshes.size(), 0, "the dagger's own model")
+		for node: Node in meshes:
+			var mi: MeshInstance3D = node
+			assert_eq(mi.layers, 1 | LookPalette.FIGHTER_LAYER, "on the fighters' layer, so the rim light finds it")
+			for i: int in mi.mesh.get_surface_count():
+				var m: Material = mi.get_active_material(i)
+				assert_true(ToonMaterials.is_toon(m), "a toon dagger")
+				assert_eq(ToonMaterials.outline_kind_of(m), ToonMaterials.OutlineKind.WEAPON)
+				assert_true(ToonMaterials.is_outlined(m), "weapons are outlined on every preset")
 
 
 func test_a_body_flash_fades_with_the_rules_not_the_wall_clock() -> void:
@@ -302,9 +308,28 @@ func test_a_body_flash_fades_with_the_rules_not_the_wall_clock() -> void:
 	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
 	var now: int = host.world.frame
 	host.sim_event.emit({"t": &"hit", "attacker": 0, "target": 1, "heavy": true, "sound": &"blade", "pos": at})
-	var standin: FighterStandin = view.fighters[1]
-	assert_almost_eq(standin.flash_left(now), 0.55, 1e-6, "lit by the heavy hit")
+	var target: FighterView = view.fighters[1]
+	assert_almost_eq(target.flash_left(now), 0.55, 1e-6, "lit by the heavy hit")
 	view.render(1.0)
-	assert_almost_eq(standin.flash_left(now), 0.55, 1e-6, "a long wall-clock frame doesn't fade it")
-	assert_almost_eq(standin.flash_left(now + 2), 0.35, 1e-6, "it fades by the frame")
-	assert_eq(standin.flash_left(now + 10), 0.0, "gone ten frames on")
+	assert_almost_eq(target.flash_left(now), 0.55, 1e-6, "a long wall-clock frame doesn't fade it")
+	assert_almost_eq(target.flash_left(now + 2), 0.35, 1e-6, "it fades by the frame")
+	assert_eq(target.flash_left(now + 10), 0.0, "gone ten frames on")
+
+
+## Rematches and restarts keep each side's model while its fighter stays the
+## same; a side whose fighter changes gets a new one.
+func test_rematches_keep_the_fighters_models() -> void:
+	host.start(_cpu())
+	var models: Array[FighterModel] = [view.fighters[0].model, view.fighters[1].model]
+	host.start(_cpu(MatchConfig.DUEL, 8))
+	assert_eq(view.fighters[0].model, models[0], "the Rogue kept")
+	assert_eq(view.fighters[1].model, models[1], "the Hunter kept")
+	host.start(MatchConfig.make(
+		MatchConfig.DUEL,
+		MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
+		MatchSide.computer(&"rogue", &"greatsword", 1, &"hard"),
+		9,
+	))
+	assert_eq(view.fighters[0].model, models[0], "the Rogue still kept")
+	assert_ne(view.fighters[1].model, models[1], "a Rogue in place of the Hunter")
+	assert_eq(view.fighters[1].model.palette, 1, "in her second palette")

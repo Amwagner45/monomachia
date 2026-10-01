@@ -119,10 +119,10 @@ func test_the_parameters_the_pass_sets_are_uniforms_of_both_shaders() -> void:
 
 
 func test_the_grade_keeps_the_fighters_colours() -> void:
-	var red: Color = InkGrade.grade(FighterStandin.PALETTES[0])
+	var red: Color = InkGrade.grade(LookPalette.SIDE_COLORS[0])
 	assert_gt(red.r, red.g * 2.0, "red stays red")
 	assert_gt(red.s, 0.6, "red keeps its saturation")
-	var blue: Color = InkGrade.grade(FighterStandin.PALETTES[1])
+	var blue: Color = InkGrade.grade(LookPalette.SIDE_COLORS[1])
 	assert_gt(blue.b, blue.r * 1.5, "blue stays blue")
 	assert_gt(blue.s, 0.5, "blue keeps most of its saturation")
 

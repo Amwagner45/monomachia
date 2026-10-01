@@ -1,17 +1,18 @@
 class_name MatchView
 extends Node3D
 ## The match as the player sees it: the arena (by id, through ArenaScenes),
-## two stand-in fighters, the dropped weapons and the camera rig. It listens
+## the two fighters (FighterView), the dropped weapons and the camera rig. It listens
 ## to a MatchHost and reads the rules' state every frame; it never changes
 ## the rules.
 ##
 ## Seams for the other lanes: the real arena replaces the stand-in through
 ## ArenaScenes, and when its root carries an ArenaDef as `def`, the camera
 ## takes its camera_max_radius and camera_far (read by name, so this lane
-## doesn't need the class); the real fighters (tasks 13-15) replace
-## FighterStandin, which is placed and posed in update_fighters(); the combat
-## effects (task 18) join _on_sim_event(), where the camera's shake and
-## field-of-view kicks are already wired.
+## doesn't need the class); the fighters are placed and posed in
+## update_fighters(), and swings (task 14.10) take over their posing from
+## StickPose inside FighterView; the combat effects (task 18) join
+## _on_sim_event(), where the camera's shake and field-of-view kicks are
+## already wired.
 
 ## The host to follow. The default is the parent (match_host.tscn).
 @export var host_path: NodePath = ^".."
@@ -32,7 +33,9 @@ var host: MatchHost
 var camera: CameraRig
 var arena: Node3D
 var arena_id: StringName = &""
-var fighters: Array[FighterStandin] = []
+## The two fighters, kept across matches: each rebuilds its model only when
+## its fighter changes.
+var fighters: Array[FighterView] = []
 
 ## owner side -> Node3D: the dropped weapon stand-ins.
 var _dropped: Dictionary[int, Node3D] = {}
@@ -43,7 +46,6 @@ var _dropped: Dictionary[int, Node3D] = {}
 var _flashes: Array[Dictionary] = []
 var _time: float = 0.0
 var _side_palette: Array[int] = [0, 1]
-var _side_weapon: Array[StringName] = [&"katana", &"katana"]
 
 
 func _ready() -> void:
@@ -107,7 +109,7 @@ func update_fighters(delta: float) -> void:
 func _on_match_started(cfg: MatchConfig) -> void:
 	_load_arena(cfg.arena_id)
 	while fighters.size() < 2:
-		var f: FighterStandin = (load("res://view/match/fighter_standin.tscn") as PackedScene).instantiate()
+		var f: FighterView = FighterView.new()
 		f.name = "Fighter%d" % fighters.size()
 		add_child(f)
 		fighters.append(f)
@@ -115,7 +117,6 @@ func _on_match_started(cfg: MatchConfig) -> void:
 		var s: MatchSide = cfg.sides[i]
 		fighters[i].setup(s.fighter_id, s.palette, s.weapon_id, i)
 		_side_palette[i] = s.palette
-		_side_weapon[i] = s.weapon_id
 	_clear_dropped()
 	_clear_flashes()
 	if host.attract:
@@ -306,22 +307,18 @@ func _make_dropped(side_id: int, weapon_id: StringName) -> Node3D:
 	var stick: Node3D = Node3D.new()
 	stick.name = "Stick"
 	root.add_child(stick)
-	# toon steel blades, outlined and on the fighters' layer like a held weapon
-	var length: float = StickPose.LENGTH.get(weapon_id, 0.9)
-	var kit := MeshKit.new()
-	kit.box(Transform3D.IDENTITY, Vector3(0.06, length, 0.035))
-	var box: ArrayMesh = kit.commit(true)
-	var blade_mat: ShaderMaterial = ToonMaterials.weapon(FighterStandin.BLADE_COLOR)
-	var count: int = 2 if weapon_id == &"daggers" else 1
-	for k: int in count:
-		var blade: MeshInstance3D = MeshKit.instance(box, blade_mat)
-		blade.name = "Blade%d" % k
-		blade.layers = 1 | LookPalette.FIGHTER_LAYER
-		blade.position = Vector3(0.12 * float(k), 0.0, 0.0)
-		stick.add_child(blade)
+	# the weapon's own model (both of a pair), in the toon look like a held
+	# one, centred on the rules' position along its length
+	var look: WeaponLook = WeaponLook.load_id(weapon_id) if WeaponLook.IDS.has(weapon_id) else null
+	if look != null:
+		for k: int in 2 if look.paired else 1:
+			var w: Node3D = look.instantiate()
+			w.name = "Weapon%d" % k
+			stick.add_child(w)
+			w.position = Vector3(0.12 * float(k), -_middle(w), 0.0)
 	# a pillar of light in the owner's colour over a weapon on the ground
 	var beam_mat: StandardMaterial3D = StandardMaterial3D.new()
-	beam_mat.albedo_color = FighterStandin.PALETTES[posmod(_side_palette[side_id], FighterStandin.PALETTES.size())]
+	beam_mat.albedo_color = LookPalette.side_color(_side_palette[side_id])
 	beam_mat.albedo_color.a = 0.35
 	beam_mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 	beam_mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
@@ -338,3 +335,15 @@ func _make_dropped(side_id: int, weapon_id: StringName) -> Node3D:
 	root.add_child(beam)
 	GraphicsApplier.apply_to_tree(GameServices.graphics_preset(), root)
 	return root
+
+
+## Halfway along a weapon model's length (its +Y), from its meshes' bounds.
+static func _middle(w: Node3D) -> float:
+	var lo: float = INF
+	var hi: float = -INF
+	for node: Node in w.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = node
+		var box: AABB = mi.transform * mi.get_aabb()
+		lo = minf(lo, box.position.y)
+		hi = maxf(hi, box.end.y)
+	return (lo + hi) * 0.5 if lo <= hi else 0.0

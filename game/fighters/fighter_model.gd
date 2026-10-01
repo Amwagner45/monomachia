@@ -138,8 +138,10 @@ func rebuild() -> void:
 
 
 ## Dresses the fighter in one of the look's palettes, and remembers it.
+## An index past the look's palettes wraps round (a side's palette index
+## counts the side colours, which outnumber them).
 func apply_palette(index: int) -> void:
-	palette = index
+	palette = posmod(index, look.palettes.size()) if look != null and not look.palettes.is_empty() else index
 
 
 func _dress(index: int) -> void:
@@ -147,26 +149,31 @@ func _dress(index: int) -> void:
 		return
 	var p: FighterPalette = look.palettes[clampi(index, 0, look.palettes.size() - 1)]
 	for entry: Array in _outfit_surfaces:
-		_override(entry, "outfit", p, func(m: BaseMaterial3D) -> void:
-			if p.outfit_albedo != null:
-				m.albedo_texture = p.outfit_albedo)
+		_override(entry, "outfit", p)
 	for entry: Array in _hair_surfaces:
-		_override(entry, "hair", p, func(m: BaseMaterial3D) -> void:
-			m.albedo_color = p.hair_color)
+		_override(entry, "hair", p)
 	for entry: Array in _headwear_surfaces:
-		_override(entry, "headwear", p, func(m: BaseMaterial3D) -> void:
-			m.albedo_color = p.headwear_color)
+		_override(entry, "headwear", p)
 
 
 ## Gives a surface the toon version of its imported material, recoloured for
-## palette `p` by `setup` (on a copy of the import). The toon materials are
-## cached, so switching back and forth makes no new ones.
-func _override(entry: Array, kind: String, p: FighterPalette, setup: Callable) -> void:
+## palette `p` (on a copy of the import): the outfit takes the palette's
+## texture, the hair and the headwear its colours. The toon materials are
+## cached, so switching back and forth makes no new ones. (No lambdas here:
+## one made in the palette's setter kept the scripts alive at exit.)
+func _override(entry: Array, kind: String, p: FighterPalette) -> void:
 	var base: BaseMaterial3D = entry[2]
 	var key: String = "%s:%d:%d" % [kind, p.get_instance_id(), base.get_instance_id()]
 	if not _materials.has(key):
 		var m: BaseMaterial3D = base.duplicate()
-		setup.call(m)
+		match kind:
+			"outfit":
+				if p.outfit_albedo != null:
+					m.albedo_texture = p.outfit_albedo
+			"hair":
+				m.albedo_color = p.hair_color
+			"headwear":
+				m.albedo_color = p.headwear_color
 		_materials[key] = ToonMaterials.fighter_from(m)
 	(entry[0] as MeshInstance3D).set_surface_override_material(entry[1], _materials[key])
 

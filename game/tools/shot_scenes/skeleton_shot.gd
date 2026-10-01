@@ -8,10 +8,16 @@ extends Node
 ## without the clock to a chosen moment, snap the camera and hold still: the
 ## view and the HUD stop processing once snapped, so the wall clock (idle bob,
 ## shake decay, the menu orbit) can't change the picture between runs.
+##
+## "mirror" is a Rogue against a Rogue in her two palettes. "spacing" sets the
+## fighters --spacing= metres apart (2.5 by default), to check that the
+## player never hides the opponent from the gameplay camera.
 
 const SEED: int = 7
 
-@export_enum("round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu") var shot: String = "round_start"
+@export_enum("round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "mirror", "spacing") var shot: String = "round_start"
+## The fighters' distance apart for the "spacing" shot (m).
+@export var spacing: float = 2.5
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
 
@@ -31,6 +37,9 @@ func shot_ready() -> bool:
 
 
 func _ready() -> void:
+	for a: String in OS.get_cmdline_user_args():
+		if a.begins_with("--spacing="):
+			spacing = float(a.trim_prefix("--spacing="))
 	match shot:
 		"round_start":
 			_gameplay(MatchConfig.DUEL)
@@ -64,6 +73,18 @@ func _ready() -> void:
 			_main()
 			main.call("show_main_menu")
 			host.step(420)
+		"mirror":
+			_gameplay(MatchConfig.DUEL, MatchConfig.make(
+				MatchConfig.DUEL,
+				MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
+				MatchSide.computer(&"rogue", &"katana", 1, &"hard"),
+				SEED,
+			))
+			host.step(Match.INTRO_FRAMES + 30)
+		"spacing":
+			_gameplay(MatchConfig.DUEL)
+			host.step(Match.INTRO_FRAMES + 20)
+			_place_apart(spacing)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
 	if shot == "dropped":
@@ -84,11 +105,27 @@ func _config(mode: StringName) -> MatchConfig:
 	)
 
 
-func _gameplay(mode: StringName) -> void:
+func _gameplay(mode: StringName, cfg: MatchConfig = null) -> void:
 	host = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()
 	host.auto_run = false
 	add_child(host)
-	host.start(_config(mode))
+	host.start(cfg if cfg != null else _config(mode))
+
+
+## Moves the fighters to `metres` apart about their midpoint, on the line
+## between them, standing still, and steps twice so the view, which shows
+## the position before the last step until the next, shows it.
+func _place_apart(metres: float) -> void:
+	var a: Fighter = host.fighter(0)
+	var b: Fighter = host.fighter(1)
+	var mid: Vector3 = Vector3(a.pos.x + b.pos.x, 0.0, a.pos.z + b.pos.z) * 0.5
+	var along: Vector3 = Vector3(b.pos.x - a.pos.x, 0.0, b.pos.z - a.pos.z).normalized()
+	for pair: Array in [[a, -0.5], [b, 0.5]]:
+		var f: Fighter = pair[0]
+		var at: Vector3 = mid + along * metres * float(pair[1])
+		f.pos = V3.make(at.x, 0.0, at.z)
+		f.vel = V3.make()
+	host.step(2)
 
 
 func _main() -> void:

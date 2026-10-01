@@ -126,12 +126,12 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, and 14.1. The owner now approves each task before the next starts. Next: 14.2, which finishes stage 2.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order. The owner now approves each task before the next starts. Next: stage 3, the shrine, from 17.1.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
   - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
-  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`). The Rogue and the Hunter and the three weapon models are in the project in the toon look, shown by `fighters/preview/preview.tscn` (in the studio or on the night stage), but not yet in the match (14.2).
+  - The rules port matches the TypeScript bit for bit, and a Duel plays from title to results (`npm run godot:run`) with the real Rogue and Hunter and the three weapon models in the toon look, posed from the stand-in stick poses until swings exist. `fighters/preview/preview.tscn` shows the fighters and weapons on their own (in the studio or on the night stage).
   - The safety nets (25.1–25.3, 16.1):
     - `npm run check:sizes` fails CI on any tracked file over 10 MB;
     - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
@@ -142,14 +142,16 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw;
     - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else;
     - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`;
-    - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset. The capsule fighters stay as they are until 14.2;
+    - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset;
     - the Rogue, the Hunter and the three weapons in the look (16.7): `ToonMaterials.fighter_from` and `weapon_from` convert their imported materials, with a two-sided toon shader for open shells, and the Katana's shaders are toon-lit.
   - The fighter rig (14.1): `FighterRig` and `BodyLayer` on each fighter's skeleton, with arm and leg IK, hands locked onto a posed weapon's grips, and fists fitted to each handle by `HandGrip`. Weapons are posed in fighter space or carried in the fist, never in hand sockets.
-- **Checks after 14.1:**
-  - 524 Godot tests: rules 138, input 118, audio 31, core 22, view 160, content 52, and 3 project-wide smoke tests;
+  - Real fighters in the match (14.2): `FighterView` replaces the capsule stand-ins, with flashes and glows as overlays, models kept across rematches, and the real weapon models on the floor when dropped.
+- **Checks after 14.2:**
+  - 536 Godot tests (43 s): rules 138, input 118, audio 31, core 22, view 172, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 146 scripts cleanly;
-  - CI passed on the push of 16.7 (bf71b5f);
+  - the typecheck loads 147 scripts cleanly;
+  - CI passed on the push of 14.1 (6a986cb);
+  - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
 - **Waiting on its own worktree:**
@@ -162,7 +164,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -648,7 +650,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - **Reach.** The hold clips under the arms (`Sword_Idle`, `Idle_Shield`) pull the right shoulder 17–20 cm back. From there, the spike's Katana guard and StickPose's guard hands sit at or past full reach (a straight arm, and up to 2.5 cm short on the Hunter). The relaxed `Idle` keeps the shoulders square. So either bring the posed hands in or play `Idle` under a posed weapon.
         - **Greatsword.** Its OffHandGrip is 27 cm down the handle, so the grip needs to sit lower than a one-hand pose would put it.
         - **Edge.** StickPose gives no edge direction; FighterView picks one per weapon.
-  - [ ] **14.2 Real fighters in the match.**
+  - [x] **14.2 Real fighters in the match.**
     - Delivers:
       - `FighterView` replaces `FighterStandin`: the side's fighter in its toon look and palette with its weapon models, placed from the host's display position and yaw, and posed from StickPose through the rig until swings exist.
       - The body flash is a material overlay timed on rules frames.
@@ -662,6 +664,57 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The skeleton shots are re-rendered and reviewed: a mirror match shows two palettes, the weapon is in the hands, and the player never hides the opponent.
       - `godot:run` plays a Duel.
     - Blocked by: 14.1 · Stories: 11, 43, 44, 45
+    - Done:
+      - **`FighterView`** (`game/view/fighter/fighter_view.gd`) holds the side's FighterModel in its palette with its weapon models, placed from the host's display position and yaw. It is posed from StickPose:
+        - **Weapons and arms.** Each hand's position and blade direction become a weapon pose, and the rig's IK puts the arms on it (the off hand on a two-handed weapon's OffHandGrip).
+        - **Reach.** StickPose's keys were made for a stick figure (a thrust's hands 0.8 m out), so a pose is pulled in toward the shoulders until every gripping arm reaches within 96% of its length. The shoulders are taken where the body layer will move them (crouch and lean).
+        - **Edge.** A blade's edge faces the way the move's strike sweeps its tip, or down and forward in a guard or thrust.
+        - **Body.** The lean bends the spine; the crouch drops the hips over feet that the leg IK keeps where the clip has them, the knees bending the clip's way (`FighterRig.feet_from_clip`, with `BodyLayer.clip_feet`); the spin turns the model.
+        - **Clips.** The hold clip plays under it all on the rules' clock (frame plus alpha), so it holds still through hit-stop and pause.
+        - **KO and disarm.** A KO lets go of the pose and plays `Death01`, timed from the KO in rules frames. A disarmed fighter's weapon is taken off, and put back when re-armed.
+      - **Overlays.** The body flash (hit, disarm, KO) and the KO's dimming are a material overlay on every mesh of the model, timed on rules frames. A glowing blade (an unblockable winding up red, a charging heavy, an ultimate) is an additive overlay on the weapon. The toon materials are left alone, and each overlay is on only while it shows.
+      - **Rematches.** MatchView keeps both FighterViews. A rematch or restart keeps a side's model while its fighter is the same; a new palette or weapon goes on the same model.
+      - **Clean-up:**
+        - The side colours are `LookPalette.SIDE_COLORS` and `side_color()`, used by the floor ring, the dropped weapon's beam, the results screen and the look bench.
+        - StickPose reads `WeaponLook.two_handed`.
+        - `FighterStandin`, its scene, and StickPose's shoulder constants are deleted.
+        - The dropped weapons are the real weapon models, centred along their length.
+        - `FighterModel.apply_palette()` wraps a palette index past the look's two.
+      - **A leak found on the way.** Recolouring a built fighter through lambdas made in FighterModel's palette setter, together with reading `model.look.palettes` from FighterView, left the scripts and the toon shaders alive at exit. Each screenshot ended with "3 RID allocations ... leaked". Found by bisecting against 14.1's commit. `_override` now branches on the surface kind instead of taking a lambda, and the palette wrap lives in FighterModel. No shot leaks now.
+      - **The camera with real bodies.**
+        - The `spacing` shots (`--spacing=3.5|2.5|1.5`) show the opponent clear of the player at every distance.
+        - Measured from the posed skeletons, the bodies are within the camera test's 0.35 m half-width, but the widest reaches are not: the Rogue's knees in her stance reach about 0.39 m and dagger elbows about 0.43 m.
+        - At those widths the clearance angle is negative by up to 1.3° at 1.5 and 3.5 m: an outer knee or elbow can touch the opponent's outline, while the torsos stay clear.
+        - The camera's numbers are unchanged; widening the swing is for the owner to decide.
+      - **Tests:**
+        - `test_fighter_view.gd` (new, 11 tests):
+          - placing from the rules;
+          - the model kept across setups and rebuilt for a new fighter;
+          - the guard putting each weapon in both hands, for each fighter and weapon;
+          - every frame of a light and a heavy on all three weapons keeping the grips within 1 cm (measured: 0.0 mm) and the elbows below 175° (they peak at 150–157°);
+          - the edge rule;
+          - the crouch over planted feet;
+          - the clip on the rules' clock;
+          - the KO fall;
+          - disarming and re-arming;
+          - the flash and glow overlays;
+          - the side ring.
+        - `test_match_scene.gd`:
+          - each side's model is its fighter, palette and weapon;
+          - the dropped daggers are the real, toon models;
+          - the body flash test reads FighterView;
+          - a new test keeps the models across rematches.
+        - `test_stick_pose.gd`: the stand-in tests became a stick-length check and two-handedness from WeaponLook.
+        - Suite time: the Godot tests take 43 s (32 s after 14.1). Of that, `test_match_scene` 6.9 s, `test_match_host` 4.7 s, `test_main_flow` 3.0 s and `test_fighter_view` 5.3 s.
+      - **Shots:**
+        - All the skeleton shots were re-rendered and reviewed, plus the new `skeleton_mirror` and `skeleton_spacing`. The mirror match shows the Rogue's two palettes; the weapons are in both hands; the hit flash, the parry flash, the disarmed Hunter's empty hands, the real Greatsword lying under its beam, and the attract duel behind the menus all read.
+        - `Monomachia --smoke`, run from the project in a window, plays a whole Watch match with the real fighters to the results and exits 0.
+        - `test_a_whole_match_renders_without_errors` renders a whole computer-against-computer Duel.
+        - A hands-on Duel is on the owner's review list.
+      - **For later tasks:**
+        - The hands are on the grips but the stick keys look stiff on real bodies: short reaches, and a body that only leans. Swings (7.16 on, 14.10) replace them.
+        - A disarmed fighter's arms stay on the clip; fists come with 15.x.
+        - The flash tints the whole body flat, as the stand-in's did; task 18's effects can refine it.
   - [ ] **14.3 Pose checks on the posed skeleton (`PoseCheck`).** It measures:
     - wrist bend and deviation;
     - the elbow angle, at 150–160° on the first active frame and never locked;

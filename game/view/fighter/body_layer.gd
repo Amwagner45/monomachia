@@ -37,6 +37,13 @@ var head_pitch: float = 0.0
 ## The hips moved, in skeleton space: a dip, a weight shift.
 var hips_offset: Vector3 = Vector3.ZERO
 
+## Where the clip put each leg this update, before anything here moved it,
+## by side ("Right", "Left"): the hip and knee joints, and the foot. The
+## rig's leg IK can keep the feet there (FighterRig.feet_from_clip).
+var clip_hips: Dictionary[String, Vector3] = {}
+var clip_knees: Dictionary[String, Vector3] = {}
+var clip_feet: Dictionary[String, Transform3D] = {}
+
 var _ids: Dictionary[StringName, int] = {}
 
 
@@ -69,6 +76,10 @@ func _process_modification_with_delta(_delta: float) -> void:
 	var sk: Skeleton3D = get_skeleton()
 	if sk == null:
 		return
+	for side: String in ["Right", "Left"]:
+		clip_hips[side] = sk.get_bone_global_pose(_id(sk, StringName(side + "UpperLeg"))).origin
+		clip_knees[side] = sk.get_bone_global_pose(_id(sk, StringName(side + "LowerLeg"))).origin
+		clip_feet[side] = sk.get_bone_global_pose(_id(sk, StringName(side + "Foot")))
 	if lean.length() > 1e-5:
 		rot_global(sk, _id(sk, &"Root"), Quaternion(lean.normalized(), lean.length()))
 	if absf(pelvis_yaw) > 1e-5:

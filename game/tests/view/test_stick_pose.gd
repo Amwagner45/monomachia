@@ -1,7 +1,8 @@
 extends GutTest
-## The stand-in fighters' stick poses, read from the rules' state: guard,
-## block, an attack sweeping wind-up -> strike -> follow-through -> guard, a
-## reel when hit, the fall on KO, bare hands when disarmed.
+## The stick poses FighterView poses the fighters from, read from the rules'
+## state: guard, block, an attack sweeping wind-up -> strike ->
+## follow-through -> guard, a reel when hit, the fall on KO, bare hands when
+## disarmed.
 
 
 func after_each() -> void:
@@ -16,17 +17,17 @@ func _press(W: World, b: int) -> void:
 	W.step([SimHelpers.btn(b), SimHelpers.idle()])
 
 
-func test_each_standin_blade_is_as_long_as_its_stick() -> void:
-	for wid: StringName in [&"katana", &"greatsword", &"daggers"]:
-		var s: FighterStandin = FighterStandin.new()
-		add_child_autofree(s)
-		s.setup(&"rogue", 0, wid, 0)
-		var blade: MeshInstance3D = s.get_node("Body/HandR/Blade")
-		var box: BoxMesh = blade.mesh
-		# the blade starts 0.04 m above the grip and reaches the stick's tip
-		assert_almost_eq(blade.position.y + box.size.y / 2.0, StickPose.LENGTH[wid], 1e-5, String(wid))
+func test_the_sticks_are_as_long_as_their_weapons_rank() -> void:
 	assert_gt(StickPose.LENGTH[&"greatsword"], StickPose.LENGTH[&"katana"])
 	assert_gt(StickPose.LENGTH[&"katana"], StickPose.LENGTH[&"daggers"])
+
+
+## Two hands on one grip exactly for the weapons whose look says so.
+func test_two_handed_comes_from_the_weapon_look() -> void:
+	for weapon: WeaponDef in [Moves.KATANA, Moves.GREATSWORD, Moves.DAGGERS]:
+		var W: World = _world(weapon)
+		var p: StickPose.Pose = StickPose.compute(W.fighters[0], 0.0)
+		assert_eq(p.two_handed, WeaponLook.load_id(weapon.id).two_handed, String(weapon.id))
 
 
 ## Overheads and slams come down the body's centre line instead of swinging
@@ -152,19 +153,3 @@ func test_daggers_left_hand_moves_mirror_the_right() -> void:
 	var r: StickPose.Hand = right_keys[1]["right"]
 	assert_almost_eq(l.pos, StickPose.mirrored(r.pos), Vector3.ONE * 1e-6)
 
-
-func test_the_standin_places_its_stick_from_the_pose() -> void:
-	var W: World = _world(Moves.DAGGERS)
-	var s: FighterStandin = FighterStandin.new()
-	add_child_autofree(s)
-	s.setup(&"hunter", 1, &"daggers", 0)
-	s.update_from(W.fighters[0], Vector3(1.0, 0.0, 2.0), 0.5, 1.0, 0.016, 0.0)
-	assert_eq(s.position, Vector3(1.0, 0.0, 2.0))
-	var hand: Node3D = s.get_node("Body/HandR")
-	assert_almost_eq(hand.position, s.last_pose.right.pos, Vector3.ONE * 1e-5)
-	assert_almost_eq(hand.basis.y.normalized(), s.last_pose.right.dir, Vector3.ONE * 1e-4)
-	assert_true((s.get_node("Body/HandL/Blade") as Node3D).visible, "both daggers drawn")
-	W.fighters[0].armed = false
-	s.update_from(W.fighters[0], Vector3.ZERO, 0.0, 1.0, 0.016, 0.0)
-	assert_false((s.get_node("Body/HandR/Blade") as Node3D).visible, "no blade when disarmed")
-	assert_true((s.get_node("Body/HandR/Fist") as Node3D).visible)

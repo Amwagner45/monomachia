@@ -1,7 +1,8 @@
 class_name StickPose
 extends RefCounted
-## How a stand-in fighter holds its stick weapon, worked out from the rules'
-## state the simple way (a stand-in until tasks 14-15 bring real animation).
+## How a fighter holds its weapon, worked out from the rules' state the
+## simple way: a stand-in for the swings (plan task 14.10 on). FighterView
+## turns each hand into a weapon pose for the rig's IK.
 ##
 ## A pose is the hands' positions and blade directions in the fighter's own
 ## frame, plus a body lean, crouch and spin. Guard and block poses come per
@@ -15,17 +16,15 @@ extends RefCounted
 ## Keys are written as the demo wrote them, [right, up, forward] in metres;
 ## local() turns them into the fighter node's frame (+z forward, -x right).
 
-## The stick's length per weapon (m), grip to tip.
+## The stick's length per weapon (m), grip to tip, as the keys were made
+## for: where a key's blade tip is (FighterView reads which way a strike
+## sweeps it).
 const LENGTH: Dictionary[StringName, float] = {
 	&"katana": 0.95,
 	&"greatsword": 1.6,
 	&"daggers": 0.4,
 	&"fists": 0.0,
 }
-
-## Shoulder height for the arm lines (m) and half the shoulder width.
-const SHOULDER_Y: float = 1.42
-const SHOULDER_X: float = 0.22
 
 
 ## One hand: where it is, where its blade points, and whether it is drawn.
@@ -327,7 +326,7 @@ static func compute(f: Fighter, alpha: float, time: float = 0.0) -> Pose:
 	var wid: StringName = weapon_key(f)
 	var p: Pose = Pose.new()
 	p.bare = wid == &"fists"
-	p.two_handed = wid == &"katana" or wid == &"greatsword"
+	p.two_handed = WeaponLook.IDS.has(wid) and WeaponLook.load_id(wid).two_handed
 	var guard: Array[Hand] = _from_table(GUARD, wid)
 	p.right = guard[0]
 	p.left = guard[1]

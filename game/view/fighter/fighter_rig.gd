@@ -80,6 +80,11 @@ var elbow_pole: Dictionary[String, Vector3] = {
 ## positive to the left). They start where the rest pose has them.
 var foot_position: Dictionary[String, Vector3] = {}
 var foot_yaw: Dictionary[String, float] = {"Right": 0.0, "Left": 0.0}
+## When set, the leg IK keeps each foot where the clip put it, turned as the
+## clip turned it, and bends each knee the way the clip bends it, in place of
+## the foot targets: the body layer can drop the hips into a crouch over
+## planted feet.
+var feet_from_clip: bool = false
 
 var _arm_ik: Dictionary[String, TwoBoneIK3D] = {}
 var _leg_ik: TwoBoneIK3D
@@ -214,9 +219,26 @@ func grip_point(side: String) -> Vector3:
 ## hand on its posed weapon's grip point. Only for a hand that drives().
 func hand_frame(side: String) -> Transform3D:
 	var grip: Array = _grip(side)
+	return seat(side, _poses[grip[0]], grip[1])
+
+
+## The hand frame that would seat a hand on `point` (in weapon space) of a
+## weapon posed at `weapon_xf`: the fist round the handle there, turned
+## GRIP_ROLL about it.
+func seat(side: String, weapon_xf: Transform3D, point: Vector3) -> Transform3D:
 	var roll: float = deg_to_rad(GRIP_ROLL) * (-1.0 if side == "Right" else 1.0)
-	var seat: Basis = Basis(Vector3.UP, roll)
-	return _poses[grip[0]] * Transform3D(seat, grip[1]) * hand_grip.fist(side).affine_inverse()
+	return weapon_xf * Transform3D(Basis(Vector3.UP, roll), point) * hand_grip.fist(side).affine_inverse()
+
+
+## The hands that grip held weapon `index` when it is posed, each with the
+## point it grips, in weapon space.
+func grips_on(index: int) -> Dictionary[String, Vector3]:
+	var out: Dictionary[String, Vector3] = {}
+	for side: String in SIDES:
+		var grip: Array = _grip(side)
+		if not grip.is_empty() and grip[0] == index:
+			out[side] = grip[1]
+	return out
 
 
 ## [weapon index, grip point in weapon space] for a hand on a posed weapon:
@@ -281,8 +303,20 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 		_markers[side + "ElbowPole"].position = shoulder + chest * (elbow_pole[side] * _arm_length[side])
 	_leg_ik.active = leg_weight > 0.001
 	_leg_ik.influence = clampf(leg_weight, 0.0, 1.0)
-	if _leg_ik.active:
-		for side: String in SIDES:
+	if not _leg_ik.active:
+		return
+	for side: String in SIDES:
+		if feet_from_clip:
+			# The foot where the clip has it, the knee bent the clip's way:
+			# out from the line between the clip's hip and foot.
+			var foot: Vector3 = body.clip_feet[side].origin
+			var knee: Vector3 = body.clip_knees[side]
+			var bend: Vector3 = knee - (body.clip_hips[side] + foot) * 0.5
+			if bend.length() < 0.01:
+				bend = body.clip_feet[side].basis.y
+			_markers[side + "FootTarget"].position = foot
+			_markers[side + "KneePole"].position = knee + bend.normalized() * _leg_length[side]
+		else:
 			var at: Vector3 = foot_position[side]
 			var ahead: Vector3 = Vector3(sin(foot_yaw[side]), 0.0, cos(foot_yaw[side]))
 			_markers[side + "FootTarget"].position = at
@@ -309,6 +343,8 @@ func _post(sk: Skeleton3D, _delta: float) -> void:
 			var foot: int = _id(side + "Foot")
 			var now: Quaternion = sk.get_bone_global_pose(foot).basis.get_rotation_quaternion()
 			var want: Quaternion = Quaternion(Vector3.UP, foot_yaw[side]) * _foot_rest[side]
+			if feet_from_clip:
+				want = body.clip_feet[side].basis.get_rotation_quaternion()
 			BodyLayer.rot_global(sk, foot, now.slerp(want, _leg_ik.influence) * now.inverse())
 
 

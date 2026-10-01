@@ -54,8 +54,8 @@ func _ready() -> void:
 	for outlined: bool in [true, false]:
 		var x: float = -HALF_GAP if outlined else HALF_GAP
 		var materials: Array[ShaderMaterial] = []
-		materials.append_array(_add_group(Vector3(x, 0, 0), FighterStandin.PALETTES[0]))
-		materials.append_array(_add_group(Vector3(x * 0.6, 0, -FAR), FighterStandin.PALETTES[1]))
+		materials.append_array(_add_group(Vector3(x, 0, 0), LookPalette.SIDE_COLORS[0]))
+		materials.append_array(_add_group(Vector3(x * 0.6, 0, -FAR), LookPalette.SIDE_COLORS[1]))
 		for m: ShaderMaterial in materials:
 			ToonMaterials.set_outline(m, outlined, width_scale)
 		if not outlined:
@@ -157,7 +157,7 @@ func _add_group(at: Vector3, color: Color) -> Array[ShaderMaterial]:
 	group.position = at
 	add_child(group)
 	var cloth: ShaderMaterial = ToonMaterials.fighter(color)
-	var skin: ShaderMaterial = ToonMaterials.fighter(FighterStandin.TONES[&"rogue"])
+	var skin: ShaderMaterial = ToonMaterials.fighter(LookPalette.INK_SOFT)
 	var steel: ShaderMaterial = ToonMaterials.weapon(LookPalette.STEEL)
 	var wood: ShaderMaterial = ToonMaterials.weapon(LookPalette.WOOD_DARK, false)
 	var stone: ShaderMaterial = ToonMaterials.prop(LookPalette.STONE)

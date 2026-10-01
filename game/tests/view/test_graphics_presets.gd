@@ -87,7 +87,7 @@ func _scene() -> Node3D:
 	root.add_child(far)
 	root.add_child(InkWashPass.new())
 	var materials: Array[ShaderMaterial] = [
-		ToonMaterials.fighter(FighterStandin.PALETTES[0]),
+		ToonMaterials.fighter(LookPalette.SIDE_COLORS[0]),
 		ToonMaterials.weapon(LookPalette.STEEL),
 		ToonMaterials.prop(LookPalette.STONE),
 		ToonMaterials.prop(LookPalette.STONE, 0.3, false),

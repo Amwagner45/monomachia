@@ -63,9 +63,9 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - a GUT test that replays them on the Godot rules and compares them.
   - Blocked by: 3 (and 5 for the computer-vs-computer goldens).
   - Check: every golden matches, events exactly and positions within 1e-6.
-- [ ] **5. Port the computer opponent, the training dummy and the tools.** The brain with its three difficulties, the training behaviours, and headless `soak` and `counterlab` runners.
+- [x] **5. Port the computer opponent, the training dummy and the tools.** The brain with its three difficulties, the training behaviours, and headless `soak` and `counterlab` runners.
   - Blocked by: 3.
-  - Check: `npm run soak -- 40` finishes with no errors, and its numbers are within noise of the TypeScript soak run on the same seeds; computer-vs-computer goldens match.
+  - Check: `npm run soak:godot -- 40` finishes with no errors, and its numbers are within noise of the TypeScript soak run on the same seeds; computer-vs-computer goldens match.
 
 ### Phase B: a playable skeleton
 

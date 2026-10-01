@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Sep 30, 2026 · status: in build, paused after the playable skeleton (see the plan's Progress section) · branch `feature/godot-rebuild`
+Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6 and 21 are done; next is 13.1 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -26,103 +26,105 @@ A Godot 4.7 PC game (Windows) that plays the same duel with the same rules and c
 
 ## User Stories
 
+A ticked story works in the Godot build today. The plan names the tasks that deliver each of the others.
+
 ### Playing a duel
 
-1. As a player, I want to start Monomachia as a Windows program, so that I can play without a browser.
-2. As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
-3. As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
-4. As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
-5. As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
-6. As a player, I want the match to be first to three rounds with a clear round call and "Fight", so that I always know where the match stands.
-7. As a player, I want health bars with the posture bar underneath, round pips and an ultimate badge, so that I can read the state of the fight at a glance.
-8. As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
-9. As a player, I want to pause at any time and reach the move list, controls and settings from the pause menu, so that I can check things mid-match.
-10. As a player, I want the game to pause itself when the window loses focus, so that I don't lose a round while tabbed out.
+1. [ ] As a player, I want to start Monomachia as a Windows program, so that I can play without a browser.
+2. [ ] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
+3. [ ] As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
+4. [ ] As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
+5. [ ] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
+6. [x] As a player, I want the match to be first to three rounds with a clear round call and "Fight", so that I always know where the match stands.
+7. [ ] As a player, I want health bars with the posture bar underneath, round pips and an ultimate badge, so that I can read the state of the fight at a glance.
+8. [ ] As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
+9. [ ] As a player, I want to pause at any time and reach the move list, controls and settings from the pause menu, so that I can check things mid-match.
+10. [x] As a player, I want the game to pause itself when the window loses focus, so that I don't lose a round while tabbed out.
 
 ### Camera and movement
 
-11. As a player, I want the camera over my fighter's shoulder, slightly more zoomed out than For Honor, and always locked on to my opponent, so that I see my fighter, my opponent and the space between us.
-12. As a player, I want to move in eight directions around my opponent, step with a tap, sprint with a double-tap and hold, dodge with a direction, backstep with no direction, and jump, as in the demo, so that the controls I learned still work.
-13. As a player, I want my fighter to lean into runs and turns, and to dash evasively when dodging, so that movement looks real.
-14. As a player, I want to walk noticeably faster while blocking than in the demo, so that I can reposition while guarding.
-15. As a player, I want a larger arena with walls at the edge, so that there's room to manoeuvre and nobody falls off.
+11. [ ] As a player, I want the camera over my fighter's shoulder, slightly more zoomed out than For Honor, and always locked on to my opponent, so that I see my fighter, my opponent and the space between us.
+12. [x] As a player, I want to move in eight directions around my opponent, step with a tap, sprint with a double-tap and hold, dodge with a direction, backstep with no direction, and jump, as in the demo, so that the controls I learned still work.
+13. [ ] As a player, I want my fighter to lean into runs and turns, and to dash evasively when dodging, so that movement looks real.
+14. [ ] As a player, I want to walk noticeably faster while blocking than in the demo, so that I can reposition while guarding.
+15. [ ] As a player, I want a larger arena with walls at the edge, so that there's room to manoeuvre and nobody falls off.
 
 ### Attacking
 
-16. As a player, I want each swing to continue from where the last one ended (a right-to-left cut followed by a left-to-right cut), so that strings flow.
-17. As a player, I want every follow-up to be optional, so that I can stop after any hit and recover normally.
-18. As a player, I want two lights to flow into a heavy as the third hit with every weapon, so that I have a standard finisher.
-19. As a player, I want attacks to feel heavy: a visible wind-up, a strike that lands with hit-stop, and a follow-through, so that hits have weight.
-20. As a player using a colossal weapon, I want the swing to pull my fighter along with its momentum, so that the weapon feels heavy.
-21. As a player, I want a hit to register only when the blade actually reaches my opponent, and a swing to miss when it visibly misses, so that I trust what I see.
-22. As a player, I want unblockable attacks to reach further than normal ones and to show their reach with a red ink trail and warning mark, so that I can read them and pick the right counter.
-23. As a player, I want to dodge out of the late recovery of my heavies, not only my lights, so that I'm never fully stuck after committing.
-24. As a player facing a string, I want to be able to block or parry the later hits after taking the first one, so that one mistake doesn't cost me a whole string (there is no combo breaker).
+16. [ ] As a player, I want each swing to continue from where the last one ended (a right-to-left cut followed by a left-to-right cut), so that strings flow.
+17. [ ] As a player, I want every follow-up to be optional, so that I can stop after any hit and recover normally.
+18. [ ] As a player, I want two lights to flow into a heavy as the third hit with every weapon, so that I have a standard finisher.
+19. [ ] As a player, I want attacks to feel heavy: a visible wind-up, a strike that lands with hit-stop, and a follow-through, so that hits have weight.
+20. [ ] As a player using a colossal weapon, I want the swing to pull my fighter along with its momentum, so that the weapon feels heavy.
+21. [ ] As a player, I want a hit to register only when the blade actually reaches my opponent, and a swing to miss when it visibly misses, so that I trust what I see.
+22. [ ] As a player, I want unblockable attacks to reach further than normal ones and to show their reach with a red ink trail and warning mark, so that I can read them and pick the right counter.
+23. [ ] As a player, I want to dodge out of the late recovery of my heavies, not only my lights, so that I'm never fully stuck after committing.
+24. [ ] As a player facing a string, I want to be able to block or parry the later hits after taking the first one, so that one mistake doesn't cost me a whole string (there is no combo breaker).
 
 ### Katana
 
-25. As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
-26. As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
-27. As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
-28. As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
-29. As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
-30. As a Katana player, I want Flash, Piercing Thrust and Swallow Sweep as block abilities and Moonsplitter as the ultimate, as in the demo, so that the Katana keeps its identity.
+25. [ ] As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
+26. [ ] As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
+27. [ ] As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
+28. [ ] As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
+29. [ ] As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
+30. [ ] As a Katana player, I want Flash, Piercing Thrust and Swallow Sweep as block abilities and Moonsplitter as the ultimate, as in the demo, so that the Katana keeps its identity.
 
 ### Greatsword
 
-31. As a Greatsword player, I want side-to-side light swings that ride the sword's momentum, with the second swing starting faster than the first, so that the weight shows.
-32. As a Greatsword player, I want my heavy string to be an overhead strike followed by an optional unblockable low sweep, so that the greatsword has a feared finisher.
-33. As a Greatsword player, I want my dodge attacks to be thrusts (a quick blockable stab on light, an unblockable skewer on heavy), so that attacking out of a dodge matches the design.
-34. As a Greatsword player, I want Reaping Sweep, Mountain Slam and Guard Crusher as block abilities and Impaler as the ultimate, as in the demo.
+31. [ ] As a Greatsword player, I want side-to-side light swings that ride the sword's momentum, with the second swing starting faster than the first, so that the weight shows.
+32. [ ] As a Greatsword player, I want my heavy string to be an overhead strike followed by an optional unblockable low sweep, so that the greatsword has a feared finisher.
+33. [ ] As a Greatsword player, I want my dodge attacks to be thrusts (a quick blockable stab on light, an unblockable skewer on heavy), so that attacking out of a dodge matches the design.
+34. [ ] As a Greatsword player, I want Reaping Sweep, Mountain Slam and Guard Crusher as block abilities and Impaler as the ultimate, as in the demo.
 
 ### Twin Daggers
 
-35. As a Daggers player, I want a four-light string that alternates hands (right slash, left slash, crossing cut, double stab), so that the continuity rule holds for two blades.
-36. As a Daggers player, I want to dodge out of any light as soon as it connects or whiffs, so that the daggers slip in and out.
-37. As a Daggers player, I want my heavy to be a dashing double stab that can flow into a spinning backhand, so that the daggers have a committal option.
-38. As a Daggers player, I want my dodge light to be a passing cut that carries me along my dodge direction, so that I can outmanoeuvre the opponent.
-39. As a Daggers player, I want Serpent Sweep, Shadow Step and Needle Thrust as block abilities and Lightning Tempest as the ultimate, as in the demo.
+35. [ ] As a Daggers player, I want a four-light string that alternates hands (right slash, left slash, crossing cut, double stab), so that the continuity rule holds for two blades.
+36. [ ] As a Daggers player, I want to dodge out of any light as soon as it connects or whiffs, so that the daggers slip in and out.
+37. [ ] As a Daggers player, I want my heavy to be a dashing double stab that can flow into a spinning backhand, so that the daggers have a committal option.
+38. [ ] As a Daggers player, I want my dodge light to be a passing cut that carries me along my dodge direction, so that I can outmanoeuvre the opponent.
+39. [ ] As a Daggers player, I want Serpent Sweep, Shadow Step and Needle Thrust as block abilities and Lightning Tempest as the ultimate, as in the demo.
 
 ### Defending
 
-40. As a player, I want parries to look cinematic, with both weapons visibly bouncing off each other, sparks, a ring and a distinct clang, as in Sekiro, so that a parry feels like a reward.
-41. As a player, I want the parry, block, posture, disarm, counter (stomp, leap, evade) and ultimate rules to work exactly as in the demo, so that what I learned still applies.
-42. As a player, I want the warning mark and attack type (thrust, sweep, slam) to appear over an unblockable's attacker during the wind-up, so that I know which counter to use.
+40. [ ] As a player, I want parries to look cinematic, with both weapons visibly bouncing off each other, sparks, a ring and a distinct clang, as in Sekiro, so that a parry feels like a reward.
+41. [x] As a player, I want the parry, block, posture, disarm, counter (stomp, leap, evade) and ultimate rules to work exactly as in the demo, so that what I learned still applies.
+42. [ ] As a player, I want the warning mark and attack type (thrust, sweep, slam) to appear over an unblockable's attacker during the wind-up, so that I know which counter to use.
 
 ### Fighters and look
 
-43. As a player, I want real fighters with clothing, hair and a silhouette I can recognise, so that the game looks like the dark fantasy it's meant to be.
-44. As a player, I want to choose between at least two fighters (the Rogue and the Hunter), each able to wield any of the three weapons, so that fighter and weapon are separate choices.
-45. As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
-46. As a player, I want a toon look with ink outlines and a painted, ink-wash finish, so that the game has its own style.
-47. As a player, I want the arena to float above a dark fantasy, ancient oriental landscape of mountains, buildings and water, so that the setting feels grand.
-48. As a player, I want weapon trails (white for normal attacks, red for unblockables, gold for ultimates), sparks on clangs, a glowing aura when an ultimate is ready and a marker on a dropped weapon, so that the fight stays readable.
-49. As a player, I want hit-stop, camera shake on heavy blows and slow motion on the final blow, so that big moments land.
+43. [ ] As a player, I want real fighters with clothing, hair and a silhouette I can recognise, so that the game looks like the dark fantasy it's meant to be.
+44. [ ] As a player, I want to choose between at least two fighters (the Rogue and the Hunter), each able to wield any of the three weapons, so that fighter and weapon are separate choices.
+45. [ ] As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
+46. [ ] As a player, I want a toon look with ink outlines and a painted, ink-wash finish, so that the game has its own style.
+47. [ ] As a player, I want the arena to float above a dark fantasy, ancient oriental landscape of mountains, buildings and water, so that the setting feels grand.
+48. [ ] As a player, I want weapon trails (white for normal attacks, red for unblockables, gold for ultimates), sparks on clangs, a glowing aura when an ultimate is ready and a marker on a dropped weapon, so that the fight stays readable.
+49. [ ] As a player, I want hit-stop, camera shake on heavy blows and slow motion on the final blow, so that big moments land.
 
 ### Sound
 
-50. As a player, I want metal clangs on blocks, a distinct ringing clang on parries, slicing hits, bone-and-rock crunches for the Greatsword, whooshes on swings and dodges, footsteps and arena ambience, so that combat sounds physical.
-51. As a player, I want menu music at 100–120 BPM, battle music at 130–150 BPM and a faster match-point version at 150–170 BPM, so that the music matches the design.
-52. As a player, I want master, effects and music volume settings, so that I can balance the mix.
+50. [ ] As a player, I want metal clangs on blocks, a distinct ringing clang on parries, slicing hits, bone-and-rock crunches for the Greatsword, whooshes on swings and dodges, footsteps and arena ambience, so that combat sounds physical.
+51. [ ] As a player, I want menu music at 100–120 BPM, battle music at 130–150 BPM and a faster match-point version at 150–170 BPM, so that the music matches the design.
+52. [ ] As a player, I want master, effects and music volume settings, so that I can balance the mix.
 
 ### Modes and controls
 
-53. As a player, I want Training against a dummy whose behaviour I choose (idle, block, lights, heavies, thrust, sweep, slam, random, spar), with optional health refill and early/late parry feedback, so that I can practise.
-54. As a player, I want Watch mode with a side-on cinematic camera, so that I can learn the moves by watching the computer duel.
-55. As two players on one PC, I want Versus in a vertical split screen, each with our own camera and device (keyboard and mouse, the arrow-key layout, or a controller), so that we can play head to head.
-56. As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me.
-57. As a player, I want graphics presets, a reduce-flashes-and-shaking option and a button-hints option, so that the game runs and reads well for me.
-58. As a player, I want a move list generated from the actual move data, so that it's always correct.
+53. [ ] As a player, I want Training against a dummy whose behaviour I choose (idle, block, lights, heavies, thrust, sweep, slam, random, spar), with optional health refill and early/late parry feedback, so that I can practise.
+54. [ ] As a player, I want Watch mode with a side-on cinematic camera, so that I can learn the moves by watching the computer duel.
+55. [ ] As two players on one PC, I want Versus in a vertical split screen, each with our own camera and device (keyboard and mouse, the arrow-key layout, or a controller), so that we can play head to head.
+56. [ ] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me.
+57. [ ] As a player, I want graphics presets, a reduce-flashes-and-shaking option and a button-hints option, so that the game runs and reads well for me.
+58. [ ] As a player, I want a move list generated from the actual move data, so that it's always correct.
 
 ### Building and maintaining
 
-59. As the developer, I want the combat rules in plain GDScript with no graphics, stepped at a fixed 60 per second, so that they can be tested headlessly and later run online.
-60. As the developer, I want the rule tests to run from the command line and in CI, so that every change is checked.
-61. As the developer, I want the ported rules checked frame by frame against the original TypeScript rules on recorded inputs, so that I know the port is faithful before changing anything.
-62. As the developer, I want a soak run of computer-vs-computer matches that prints balance numbers, so that tuning rests on data.
-63. As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry.
-64. As the developer, I want a Windows build produced by CI and attached to GitHub releases, so that the game is easy to share.
-65. As the developer, I want to capture screenshots of any scene from the command line, so that visual changes can be reviewed without clicking through the game.
+59. [x] As the developer, I want the combat rules in plain GDScript with no graphics, stepped at a fixed 60 per second, so that they can be tested headlessly and later run online.
+60. [x] As the developer, I want the rule tests to run from the command line and in CI, so that every change is checked.
+61. [x] As the developer, I want the ported rules checked frame by frame against the original TypeScript rules on recorded inputs, so that I know the port is faithful before changing anything.
+62. [x] As the developer, I want a soak run of computer-vs-computer matches that prints balance numbers, so that tuning rests on data.
+63. [ ] As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry.
+64. [ ] As the developer, I want a Windows build produced by CI and attached to GitHub releases, so that the game is easy to share.
+65. [x] As the developer, I want to capture screenshots of any scene from the command line, so that visual changes can be reviewed without clicking through the game.
 
 ## Implementation Decisions
 

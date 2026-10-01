@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2. Next: 25.3.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1. Next: 16.2.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -747,13 +747,14 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 - [ ] **16. Toon, outline and ink-wash look.** The toon material, inverted-hull outlines, the ink-wash post pass, and graphics presets.
   - Check: side-by-side screenshots of each preset; no shader errors when loading.
   - Each piece below is salvaged from the uncommitted `look-and-arena` worktree (`.claude/worktrees/wf_c7f99fe5-f9a-1`), reviewed, fixed and tested on its own. Its stand-in fighter and `game/_probe` are dropped.
-  - [ ] **16.1 Screenshot runs fail on shader errors, and a scene smoke test.**
+  - [x] **16.1 Screenshot runs fail on shader errors, and a scene smoke test.**
     - Delivers:
       - `npm run shots` exits non-zero on `SHADER ERROR`.
       - A `shader_check` shot scene puts every shader in `res://shaders` on screen, so each one compiles in a real window. Headless runs use the dummy renderer and never compile shaders.
       - `test_scene_smoke.gd` loads and instantiates every scene outside `addons/` without adding it to the tree, and fails on any error.
     - Check: a deliberately broken scratch shader makes the shot fail, and passes once it is removed; a deliberately broken scratch scene fails the smoke test.
     - Blocked by: none · Stories: 46, 60, 65
+    - Done: `npm run shots` fails on `SHADER ERROR` and on script errors. Every existing shot scene and the fighter preview sheet still pass. `tools/shot_scenes/shader_check.tscn` scans the whole project rather than only `res://shaders`, which arrives in 16.3. It draws spatial, canvas_item, particle, fog and sky shaders, and reports any other mode as an error. A scratch broken shader failed it (exit 1). `tests/test_scene_smoke.gd` instantiates every `.tscn` outside `addons/` (imported models are left to the content tests), and a scratch scene pointing at a missing script failed it. Run `shader_check` before every visual commit in 16-18.
   - [ ] **16.2 MeshKit and MeshKitSet.** The procedural mesh builders (boxes, discs, lathes, tubes, tori, spheres, roofs), merged per material, with smoothed outline normals baked into CUSTOM0.
     - Check: front faces face outward for every primitive; CUSTOM0 is baked only for outlined kits; one mesh per non-empty kit.
     - Blocked by: 16.1 · Stories: 47, 63
@@ -1049,9 +1050,10 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Owner: plays a Duel in the exe.
     - Blocked by: 25.1 · Stories: 1, 64
     - Done: `npm run build` exports a 179 MB `build/windows/Monomachia.exe` (pack embedded, 528 shaders baked; the dev-only fighter preview left out). The export runs in a window, since baking needs a GPU, and the editor it opens rewrites `project.godot` without its default-valued lines, so the file is committed that way. `Monomachia.exe --smoke` (`SmokeRun`) plays a Watch match to the results in about 3 s and exits 0. It exits 1 on any logged engine or script error, on running out of steps or 120 s, or if the match stops, and resumes a match the window's focus loss paused. Two smoke runs both reported a planted controls profile.
-  - [ ] **25.3 CI exports the Windows build and runs a short soak.** The export templates installed and cached; a 4-match soak; the export uploaded as a zip artifact. CI has no GPU, so its export runs headless and can't bake the shaders: its build compiles them on first use (the PC's `npm run build` bakes them).
+  - [x] **25.3 CI exports the Windows build and runs a short soak.** The export templates installed and cached; a 4-match soak; the export uploaded as a zip artifact. CI has no GPU, so its export runs headless and can't bake the shaders: its build compiles them on first use (the PC's `npm run build` bakes them).
     - Check: CI is green and its run page offers the zip; the downloaded zip's exe passes `--smoke`.
     - Blocked by: 25.2 · Stories: 60, 62, 64
+    - Done: CI run 36879056482 on 516d0ff passed both jobs. The test job (with the 4-match soak) took 72 s, and the export job, templates included, 57 s. The `Monomachia-windows` download holds a 172 MB exe (no baked shaders), and its `--smoke` run reached the results and exited 0 on the owner's PC.
   - [ ] **25.4 Credits and licence notices with the build.** A tool writes the engine's licence notices. A credits file lists Quaternius (CC0), the Sonniss terms, the fonts (OFL), GUT (dev only) and the project's licence. The build places both beside the exe.
     - Check: the build output has both files, and every asset folder's licence is listed.
     - Owner: approves the wording and picks the project's licence.

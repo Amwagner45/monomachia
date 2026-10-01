@@ -9,7 +9,8 @@
 //   typecheck              load every script; fail on parse or type errors
 //   soak [matches]         computer-vs-computer matches with balance numbers
 //   script <res://path.gd> [-- user args]   run a SceneTree tool script headless
-//   shots <scene> [out.png] [frames] [scene args...]   render a scene in an off-screen window
+//   shots <scene> [out.png] [frames] [scene args...]   render a scene in an off-screen window;
+//                          fails on a shader or script error
 //   run                    play the game
 //   dev                    open the editor
 //   build                  export the Windows build to build/windows/
@@ -64,6 +65,7 @@ function die(msg) {
 }
 
 const ERROR_PATTERNS = [/SCRIPT ERROR/, /Parse Error/, /Failed to load script/, /^ERROR: .*\.gd/m];
+const SHADER_ERROR_PATTERNS = [/SHADER ERROR/];
 
 /**
  * Run Godot with a timeout. Resolves with {code, output}. Output is streamed
@@ -92,6 +94,7 @@ function runGodot(godot, args, { timeoutMs = 600000, quiet = false, cwd = PROJEC
 }
 
 const hasScriptErrors = (out) => ERROR_PATTERNS.some((re) => re.test(out));
+const hasShaderErrors = (out) => SHADER_ERROR_PATTERNS.some((re) => re.test(out));
 
 async function importProject(godot) {
   const r = await runGodot(godot, ['--headless', '--path', PROJECT, '--import'], { quiet: true, timeoutMs: 900000 });
@@ -181,6 +184,10 @@ async function main() {
         ],
         { timeoutMs: 300000 },
       );
+      // Shaders compile only in a real window, so this is where their errors
+      // show; a scene that draws a broken shader still saves its shot.
+      if (r.code === 0 && hasShaderErrors(r.output)) die('godot.mjs: a shader failed to compile (see SHADER ERROR above).');
+      if (r.code === 0 && hasScriptErrors(r.output)) die('godot.mjs: the scene reported script errors.');
       process.exit(r.code);
       return;
     }

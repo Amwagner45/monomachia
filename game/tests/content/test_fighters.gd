@@ -1,7 +1,9 @@
 extends GutTest
 ## The fighter scenes: they load and assemble without errors, their skeleton
 ## is the retargeted humanoid one, the shared clips drive it, they have hand
-## sockets and two palettes, and the body is cut down to the head.
+## sockets and two palettes, the body is cut down to the head, the headwear
+## and skin are in place, and every weapon is held without its blade
+## running into the fighter's own body.
 
 const BONE_MAP: String = "res://assets/quaternius/ual_bone_map.tres"
 ## Profile bones with no Quaternius source bone.
@@ -31,6 +33,8 @@ func test_every_fighter_scene_loads_and_assembles() -> void:
 		assert_gt(meshes.size(), f.look.outfit_parts.size() + f.look.hair.size() + 2, "%s has all its parts" % id)
 		for node: Node in meshes:
 			var mi: MeshInstance3D = node
+			if mi.get_parent() is BoneAttachment3D:
+				continue
 			assert_eq(mi.get_node(mi.skeleton), f.skeleton, "%s: %s is skinned to the fighter's skeleton" % [id, mi.name])
 
 
@@ -120,7 +124,6 @@ func test_every_fighter_has_two_different_palettes() -> void:
 		assert_not_null(a.outfit_albedo, "%s palette A is baked" % id)
 		assert_not_null(b.outfit_albedo, "%s palette B is baked" % id)
 		assert_ne(a.outfit_albedo, b.outfit_albedo)
-		assert_ne(a.trim_color, b.trim_color, "%s palettes differ in trim" % id)
 		f.apply_palette(0)
 		assert_eq(_outfit_texture(f), a.outfit_albedo, "%s wears palette A" % id)
 		f.apply_palette(1)
@@ -182,3 +185,154 @@ func test_the_body_is_cut_down_to_the_head_and_neck() -> void:
 		var head_tris: int = look.head_mesh.surface_get_array_index_len(0) / 3
 		assert_between(head_tris, 1000, full_tris / 3, "%s: the head keeps %d of %d triangles" % [id, head_tris, full_tris])
 		body_scene.free()
+
+
+func _mesh_names(f: FighterModel) -> PackedStringArray:
+	var names: PackedStringArray = []
+	for node: Node in f.find_children("*", "MeshInstance3D", true, false):
+		names.append(String(node.name))
+	return names
+
+
+## A mesh instance's vertices in fighter space, rest pose.
+static func _rest_points(f: FighterModel, mi: MeshInstance3D) -> PackedVector3Array:
+	var sk: Skeleton3D = f.skeleton
+	var xf: Transform3D = sk.transform * mi.transform
+	var attachment: BoneAttachment3D = mi.get_parent() as BoneAttachment3D
+	if attachment != null:
+		xf = sk.transform * sk.get_bone_global_rest(sk.find_bone(attachment.bone_name)) * mi.transform
+	var out: PackedVector3Array = PackedVector3Array()
+	for s: int in mi.mesh.get_surface_count():
+		for v: Vector3 in mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]:
+			out.append(xf * v)
+	return out
+
+
+static func _bounds(points: PackedVector3Array) -> AABB:
+	var box: AABB = AABB(points[0], Vector3.ZERO)
+	for p: Vector3 in points:
+		box = box.expand(p)
+	return box
+
+
+func test_the_rogue_wears_a_face_mask_and_no_pauldron() -> void:
+	var f: FighterModel = _fighter(&"rogue")
+	assert_false(Array(_mesh_names(f)).any(func(n: String) -> bool: return n.contains("Pauldron")), "the Rogue wears no pauldron")
+	var wrap: MeshInstance3D = f.skeleton.get_node_or_null(^"HeadWrap")
+	assert_not_null(wrap, "the Rogue wears a face mask")
+	if wrap == null:
+		return
+	var head: MeshInstance3D = f.skeleton.get_node(^"Head")
+	assert_eq(wrap.skin, head.skin, "the mask is skinned like the head")
+	assert_eq(wrap.get_node(wrap.skeleton), f.skeleton)
+	var eyes: AABB = _bounds(_rest_points(f, f.skeleton.get_node(^"Eyes")))
+	var mask: AABB = _bounds(_rest_points(f, wrap))
+	assert_lt(mask.end.y, eyes.get_center().y, "the mask stays below the eyes")
+	assert_gt(mask.end.z, eyes.end.z, "the mask covers the nose, in front of the eyes")
+
+
+func test_the_hunter_wears_a_tricorn_and_a_scarf_and_no_hood() -> void:
+	var f: FighterModel = _fighter(&"hunter")
+	assert_false(Array(_mesh_names(f)).any(func(n: String) -> bool: return n.contains("Hood")), "the Hunter wears no hood")
+	assert_not_null(f.skeleton.get_node_or_null(^"HeadWrap"), "the Hunter wears a scarf")
+	var hat: MeshInstance3D = f.skeleton.get_node_or_null(^"HeadAttachment/Hat")
+	assert_not_null(hat, "the Hunter wears a hat")
+	if hat == null:
+		return
+	assert_eq((hat.get_parent() as BoneAttachment3D).bone_name, "Head", "the hat rides on the head")
+	var head: AABB = _bounds(_rest_points(f, f.skeleton.get_node(^"Head")))
+	var eyes: AABB = _bounds(_rest_points(f, f.skeleton.get_node(^"Eyes")))
+	var box: AABB = _bounds(_rest_points(f, hat))
+	assert_gt(box.position.y, eyes.get_center().y, "the hat sits above the eyes")
+	assert_gt(box.end.y, head.end.y + 0.01, "the crown clears the top of the head")
+	assert_gt(box.size.x, head.size.x + 0.1, "the brim spreads well past the head")
+
+
+func test_headwear_takes_the_palette_colour() -> void:
+	for id: StringName in FighterLook.IDS:
+		var f: FighterModel = _fighter(id)
+		var wrap: MeshInstance3D = f.skeleton.get_node(^"HeadWrap")
+		for pal: int in 2:
+			f.apply_palette(pal)
+			var mat: BaseMaterial3D = wrap.get_active_material(0) as BaseMaterial3D
+			assert_eq(mat.albedo_color, f.look.palettes[pal].headwear_color, "%s headwear in palette %d" % [id, pal])
+			assert_not_null(mat.albedo_texture, "%s headwear is textured" % id)
+
+
+func test_the_skin_is_baked_and_matt() -> void:
+	for id: StringName in FighterLook.IDS:
+		var f: FighterModel = _fighter(id)
+		assert_not_null(f.look.skin_albedo, "%s has a baked skin" % id)
+		var mat: BaseMaterial3D = (f.skeleton.get_node(^"Head") as MeshInstance3D).get_active_material(0) as BaseMaterial3D
+		assert_eq(mat.albedo_texture, f.look.skin_albedo, "%s wears the baked skin" % id)
+		assert_lt(mat.metallic_specular, 0.3, "%s's skin barely shines" % id)
+	assert_gt((load(FighterLook.path_for(&"hunter")) as FighterLook).scars.size(), 1, "the Hunter is scarred")
+
+
+func test_every_fighter_has_a_hold_for_every_weapon_with_a_known_clip() -> void:
+	for id: StringName in FighterLook.IDS:
+		var f: FighterModel = _fighter(id)
+		for w: StringName in WeaponLook.IDS:
+			var hold: WeaponHold = f.look.hold_for(w)
+			assert_not_null(hold, "%s holds the %s" % [id, w])
+			f.attach_weapon(WeaponLook.load_id(w))
+			assert_true(f.animation_player.has_animation("ual/" + String(f.idle_clip())), "%s idles with the %s in %s" % [id, w, f.idle_clip()])
+
+
+func test_the_rogue_holds_her_daggers_reversed_with_set_wrists() -> void:
+	var f: FighterModel = _fighter(&"rogue")
+	var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(&"daggers"))
+	for dagger: Node3D in held:
+		# Reversed: the blade leaves the fist on the little-finger side (the
+		# socket's -Y).
+		assert_lt(dagger.transform.basis.y.dot(Vector3.UP), -0.5, "the blade points out of the little-finger side")
+	assert_true(f.hand_grip.wrists.has("Right") and f.hand_grip.wrists.has("Left"), "both wrists are set")
+	f.detach_weapons()
+	assert_true(f.hand_grip.wrists.is_empty(), "letting go frees the wrists")
+
+
+func test_the_hunter_idles_ready_for_a_fight() -> void:
+	var f: FighterModel = _fighter(&"hunter")
+	assert_ne(f.look.idle_clip, &"Idle", "not the relaxed idle")
+	f.attach_weapon(WeaponLook.load_id(&"greatsword"))
+	assert_true(f.hold.reverse_grip, "the greatsword trails from the fist")
+
+
+## Distance from p to the segment ab.
+static func _to_segment(p: Vector3, a: Vector3, b: Vector3) -> float:
+	var ab: Vector3 = b - a
+	var t: float = clampf((p - a).dot(ab) / ab.length_squared(), 0.0, 1.0)
+	return p.distance_to(a + ab * t)
+
+
+## No held blade runs into its fighter's own torso or thighs in the idle
+## pose: points along each blade (past the hand) stay outside a capsule
+## round the spine (hips to neck) and round each thigh.
+func test_no_blade_points_into_its_fighter() -> void:
+	const TORSO: float = 0.12
+	const THIGH: float = 0.075
+	for id: StringName in FighterLook.IDS:
+		for w: StringName in WeaponLook.IDS:
+			var f: FighterModel = _fighter(id)
+			var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(w))
+			f.play_idle(0.0)
+			f.animation_player.seek(0.5, true)
+			f.animation_player.pause()
+			await wait_physics_frames(3)
+			var sk: Skeleton3D = f.skeleton
+			var to_sk: Transform3D = sk.global_transform.affine_inverse()
+			var at: Callable = func(bone: StringName) -> Vector3:
+				return sk.get_bone_global_pose(sk.find_bone(bone)).origin
+			for blade: Node3D in held:
+				var base: Vector3 = to_sk * WeaponLook.marker(blade, WeaponLook.BLADE_BASE).global_position
+				var tip: Vector3 = to_sk * WeaponLook.marker(blade, WeaponLook.BLADE_TIP).global_position
+				var nearest: float = INF
+				var nearest_leg: float = INF
+				for k: int in range(2, 11):
+					var p: Vector3 = base.lerp(tip, k / 10.0)
+					nearest = minf(nearest, _to_segment(p, at.call(&"Hips"), at.call(&"Neck")))
+					for side: String in ["Left", "Right"]:
+						nearest_leg = minf(nearest_leg, _to_segment(p, at.call(StringName(side + "UpperLeg")), at.call(StringName(side + "LowerLeg"))))
+				gut.p("%s %s %s: blade %.2f m from the spine, %.2f m from a thigh" % [id, w, blade.get_parent().name, nearest, nearest_leg])
+				assert_gt(nearest, TORSO, "%s's %s (%s) stays out of the torso" % [id, w, blade.get_parent().name])
+				assert_gt(nearest_leg, THIGH, "%s's %s (%s) stays out of the thighs" % [id, w, blade.get_parent().name])

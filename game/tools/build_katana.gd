@@ -7,10 +7,16 @@ extends SceneTree
 ##
 ## The model, in weapon space (see WeaponLook): origin at the centre of the
 ## right hand's grip, +Y toward the tip, +X toward the edge.
-## - Blade: 0.72 m from the guard, single-edged, gently curved: the blade's
-##   centre line bends back (toward -X) by SORI * s^2 along its length s, so
-##   the edge is on the convex side. Shinogi-zukuri cross-section, 3.1 cm wide
-##   at the base, 2.4 cm at the point, with a rounded point (kissaki).
+## - Blade: 0.72 m from the guard, single-edged, curved in one smooth arc:
+##   the centre line bends back (toward -X) by SORI * s^2 along its length
+##   fraction s, so the edge is on the convex side and the arc's depth
+##   against the straight line from guard to point (the sori) is SORI / 4,
+##   about 1.8 cm, deepest at the middle. Shinogi-zukuri cross-section,
+##   3.2 cm wide at the base tapering to 2.2 cm. The last KISSAKI metres are
+##   the point section (kissaki): there the edge turns at a clear angle
+##   (the yokote) and sweeps round (the fukura) to a point set slightly in
+##   from the back, and the section thins, so the point reads as a stubby,
+##   defined tip rather than a needle.
 ## - Habaki: a gold collar at the blade's base.
 ## - Tsuba: a round, slightly oval dark-iron guard with a bronze rim.
 ## - Tsuka: a 0.26 m grip (guard to pommel) with a dark wrap over ray skin,
@@ -36,14 +42,19 @@ const GUARD_Y: float = 0.05
 const TSUBA_THICKNESS: float = 0.007
 const HABAKI_LENGTH: float = 0.033
 ## How far the point sits behind the straight line of the grip.
-const SORI: float = 0.045
-const BLADE_WIDTH_BASE: float = 0.031
-const BLADE_WIDTH_TIP: float = 0.024
+const SORI: float = 0.07
+const BLADE_WIDTH_BASE: float = 0.032
+const BLADE_WIDTH_TIP: float = 0.022
 const BLADE_THICKNESS_BASE: float = 0.0075
 const BLADE_THICKNESS_TIP: float = 0.0052
 ## Centre of the left hand on a two-handed grip.
 const OFF_HAND_Y: float = -0.15
-const BLADE_SEGMENTS: int = 48
+## Length of the point section, and how sharply the edge turns where it
+## starts (the slope of the edge line there, against the blade's width).
+const KISSAKI: float = 0.05
+const YOKOTE_TURN: float = 0.4
+const BLADE_SEGMENTS: int = 40
+const KISSAKI_SEGMENTS: int = 14
 
 const BLADE_ROOT_Y: float = GUARD_Y + TSUBA_THICKNESS
 const POMMEL_Y: float = GUARD_Y - GRIP_LENGTH
@@ -69,7 +80,7 @@ func _initialize() -> void:
 	mi.owner = root
 	var base_s: float = HABAKI_LENGTH / BLADE_LENGTH
 	_add_marker(root, WeaponLook.BLADE_BASE, Vector3(blade_mid_x(base_s), BLADE_ROOT_Y + HABAKI_LENGTH, 0.0))
-	_add_marker(root, WeaponLook.BLADE_TIP, Vector3(blade_back_x(1.0), BLADE_ROOT_Y + BLADE_LENGTH, 0.0))
+	_add_marker(root, WeaponLook.BLADE_TIP, tip_point())
 	_add_marker(root, WeaponLook.OFF_HAND_GRIP, Vector3(0.0, OFF_HAND_Y, 0.0))
 	var packed: PackedScene = PackedScene.new()
 	packed.pack(root)
@@ -94,8 +105,19 @@ static func _add_marker(root: Node3D, marker_name: StringName, pos: Vector3) -> 
 	m.owner = root
 
 
+## Length fraction where the point section starts.
+static func yokote_s() -> float:
+	return 1.0 - KISSAKI / BLADE_LENGTH
+
+
 static func blade_width(s: float) -> float:
-	return lerpf(BLADE_WIDTH_BASE, BLADE_WIDTH_TIP, s)
+	return lerpf(BLADE_WIDTH_BASE, BLADE_WIDTH_TIP, minf(s / yokote_s(), 1.0))
+
+
+## The point, in weapon space.
+static func tip_point() -> Vector3:
+	var p: Array[Array] = blade_section(1.0)
+	return (p[0][0] as Vector3) + Vector3(0.0, BLADE_ROOT_Y + BLADE_LENGTH, 0.0)
 
 
 ## X of the blade's back (mune) at length fraction s.
@@ -112,19 +134,26 @@ static func blade_mid_x(s: float) -> float:
 static func blade_section(s: float, width_scale: float = 1.0, thickness_scale: float = 1.0) -> Array[Array]:
 	var w: float = blade_width(s) * width_scale
 	var t: float = lerpf(BLADE_THICKNESS_BASE, BLADE_THICKNESS_TIP, s) * thickness_scale
-	var u: float = clampf((s - 0.9) / 0.1, 0.0, 1.0)
-	var point_width: float = sqrt(maxf(0.0, 1.0 - u * u))
-	var point_thickness: float = 1.0 - u * 0.85
+	# In the point section (u from 0 at the yokote to 1 at the point) the
+	# edge turns in at YOKOTE_TURN and sweeps round to meet the back, which
+	# leans a little toward the edge; the ridge runs out and the section thins.
+	var u: float = clampf((s - yokote_s()) / (1.0 - yokote_s()), 0.0, 1.0)
+	var edge: float = 1.0 - YOKOTE_TURN * u - (1.0 - YOKOTE_TURN) * pow(u, 2.6)
+	var lean: float = 0.12 * u * u
+	var thin: float = 1.0 - 0.65 * u - 0.35 * u * u * u
 	# A wider section (the habaki) stays centred on the blade.
-	var back: float = blade_back_x(s) - 0.5 * (w - blade_width(s))
+	var back: float = blade_back_x(s) - 0.5 * (w - blade_width(s)) + lean * w
+	var edge_d: float = maxf((edge - lean) * w, 0.0)
+	var ridge_d: float = minf(0.30 * (1.0 - 0.6 * u) * w, edge_d)
+	var spine_d: float = minf(0.06 * w, edge_d)
 	# (distance from the back, thickness offset, uv.x)
 	var profile: Array[Vector3] = [
-		Vector3(w, 0.0, 0.0), Vector3(0.30 * w, 0.5 * t, 0.7), Vector3(0.06 * w, 0.36 * t, 0.95),
-		Vector3(0.0, 0.0, 1.0), Vector3(0.06 * w, -0.36 * t, 0.95), Vector3(0.30 * w, -0.5 * t, 0.7),
+		Vector3(edge_d, 0.0, 0.0), Vector3(ridge_d, 0.5 * t * thin, 0.7), Vector3(spine_d, 0.36 * t * thin, 0.95),
+		Vector3(0.0, 0.0, 1.0), Vector3(spine_d, -0.36 * t * thin, 0.95), Vector3(ridge_d, -0.5 * t * thin, 0.7),
 	]
 	var out: Array[Array] = []
 	for p: Vector3 in profile:
-		out.append([Vector3(back + p.x * point_width, 0.0, p.y * point_thickness), p.z])
+		out.append([Vector3(back + p.x, 0.0, p.y), p.z])
 	return out
 
 
@@ -172,17 +201,21 @@ static func _begin() -> SurfaceTool:
 static func _blade(mesh: ArrayMesh) -> ArrayMesh:
 	var st: SurfaceTool = _begin()
 	var rings: Array[Array] = []
-	for i: int in BLADE_SEGMENTS + 1:
-		var s: float = i / float(BLADE_SEGMENTS)
+	var stations: Array[float] = []
+	for i: int in BLADE_SEGMENTS:
+		stations.append(yokote_s() * i / BLADE_SEGMENTS)
+	for i: int in KISSAKI_SEGMENTS + 1:
+		stations.append(lerpf(yokote_s(), 1.0, i / float(KISSAKI_SEGMENTS)))
+	for s: float in stations:
 		var ring: Array[Array] = blade_section(s)
 		for p: Array in ring:
 			p[0] = (p[0] as Vector3) + Vector3(0.0, BLADE_ROOT_Y - 0.003 + s * (BLADE_LENGTH + 0.003), 0.0)
 		rings.append(ring)
-	for k: int in BLADE_SEGMENTS:
+	for k: int in rings.size() - 1:
 		var r0: Array = rings[k]
 		var r1: Array = rings[k + 1]
-		var s0: float = k / float(BLADE_SEGMENTS)
-		var s1: float = (k + 1) / float(BLADE_SEGMENTS)
+		var s0: float = stations[k]
+		var s1: float = stations[k + 1]
 		var centre: Vector3 = ((r0[0][0] as Vector3) + (r0[3][0] as Vector3)) * 0.5
 		for j: int in 6:
 			var j2: int = (j + 1) % 6
@@ -197,7 +230,7 @@ static func _blade(mesh: ArrayMesh) -> ArrayMesh:
 			var uc: Vector2 = Vector2(r1[j2][1], s1)
 			var ud: Vector2 = Vector2(r1[j][1], s1)
 			_tri(st, a, b, c, ua, ub, uc, outward)
-			if (c - d).length() > 1e-6 or k < BLADE_SEGMENTS - 1:
+			if (c - d).length() > 1e-6 or k < rings.size() - 2:
 				_tri(st, a, c, d, ua, uc, ud, outward)
 	return st.commit(mesh)
 

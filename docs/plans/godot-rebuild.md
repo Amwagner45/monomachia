@@ -129,6 +129,11 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - A `HandGrip` modifier closes the hands that hold a weapon.
     - `fighters/preview/preview.tscn` shows everything; its `--mode=sheet` renders the review screenshots.
     - Content tests are in `game/tests/content`.
+    - Refined after an art review:
+      - Palettes recolour garment by garment (hood, vest, shirt, sleeves, trousers, leather, boots, metal), from the outfit meshes' UVs. The bake adds wear: occlusion, dust and grime placed on the body, and worn leather edges. A shared matt roughness map kills the vinyl sheen. `test_palettes.gd` renders both palettes in software and checks that they differ from the front, the back and the side.
+      - The Rogue lost the pauldrons and gained a cloth face mask and a band of dark paint across the eyes. The Hunter swapped the hood for a tricorn and a neck scarf, and has a scar. `build_headwear.gd` makes the mask and the scarf from each head mesh, and the tricorn from scratch; `bake_skins.gd` roughs up the faces.
+      - `WeaponHold` gives each fighter a stand-in idle per weapon until task 14: the clip, a reverse grip and blade tilt, and set wrists. The Rogue holds her daggers reversed along her forearms; the Hunter idles in a raised guard (`Idle_Shield`) with the greatsword trailing behind him. A test checks that no blade runs into its fighter's torso or thighs.
+      - `build_pack_weapons.gd` rebuilds the Greatsword (1.72 m, blade 15% broader and thicker) and the Dagger from the pack, with a widened bright edge band on a dark blade body. The Katana's curve is one arc about 1.8 cm deep, its blade tapers from 3.2 to 2.2 cm, and its point is a defined kissaki.
 - [ ] **14. Animation spike.** One fighter with the Katana:
   - locomotion (idle, walk, jog, sprint by speed; hip-turn strafing; backpedal; lean);
   - the guard pose with hand IK on the grip;

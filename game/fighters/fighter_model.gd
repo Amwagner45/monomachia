@@ -12,8 +12,10 @@ extends Node3D
 ##   the shared clip library as "ual" (play "ual/Idle"), ready to drive an
 ##   AnimationTree;
 ## - `right_hand` / `left_hand`: weapon sockets on the hand bones (see
-##   WeaponLook for their frame), and `attach_weapon()`, which also closes the
+##   WeaponLook for their frame), and `attach_weapon()`, which puts a weapon
+##   in the hands the way the look's WeaponHold for it says, and closes the
 ##   holding hands through `hand_grip`;
+## - `idle_clip()` / `play_idle()`: the clip to idle in with the held weapon;
 ## - `apply_palette()`: switches between the look's two palettes.
 ##
 ## Built nodes are not owned by the scene, so they are never saved into it;
@@ -22,8 +24,13 @@ extends Node3D
 ## run fighters/preview/preview.tscn to look at the fighters.
 
 const ANIMATION_LIBRARY: AnimationLibrary = preload("res://assets/quaternius/animations/ual_library.res")
+const HEADWEAR_CLOTH: Material = preload("res://fighters/materials/headwear_cloth.tres")
 const LIBRARY: StringName = &"ual"
 const SKELETON_NAME: StringName = &"GeneralSkeleton"
+## Specular strength of the outfit and the skin (the material default is
+## 0.5): worn cloth and leather barely shine, and the skin is matt.
+const OUTFIT_SPECULAR: float = 0.25
+const SKIN_SPECULAR: float = 0.2
 
 ## Hand sockets in hand-bone space. After retargeting, a hand bone's +Y runs
 ## from the wrist to the knuckles and +Z comes out of the palm; +X points to
@@ -31,9 +38,9 @@ const SKELETON_NAME: StringName = &"GeneralSkeleton"
 ## in the hollow of a closed fist with +Y out of the thumb side and +X out of
 ## the knuckles.
 const RIGHT_SOCKET: Transform3D = Transform3D(
-	Basis(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, -1)), Vector3(0.0, 0.075, 0.03))
+	Basis(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, -1)), Vector3(0.0, 0.07, 0.028))
 const LEFT_SOCKET: Transform3D = Transform3D(
-	Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1)), Vector3(0.0, 0.075, 0.03))
+	Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1)), Vector3(0.0, 0.07, 0.028))
 
 @export var look: FighterLook:
 	set(value):
@@ -46,23 +53,27 @@ const LEFT_SOCKET: Transform3D = Transform3D(
 		palette = value
 		if _built:
 			apply_palette(value)
-## Play the look's idle clip on entering the tree.
+## Play the idle clip on entering the tree.
 @export var autoplay_idle: bool = true
 
 var skeleton: Skeleton3D
 var animation_player: AnimationPlayer
 var right_hand: Node3D
 var left_hand: Node3D
-## Closes the hands that hold a weapon (see attach_weapon()).
+## Closes the hands that hold a weapon and sets their wrists (see
+## attach_weapon()).
 var hand_grip: HandGrip
 ## The weapon models attached by attach_weapon().
 var weapons: Array[Node3D] = []
+## The look's hold for the held weapon, or null.
+var hold: WeaponHold
 
 var _built: bool = false
 ## [MeshInstance3D, surface index, imported material] for each outfit surface.
 var _outfit_surfaces: Array[Array] = []
-## The same for the hair and eyebrows.
+## The same for the hair and eyebrows, and for the headwear's cloth.
 var _hair_surfaces: Array[Array] = []
+var _headwear_surfaces: Array[Array] = []
 var _materials: Dictionary[String, Material] = {}
 
 
@@ -74,7 +85,7 @@ func _notification(what: int) -> void:
 func _ready() -> void:
 	build()
 	if autoplay_idle and _built:
-		play(look.idle_clip, 0.0)
+		play_idle(0.0)
 
 
 ## Assembles the model from the look. Does nothing if already built.
@@ -87,7 +98,8 @@ func build() -> void:
 		_take_meshes(look.outfit_parts[i])
 	for part: PackedScene in look.hair:
 		_take_meshes(part)
-	_take_head()
+	var head: MeshInstance3D = _take_head()
+	_take_headwear(head)
 	_collect_surfaces()
 	animation_player = AnimationPlayer.new()
 	animation_player.name = &"AnimationPlayer"
@@ -113,9 +125,11 @@ func rebuild() -> void:
 	right_hand = null
 	left_hand = null
 	hand_grip = null
+	hold = null
 	weapons.clear()
 	_outfit_surfaces.clear()
 	_hair_surfaces.clear()
+	_headwear_surfaces.clear()
 	_materials.clear()
 	_built = false
 	build()
@@ -127,22 +141,42 @@ func apply_palette(index: int) -> void:
 		return
 	var p: FighterPalette = look.palettes[clampi(index, 0, look.palettes.size() - 1)]
 	for entry: Array in _outfit_surfaces:
-		var base: BaseMaterial3D = entry[2]
-		var key: String = "outfit:%d:%d" % [p.get_instance_id(), base.get_instance_id()]
-		if not _materials.has(key):
-			var m: BaseMaterial3D = base.duplicate()
+		_override(entry, "outfit", p, func(m: BaseMaterial3D) -> void:
 			if p.outfit_albedo != null:
 				m.albedo_texture = p.outfit_albedo
-			_materials[key] = m
-		(entry[0] as MeshInstance3D).set_surface_override_material(entry[1], _materials[key])
+			if look.outfit_orm != null:
+				m.roughness_texture = look.outfit_orm
+			m.metallic_specular = OUTFIT_SPECULAR)
 	for entry: Array in _hair_surfaces:
-		var base: BaseMaterial3D = entry[2]
-		var key: String = "hair:%d:%d" % [p.get_instance_id(), base.get_instance_id()]
-		if not _materials.has(key):
-			var m: BaseMaterial3D = base.duplicate()
-			m.albedo_color = p.hair_color
-			_materials[key] = m
-		(entry[0] as MeshInstance3D).set_surface_override_material(entry[1], _materials[key])
+		_override(entry, "hair", p, func(m: BaseMaterial3D) -> void:
+			m.albedo_color = p.hair_color)
+	for entry: Array in _headwear_surfaces:
+		_override(entry, "headwear", p, func(m: BaseMaterial3D) -> void:
+			m.albedo_color = p.headwear_color)
+
+
+## Gives a surface a copy of its material made for palette `p` by `setup`
+## (copies are cached, so switching back and forth makes no new ones).
+func _override(entry: Array, kind: String, p: FighterPalette, setup: Callable) -> void:
+	var base: BaseMaterial3D = entry[2]
+	var key: String = "%s:%d:%d" % [kind, p.get_instance_id(), base.get_instance_id()]
+	if not _materials.has(key):
+		var m: BaseMaterial3D = base.duplicate()
+		setup.call(m)
+		_materials[key] = m
+	(entry[0] as MeshInstance3D).set_surface_override_material(entry[1], _materials[key])
+
+
+## The clip to idle in with the held weapon.
+func idle_clip() -> StringName:
+	if hold != null and hold.clip != &"":
+		return hold.clip
+	return look.idle_clip
+
+
+## Plays the idle clip for the held weapon.
+func play_idle(blend: float = 0.2) -> void:
+	play(idle_clip(), blend)
 
 
 ## Plays a clip of the shared library by its name (without "ual/").
@@ -151,16 +185,25 @@ func play(clip: StringName, blend: float = 0.2) -> void:
 
 
 ## Puts a weapon in the hands: one copy in the right hand, and another in
-## the left for a paired weapon, and closes those hands. Removes any weapon
-## held before. (The off hand of a two-handed weapon is placed on its
-## OffHandGrip by the arm IK, which comes with the guard poses.)
+## the left for a paired weapon, held the way the look's hold for it says
+## (grip, wrists and idle clip), and closes those hands. Removes any weapon
+## held before. A left hand that holds a weapon always has its wrist set (to
+## straight, if the hold doesn't say), because the clips leave the left hand
+## open and turned for a free hand. (The off hand of a two-handed weapon is
+## placed on its OffHandGrip by the arm IK, which comes with the guard poses.)
 func attach_weapon(weapon: WeaponLook) -> Array[Node3D]:
 	detach_weapons()
-	weapons.append(weapon.attach(right_hand))
+	hold = look.hold_for(weapon.id)
+	var grip: Transform3D = hold.grip_transform() if hold != null else Transform3D.IDENTITY
+	weapons.append(weapon.attach(right_hand, grip))
 	hand_grip.right_hand = true
+	if hold != null and hold.set_right_wrist:
+		hand_grip.set_wrist("Right", hold.right_wrist)
 	if weapon.paired:
-		weapons.append(weapon.attach(left_hand))
+		weapons.append(weapon.attach(left_hand, grip))
 		hand_grip.left_hand = true
+		if hold == null or hold.set_left_wrist:
+			hand_grip.set_wrist("Left", hold.left_wrist if hold != null else Vector3.ZERO)
 	return weapons
 
 
@@ -169,8 +212,10 @@ func detach_weapons() -> void:
 		w.get_parent().remove_child(w)
 		w.free()
 	weapons.clear()
+	hold = null
 	hand_grip.right_hand = false
 	hand_grip.left_hand = false
+	hand_grip.clear_wrists()
 
 
 ## Instantiates a part, keeps its skeleton (with the part's meshes on it) as
@@ -208,8 +253,9 @@ func _take_meshes(part: PackedScene) -> Array[MeshInstance3D]:
 
 
 ## Brings in the body's eyes and eyebrows, and its head-only mesh in place
-## of the full body (keeping the body's skin and materials).
-func _take_head() -> void:
+## of the full body, keeping the body's materials but with the look's baked
+## skin and a matt finish. Returns the head.
+func _take_head() -> MeshInstance3D:
 	var moved: Array[MeshInstance3D] = _take_meshes(look.body_scene)
 	var body: MeshInstance3D = null
 	for mi: MeshInstance3D in moved:
@@ -219,10 +265,39 @@ func _take_head() -> void:
 	body.mesh = look.head_mesh
 	body.name = &"Head"
 	for s: int in mini(full.get_surface_count(), look.head_mesh.get_surface_count()):
-		body.set_surface_override_material(s, full.surface_get_material(s))
+		var skin: BaseMaterial3D = (full.surface_get_material(s) as BaseMaterial3D).duplicate()
+		if look.skin_albedo != null:
+			skin.albedo_texture = look.skin_albedo
+		skin.metallic_specular = SKIN_SPECULAR
+		body.set_surface_override_material(s, skin)
+		# Held here too: a material only the override holds is freed before
+		# the mesh instance lets go of it, which the renderer reports.
+		_materials["skin:%d" % s] = skin
+	return body
 
 
-## Finds the surfaces the palettes recolour.
+## Adds the look's head wrap (skinned like the head) and hat (on the Head
+## bone).
+func _take_headwear(head: MeshInstance3D) -> void:
+	if look.head_wrap != null:
+		var wrap: MeshInstance3D = MeshInstance3D.new()
+		wrap.name = &"HeadWrap"
+		wrap.mesh = look.head_wrap
+		wrap.skin = head.skin
+		skeleton.add_child(wrap)
+		wrap.skeleton = ^".."
+	if look.hat != null:
+		var attachment: BoneAttachment3D = BoneAttachment3D.new()
+		attachment.name = &"HeadAttachment"
+		skeleton.add_child(attachment)
+		attachment.bone_name = &"Head"
+		var hat: MeshInstance3D = MeshInstance3D.new()
+		hat.name = &"Hat"
+		hat.mesh = look.hat
+		attachment.add_child(hat)
+
+
+## Finds the surfaces the palettes recolour, and makes the hands' skin matt.
 func _collect_surfaces() -> void:
 	for node: Node in skeleton.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = node
@@ -234,6 +309,13 @@ func _collect_surfaces() -> void:
 				_outfit_surfaces.append([mi, s, mat])
 			elif mat.resource_name.begins_with("MI_Hair"):
 				_hair_surfaces.append([mi, s, mat])
+			elif mat.resource_name == HEADWEAR_CLOTH.resource_name:
+				_headwear_surfaces.append([mi, s, mat])
+			elif mat.resource_name.begins_with("MI_Regular"):
+				var matt: BaseMaterial3D = mat.duplicate()
+				matt.metallic_specular = SKIN_SPECULAR
+				mi.set_surface_override_material(s, matt)
+				_materials["matt:%d:%d" % [mi.get_instance_id(), s]] = matt
 
 
 func _add_socket(bone: StringName, offset: Transform3D) -> Node3D:

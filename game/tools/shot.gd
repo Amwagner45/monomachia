@@ -37,7 +37,8 @@ func _run() -> void:
 		await process_frame
 	if node.has_method("shot_ready"):
 		var guard: int = 0
-		while not node.call("shot_ready") and guard < 600:
+		# Generous: a contact sheet waits several frames for each of its shots.
+		while not node.call("shot_ready") and guard < 6000:
 			await process_frame
 			guard += 1
 	await RenderingServer.frame_post_draw

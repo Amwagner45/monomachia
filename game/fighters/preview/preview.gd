@@ -10,12 +10,18 @@ extends Node3D
 ## - turntable: the lineup, slowly turning;
 ## - fighter: one fighter, chosen with --fighter=rogue|hunter, --palette=0|1,
 ##   --weapon=katana|greatsword|daggers|none (default: signature),
-##   --view=front|three_quarter|side|back|head and --range=close|gameplay;
+##   --view=front|three_quarter|side|back|head|head_back|right_hand|left_hand
+##   (hands also with _below or _side) and --range=close|gameplay;
 ## - weapons: the weapons upright on a 10 cm grid, with their markers;
-## - sheet: renders the whole review set (both fighters in both palettes from
-##   the front and three-quarters, close and at gameplay distance; head
-##   close-ups; rest poses; every fighter with every weapon; the weapons) into
-##   contact sheets in the folder given by --sheet=<folder>.
+## - sheet: renders the whole review set into contact sheets in the folder
+##   given by --sheet=<folder>: both fighters in both palettes from the front,
+##   three-quarters, side and back, close and at gameplay distance; head
+##   close-ups; hands on the grips from three angles; rest poses; every
+##   fighter with every weapon; mirror matches side on and from the gameplay
+##   camera; the weapons and close-ups of their blades.
+##
+## A fighter holds each weapon the way its look's WeaponHold says, frozen
+## in the hold's idle clip.
 ##
 ## Markers: green is BladeBase, red BladeTip, blue OffHandGrip, yellow the
 ## weapon origin (the main hand's grip).
@@ -130,7 +136,7 @@ func _build_stage() -> void:
 	add_child(key)
 	var fill: DirectionalLight3D = DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-15.0, 160.0, 0.0)
-	fill.light_energy = 0.45
+	fill.light_energy = 0.7
 	fill.light_color = Color(0.75, 0.82, 1.0)
 	add_child(fill)
 	var floor_mesh: MeshInstance3D = MeshInstance3D.new()
@@ -223,7 +229,7 @@ func _add_fighter(id: StringName, pal: int, weapon: StringName, pos: Vector3, re
 	if rest_pose:
 		f.skeleton.reset_bone_poses()
 	else:
-		f.play(f.look.idle_clip, 0.0)
+		f.play_idle(0.0)
 		f.animation_player.seek(POSE_TIME, true)
 		f.animation_player.pause()
 	return f
@@ -291,31 +297,31 @@ func _setup_lineup() -> void:
 	_clear()
 	_add_fighter(&"rogue", 0, &"", Vector3(-0.85, 0, 0))
 	_add_fighter(&"hunter", 0, &"", Vector3(0.85, 0, 0))
-	var x: float = 2.0
+	var x: float = 2.1
 	for id: StringName in WeaponLook.IDS:
-		_add_weapon_display(WeaponLook.load_id(id), Vector3(x, 0.45, 0.2))
+		_add_weapon_display(WeaponLook.load_id(id), Vector3(x, 0.4, 0.2))
 		x += 0.45
-	_look_from(Vector3(0.6, 1.5, 5.2), Vector3(0.6, 0.9, 0.0), 42.0)
+	_look_from(Vector3(0.7, 1.5, 5.4), Vector3(0.7, 0.95, 0.0), 42.0)
 	_label.text = "Rogue and Hunter with their signature weapons (palette A); Katana, Greatsword, Dagger"
 
 
+## Views of one fighter: VIEWS turn the camera round the fighter; "head"
+## and "head_back" are close-ups of the head; "<side>_hand", with
+## "_below" or "_side" appended for those angles, are close-ups of a hand on
+## its weapon.
 func _setup_fighter(id: StringName, pal: int, weapon: StringName, view_name: StringName, gameplay: bool, rest_pose: bool = false) -> void:
 	_clear()
 	var f: FighterModel = _add_fighter(id, pal, weapon, Vector3.ZERO, rest_pose)
 	var yaw: float = deg_to_rad(VIEWS.get(view_name, 0.0))
 	var dir: Vector3 = Vector3(sin(yaw), 0.0, cos(yaw))
 	var head: Vector3 = _bone_position(f, &"Head") + Vector3(0.0, 0.08, 0.0)
+	var name_text: String = String(view_name).replace("_", " ")
 	if view_name == &"head":
 		_look_from(head + Vector3(-0.3, 0.06, 0.8), head, 30.0)
 	elif view_name == &"head_back":
 		_look_from(head + Vector3(0.55, 0.12, -0.65), head, 30.0)
-	elif view_name == &"right_hand" or view_name == &"left_hand":
-		var socket: Node3D = f.right_hand if view_name == &"right_hand" else f.left_hand
-		var bone: StringName = &"RightHand" if view_name == &"right_hand" else &"LeftHand"
-		var sk: Skeleton3D = f.skeleton
-		var hand: Vector3 = sk.global_transform * (sk.get_bone_global_pose(sk.find_bone(bone)) * socket.position)
-		var side: float = -1.0 if view_name == &"right_hand" else 1.0
-		_look_from(hand + Vector3(side * 0.35, 0.2, 0.55), hand, 32.0)
+	elif String(view_name).contains("_hand"):
+		_look_at_hand(f, view_name)
 	elif gameplay:
 		_look_from(dir * 5.0 + Vector3(0, 1.9, 0), Vector3(0, 1.0, 0), 55.0)
 	else:
@@ -323,24 +329,85 @@ func _setup_fighter(id: StringName, pal: int, weapon: StringName, view_name: Str
 	var weapon_name: String = f.weapons[0].name if not f.weapons.is_empty() else "bare hands"
 	_label.text = "%s, palette %s (%s), %s, %s%s" % [
 		f.look.display_name, "AB"[pal], f.look.palettes[pal].display_name, weapon_name,
-		String(view_name).replace("_", " "), ", rest pose" if rest_pose else (", 5 m" if gameplay else "")]
+		name_text, ", rest pose" if rest_pose else (", 5 m" if gameplay else "")]
+
+
+## A close-up of a hand on its weapon: from the front and outside (the
+## default), from below, or from the fighter's side.
+func _look_at_hand(f: FighterModel, view_name: StringName) -> void:
+	var right: bool = String(view_name).begins_with("right")
+	var socket: Node3D = f.right_hand if right else f.left_hand
+	var bone: StringName = &"RightHand" if right else &"LeftHand"
+	var sk: Skeleton3D = f.skeleton
+	var hand: Vector3 = sk.global_transform * (sk.get_bone_global_pose(sk.find_bone(bone)) * socket.position)
+	var out: float = -1.0 if right else 1.0
+	var offset: Vector3 = Vector3(out * 0.35, 0.2, 0.55)
+	if String(view_name).ends_with("_below"):
+		offset = Vector3(out * 0.3, -0.45, 0.4)
+	elif String(view_name).ends_with("_side"):
+		offset = Vector3(out * 0.6, 0.12, 0.28)
+	_look_from(hand + offset, hand, 32.0)
 
 
 func _setup_weapons() -> void:
 	_clear()
 	var x: float = -0.5
 	for id: StringName in WeaponLook.IDS:
-		_add_weapon_display(WeaponLook.load_id(id), Vector3(x, 0.45, 0.0))
+		_add_weapon_display(WeaponLook.load_id(id), Vector3(x, 0.4, 0.0))
 		x += 0.5
 	# A 10 cm grid behind the weapons to read their sizes.
 	var grid: PackedVector3Array = PackedVector3Array()
-	for i: int in 19:
+	for i: int in 21:
 		grid.append_array([Vector3(-1.0, i * 0.1, -0.15), Vector3(1.0, i * 0.1, -0.15)])
 	for i: int in 21:
-		grid.append_array([Vector3(-1.0 + i * 0.1, 0.0, -0.15), Vector3(-1.0 + i * 0.1, 1.8, -0.15)])
+		grid.append_array([Vector3(-1.0 + i * 0.1, 0.0, -0.15), Vector3(-1.0 + i * 0.1, 2.0, -0.15)])
 	_actors.add_child(_lines(grid, Color(0.42, 0.44, 0.47)))
-	_look_from(Vector3(0.0, 0.95, 2.4), Vector3(0.0, 0.9, 0.0), 42.0)
+	_look_from(Vector3(0.0, 1.05, 2.75), Vector3(0.0, 1.0, 0.0), 42.0)
 	_label.text = "Weapons: green BladeBase, red BladeTip, blue OffHandGrip, yellow origin (main grip)"
+
+
+## Close-ups of the blades: the katana's point and its curve, the dagger and
+## the greatsword's edge, flat on and edge on.
+func _setup_weapon_detail(id: StringName, part: StringName, edge_on: bool) -> void:
+	_clear()
+	var look: WeaponLook = WeaponLook.load_id(id)
+	var w: Node3D = look.scene.instantiate()
+	w.position = Vector3(0.0, 0.3, 0.0)
+	if edge_on:
+		w.rotation.y = deg_to_rad(80.0)
+	_actors.add_child(w)
+	var tip: Vector3 = WeaponLook.marker(w, WeaponLook.BLADE_TIP).global_position
+	var base: Vector3 = WeaponLook.marker(w, WeaponLook.BLADE_BASE).global_position
+	if part == &"tip":
+		_look_from(tip + Vector3(0.0, -0.045, 0.2), tip + Vector3(0.0, -0.045, 0.0), 30.0)
+	else:
+		var mid: Vector3 = (tip + base) * 0.5
+		var span: float = tip.distance_to(base)
+		_look_from(mid + Vector3(0.0, 0.0, span * 1.25 + 0.15), mid, 40.0)
+	_label.text = "%s, %s, %s" % [look.display_name, "point" if part == &"tip" else "blade", "edge on" if edge_on else "flat"]
+
+
+## Two fighters of the same kind, palette A against palette B, 2.6 m apart,
+## seen side on from 5 m, or over the shoulder of one of them from the
+## gameplay camera (the spec's: 4.6 m back, 2.2 m up, 0.9 m to the right,
+## 60 degrees, looking at the other).
+func _setup_mirror(id: StringName, shoulder_of: int) -> void:
+	_clear()
+	var a: FighterModel = _add_fighter(id, 0, &"", Vector3(0, 0, -1.3))
+	var b: FighterModel = _add_fighter(id, 1, &"", Vector3(0, 0, 1.3))
+	b.rotation.y = PI
+	var who: String = String(id).capitalize()
+	if shoulder_of < 0:
+		a.rotation.y = deg_to_rad(20.0)
+		b.rotation.y = PI + deg_to_rad(20.0)
+		_look_from(Vector3(5.2, 2.0, 0.0), Vector3(0, 1.0, 0), 55.0)
+		_label.text = "%s mirror match: palette A (right) against palette B (left), side on at 5 m" % who
+		return
+	var me: FighterModel = a if shoulder_of == 0 else b
+	var fwd: Vector3 = Vector3(0, 0, 1) if shoulder_of == 0 else Vector3(0, 0, -1)
+	var right: Vector3 = Vector3.UP.cross(fwd)
+	_look_from(me.position - fwd * 4.6 - right * 0.9 + Vector3(0, 2.2, 0), me.position + fwd * 1.6 + Vector3(0, 1.0, 0), 60.0)
+	_label.text = "%s mirror match from the gameplay camera, over palette %s's shoulder" % [who, "AB"[shoulder_of]]
 
 
 # --- sheet -------------------------------------------------------------------
@@ -357,31 +424,37 @@ func _run_sheet() -> void:
 	DirAccess.make_dir_recursive_absolute(dir)
 	var portrait: Rect2i = Rect2i(500, 0, 600, 900)
 	var wide: Rect2i = Rect2i(0, 0, 1600, 900)
-	# Each fighter: palettes A and B, front and three-quarter, close and at 5 m.
+	var square: Rect2i = Rect2i(350, 0, 900, 900)
+	# Each fighter: palettes A and B from the front, three-quarters, the side
+	# and behind, close and at 5 m.
 	for id: StringName in FighterLook.IDS:
 		for gameplay: bool in [false, true]:
 			var cells: Array[Image] = []
 			for pal: int in 2:
-				for v: StringName in [&"front", &"three_quarter"]:
+				for v: StringName in [&"front", &"three_quarter", &"side", &"back"]:
 					_setup_fighter(id, pal, &"", v, gameplay)
 					cells.append(await _capture())
 			_save_sheet(cells, portrait, 4, 0.7, dir.path_join("%s_%s.png" % [id, "gameplay_5m" if gameplay else "close"]))
-	# Heads close up, for clipping at the hood, hair and neck.
+	# Heads close up, for the headwear and the faces, and for clipping at the
+	# hood, hat, hair and neck.
 	var heads: Array[Image] = []
 	for id: StringName in FighterLook.IDS:
-		for v: StringName in [&"head", &"head_back"]:
-			_setup_fighter(id, 0, &"none", v, false)
-			heads.append(await _capture())
-	_save_sheet(heads, Rect2i(350, 0, 900, 900), 4, 0.5, dir.path_join("heads_close.png"))
-	# Hands on the grips.
+		for pal: int in 2:
+			for v: StringName in [&"head", &"head_back"]:
+				_setup_fighter(id, pal, &"none", v, false)
+				heads.append(await _capture())
+	_save_sheet(heads, square, 4, 0.5, dir.path_join("heads_close.png"))
+	# Hands on the grips: the right hand on each weapon, and both daggers
+	# from the front, from below and from the side, where a bad seat shows.
 	var hands: Array[Image] = []
 	for id: StringName in FighterLook.IDS:
-		for w: StringName in WeaponLook.IDS:
+		for w: StringName in [&"katana", &"greatsword"]:
 			_setup_fighter(id, 0, w, &"right_hand", false)
 			hands.append(await _capture())
-		_setup_fighter(id, 0, &"daggers", &"left_hand", false)
-		hands.append(await _capture())
-	_save_sheet(hands, Rect2i(350, 0, 900, 900), 4, 0.5, dir.path_join("hands_close.png"))
+		for v: StringName in [&"right_hand", &"right_hand_below", &"right_hand_side", &"left_hand", &"left_hand_below", &"left_hand_side"]:
+			_setup_fighter(id, 0, &"daggers", v, false)
+			hands.append(await _capture())
+	_save_sheet(hands, square, 4, 0.5, dir.path_join("hands_close.png"))
 	# Rest pose, front and side.
 	var rest: Array[Image] = []
 	for id: StringName in FighterLook.IDS:
@@ -389,26 +462,33 @@ func _run_sheet() -> void:
 			_setup_fighter(id, 0, &"", v, false, true)
 			rest.append(await _capture())
 	_save_sheet(rest, Rect2i(300, 0, 1000, 900), 4, 0.5, dir.path_join("rest_pose.png"))
-	# Every fighter with every weapon.
+	# Every fighter with every weapon, as it holds it when idle.
 	for id: StringName in FighterLook.IDS:
 		var held: Array[Image] = []
-		for v: StringName in [&"front", &"three_quarter"]:
+		for v: StringName in [&"front", &"three_quarter", &"side"]:
 			for w: StringName in WeaponLook.IDS:
 				_setup_fighter(id, 0, w, v, false)
 				held.append(await _capture())
 		_save_sheet(held, portrait, 3, 0.7, dir.path_join("%s_weapons.png" % id))
-	# Mirror match at gameplay distance: palette A against palette B.
+	# Mirror matches: side on at 5 m, and from the gameplay camera over each
+	# fighter's shoulder (one's back against the other's front).
 	for id: StringName in FighterLook.IDS:
-		_clear()
-		var left: FighterModel = _add_fighter(id, 0, &"", Vector3(-1.2, 0, 0))
-		left.rotation.y = deg_to_rad(60.0)
-		var right: FighterModel = _add_fighter(id, 1, &"", Vector3(1.2, 0, 0))
-		right.rotation.y = deg_to_rad(-60.0)
-		_look_from(Vector3(0, 2.0, 5.5), Vector3(0, 1.0, 0), 55.0)
-		_label.text = "%s mirror match: palette A (left) against palette B (right), 5 m" % String(id).capitalize()
+		_setup_mirror(id, -1)
 		_save_sheet([await _capture()], wide, 1, 1.0, dir.path_join("%s_mirror.png" % id))
+		var over: Array[Image] = []
+		for who: int in 2:
+			_setup_mirror(id, who)
+			over.append(await _capture())
+		_save_sheet(over, wide, 2, 0.5, dir.path_join("%s_mirror_gameplay.png" % id))
+	# The weapons, and close-ups of their blades.
 	_setup_weapons()
 	_save_sheet([await _capture()], wide, 1, 1.0, dir.path_join("weapons_lineup.png"))
+	var detail: Array[Image] = []
+	for spec: Array in [[&"katana", &"tip", false], [&"katana", &"tip", true], [&"katana", &"blade", false],
+			[&"daggers", &"blade", false], [&"daggers", &"blade", true], [&"greatsword", &"blade", true]]:
+		_setup_weapon_detail(spec[0], spec[1], spec[2])
+		detail.append(await _capture())
+	_save_sheet(detail, square, 3, 0.5, dir.path_join("weapons_detail.png"))
 	_setup_lineup()
 	_save_sheet([await _capture()], wide, 1, 1.0, dir.path_join("lineup.png"))
 	print("preview: sheets saved in %s" % dir)

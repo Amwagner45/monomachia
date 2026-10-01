@@ -40,10 +40,10 @@ const ANIMATIONS: Array[String] = ["UAL1_Standard.glb", "UAL2_Standard.glb"]
 const BODY_FILES: Array[String] = ["Superhero_Female_FullBody", "Superhero_Male_FullBody"]
 const HAIR: Array[String] = ["Hair_Long", "Hair_Buzzed", "Hair_Beard"]
 const OUTFIT_FILES: Array[String] = [
-	"Female_Ranger_Acc_Pauldrons", "Female_Ranger_Arms", "Female_Ranger_Body", "Female_Ranger_Feet",
-	"Female_Ranger_Head_Hood", "Female_Ranger_Legs",
-	"Male_Ranger_Acc_Pauldron", "Male_Ranger_Arms", "Male_Ranger_Body", "Male_Ranger_Feet_Boots",
-	"Male_Ranger_Head_Hood", "Male_Ranger_Legs",
+	# The Rogue goes without the pauldrons and the Hunter without the hood
+	# (he wears a tricorn, built by tools/build_headwear.gd).
+	"Female_Ranger_Arms", "Female_Ranger_Body", "Female_Ranger_Feet", "Female_Ranger_Head_Hood", "Female_Ranger_Legs",
+	"Male_Ranger_Acc_Pauldron", "Male_Ranger_Arms", "Male_Ranger_Body", "Male_Ranger_Feet_Boots", "Male_Ranger_Legs",
 ]
 const WEAPONS: Array[String] = ["Sword_Big.fbx", "Dagger.fbx"]
 ## The weapon pack's flat colours, swapped at import for the game's darker

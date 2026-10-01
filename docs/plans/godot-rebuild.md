@@ -54,7 +54,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - [x] **2. Port the rules foundations.** Constants, math, the Mulberry32 random generator (bit-exact), the input tracker, events, the move schema with its defaults, and the four weapons' move data, all faithful.
   - Blocked by: 1.
   - Check: the ported input tests (step, sprint latch, slow second push, buffering) pass; the random generator matches the TypeScript output for 1,000 draws; every move loads with the same values as `finalizeMoves` produces.
-- [ ] **3. Port the fighter, the world and the match.** The full state machine, the hit evaluation and application, dropped weapons, the Moonsplitter wave, scripted ultimate hits, the round flow, and the test helpers.
+- [x] **3. Port the fighter, the world and the match.** The full state machine, the hit evaluation and application, dropped weapons, the Moonsplitter wave, scripted ultimate hits, the round flow, and the test helpers.
   - Blocked by: 2.
   - Check: all 47 demo tests ported to GUT and passing.
 - [ ] **4. Golden replays against the TypeScript rules.**

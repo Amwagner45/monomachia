@@ -1,0 +1,43 @@
+class_name AttackState
+extends RefCounted
+## Port of the AttackState interface in src/sim/fighter.ts: the attack a
+## fighter is performing right now.
+##
+## Port notes:
+## - startedBy (B | null) is an int: the Btn that started the move, -1 for null
+##   (chained moves and scripted starts).
+## - queued (string | null) is a StringName: the queued chain move, &"" for null.
+## - pathFrom and pathTo ({ ang, r } | undefined) are PathPoint objects, null
+##   when undefined.
+## - Keep it an object (not a Dictionary): the AI compares attacks by identity.
+
+
+## A point of the Shadow Step path: { ang, r } around the opponent.
+class PathPoint:
+	var ang: float = 0.0
+	var r: float = 0.0
+
+	static func make(p_ang: float, p_r: float) -> PathPoint:
+		var p: PathPoint = PathPoint.new()
+		p.ang = p_ang
+		p.r = p_r
+		return p
+
+
+var def: AttackDef
+var frame: int = 0
+var hit_done: bool = false
+var hits_done: int = 0
+var charging: bool = false
+var charge_frames: int = 0
+var charge_frac: float = 0.0
+var queued: StringName = &""
+var lunge_total: float = 0.0
+var extra_recovery: int = 0
+var backstab: bool = false
+var started_by: int = -1
+var evaded_emitted: bool = false
+var whiff_emitted: bool = false
+# shadow step path
+var path_from: PathPoint = null
+var path_to: PathPoint = null

@@ -1,0 +1,7 @@
+[gd_resource type="ShaderMaterial" format=3]
+
+[ext_resource type="Shader" path="res://weapons/katana/katana_blade.gdshader" id="1_blade"]
+
+[resource]
+resource_name = "blade"
+shader = ExtResource("1_blade")

@@ -1,0 +1,28 @@
+[gd_resource type="Resource" script_class="FighterLook" format=3]
+
+[ext_resource type="PackedScene" path="res://assets/quaternius/characters/Superhero_Male_FullBody.gltf" id="1_uqj6e"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/hair/Hair_Buzzed.gltf" id="2_7yf3b"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/hair/Hair_Beard.gltf" id="3_uf8wu"]
+[ext_resource type="ArrayMesh" path="res://fighters/heads/male_head.res" id="4_jc2gd"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Body.gltf" id="5_mkq3h"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Arms.gltf" id="6_d5ncl"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Legs.gltf" id="7_x3qbg"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Feet_Boots.gltf" id="8_x473v"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Head_Hood.gltf" id="9_6rgxb"]
+[ext_resource type="PackedScene" path="res://assets/quaternius/outfits/Male_Ranger_Acc_Pauldron.gltf" id="10_whdco"]
+[ext_resource type="Script" path="res://fighters/fighter_palette.gd" id="11_pccrn"]
+[ext_resource type="Resource" path="res://fighters/hunter/hunter_palette_a.tres" id="12_1eyxl"]
+[ext_resource type="Resource" path="res://fighters/hunter/hunter_palette_b.tres" id="13_3u6ed"]
+[ext_resource type="Script" path="res://fighters/fighter_look.gd" id="14_x5y8a"]
+
+[resource]
+script = ExtResource("14_x5y8a")
+id = &"hunter"
+display_name = "Hunter"
+body_scene = ExtResource("1_uqj6e")
+head_mesh = ExtResource("4_jc2gd")
+outfit_parts = Array[PackedScene]([ExtResource("5_mkq3h"), ExtResource("6_d5ncl"), ExtResource("7_x3qbg"), ExtResource("8_x473v"), ExtResource("9_6rgxb"), ExtResource("10_whdco")])
+hair = Array[PackedScene]([ExtResource("2_7yf3b"), ExtResource("3_uf8wu")])
+palettes = Array[ExtResource("11_pccrn")]([ExtResource("12_1eyxl"), ExtResource("13_3u6ed")])
+signature_weapon = &"greatsword"
+walk_clip = &"Walk_Formal"

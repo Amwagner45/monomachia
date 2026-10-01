@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FighterPalette" format=3]
+
+[ext_resource type="Script" path="res://fighters/fighter_palette.gd" id="1_a444y"]
+[ext_resource type="Texture2D" path="res://fighters/rogue/rogue_palette_b_outfit.png" id="2_outfit"]
+
+[resource]
+script = ExtResource("1_a444y")
+display_name = "Charcoal and bone"
+cloth_color = Color(0.15, 0.155, 0.165, 1)
+trim_color = Color(0.7, 0.67, 0.58, 1)
+leather_tint = Color(0.5, 0.5, 0.52, 1)
+leather_saturation = 0.2
+metal_tint = Color(1.05, 1.05, 1.1, 1)
+hair_color = Color(0.82, 0.82, 0.85, 1)
+outfit_albedo = ExtResource("2_outfit")

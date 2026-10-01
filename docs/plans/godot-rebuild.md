@@ -111,7 +111,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 
 ### Phase D: fighters and animation
 
-- [ ] **13. Assets and fighter models.**
+- [x] **13. Assets and fighter models.**
   - Delivers:
     - the chosen Quaternius files copied into `game/assets`, with textures scaled down;
     - humanoid bone-map import settings;
@@ -121,6 +121,14 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - a credits file.
   - Blocked by: 1.
   - Check: screenshots of both fighters in rest pose, with each weapon; no missing textures; import is clean in headless.
+  - Done:
+    - The tools in `game/tools` rebuild everything from the downloaded packs: `import_assets.gd` (copy, scale, fix references, import settings), `build_bone_map.gd`, `cut_heads.gd`, `build_animation_library.gd`, `bake_palettes.gd` and `build_katana.gd`.
+    - A fighter is a `FighterModel` scene assembled from its `FighterLook` when instantiated. Its skeleton is the outfit's, which the outfit and hair were modelled on; the base body gives only the head. This avoids the male rest-pose mismatch.
+    - Palettes recolour the darker `T_Ranger_3` outfit texture by region (cloth, trim, leather, metal).
+    - Weapon space and markers are documented in `WeaponLook`.
+    - A `HandGrip` modifier closes the hands that hold a weapon.
+    - `fighters/preview/preview.tscn` shows everything; its `--mode=sheet` renders the review screenshots.
+    - Content tests are in `game/tests/content`.
 - [ ] **14. Animation spike.** One fighter with the Katana:
   - locomotion (idle, walk, jog, sprint by speed; hip-turn strafing; backpedal; lean);
   - the guard pose with hand IK on the grip;

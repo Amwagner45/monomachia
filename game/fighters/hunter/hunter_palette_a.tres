@@ -1,0 +1,15 @@
+[gd_resource type="Resource" script_class="FighterPalette" format=3]
+
+[ext_resource type="Script" path="res://fighters/fighter_palette.gd" id="1_nudlb"]
+[ext_resource type="Texture2D" path="res://fighters/hunter/hunter_palette_a_outfit.png" id="2_outfit"]
+
+[resource]
+script = ExtResource("1_nudlb")
+display_name = "Weathered brown and ochre"
+cloth_color = Color(0.3, 0.235, 0.165, 1)
+trim_color = Color(0.46, 0.33, 0.11, 1)
+leather_tint = Color(0.85, 0.8, 0.75, 1)
+leather_saturation = 0.85
+metal_tint = Color(0.85, 0.8, 0.72, 1)
+hair_color = Color(0.26, 0.18, 0.12, 1)
+outfit_albedo = ExtResource("2_outfit")

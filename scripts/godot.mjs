@@ -130,6 +130,10 @@ async function main() {
       });
       if (r.code !== 0) process.exit(r.code);
       if (/Failing Tests|\[Failed\]/.test(r.output)) process.exit(1);
+      // GUT skips a test script that fails to parse and still reports success.
+      if (/Parse Error|Failed to load script|Failed parsing/.test(r.output)) {
+        die('godot.mjs: a test script failed to load (see the parse errors above), so GUT skipped it.');
+      }
       return;
     }
     case 'typecheck': {

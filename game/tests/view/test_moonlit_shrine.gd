@@ -1,8 +1,10 @@
 extends GutTest
-## The Moonlit Shrine's courtyard, built headless: the arena's own lights,
-## environment and ink-wash pass, the markers the match reads, a floor at
-## y = 0 under the spawns, a parapet and gate ropes outside the walkable
-## circle with only flat pebbles inside it, and the chosen preset applied.
+## The Moonlit Shrine, built headless: the arena's own lights, environment
+## and ink-wash pass, the markers the match reads, a floor at y = 0 under the
+## spawns, a parapet, gate ropes and props outside the walkable circle with
+## only flat pebbles inside it, the torii on the gate landings, the lanterns'
+## lights, halos and flicker, bought art in place of a procedural prop, and
+## the chosen preset applied.
 
 const SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
 
@@ -96,20 +98,27 @@ func test_parapet_posts_stand_outside_the_walkable_circle() -> void:
 		assert_gte(inner, arena.def.walkable_radius, "post at %s" % p)
 
 
-func _min_radius(mi: MeshInstance3D) -> float:
-	var best: float = INF
+## Every vertex of mi, in world space.
+func _world_vertices(mi: MeshInstance3D) -> PackedVector3Array:
+	var out := PackedVector3Array()
 	for s: int in mi.mesh.get_surface_count():
 		var verts: PackedVector3Array = mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX]
 		for v: Vector3 in verts:
-			var w: Vector3 = mi.global_transform * v
-			best = minf(best, Vector2(w.x, w.z).length())
+			out.append(mi.global_transform * v)
+	return out
+
+
+func _min_radius(mi: MeshInstance3D) -> float:
+	var best: float = INF
+	for w: Vector3 in _world_vertices(mi):
+		best = minf(best, Vector2(w.x, w.z).length())
 	return best
 
 
 func test_nothing_but_flat_pebbles_is_built_inside_the_walkable_circle() -> void:
 	var platform: Node = arena.get_node("Platform")
 	var meshes: Array[Node] = platform.find_children("*", "MeshInstance3D", true, false)
-	assert_gt(meshes.size(), 5, "the floor, the plinth, the props and the ropes")
+	assert_gt(meshes.size(), 10, "the floor, the plinth, the props and the ropes")
 	for node: Node in meshes:
 		if node.name in [&"Floor", &"Pebbles"]:
 			continue
@@ -142,6 +151,141 @@ func test_gate_ropes_close_the_gate_openings_outside_the_walkable_circle() -> vo
 			assert_lt(absf(centre.x), 1.0, "rope %d across the opening" % side)
 
 
+# ------------------------------------------------------------------ the props
+
+## Every vertex of mi (world space) within radius of point, across the floor.
+func _vertices_near(mi: MeshInstance3D, point: Vector3, radius: float) -> PackedVector3Array:
+	var out := PackedVector3Array()
+	for w: Vector3 in _world_vertices(mi):
+		if Vector2(w.x - point.x, w.z - point.z).length() < radius:
+			out.append(w)
+	return out
+
+
+func test_a_torii_stands_on_each_gate_landing() -> void:
+	var lacquer := arena.get_node("Platform/Props/Lacquer") as MeshInstance3D
+	for side: int in 2:
+		var gate: Transform3D = arena.def.gate_anchor(side)
+		for s: float in [-1.0, 1.0]:
+			var foot: Vector3 = gate * Vector3(s * arena.layout.torii_span * 0.5, 0.0, 0.0)
+			var verts: PackedVector3Array = _vertices_near(lacquer, foot, 0.5)
+			assert_gt(verts.size(), 0, "gate %d has a post at %+d" % [side, s])
+			var low: float = INF
+			var high: float = -INF
+			for v: Vector3 in verts:
+				low = minf(low, v.y)
+				high = maxf(high, v.y)
+			assert_almost_eq(low, 0.0, 0.01, "gate %d post %+d stands on the landing" % [side, s])
+			assert_gt(high, arena.layout.torii_height, "gate %d post %+d at the torii's height" % [side, s])
+
+
+func _lantern_lights(shrine: MoonlitShrine) -> Array[Node]:
+	return shrine.get_node("Platform/LanternLights").get_children()
+
+
+func test_every_lantern_has_a_light_that_lights_fighters_and_skips_the_ground() -> void:
+	var lights: Array[Node] = _lantern_lights(arena)
+	assert_eq(lights.size(), arena.layout.lantern_angles.size(), "one light per lantern")
+	for i: int in lights.size():
+		var light := lights[i] as OmniLight3D
+		var spot: Vector3 = ShrineLayout.polar(arena.layout.lantern_angles[i], arena.layout.lantern_radius)
+		assert_lt(Vector2(light.position.x - spot.x, light.position.z - spot.z).length(), 0.25, "light %d in its lantern" % i)
+		assert_between(light.position.y, 1.5, 2.5, "light %d at the lantern's fire" % i)
+		assert_eq(light.light_cull_mask & LookPalette.GROUND_LAYER, 0, "light %d skips the ground" % i)
+		assert_ne(light.light_cull_mask & LookPalette.FIGHTER_LAYER, 0, "light %d lights fighters" % i)
+		assert_true(light.is_in_group(GraphicsApplier.GROUP_MINOR_LIGHT), "the preset turns light %d on or off" % i)
+		assert_false(light.shadow_enabled, "light %d casts no shadow" % i)
+
+
+## Where the halos sit is for the shots: the headless renderer keeps no
+## MultiMesh transforms to read back.
+func test_every_lantern_has_a_halo() -> void:
+	var halos := arena.get_node("Platform/LanternHalos") as MultiMeshInstance3D
+	assert_eq(halos.multimesh.instance_count, arena.layout.lantern_angles.size())
+	assert_eq(halos.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF)
+
+
+func test_lantern_lights_flicker_round_their_brightness() -> void:
+	var light := _lantern_lights(arena)[0] as OmniLight3D
+	var energies: Dictionary[float, bool] = {}
+	for frame: int in 12:
+		simulate(arena, 1, 0.05)
+		energies[snappedf(light.light_energy, 0.001)] = true
+		assert_between(light.light_energy, ShrinePlatform.LANTERN_ENERGY * 0.8, ShrinePlatform.LANTERN_ENERGY * 1.2)
+	assert_gt(energies.size(), 6, "it flickers")
+
+
+## A stand-in for a bought model: an empty Node3D scene.
+func _bought_art() -> PackedScene:
+	var scene := PackedScene.new()
+	var model := Node3D.new()
+	model.name = "BoughtArt"
+	scene.pack(model)
+	model.free()
+	return scene
+
+
+## A shrine built with the shared layout, but with bought art for kinds.
+func _shrine_with_art(kinds: Array[StringName]) -> MoonlitShrine:
+	var layout := arena.layout.duplicate() as ShrineLayout
+	var art := _bought_art()
+	# A dictionary of its own: a shallow duplicate shares the cached layout's.
+	var art_by_kind: Dictionary[StringName, PackedScene] = {}
+	for kind: StringName in kinds:
+		art_by_kind[kind] = art
+	layout.prop_scenes = art_by_kind
+	var shrine: MoonlitShrine = (load(SCENE) as PackedScene).instantiate()
+	shrine.layout = layout
+	add_child_autofree(shrine)
+	return shrine
+
+
+func _props_aabb(shrine: MoonlitShrine, kit_name: String) -> AABB:
+	return (shrine.get_node("Platform/Props/" + kit_name) as MeshInstance3D).get_aabb()
+
+
+func test_a_scene_in_prop_scenes_replaces_the_procedural_lantern_at_the_same_spots() -> void:
+	var shrine: MoonlitShrine = _shrine_with_art([&"lantern"])
+	var layout: ShrineLayout = shrine.layout
+	var placed: Array[Node] = shrine.get_node("Platform/Props").find_children("Lantern*", "Node3D", false, false)
+	assert_eq(placed.size(), layout.lantern_angles.size(), "one bought lantern per spot")
+	for i: int in placed.size():
+		var spot: Vector3 = ShrineLayout.polar(layout.lantern_angles[i], layout.lantern_radius)
+		var at: Vector3 = (placed[i] as Node3D).position
+		assert_almost_eq(Vector2(at.x, at.z), Vector2(spot.x, spot.z), Vector2.ONE * 0.01, "bought lantern %d on its spot" % i)
+	assert_null(shrine.get_node_or_null("Platform/Props/Glow"), "no procedural lantern's lit paper")
+	assert_eq(_lantern_lights(shrine).size(), layout.lantern_angles.size(), "the bought lanterns still light")
+	for kit_name: String in ["Bark", "Pine", "StoneDark"]:
+		assert_eq(_props_aabb(shrine, kit_name), _props_aabb(arena, kit_name), "%s as it was without the bought lanterns" % kit_name)
+
+
+func test_every_prop_kind_can_be_swapped_for_bought_art() -> void:
+	var shrine: MoonlitShrine = _shrine_with_art(ShrineLayout.PROP_KINDS)
+	var layout: ShrineLayout = shrine.layout
+	var pines: int = 0
+	for t: Vector4 in layout.trees:
+		pines += 1 if t.w < 0.5 else 0
+	var expected: Dictionary[String, int] = {
+		"Lantern": layout.lantern_angles.size(), "Torii": 2, "Pillar": layout.pillars.size(),
+		"Pine": pines, "DeadTree": layout.trees.size() - pines,
+	}
+	var props: Node = shrine.get_node("Platform/Props")
+	for kind: String in expected:
+		var placed: int = 0
+		for child: Node in props.get_children():
+			if child.name.begins_with(kind) and child.name.trim_prefix(kind).is_valid_int():
+				placed += 1
+		assert_eq(placed, expected[kind], "bought %s in every spot" % kind)
+	for kit_name: String in ["Stone", "Lacquer", "BlackLacquer", "Bark", "Pine", "Glow"]:
+		assert_null(props.get_node_or_null(kit_name), "no procedural %s left" % kit_name)
+
+
+func test_bought_art_under_an_unknown_kind_is_reported() -> void:
+	var shrine: MoonlitShrine = _shrine_with_art([&"lanturn"])
+	assert_push_error("lanturn")
+	assert_not_null(shrine.get_node_or_null("Platform/Props/Glow"), "the lanterns are built as usual")
+
+
 # ------------------------------------------------------------------ presets
 
 func test_the_saved_preset_is_applied_when_it_loads() -> void:
@@ -154,12 +298,19 @@ func test_the_saved_preset_is_applied_when_it_loads() -> void:
 	assert_false(ToonMaterials.is_outlined(parapet.material_override), "no prop outlines on Low")
 
 
-func test_every_preset_applies_to_the_courtyard() -> void:
+func test_every_preset_applies_to_the_courtyard_and_its_props() -> void:
+	var outlined: Array[String] = ["Parapet", "Landing", "StoneDark", "Rope", "Stone", "Lacquer", "BlackLacquer", "Bark", "Pine"]
 	for id: StringName in GraphicsPreset.IDS:
 		var preset: GraphicsPreset = GraphicsPreset.load_id(id)
 		GraphicsApplier.apply_to_tree(preset, arena)
-		var parapet := arena.get_node("Platform/Props/Parapet") as MeshInstance3D
-		assert_eq(ToonMaterials.is_outlined(parapet.material_override), preset.outline_props, "%s: parapet outline" % id)
+		for kit_name: String in outlined:
+			var mi := arena.get_node("Platform/Props/" + kit_name) as MeshInstance3D
+			assert_eq(ToonMaterials.is_outlined(mi.material_override), preset.outline_props, "%s: %s outline" % [id, kit_name])
+		for kit_name: String in ["Pebbles", "Paper"]:
+			var mi := arena.get_node("Platform/Props/" + kit_name) as MeshInstance3D
+			assert_false(ToonMaterials.is_outlined(mi.material_override), "%s: %s never outlined" % [id, kit_name])
+		for light: Node in _lantern_lights(arena):
+			assert_eq((light as Light3D).visible, preset.minor_lights, "%s: lantern lights" % id)
 		var key := arena.get_node("Lights/MoonKey") as DirectionalLight3D
 		assert_eq(key.directional_shadow_max_distance, preset.shadow_max_distance, "%s: moon shadows" % id)
 		assert_eq((arena.get_node("InkWash") as InkWashPass).quality, preset.post_quality, "%s: ink wash" % id)

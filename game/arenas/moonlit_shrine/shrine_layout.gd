@@ -9,8 +9,16 @@ extends Resource
 ## sits on that side. Radii are metres from the centre; heights are metres
 ## above the courtyard floor. The walls, spawns and gates come from the
 ## ArenaDef, not from here.
+##
+## Any prop can be swapped for bought art: put a PackedScene in prop_scenes
+## under the prop's kind (PROP_KINDS) and the builders instance it at the
+## same spots instead of building the procedural one.
 
-## Seed for every random choice in the builders (stone shades, pebbles).
+## The prop kinds that bought art can replace.
+const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine", &"dead_tree"]
+
+## Seed for every random choice in the builders (stone shades, pebbles,
+## debris, trees).
 @export var seed: int = 7
 
 @export_group("Courtyard")
@@ -34,8 +42,31 @@ extends Resource
 @export var damaged_posts: PackedInt32Array = PackedInt32Array([8, 34, 46])
 
 @export_group("Gates")
-## The width of each gate's torii; its landing is a little wider.
+## The torii stand on the ArenaDef's gate anchors; these set their size. Each
+## gate's landing is a little wider than its torii.
+@export var torii_height: float = 6.6
 @export var torii_span: float = 5.4
+
+@export_group("Props on the ledge")
+## Stone lanterns: angles; all stand at lantern_radius.
+@export var lantern_angles: PackedFloat32Array = PackedFloat32Array([16, -16, 164, 196, 62, 118, 242, 298])
+@export var lantern_radius: float = 17.4
+## Pillars: (angle, radius, height, broken 0/1).
+@export var pillars: PackedVector4Array = PackedVector4Array([
+	Vector4(216, 18.9, 5.2, 0), Vector4(268, 19.4, 3.1, 1), Vector4(321, 18.7, 5.8, 0),
+	Vector4(39, 19.1, 2.6, 1), Vector4(90, 18.8, 5.4, 0), Vector4(146, 19.3, 3.4, 1),
+])
+## Trees: (angle, radius, scale, kind 0 = pine, 1 = dead tree).
+@export var trees: PackedVector4Array = PackedVector4Array([
+	Vector4(224, 20.4, 1.15, 0), Vector4(49, 20.2, 1.25, 0), Vector4(332, 20.0, 1.1, 1),
+	Vector4(123, 19.9, 1.2, 1), Vector4(278, 20.6, 0.8, 1),
+])
+## Loose rocks scattered on the ledge, clear of the gates.
+@export var debris_count: int = 48
+
+@export_group("Underside")
+## The crag under the courtyard: its radius at the top, where the ledge ends.
+@export var crag_radius: float = 21.0
 
 @export_group("World")
 ## Direction toward the moon (normalised by the builders). The red rim light
@@ -44,6 +75,10 @@ extends Resource
 ## Direction the moonlight comes from (the key light), independent of the
 ## moon's disc.
 @export var key_light_direction: Vector3 = Vector3(-0.95, 1.05, -0.25)
+
+@export_group("Art overrides")
+## Bought art per prop kind; a kind left out is built procedurally.
+@export var prop_scenes: Dictionary[StringName, PackedScene] = {}
 
 
 ## Converts an angle (degrees, from +Z toward +X) and a radius to a point.

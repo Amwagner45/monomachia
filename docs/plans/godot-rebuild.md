@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.3, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.4.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.4, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.5.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -149,11 +149,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The arena data and the radius guard (17.1): `ArenaDef` and the shrine's `moonlit_shrine.tres`. `ArenaScenes` draws an arena's own scene only when it exists and its walkable radius is the rules' `ARENA_RADIUS`, so the shrine (15 m) waits behind the stand-in until 8.3. Tests that don't need the shrine ask for the stand-in by id, through `main.gd`'s `arena_id` where they go through the menus.
   - The arena screenshot rig (17.2): `tools/shot_scenes/arena_shot.gd` shoots an arena on a stepped `MatchHost` with the real fighters on its spawns, from the gameplay, Watch and menu cameras, an establishing view and a top-down debug view, at any preset (`arena_gameplay.tscn` … `arena_top_down.tscn`, `--preset=`, `--arena=`). It shoots an arena's own scene past the radius guard.
   - The shrine's courtyard (17.3): `arenas/moonlit_shrine/moonlit_shrine.tscn` builds the paved floor, the plinth, the parapet, the gate landings and rope barriers and the pebbles from its `ArenaDef` and `ShrineLayout`, with its own night environment, moon key light, red fighter-only rim light and ink-wash pass. Matches still use the stand-in until 8.3; the arena shots show the shrine.
-- **Checks after 17.3** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 571 Godot tests (51 s): rules 138, input 118, audio 31, core 22, view 207, content 52, and 3 project-wide smoke tests;
+  - The shrine's props (17.4): a torii on each gate landing, and on the ledge the stone lanterns (with flickering lights that skip the ground, and halos), the roped and broken pillars, the pines, the dead trees and loose rocks. `ShrineLayout.prop_scenes` swaps any prop kind for bought art at the same spots.
+- **Checks after 17.4** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 578 Godot tests (52 s): rules 138, input 118, audio 31, core 22, view 214, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
   - the typecheck loads 157 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor) passes in a window;
+  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor and the two glow shaders) passes in a window;
   - CI passed on the push of 14.1 (6a986cb);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
@@ -161,14 +162,14 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - **Waiting on its own worktree:**
   - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's props, underside, sky, backdrop and ambience (17.4–17.9).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3, 17.4): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard and props. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's underside, sky, backdrop and ambience (17.5–17.9).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -1115,10 +1116,38 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - **Tests:** `test_moonlit_shrine` covers the data and layout, the markers, the environment copy, the lights, one ink pass, the floor at 0 under the spawns, the posts, the gate landings and the ropes outside the walkable circle, nothing but flat pebbles inside it, and the presets on load and on change.
       - **Shots reviewed:** gameplay, Watch, menu, establishing and top-down. The courtyard floats in the dark until the underside (17.5) and the sky (17.6).
       - The 0.17 m parapet curb runs across the gate openings as a sill, under the ropes.
-  - [ ] **17.4 Torii, lanterns, pillars, trees and debris.** The prop builders, lantern lights that skip the ground layer with their flicker and halos, and the `prop_scenes` seam for bought art.
+  - [x] **17.4 Torii, lanterns, pillars, trees and debris.** The prop builders, lantern lights that skip the ground layer with their flicker and halos, and the `prop_scenes` seam for bought art.
     - Note from 17.3: `ShrineProps` already holds the platform's materials and `shimenawa()`. The `stone` material (dropped while nothing used it) comes back with the lanterns and pillars, and the torii stand on the gate landings. The ledge debris needs `debris_count` and the crag radius in `ShrineLayout`.
     - Check: every lantern lights fighters and skips the ground; a scene in `prop_scenes` replaces the procedural lantern; prop outlines follow the preset; gameplay and Watch shots at High and Medium reviewed.
     - Blocked by: 17.3 · Stories: 46, 47, 63
+    - Done:
+      - **`ShrineProps`** gains, salvaged and trimmed (the pagoda, the temple hall and their materials wait for the backdrop in 17.7):
+        - the stone lantern, with lit paper round its fire (`LANTERN_FIRE`);
+        - the torii, with lacquered posts and beams and a black lacquer top;
+        - the pillar, whole with a rope and streamers or broken with a fallen drum;
+        - the black pine and the dead tree;
+        - the paper streamer shared by the gate ropes and the pillars, and the `stone`, `lacquer`, `black_lacquer`, `bark`, `pine` and `glow` materials.
+      - **`ShrinePlatform`** places them:
+        - a torii on each gate anchor, standing on its landing;
+        - eight lanterns at `lantern_radius`, six pillars, five trees and 48 rocks on the ledge at `LEDGE_Y`, clear of the gates;
+        - at each lantern's fire, a light (`Platform/LanternLights`) and a halo (`Platform/LanternHalos`, one MultiMesh with `shaders/particle_glow.gdshader`). The lights skip the ground (`SMALL_LIGHT_MASK`) and are minor lights, so only High shows them; the halos show on every preset.
+        - The lit paper uses `shaders/lantern_glow.gdshader`, which flickers by itself.
+      - **`MoonlitShrine`** flickers the lantern lights around `ShrinePlatform.LANTERN_ENERGY`.
+      - **Bought art:**
+        - `ShrineLayout.prop_scenes` takes a scene for any of `PROP_KINDS` (lantern, torii, pillar, pine, dead_tree), placed at the same spots as `Platform/Props/Lantern0` and so on;
+        - a key that isn't a prop kind is reported;
+        - each kind draws from its own random stream, seeded from the layout, so swapping one kind leaves the rest as they were;
+        - bought lanterns keep their fire at `LANTERN_FIRE`'s height, where the lights and halos go.
+      - **`ShrineLayout`** gains the torii's height, the lanterns, pillars, trees and `debris_count` (48, the ledge's share of the worktree's 70), `crag_radius` (the ledge's edge, which 17.5 builds), `prop_scenes` and `PROP_KINDS`.
+      - **Tests:**
+        - a torii on each landing;
+        - every lantern with a light at its fire that lights fighters and skips the ground, a halo per lantern, and the flicker;
+        - bought lanterns at the lantern spots, with their lights, and the trees and rocks unchanged;
+        - every kind swappable, and an unknown kind reported;
+        - outlines and lantern lights per preset for every prop material.
+        - Where the halos sit is checked in the shots: the headless renderer keeps no MultiMesh transforms.
+      - **Shots reviewed:** gameplay and Watch at High and Medium (Medium drops the prop outlines and the lantern lights, and keeps the halos), plus menu, establishing and top-down. The lanterns, pillars, trees and rocks stand on nothing until the ledge (17.5), and the trees barely show against the black sky until 17.6.
+      - For 17.8: the embers need the lantern fires, which `ShrinePlatform._fire_points()` gives; make it public then.
   - [ ] **17.5 The rocky underside, roots, chains and floating rocks.** The rock under the rim is hidden only from cameras above the courtyard, decided per camera so split screen works later.
     - Check: the underside tests pass; establishing and top-down shots reviewed.
     - Blocked by: 17.3 · Stories: 47

@@ -8,15 +8,15 @@ extends Node3D
 ##
 ## Like every arena it brings its own environment, lights and the ink-wash
 ## pass, and applies the chosen graphics preset to itself when it loads; the
-## match brings the camera and the fighters.
+## match brings the camera and the fighters. It flickers its lantern lights.
 ##
 ## Seams for the match (see ArenaScenes): `def`, from which the camera takes
 ## its limits; Marker3D children Spawn0, Spawn1 (where the rules start each
 ## side) and Gate0, Gate1 (the gate anchors); and Platform/GateRope0 and
 ## GateRope1 (each gate's rope barrier, for the match intro to drop).
 ##
-## Built so far: the courtyard (17.3). The props, the underside, the sky, the
-## backdrop and the embers and ash come with tasks 17.4 to 17.8.
+## Built so far: the courtyard (17.3) and its props (17.4). The underside,
+## the sky, the backdrop and the embers and ash come with tasks 17.5 to 17.8.
 
 ## The environment until the arena's own sky (task 17.6) sets def.environment.
 const NIGHT_ENVIRONMENT: Environment = preload("res://view/look/ink_night_environment.tres")
@@ -24,10 +24,25 @@ const NIGHT_ENVIRONMENT: Environment = preload("res://view/look/ink_night_enviro
 @export var def: ArenaDef
 @export var layout: ShrineLayout
 
+var _lantern_lights: Array[OmniLight3D] = []
+var _time: float = 0.0
+
 
 func _ready() -> void:
 	_build()
 	GraphicsApplier.apply_to_tree(GameServices.graphics_preset(), self)
+
+
+func _process(delta: float) -> void:
+	_time += delta
+	for i: int in _lantern_lights.size():
+		_lantern_lights[i].light_energy = ShrinePlatform.LANTERN_ENERGY * _flicker(_time, i)
+
+
+## Lantern i's brightness at time t, around 1: three waves at odd rates,
+## offset per lantern so they don't flicker together.
+static func _flicker(t: float, i: int) -> float:
+	return 1.0 + 0.08 * sin(t * 9.0 + i * 1.7) + 0.06 * sin(t * 23.0 + i * 4.1) + 0.035 * sin(t * 3.1 + i)
 
 
 func _build() -> void:
@@ -40,6 +55,8 @@ func _build() -> void:
 	add_child(env)
 	add_child(_build_lights())
 	add_child(ShrinePlatform.build(layout, def))
+	for light: Node in get_node(^"Platform/LanternLights").get_children():
+		_lantern_lights.append(light as OmniLight3D)
 	_add_markers()
 	var ink := InkWashPass.new()
 	ink.name = "InkWash"

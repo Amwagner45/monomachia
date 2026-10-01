@@ -76,7 +76,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 
 ### Phase B: a playable skeleton
 
-- [ ] **6. Playable duel with stand-in fighters.**
+- [x] **6. Playable duel with stand-in fighters.**
   - Delivers:
     - the fixed-step host (accumulator, slow motion, hit-stop freeze, interpolation);
     - capsule fighters with stick weapons posed from the move data;
@@ -89,6 +89,13 @@ The Godot build plays everything the web demo plays, on the new direction in the
     - arena data with spawn points and gate anchors.
   - Blocked by: 5 (input devices from task 21 are already merged).
   - Check: a scripted run plays a full match headless; screenshots of the duel from the gameplay camera.
+  - Done on its own branch (`playable-skeleton`):
+    - `game/core`: the `MatchConfig` and `MatchSide` resources, `MatchResults`, and the `GameServices` autoload, which owns one `ControlProfiles` and one `InputDevices` with its `InputFeed` for the whole game and pauses a match when the window loses focus.
+    - `game/view/match`: `MatchHost` (the fixed-step host, with `step(n)` for tests and screenshots), `MatchView`, `CameraRig` (follow at 4.6 m back and 1.35 m right with 60° field of view, Watch side-on, menu orbit, shake and field-of-view kicks; every number exported), `FighterStandin` posed by `StickPose`, and the stand-in arena.
+    - Arenas load by id through `ArenaScenes`: `moonlit_shrine` points at `res://arenas/moonlit_shrine/moonlit_shrine.tscn` and falls back to the stand-in until that scene exists. The stand-in only carries Spawn and Gate markers; the arena data itself comes with task 17.
+    - `game/ui`: the minimal HUD, and the title, main menu, pause and results screens that task 22 replaces. `game/scenes/main.tscn` runs title, menu, Duel or Watch, results.
+    - Screenshot scenes in `game/tools/shot_scenes/` (`npm run shots -- res://tools/shot_scenes/skeleton_parry.tscn out.png`).
+    - Left for task 23: the training upkeep (refill, the dummy re-arming).
 
 ### Phase C: the rule changes
 

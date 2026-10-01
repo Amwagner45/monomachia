@@ -277,6 +277,25 @@ func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
 		assert_eq(_child_names(), baseline, "match %d: nothing left behind" % k)
 
 
+func test_a_dropped_weapon_is_in_the_toon_look() -> void:
+	host.start(_cpu())
+	host.step(Match.INTRO_FRAMES + 5)
+	host.world.weapons.append(DroppedWeapon.new(1, &"daggers", V3.make(1.0, 0.0, 1.0), V3.make(), Rng.new(3)))
+	view.render(1.0 / 60.0)
+	var blades: Array[Node] = view.get_node("Dropped1/Stick").get_children()
+	assert_eq(blades.size(), 2, "a pair of daggers")
+	for node: Node in blades:
+		var blade: MeshInstance3D = node as MeshInstance3D
+		var m: ShaderMaterial = blade.material_override as ShaderMaterial
+		assert_not_null(m)
+		if m == null:
+			continue
+		assert_eq(m.shader, ToonMaterials.TOON_SHADER, "a toon blade")
+		assert_eq(ToonMaterials.outline_kind_of(m), ToonMaterials.OutlineKind.WEAPON)
+		assert_true(ToonMaterials.is_outlined(m), "weapons are outlined on every preset")
+		assert_eq(blade.layers, 1 | LookPalette.FIGHTER_LAYER, "on the fighters' layer, so the rim light finds it")
+
+
 func test_a_body_flash_fades_with_the_rules_not_the_wall_clock() -> void:
 	host.start(_cpu())
 	host.step(Match.INTRO_FRAMES + 5)

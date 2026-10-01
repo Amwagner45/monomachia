@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3, 16.4 and 16.5. Next: 16.6.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3, 16.4, 16.5 and 16.6. The owner now approves each task before the next starts. Next: 16.7.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -141,18 +141,19 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - `MeshKit` and `MeshKitSet` (16.2) build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0;
     - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw;
     - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else;
-    - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`.
-- **Checks after 16.5:**
-  - 494 Godot tests: rules 138, input 118, audio 31, core 22, view 133, content 49, and 3 project-wide smoke tests;
+    - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`;
+    - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset. The capsule fighters stay as they are until 14.2.
+- **Checks after 16.6:**
+  - 503 Godot tests: rules 138, input 118, audio 31, core 22, view 142, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 141 scripts cleanly;
-  - CI passed on the push of the ink-line pick (291a947), both the tests and the Windows export; it was still running for 16.5 (494bfb2) when this was written;
+  - the typecheck loads 142 scripts cleanly;
+  - CI passed on the pushes of 16.5 (494bfb2) and the Progress update after it (bf587fc);
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 100.1 MB.
 - **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, and the presets. Still to come: the stand-in arena in the look (16.6), the fighters and weapons in the look (16.7), and the shrine (17.x).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, and the presets. 16.6 (the stand-in arena in the look) was new work. Still to come: the fighters and weapons in the look (16.7), and the shrine (17.x).
 
 ### Waiting on the owner
 
@@ -874,9 +875,37 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Low has no ink and unoutlined props;
       - Medium adds the ink lines;
       - High adds prop outlines and the full pass.
-  - [ ] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
+  - [x] **16.6 The stand-in arena and the dropped weapons in the toon look.** The stand-in arena uses the toon materials with the ink-wash pass and the current preset, and so do the dropped weapons. The capsule fighters are left alone, since 14.2 replaces them.
     - Check: the view tests pass, including the no-stray-nodes test; the skeleton shots are re-rendered and reviewed.
     - Blocked by: 16.5 · Stories: 46
+    - Done: `view/match/standin_arena.gd` is rebuilt in the look, still from the rules' radius:
+      - **Built with MeshKit**, one mesh per material:
+        - a dark stone floor, with lighter inlaid rings every 3 m and a centre mark;
+        - the apron;
+        - a lacquered wall with a bevelled top, its inner face on the wall line;
+        - stone pillars with lacquer caps.
+      - **Materials and layers.** Every surface is a toon prop material. The wall and pillars are outlined props (High only). The floor, apron and rings are never outlined, and sit on the ground layer.
+      - **Environment and lights.**
+        - A copy of the night environment under the old dusk sky; applying the preset adds the colour grade.
+        - The moon is the preset's shadow light.
+        - The warm rim light touches the fighters' layer only.
+        - The two lanterns are minor lights that leave the ground out.
+      - **The look.** An ink-wash pass, and the arena applies `GameServices.graphics_preset()` to itself when it loads.
+      - **Floor colour.** The look's `STONE_DARK` read blue under the cold moon, and the blue fighter blended into it. The floor is now darker (`#24232a`), with `STONE_DARK` rings, so both palettes stand out as they did before.
+      - **The capsules lose the rim light.** They sit on layer 1 only, so they no longer get the warm rim light the old stand-in shone on everything. 14.2's fighters go on the fighter layer.
+    - Dropped weapons (`MatchView._make_dropped`):
+      - MeshKit blades with outline normals, `ToonMaterials.weapon`, on layers 1 and 2, with the preset applied.
+      - The blades' self-lit sheen is gone; the toon highlight and outline read without it.
+      - The light-beam marker is unchanged, since task 18's effects replace it.
+    - `GraphicsApplier.apply_to_tree()` applies a preset to a scene without touching the renderer's global shadow settings or a viewport, which `GameServices` sets at start. The arena and the dropped weapons use it.
+    - Tests:
+      - `tests/view/test_standin_arena.gd` has 8 tests: every surface toon; what is outlined; the ground layer and the lanterns' mask; the moon's shadows and the fighter-only rim; the night environment copied and graded; the pass at the preset's quality; Low applied when chosen; the floor and wall on the rules' radius.
+      - `test_match_scene.gd` checks that a dropped pair of daggers is toon, outlined and on the fighter layer.
+      - The no-stray-nodes test still passes: the pass lives inside the arena.
+    - Shots:
+      - `tools/shot_scenes/skeleton_dropped.tscn` is new: a Watch match until a weapon lies on the floor, with the camera beyond it.
+      - The seven skeleton shots were re-rendered and reviewed: the dark floor and pale rings, the outlined wall and pillars, paper grain and vignette, both fighters standing out, and the dropped Greatsword's toon blade with its outline.
+      - `shader_check`, `outline_check` and `ink_check` pass.
   - [ ] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. Palettes then recolour the toon materials, since `apply_palette` and `test_palettes` only handle `BaseMaterial3D` today. The weapons and the Katana's own shaders get toon versions. The art budget (56.4 of 60 MB after 13.1) covers any new textures.
     - Check: content tests that every fighter and weapon surface is toon, outlined and on layer 2, and that the palettes still differ; lineup and mirror shots at Low and High reviewed, with no split outlines at seams.
     - Blocked by: 13.1, 16.6 · Stories: 43, 45, 46

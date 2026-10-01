@@ -2,8 +2,9 @@ class_name GraphicsApplier
 extends RefCounted
 ## Applies a GraphicsPreset to the renderer, a viewport and a scene tree. It
 ## keeps no state: the preset in use is GameSettings'
-## (GameServices.graphics_preset()), and a scene applies it to itself when it
-## loads.
+## (GameServices.graphics_preset()). GameServices applies it to the renderer
+## and the root viewport at start, and a scene applies it to its own tree
+## with apply_to_tree() when it loads.
 ##
 ## The tree is found by convention, so arenas and fighters don't need to know
 ## about presets:
@@ -45,12 +46,18 @@ static func apply(preset: GraphicsPreset, root: Node, viewport: Viewport = null)
 	if viewport != null:
 		apply_to_viewport(preset, viewport)
 	if root != null:
-		var materials: Dictionary[Material, bool] = {}
-		_walk(preset, root, materials)
-		for material: Material in materials:
-			var kind: ToonMaterials.OutlineKind = ToonMaterials.outline_kind_of(material)
-			if kind != ToonMaterials.OutlineKind.NONE:
-				ToonMaterials.set_outline(material, preset.outlines_on(kind), preset.outline_width_scale)
+		apply_to_tree(preset, root)
+
+
+## Applies preset to root and every matching node under it, leaving the
+## renderer and the viewport alone.
+static func apply_to_tree(preset: GraphicsPreset, root: Node) -> void:
+	var materials: Dictionary[Material, bool] = {}
+	_walk(preset, root, materials)
+	for material: Material in materials:
+		var kind: ToonMaterials.OutlineKind = ToonMaterials.outline_kind_of(material)
+		if kind != ToonMaterials.OutlineKind.NONE:
+			ToonMaterials.set_outline(material, preset.outlines_on(kind), preset.outline_width_scale)
 
 
 ## Applies the preset's anti-aliasing and render scale to viewport.

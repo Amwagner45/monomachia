@@ -306,21 +306,17 @@ func _make_dropped(side_id: int, weapon_id: StringName) -> Node3D:
 	var stick: Node3D = Node3D.new()
 	stick.name = "Stick"
 	root.add_child(stick)
+	# toon steel blades, outlined and on the fighters' layer like a held weapon
 	var length: float = StickPose.LENGTH.get(weapon_id, 0.9)
-	var blade_mat: StandardMaterial3D = StandardMaterial3D.new()
-	blade_mat.albedo_color = FighterStandin.BLADE_COLOR
-	blade_mat.metallic = 0.15
-	blade_mat.roughness = 0.3
-	blade_mat.emission_enabled = true
-	blade_mat.emission = FighterStandin.BLADE_COLOR
-	blade_mat.emission_energy_multiplier = FighterStandin.BLADE_SHEEN
+	var kit := MeshKit.new()
+	kit.box(Transform3D.IDENTITY, Vector3(0.06, length, 0.035))
+	var box: ArrayMesh = kit.commit(true)
+	var blade_mat: ShaderMaterial = ToonMaterials.weapon(FighterStandin.BLADE_COLOR)
 	var count: int = 2 if weapon_id == &"daggers" else 1
 	for k: int in count:
-		var blade: MeshInstance3D = MeshInstance3D.new()
-		var box: BoxMesh = BoxMesh.new()
-		box.size = Vector3(0.06, length, 0.035)
-		blade.mesh = box
-		blade.material_override = blade_mat
+		var blade: MeshInstance3D = MeshKit.instance(box, blade_mat)
+		blade.name = "Blade%d" % k
+		blade.layers = 1 | LookPalette.FIGHTER_LAYER
 		blade.position = Vector3(0.12 * float(k), 0.0, 0.0)
 		stick.add_child(blade)
 	# a pillar of light in the owner's colour over a weapon on the ground
@@ -340,4 +336,5 @@ func _make_dropped(side_id: int, weapon_id: StringName) -> Node3D:
 	beam.material_override = beam_mat
 	beam.visible = false
 	root.add_child(beam)
+	GraphicsApplier.apply_to_tree(GameServices.graphics_preset(), root)
 	return root

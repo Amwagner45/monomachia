@@ -11,7 +11,7 @@ extends Node
 
 const SEED: int = 7
 
-@export_enum("round_start", "exchange", "parry", "watch", "results", "main_menu") var shot: String = "round_start"
+@export_enum("round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu") var shot: String = "round_start"
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
 
@@ -50,6 +50,11 @@ func _ready() -> void:
 			host.sim_event.connect(_on_event)
 			_step_until(func() -> bool: return _katana_hit, 40000, 0)
 			host.step(2)
+		"dropped":
+			# the first weapon knocked out of a hand, lying on the floor
+			# under its marker
+			_gameplay(MatchConfig.WATCH)
+			_step_until(_weapon_down, 200000, 0)
 		"results":
 			_main()
 			main.call("start_match", _config(MatchConfig.DUEL))
@@ -61,6 +66,8 @@ func _ready() -> void:
 			host.step(420)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
+	if shot == "dropped":
+		_frame_dropped(view.camera)
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
 	view.set_process(false)
@@ -113,6 +120,28 @@ func _exchanging() -> bool:
 		return false
 	var d: AttackDef = b.atk.def
 	return (d.type == &"slash" or d.type == &"overhead") and b.atk.frame == d.startup
+
+
+## Puts the camera 3.5 m beyond the grounded weapon, looking past it at the
+## fighters, so the blade, its marker and the fight share the frame.
+func _frame_dropped(camera: Camera3D) -> void:
+	for w: DroppedWeapon in host.world.weapons:
+		if not w.grounded:
+			continue
+		var at := Vector3(w.pos.x, 0.0, w.pos.z)
+		var mid: Vector3 = (host.display_position(0) + host.display_position(1)) * 0.5
+		mid.y = 0.0
+		var away: Vector3 = (at - mid).normalized() if at.distance_to(mid) > 0.1 else Vector3.BACK
+		camera.global_position = at + away * 3.5 + Vector3(0.0, 1.7, 0.0)
+		camera.look_at(at.lerp(mid, 0.35) + Vector3(0.0, 0.5, 0.0))
+		return
+
+
+func _weapon_down() -> bool:
+	for w: DroppedWeapon in host.world.weapons:
+		if w.grounded:
+			return true
+	return false
 
 
 func _on_event(e: Dictionary) -> void:

@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1. Next: 25.1.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1. Next: 25.2.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -1040,9 +1040,10 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - credits and licence notices;
     - `mvp-spec.md` marked as the web demo's record.
   - Check: CI produces a Windows zip; the exported game launches and plays a match.
-  - [ ] **25.1 Size guard and binary attributes.** `scripts/check-sizes.mjs` (`npm run check:sizes`) fails on tracked files over 10 MB unless allow-listed, and prints the asset and repo sizes. It runs in CI. `.gitattributes` gains `*.exr`, `*.blend`, `*.mp3` and `*.tpz`.
+  - [x] **25.1 Size guard and binary attributes.** `scripts/check-sizes.mjs` (`npm run check:sizes`) fails on tracked files over 10 MB unless allow-listed, and prints the asset and repo sizes. It runs in CI. `.gitattributes` gains `*.exr`, `*.blend`, `*.mp3` and `*.tpz`.
     - Check: it passes on the branch (allowing the 10.58 MB ambience loop) and fails on a scratch 11 MB file; CI prints the sizes.
     - Blocked by: 13.1 · Stories: 60, 63
+    - Done: the repo comes to 99.9 MB (the spec's estimate was about 100), with game/assets at 73.0 MB (30.4 of it audio), game/fighters 13.7 and game/weapons 0.2. `--include` checks a file before it is added. The guard sees only the tracked tip: a large file added and removed within one push stays in history unnoticed, and CI reports after the push rather than preventing it.
   - [ ] **25.2 Windows export preset, a smoke flag and a local build.** `game/export_presets.cfg`: x86_64 release with the pack embedded, the Shader Baker on, and `tests`, `tools`, `addons/gut` and `_probe` excluded. A `--smoke` flag plays a computer-vs-computer match to the results and exits 0.
     - Check: `npm run godot -- build` exports with no errors; the exe run with `--smoke` reaches the results and exits 0; `user://controls.cfg` survives between two runs.
     - Owner: plays a Duel in the exe.

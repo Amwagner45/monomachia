@@ -24,7 +24,8 @@
     "godot:fixtures": "tsx scripts/sim-fixtures.ts && tsx scripts/port-fixtures.ts",
     "audio:sonniss": "node scripts/audio/extract-sonniss.mjs",
     "audio:synth": "node scripts/audio/synth.mjs",
-    "audio:music": "node scripts/audio/music.mjs"
+    "audio:music": "node scripts/audio/music.mjs",
+    "check:sizes": "node scripts/check-sizes.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

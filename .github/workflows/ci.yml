@@ -1,6 +1,6 @@
-# Runs the rule tests (web and Godot) and builds the web game on every push and
-# pull request. The built web game is kept for 30 days as a download on the
-# run's page.
+# Checks that no tracked file is too large, runs the rule tests (web and
+# Godot) and builds the web game on every push and pull request. The built web
+# game is kept for 30 days as a download on the run's page.
 name: CI
 
 on:
@@ -26,6 +26,7 @@ jobs:
           use-dotnet: false
           include-templates: false
       - run: npm ci
+      - run: npm run check:sizes
       - run: npm test
       - run: npm run typecheck
       - run: npm run build

@@ -18,12 +18,15 @@ extends Node3D
 ## - sheet: renders the whole review set into contact sheets in the folder
 ##   given by --sheet=<folder>: both fighters in both palettes from the front,
 ##   three-quarters, side and back, close and at gameplay distance; head
-##   close-ups; hands on the grips from three angles; rest poses; every
-##   fighter with every weapon; mirror matches side on and from the gameplay
-##   camera; the weapons and close-ups of their blades.
+##   close-ups; hands on the grips from three angles; every weapon posed in
+##   a guard on the rig, with the hands from the sides and below; rest
+##   poses; every fighter with every weapon; mirror matches side on and from
+##   the gameplay camera; the weapons and close-ups of their blades.
 ##
-## A fighter holds each weapon the way its look's WeaponHold says, frozen
-## in the hold's idle clip.
+## With --pose=carry (the default) a fighter carries each weapon the way its
+## look's WeaponHold says, frozen in the hold's idle clip. With --pose=guard
+## the weapon is posed in a guard (GUARDS) and the arms reach for it on the
+## rig's IK, over the relaxed idle clip; the sheet's guard section uses it.
 ##
 ## Stages (--stage=): studio (default), a neutral grey room for judging the
 ## art; or night, the match's look: the stand-in arena's night environment,
@@ -46,6 +49,21 @@ const MARKER_COLORS: Dictionary[StringName, Color] = {
 const SETTLE_FRAMES: int = 6
 ## Where the idle clips are frozen for screenshots, so every run matches.
 const POSE_TIME: float = 0.5
+## Guards for reviewing the grip on the rig (--pose=guard), in the fighter's
+## frame (+Z forward, +X to the fighter's left): per held weapon, its main
+## grip point, the way its blade points and the way its edge faces (see
+## FighterRig.weapon_frame()). Review poses only, with both elbows bent: the
+## guard stances (plan 14.7, 15) bring the real ones.
+const GUARDS: Dictionary[StringName, Array] = {
+	&"katana": [[Vector3(-0.06, 1.08, 0.27), Vector3(0.12, 0.5, 0.86), Vector3(0.0, -1.0, 0.0)]],
+	&"greatsword": [[Vector3(-0.05, 1.15, 0.3), Vector3(0.05, 0.55, 0.83), Vector3(0.0, 0.0, 1.0)]],
+	&"daggers": [
+		[Vector3(-0.18, 1.12, 0.28), Vector3(-0.05, 0.34, 0.94), Vector3(0.0, -1.0, 0.0)],
+		[Vector3(0.18, 1.16, 0.26), Vector3(0.05, 0.34, 0.94), Vector3(0.0, -1.0, 0.0)],
+	],
+}
+## The clip under a guard: the relaxed idle, with the shoulders square.
+const GUARD_CLIP: StringName = &"Idle"
 
 @export var mode: Mode = Mode.LINEUP
 @export var fighter_id: StringName = &"rogue"
@@ -62,6 +80,8 @@ const POSE_TIME: float = 0.5
 @export var stage: StringName = &"studio"
 ## A graphics preset id to apply to the stage, or empty for the chosen one.
 @export var preset_id: StringName = &""
+## carry or guard (see above).
+@export var pose: StringName = &"carry"
 
 var _camera: Camera3D
 var _label: Label
@@ -137,6 +157,10 @@ func _read_args() -> void:
 				stage = StringName(value)
 			"preset":
 				preset_id = StringName(value)
+			"pose":
+				pose = StringName(value)
+				if pose != &"carry" and pose != &"guard":
+					push_error("preview.gd: --pose must be carry or guard, not '%s'" % value)
 
 
 # --- stage -------------------------------------------------------------------
@@ -268,7 +292,8 @@ func _clear() -> void:
 
 
 ## Adds a fighter holding a weapon ("" = signature, "none" = bare hands),
-## frozen at POSE_TIME of its idle clip.
+## frozen at POSE_TIME of its idle clip, carrying the weapon or, with
+## --pose=guard, posed in its guard.
 func _add_fighter(id: StringName, pal: int, weapon: StringName, pos: Vector3, rest_pose: bool = false) -> FighterModel:
 	var f: FighterModel = FighterLook.instantiate_fighter(id)
 	f.autoplay_idle = false
@@ -276,12 +301,20 @@ func _add_fighter(id: StringName, pal: int, weapon: StringName, pos: Vector3, re
 	f.position = pos
 	_actors.add_child(f)
 	var wid: StringName = f.look.signature_weapon if weapon == &"" else weapon
+	var guard: bool = pose == &"guard" and GUARDS.has(wid) and not rest_pose
 	if wid != &"none":
 		f.attach_weapon(WeaponLook.load_id(wid))
+		if guard:
+			for i: int in f.weapons.size():
+				var g: Array = GUARDS[wid][i]
+				f.pose_weapon(i, FighterRig.weapon_frame(g[0], g[1], g[2]))
 	if rest_pose:
 		f.skeleton.reset_bone_poses()
 	else:
-		f.play_idle(0.0)
+		if guard:
+			f.play(GUARD_CLIP, 0.0)
+		else:
+			f.play_idle(0.0)
 		f.animation_player.seek(POSE_TIME, true)
 		f.animation_player.pause()
 	return f
@@ -378,7 +411,9 @@ func _setup_fighter(id: StringName, pal: int, weapon: StringName, view_name: Str
 		_look_from(dir * 5.0 + Vector3(0, 1.9, 0), Vector3(0, 1.0, 0), 55.0)
 	else:
 		_look_from(dir * 2.7 + Vector3(0, 1.15, 0), Vector3(0, 0.95, 0), 40.0)
-	var weapon_name: String = f.weapons[0].name if not f.weapons.is_empty() else "bare hands"
+	var weapon_name: String = f.weapon_look.display_name if f.weapon_look != null else "bare hands"
+	if f.rig.drives("Right"):
+		weapon_name += " in guard"
 	_label.text = "%s, palette %s (%s), %s, %s%s" % [
 		f.look.display_name, "AB"[pal], f.look.palettes[pal].display_name, weapon_name,
 		name_text, ", rest pose" if rest_pose else (", 5 m" if gameplay else "")]
@@ -388,10 +423,12 @@ func _setup_fighter(id: StringName, pal: int, weapon: StringName, view_name: Str
 ## default), from below, or from the fighter's side.
 func _look_at_hand(f: FighterModel, view_name: StringName) -> void:
 	var right: bool = String(view_name).begins_with("right")
-	var socket: Node3D = f.right_hand if right else f.left_hand
-	var bone: StringName = &"RightHand" if right else &"LeftHand"
+	var side: String = "Right" if right else "Left"
 	var sk: Skeleton3D = f.skeleton
-	var hand: Vector3 = sk.global_transform * (sk.get_bone_global_pose(sk.find_bone(bone)) * socket.position)
+	# Where the fist is: on its posed weapon's grip, or in the clip's hand.
+	var grip: Vector3 = f.rig.grip_point(side) if f.rig.drives(side) \
+		else sk.get_bone_global_pose(sk.find_bone(side + "Hand")) * f.rig.fist(side).origin
+	var hand: Vector3 = sk.global_transform * grip
 	var out: float = -1.0 if right else 1.0
 	var offset: Vector3 = Vector3(out * 0.35, 0.2, 0.55)
 	if String(view_name).ends_with("_below"):
@@ -508,6 +545,25 @@ func _run_sheet() -> void:
 			_setup_fighter(id, 0, &"daggers", v, false)
 			hands.append(await _capture())
 	_save_sheet(hands, square, 4, 0.5, dir.path_join("hands_close.png"))
+	# The rig: every weapon posed in a guard with the arms on IK, and the
+	# hands on the katana and the greatsword from the sides and below, where
+	# a loose fist or a palm off the handle shows.
+	var carry: StringName = pose
+	pose = &"guard"
+	for id: StringName in FighterLook.IDS:
+		var guard: Array[Image] = []
+		for v: StringName in [&"front", &"three_quarter", &"side"]:
+			for w: StringName in WeaponLook.IDS:
+				_setup_fighter(id, 0, w, v, false)
+				guard.append(await _capture())
+		_save_sheet(guard, portrait, 3, 0.7, dir.path_join("%s_guard.png" % id))
+		var grips: Array[Image] = []
+		for w: StringName in [&"katana", &"greatsword"]:
+			for v: StringName in [&"right_hand_side", &"left_hand_side", &"right_hand_below", &"left_hand_below"]:
+				_setup_fighter(id, 0, w, v, false)
+				grips.append(await _capture())
+		_save_sheet(grips, square, 4, 0.5, dir.path_join("%s_guard_hands.png" % id))
+	pose = carry
 	# Rest pose, front and side.
 	var rest: Array[Image] = []
 	for id: StringName in FighterLook.IDS:

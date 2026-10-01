@@ -81,14 +81,34 @@ func test_the_katana_blade_is_072_m_and_curved_back() -> void:
 		assert_not_null(mesh.surface_get_material(s), "katana surface %d has a material" % s)
 
 
-func test_weapons_attach_to_a_socket_at_the_grip_offset() -> void:
-	var socket: Node3D = Node3D.new()
-	add_child_autofree(socket)
-	var look: WeaponLook = WeaponLook.load_id(&"greatsword")
-	var w: Node3D = look.attach(socket)
-	assert_eq(w.get_parent(), socket)
-	assert_eq(w.transform, look.grip_offset)
-	_assert_toon(w, &"greatsword")
+## Each look's grip radius, which the fists close on, is the model's: the
+## mean of the handle's two half-widths, within 3 mm, where each hand grips
+## (the origin, and OffHandGrip on a two-handed weapon).
+func test_the_grip_radius_is_the_handle_s() -> void:
+	for id: StringName in WeaponLook.IDS:
+		var look: WeaponLook = WeaponLook.load_id(id)
+		var w: Node3D = _instance(id)
+		var grips: Array[float] = [0.0]
+		var off_hand: Marker3D = WeaponLook.marker(w, WeaponLook.OFF_HAND_GRIP)
+		if off_hand != null:
+			grips.append(off_hand.position.y)
+		for y: float in grips:
+			var half: Vector2 = _half_widths(w, y)
+			var radius: float = (half.x + half.y) * 0.5
+			assert_almost_eq(look.grip_radius, radius, 0.003, "%s: the handle at %.2f m is %.1f cm thick" % [id, y, radius * 200.0])
+
+
+## The largest |x| and |z| of a weapon's vertices within 2 cm of height y.
+static func _half_widths(w: Node3D, y: float) -> Vector2:
+	var half: Vector2 = Vector2.ZERO
+	for node: Node in w.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = node
+		for s: int in mi.mesh.get_surface_count():
+			for v: Vector3 in mi.mesh.surface_get_arrays(s)[Mesh.ARRAY_VERTEX] as PackedVector3Array:
+				var p: Vector3 = mi.transform * v
+				if absf(p.y - y) < 0.02:
+					half = Vector2(maxf(half.x, absf(p.x)), maxf(half.y, absf(p.z)))
+	return half
 
 
 ## Every surface of a weapon instance is toon, outlined as a weapon and on

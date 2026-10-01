@@ -17,11 +17,12 @@ extends Resource
 ## - OffHandGrip (two-handed weapons only): the centre of the off hand's
 ##   grip, below the origin.
 ##
-## A fighter's hand socket (FighterModel.right_hand / left_hand) uses the same
-## frame for a closed fist: origin in the hollow of the fist, +Y out of the
-## thumb side, +X out of the knuckles. A weapon attached to a socket with an
-## identity `grip_offset` therefore sits in the fist blade-up and edge-forward;
-## `grip_offset` corrects for each model's handle.
+## A fighter's closed fist (HandGrip.fist()) has the same frame: origin in
+## the hollow of the fist, +Y out of the thumb side, +X out of the knuckles.
+## A weapon held straight in the fist therefore has its origin in the hollow,
+## blade out of the thumb side and edge toward the knuckles. A posed weapon
+## (FighterModel.pose_weapon()) puts the main hand on its origin and, for a
+## two-handed weapon, the off hand on OffHandGrip.
 
 ## The weapons that have a look (WeaponDef ids).
 const IDS: Array[StringName] = [&"katana", &"greatsword", &"daggers"]
@@ -34,12 +35,14 @@ const OFF_HAND_GRIP: StringName = &"OffHandGrip"
 @export var display_name: String = ""
 ## The weapon's model, its root in weapon space, with the markers above.
 @export var scene: PackedScene
-## The weapon's transform in the hand socket's space.
-@export var grip_offset: Transform3D = Transform3D.IDENTITY
 ## Held in both hands: the off hand goes to OffHandGrip.
 @export var two_handed: bool = false
 ## One copy in each hand (the daggers).
 @export var paired: bool = false
+## The handle's radius where the hands close on it, in metres: the fists are
+## fitted to it (see HandGrip). An oval handle takes the mean of its two
+## half-widths.
+@export var grip_radius: float = 0.015
 ## Width in metres of the swing trail, measured from the tip toward the base.
 @export var trail_width: float = 0.5
 
@@ -71,16 +74,6 @@ func instantiate() -> Node3D:
 		# is freed before the mesh instance lets go of it, which the renderer
 		# reports. Metadata outlives the instance.
 		mi.set_meta(&"toon_materials", toon)
-	return weapon
-
-
-## Instantiates the model (in the toon look) and puts it in `socket`: placed
-## by the grip offset, then turned by `grip`, a fighter's way of holding it
-## (see WeaponHold.grip_transform()).
-func attach(socket: Node3D, grip: Transform3D = Transform3D.IDENTITY) -> Node3D:
-	var weapon: Node3D = instantiate()
-	weapon.transform = grip * grip_offset
-	socket.add_child(weapon)
 	return weapon
 
 

@@ -4,12 +4,13 @@ extends Resource
 ## idles in, how the weapon sits in the fist, and which wrists are set
 ## instead of left to the clip. A fighter's look lists one per weapon.
 ##
-## This is a stand-in until the guard poses (plan task 14) place the hands
-## with IK: the clips were made for a one-handed sword in the right hand, so
-## left to themselves they point a second blade into the fighter's own body
-## and wave a greatsword about like a stick.
+## The grip and wrists are a stand-in for a carried weapon (see FighterRig),
+## until the guard poses (plan tasks 14 and 15) place every weapon and the
+## hands follow on IK: the clips were made for a one-handed sword in the
+## right hand, so left to themselves they point a second blade into the
+## fighter's own body and wave a greatsword about like a stick.
 ##
-## The fist's frame is the hand socket's (see WeaponLook): +Y out of the
+## The fist's frame is FighterRig.fist()'s (see WeaponLook): +Y out of the
 ## thumb side, +X out of the knuckles.
 
 ## The weapon this hold is for (a WeaponLook id).
@@ -36,7 +37,7 @@ extends Resource
 @export var left_wrist: Vector3 = Vector3.ZERO
 
 
-## The weapon's transform in the hand socket, before its own grip offset.
+## The carried weapon's transform in the fist.
 func grip_transform() -> Transform3D:
 	var t: float = deg_to_rad(blade_tilt)
 	var b: Basis = Basis(Vector3.UP, deg_to_rad(edge_roll))

@@ -1,9 +1,10 @@
 extends GutTest
 ## The fighter scenes: they load and assemble without errors, their skeleton
-## is the retargeted humanoid one, the shared clips drive it, they have hand
-## sockets and two palettes, the body is cut down to the head, the headwear
-## and skin are in place, and every weapon is held without its blade
-## running into the fighter's own body.
+## is the retargeted humanoid one, the shared clips drive it, they have a
+## rig that fills the right hands and two palettes, the body is cut down to
+## the head, the headwear and skin are in place, and every weapon is
+## carried without its blade running into the fighter's own body. The rig's
+## IK and grip are tested in tests/view/test_fighter_rig.gd.
 
 const BONE_MAP: String = "res://assets/quaternius/ual_bone_map.tres"
 ## Profile bones with no Quaternius source bone.
@@ -84,30 +85,42 @@ func test_the_shared_clips_drive_every_fighter() -> void:
 		assert_gt(rad_to_deg(posed.angle_to(rest)), 5.0, "%s's walk clip moves the thigh" % id)
 
 
-func test_every_fighter_has_hand_sockets() -> void:
+func test_every_fighter_has_a_rig_on_its_skeleton() -> void:
 	for id: StringName in FighterLook.IDS:
 		var f: FighterModel = _fighter(id)
-		for pair: Array in [[f.right_hand, &"RightHand"], [f.left_hand, &"LeftHand"]]:
-			var socket: Node3D = pair[0]
-			assert_not_null(socket, "%s %s socket" % [id, pair[1]])
-			var attachment: BoneAttachment3D = socket.get_parent() as BoneAttachment3D
-			assert_not_null(attachment)
-			assert_eq(attachment.bone_name, String(pair[1]))
-			assert_eq(attachment.get_parent(), f.skeleton)
+		assert_not_null(f.rig, "%s has a rig" % id)
+		assert_eq(f.rig.skeleton, f.skeleton)
+		assert_eq(f.hand_grip, f.rig.hand_grip)
+		assert_eq(f.hand_grip.get_parent(), f.skeleton, "%s closes its hands on its skeleton" % id)
+		assert_eq(f.weapon_root.transform, f.skeleton.transform, "%s holds weapons in the skeleton's space" % id)
 
 
+## Weapons are posed in fighter space, not put in hand sockets: one model
+## per hand that holds one, in the weapon root; posed, the main hand grips
+## the first and the off hand the second of a pair or the OffHandGrip of a
+## two-handed weapon.
 func test_attaching_weapons_fills_the_right_hands() -> void:
 	var f: FighterModel = _fighter(&"rogue")
 	var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(&"daggers"))
 	assert_eq(held.size(), 2, "one dagger per hand")
-	assert_eq(held[0].get_parent(), f.right_hand)
-	assert_eq(held[1].get_parent(), f.left_hand)
-	assert_true(f.hand_grip.right_hand and f.hand_grip.left_hand)
+	for w: Node3D in held:
+		assert_eq(w.get_parent(), f.weapon_root)
+	assert_true(f.hand_grip.right_hand and f.hand_grip.left_hand, "carried, both hands close")
+	for i: int in 2:
+		f.pose_weapon(i, Transform3D(Basis(), Vector3(0.2 - 0.4 * i, 1.1, 0.3)))
+	assert_true(f.rig.drives("Right") and f.rig.drives("Left"), "posed, the IK places both hands")
 	held = f.attach_weapon(WeaponLook.load_id(&"greatsword"))
 	assert_eq(held.size(), 1)
-	assert_eq(held[0].get_parent(), f.right_hand)
-	assert_eq(f.left_hand.get_child_count(), 0, "the daggers were removed")
-	assert_false(f.hand_grip.left_hand)
+	assert_eq(f.weapon_root.get_child_count(), 1, "the daggers were removed")
+	assert_true(f.hand_grip.right_hand)
+	assert_false(f.hand_grip.left_hand, "carried, the off hand is free")
+	f.pose_weapon(0, Transform3D(Basis(), Vector3(0.0, 1.1, 0.3)))
+	assert_true(f.rig.drives("Left"), "posed, the off hand goes to OffHandGrip")
+	assert_true(f.hand_grip.left_hand)
+	f.carry_weapons()
+	assert_false(f.rig.drives("Right") or f.rig.drives("Left"), "carried again, no IK")
+	f.detach_weapons()
+	assert_false(f.hand_grip.right_hand or f.hand_grip.left_hand, "empty hands open")
 
 
 func test_signature_weapons() -> void:
@@ -151,7 +164,7 @@ func test_a_fighter_made_in_code_takes_a_weapon_before_entering_the_tree() -> vo
 	autofree(f)
 	var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(&"katana"))
 	assert_eq(held.size(), 1, "attach_weapon builds the model first")
-	assert_eq(held[0].get_parent(), f.right_hand)
+	assert_eq(held[0].get_parent(), f.weapon_root)
 
 
 func test_detaching_from_an_unbuilt_fighter_is_harmless() -> void:
@@ -339,11 +352,10 @@ func test_every_fighter_has_a_hold_for_every_weapon_with_a_known_clip() -> void:
 
 func test_the_rogue_holds_her_daggers_reversed_with_set_wrists() -> void:
 	var f: FighterModel = _fighter(&"rogue")
-	var held: Array[Node3D] = f.attach_weapon(WeaponLook.load_id(&"daggers"))
-	for dagger: Node3D in held:
-		# Reversed: the blade leaves the fist on the little-finger side (the
-		# socket's -Y).
-		assert_lt(dagger.transform.basis.y.dot(Vector3.UP), -0.5, "the blade points out of the little-finger side")
+	f.attach_weapon(WeaponLook.load_id(&"daggers"))
+	# Reversed: the blade leaves the fist on the little-finger side (the
+	# fist's -Y).
+	assert_lt(f.hold.grip_transform().basis.y.dot(Vector3.UP), -0.5, "the blade points out of the little-finger side")
 	assert_true(f.hand_grip.wrists.has("Right") and f.hand_grip.wrists.has("Left"), "both wrists are set")
 	f.detach_weapons()
 	assert_true(f.hand_grip.wrists.is_empty(), "letting go frees the wrists")

@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16. The owner now approves each task before the next starts. Next: 14.1.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, and 14.1. The owner now approves each task before the next starts. Next: 14.2, which finishes stage 2.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -144,11 +144,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`;
     - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset. The capsule fighters stay as they are until 14.2;
     - the Rogue, the Hunter and the three weapons in the look (16.7): `ToonMaterials.fighter_from` and `weapon_from` convert their imported materials, with a two-sided toon shader for open shells, and the Katana's shaders are toon-lit.
-- **Checks after 16.7:**
-  - 510 Godot tests: rules 138, input 118, audio 31, core 22, view 146, content 52, and 3 project-wide smoke tests;
+  - The fighter rig (14.1): `FighterRig` and `BodyLayer` on each fighter's skeleton, with arm and leg IK, hands locked onto a posed weapon's grips, and fists fitted to each handle by `HandGrip`. Weapons are posed in fighter space or carried in the fist, never in hand sockets.
+- **Checks after 14.1:**
+  - 524 Godot tests: rules 138, input 118, audio 31, core 22, view 160, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 142 scripts cleanly;
-  - CI passed on the push of 16.6 (a83f1b3);
+  - the typecheck loads 146 scripts cleanly;
+  - CI passed on the push of 16.7 (bf71b5f);
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
 - **Waiting on its own worktree:**
@@ -161,7 +162,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -592,9 +593,61 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - from the gameplay camera, a contact sheet per move where slash, overhead, thrust and sweep are told apart in the first third of the wind-up;
     - the wrist-limit and self-collision test passes;
     - an art-direction review of the sheets passes before task 15.
-  - [ ] **14.1 Fighter rig: the skeleton modifier stack.** Production `BodyLayer` and `FighterRig` from the spike: arm and leg IK, hand frames locked to the handle, forearm twist, clavicle, and `HandGrip` for the fingers. The weapon is placed in fighter space by a pose rather than a hand socket. Grip points come from WeaponLook (the off hand on `OffHandGrip`, two transforms for paired daggers), and arm lengths and poles are read from each skeleton. `HandGrip` keeps closing the fingers but leaves the wrists alone wherever IK drives a hand, and task 13's socket tests (`test_every_fighter_has_hand_sockets`, `test_attaching_weapons_fills_the_right_hands`) change to the posed weapon.
+  - [x] **14.1 Fighter rig: the skeleton modifier stack.** Production `BodyLayer` and `FighterRig` from the spike: arm and leg IK, hand frames locked to the handle, forearm twist, clavicle, and `HandGrip` for the fingers. The weapon is placed in fighter space by a pose rather than a hand socket. Grip points come from WeaponLook (the off hand on `OffHandGrip`, two transforms for paired daggers), and arm lengths and poles are read from each skeleton. `HandGrip` keeps closing the fingers but leaves the wrists alone wherever IK drives a hand, and task 13's socket tests (`test_every_fighter_has_hand_sockets`, `test_attaching_weapons_fills_the_right_hands`) change to the posed weapon.
     - Check: on both fighters, wrists land within 1 cm of their targets and grips within 1 cm of the WeaponLook points; same input, same pose; one-handed, two-handed and paired weapons each fill the right hands; guard grip shots reviewed (palms on the handle, fingertips tight).
     - Blocked by: 16.7 · Stories: 43, 44
+    - Done:
+      - **The stack** (`game/view/fighter/`). `FighterModel` installs a `FighterRig` on its skeleton. Its modifiers run in this order:
+        - `BodyLayer`: lean, hips turn and offset, the spine's twist, bend and lean over Spine, Chest and UpperChest (28/36/36), and the head's turn (45/55 over the neck and head);
+        - `RigPre`: hand frames and wrist targets, elbow poles, the clavicle up to 18° near full reach, foot targets and knee poles;
+        - `RightArmIK` and `LeftArmIK`: one TwoBoneIK3D per arm, so each arm can be on or off;
+        - `LegIK`: both legs, off until `leg_weight` is raised;
+        - `RigPost`: each gripping hand turned onto its handle, with half the twist on the forearm about the elbow-to-wrist line so the wrist stays put; the feet laid flat at their yaw;
+        - `HandGrip`, then `RigCarry`.
+        - `RigCallback` runs RigPre, RigPost and RigCarry from the one script. Nothing carries over between updates.
+      - **Posed or carried.**
+        - `FighterModel.attach_weapon()` puts the models in a `Weapons` node in the skeleton's space.
+        - `pose_weapon(index, transform)` places one (`FighterRig.weapon_frame(grip, blade, edge)`), and the arms reach for it: the main hand on the origin, the off hand on `OffHandGrip` or on the second dagger. A one-handed weapon leaves the off hand on the clip.
+        - Until posed, and after `carry_weapons()`, each weapon is carried: RigCarry puts it in its hand's fist, set as the fighter's `WeaponHold` says. This is the art-reviewed idle look, kept as a stand-in until task 15.
+        - The hold's wrists are set only on hands that carry.
+        - The hand sockets, `WeaponLook.attach()` and `grip_offset` (identity on all three weapons) are gone.
+      - **Measured per skeleton:**
+        - arm length (Rogue 0.490 m, Hunter 0.492 m), which scales the elbow poles and the clavicle;
+        - leg length, which scales the knee poles;
+        - the rest feet;
+        - the hands.
+      - **The grip.** The spike's hand frame turned 25° about the handle, so the backs of the hands come up over it. Its 28° tilt across the palm left the fingers open, so it's dropped.
+        - `HandGrip` now fits the fist to the handle. `WeaponLook.grip_radius` gives each handle's radius: Katana 1.38 cm, Daggers 1.63 cm, Greatsword 2.7 cm, checked against the meshes.
+        - The handle sits under the base of the fingers, one radius out of the palm, so the Greatsword's thick handle no longer sinks into it.
+        - Each finger's three curls are solved from its own rest bones (`HandGrip.wrap_curls()`), so its joints and tip lie half a finger's thickness off the handle.
+        - The thumb's bend is scaled until its tip meets the handle.
+        - Before this, the fixed curl (78/88/50°) pinched the last joints into the Katana's handle and left the ring and little fingertips 1.5–2 cm off it. The Hunter's thumb stood 3.4 cm off.
+        - The carried holds look as before, compared against a render of 16.7, with tighter fists.
+      - **Tests:**
+        - `test_fighter_rig.gd` (new, 14 tests):
+          - stack order;
+          - limbs and fists per skeleton;
+          - wrists within 1 cm and hands turned within 1° (measured: 0.0 mm);
+          - the Katana's grips, the Greatsword's off hand and both Daggers within 1 cm;
+          - a one-handed weapon leaves the off arm on the clip;
+          - the same input gives the same pose;
+          - elbows hang down and out;
+          - fingers within 3 mm of their wrap, and thumbs on the handle, on every weapon and both fighters;
+          - carried weapons follow the fist;
+          - leg IK reaches its foot targets, flat and turned;
+          - the clavicle reaches;
+          - the body layer's turns;
+          - the curl solver on a made-up finger (it caught a wrap past half a turn).
+        - Tests step the skeleton by hand (manual modifier mode) and read the bones at the end of the stack, since outside an update the skeleton holds the clip's pose.
+        - In `test_fighters.gd`, the socket tests became `test_every_fighter_has_a_rig_on_its_skeleton` and a posed `test_attaching_weapons_fills_the_right_hands`. In `test_weapons.gd`, the grip-offset test became `test_the_grip_radius_is_the_handle_s`.
+      - **Review:**
+        - The fighter preview takes `--pose=guard`: every weapon is posed in a review guard (`GUARDS`) over the relaxed `Idle`, with the arms on IK.
+        - The sheet adds `<fighter>_guard.png` (each weapon from the front, three-quarters and side) and `<fighter>_guard_hands.png` (the Katana and Greatsword hands from both sides and below).
+        - Reviewed: palms on the handles, fists closed, elbows bent.
+      - **For 14.2:**
+        - **Reach.** The hold clips under the arms (`Sword_Idle`, `Idle_Shield`) pull the right shoulder 17–20 cm back. From there, the spike's Katana guard and StickPose's guard hands sit at or past full reach (a straight arm, and up to 2.5 cm short on the Hunter). The relaxed `Idle` keeps the shoulders square. So either bring the posed hands in or play `Idle` under a posed weapon.
+        - **Greatsword.** Its OffHandGrip is 27 cm down the handle, so the grip needs to sit lower than a one-hand pose would put it.
+        - **Edge.** StickPose gives no edge direction; FighterView picks one per weapon.
   - [ ] **14.2 Real fighters in the match.**
     - Delivers:
       - `FighterView` replaces `FighterStandin`: the side's fighter in its toon look and palette with its weapon models, placed from the host's display position and yaw, and posed from StickPose through the rig until swings exist.

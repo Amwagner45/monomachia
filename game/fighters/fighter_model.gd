@@ -11,10 +11,10 @@ extends Node3D
 ## - `animation_player`: an AnimationPlayer whose root is this node, holding
 ##   the shared clip library as "ual" (play "ual/Idle"), ready to drive an
 ##   AnimationTree;
-## - `right_hand` / `left_hand`: weapon sockets on the hand bones (see
-##   WeaponLook for their frame), and `attach_weapon()`, which puts a weapon
-##   in the hands the way the look's WeaponHold for it says, and closes the
-##   holding hands through `hand_grip`;
+## - `rig`: the FighterRig on the skeleton (procedural body, arm and leg IK,
+##   the grip), and `attach_weapon()`, which puts a weapon in the hands,
+##   carried the way the look's WeaponHold for it says until
+##   `pose_weapon()` places it in fighter space for the arms to reach;
 ## - `idle_clip()` / `play_idle()`: the clip to idle in with the held weapon;
 ## - `apply_palette()`: switches between the look's two palettes.
 ##
@@ -36,16 +36,6 @@ const SKELETON_NAME: StringName = &"GeneralSkeleton"
 ## The render layers of every fighter mesh.
 const LAYERS: int = 1 | LookPalette.FIGHTER_LAYER
 
-## Hand sockets in hand-bone space. After retargeting, a hand bone's +Y runs
-## from the wrist to the knuckles and +Z comes out of the palm; +X points to
-## the thumb on the right hand and away from it on the left. The socket sits
-## in the hollow of a closed fist with +Y out of the thumb side and +X out of
-## the knuckles.
-const RIGHT_SOCKET: Transform3D = Transform3D(
-	Basis(Vector3(0, 1, 0), Vector3(1, 0, 0), Vector3(0, 0, -1)), Vector3(0.0, 0.07, 0.028))
-const LEFT_SOCKET: Transform3D = Transform3D(
-	Basis(Vector3(0, 1, 0), Vector3(-1, 0, 0), Vector3(0, 0, 1)), Vector3(0.0, 0.07, 0.028))
-
 @export var look: FighterLook:
 	set(value):
 		look = value
@@ -62,13 +52,16 @@ const LEFT_SOCKET: Transform3D = Transform3D(
 
 var skeleton: Skeleton3D
 var animation_player: AnimationPlayer
-var right_hand: Node3D
-var left_hand: Node3D
-## Closes the hands that hold a weapon and sets their wrists (see
-## attach_weapon()).
+## The modifier stack on the skeleton: body layer, IK and grip.
+var rig: FighterRig
+## The rig's HandGrip, which closes the holding hands.
 var hand_grip: HandGrip
-## The weapon models attached by attach_weapon().
+## Holds the weapon models, in the skeleton's space (fighter space).
+var weapon_root: Node3D
+## The weapon models attached by attach_weapon(): one, or two for a pair.
 var weapons: Array[Node3D] = []
+## The held weapon's look, or null.
+var weapon_look: WeaponLook
 ## The look's hold for the held weapon, or null.
 var hold: WeaponHold
 
@@ -110,27 +103,29 @@ func build() -> void:
 	add_child(animation_player)
 	animation_player.root_node = ^".."
 	animation_player.add_animation_library(LIBRARY, ANIMATION_LIBRARY)
-	right_hand = _add_socket(&"RightHand", RIGHT_SOCKET)
-	left_hand = _add_socket(&"LeftHand", LEFT_SOCKET)
-	hand_grip = HandGrip.new()
-	hand_grip.name = &"HandGrip"
-	skeleton.add_child(hand_grip)
+	rig = FighterRig.new(skeleton)
+	hand_grip = rig.hand_grip
+	weapon_root = Node3D.new()
+	weapon_root.name = &"Weapons"
+	weapon_root.transform = skeleton.transform
+	add_child(weapon_root)
 	_dress(palette)
 
 
 ## Throws the built model away and assembles it again from the look, in the
 ## same palette, idling again if it idles on entering the tree.
 func rebuild() -> void:
-	for child: Node in [skeleton, animation_player]:
+	for child: Node in [skeleton, animation_player, weapon_root]:
 		if child != null:
 			remove_child(child)
 			child.free()
 	skeleton = null
 	animation_player = null
-	right_hand = null
-	left_hand = null
+	weapon_root = null
+	rig = null
 	hand_grip = null
 	hold = null
+	weapon_look = null
 	weapons.clear()
 	_outfit_surfaces.clear()
 	_hair_surfaces.clear()
@@ -193,32 +188,42 @@ func play(clip: StringName, blend: float = 0.2) -> void:
 	animation_player.play(String(LIBRARY) + "/" + String(clip), blend)
 
 
-## Puts a weapon in the hands: one copy in the right hand, and another in
-## the left for a paired weapon, held the way the look's hold for it says
-## (grip, wrists and idle clip), and closes those hands. Removes any weapon
-## held before, and builds the model first if needed. A left hand that holds
-## a weapon has its wrist set (to straight when there is no hold) unless the
-## hold says to keep the clip's, because the clips leave the left hand open
-## and turned for a free hand. (The off hand of a two-handed weapon is placed
-## on its OffHandGrip by the arm IK, which comes with the guard poses.)
+## Puts a weapon in the hands: one model, or two for a paired weapon (the
+## second for the left hand), in `weapon_root`. Until posed, each is carried
+## in its hand the way the look's hold for it says (grip, wrists and idle
+## clip): the right hand carries the first, the left the second of a pair.
+## A left hand that carries a dagger has its wrist set (to straight when
+## there is no hold) unless the hold says to keep the clip's, because the
+## clips leave the left hand open and turned for a free hand. Removes any
+## weapon held before, and builds the model first if needed.
 func attach_weapon(weapon: WeaponLook) -> Array[Node3D]:
 	build()
 	if not _built:
 		push_error("FighterModel.attach_weapon: there is no look to build the fighter from")
 		return weapons
 	detach_weapons()
+	weapon_look = weapon
 	hold = look.hold_for(weapon.id)
-	var grip: Transform3D = hold.grip_transform() if hold != null else Transform3D.IDENTITY
-	weapons.append(weapon.attach(right_hand, grip))
-	hand_grip.right_hand = true
-	if hold != null and hold.set_right_wrist:
-		hand_grip.set_wrist("Right", hold.right_wrist)
-	if weapon.paired:
-		weapons.append(weapon.attach(left_hand, grip))
-		hand_grip.left_hand = true
-		if hold == null or hold.set_left_wrist:
-			hand_grip.set_wrist("Left", hold.left_wrist if hold != null else Vector3.ZERO)
+	for i: int in 2 if weapon.paired else 1:
+		var w: Node3D = weapon.instantiate()
+		weapon_root.add_child(w)
+		weapons.append(w)
+	rig.hold_weapons(weapon, weapons, hold)
 	return weapons
+
+
+## Places held weapon `index` at `xf` in fighter space (the skeleton's
+## space: +Z forward, +X to the fighter's left; see
+## FighterRig.weapon_frame()), and the arms reach for it: the right hand on
+## its origin, the left on a two-handed weapon's OffHandGrip or on the second
+## of a pair.
+func pose_weapon(index: int, xf: Transform3D) -> void:
+	rig.pose_weapon(index, xf)
+
+
+## Lets the held weapons follow the hands again, carried as the hold says.
+func carry_weapons() -> void:
+	rig.carry_weapons()
 
 
 func detach_weapons() -> void:
@@ -226,11 +231,10 @@ func detach_weapons() -> void:
 		w.get_parent().remove_child(w)
 		w.free()
 	weapons.clear()
+	weapon_look = null
 	hold = null
-	if hand_grip != null:
-		hand_grip.right_hand = false
-		hand_grip.left_hand = false
-		hand_grip.clear_wrists()
+	if rig != null:
+		rig.release_weapons()
 
 
 ## Instantiates a part, keeps its skeleton (with the part's meshes on it) as
@@ -333,18 +337,6 @@ func _collect_surfaces() -> void:
 				# before the mesh instance lets go of it, which the renderer
 				# reports.
 				_materials["toon:%d:%d" % [mi.get_instance_id(), s]] = toon
-
-
-func _add_socket(bone: StringName, offset: Transform3D) -> Node3D:
-	var attachment: BoneAttachment3D = BoneAttachment3D.new()
-	attachment.name = StringName(String(bone) + "Attachment")
-	skeleton.add_child(attachment)
-	attachment.bone_name = bone
-	var socket: Node3D = Node3D.new()
-	socket.name = StringName(String(bone) + "Socket")
-	socket.transform = offset
-	attachment.add_child(socket)
-	return socket
 
 
 ## A node's transform relative to one of its ancestors.

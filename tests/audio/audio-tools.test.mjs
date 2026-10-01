@@ -13,6 +13,9 @@ import * as dsp from '../../scripts/audio/lib/dsp.mjs';
 import { pluck, SR } from '../../scripts/audio/lib/synthkit.mjs';
 import { makeRandom, mulberry32 } from '../../scripts/audio/lib/rng.mjs';
 import { SOUNDS } from '../../scripts/audio/synth.mjs';
+import { epiano } from '../../scripts/audio/lib/instruments.mjs';
+import { highpassLoop } from '../../scripts/audio/lib/synthkit.mjs';
+import { strongestBeat } from './measure.mjs';
 
 const ROOT = resolve(import.meta.dirname, '..', '..');
 const AUDIO = join(ROOT, 'game', 'assets', 'audio');
@@ -214,6 +217,46 @@ describe('dsp', () => {
     expect(Math.abs(c[0] - c[c.length - 1])).toBeLessThan(0.5 * 2 * Math.PI * 220 / 44100 * 1.05);
   });
 
+  it('finds the loudest sample in a stretch and measures short-term loudness', () => {
+    const rate = 44100;
+    const a = dsp.silence(rate, 1, 1);
+    a.channels[0][Math.round(0.42 * rate)] = 0.9;
+    a.channels[0][Math.round(0.8 * rate)] = -0.5;
+    expect(dsp.peakTime(a, 0.3, 0.6)).toBeCloseTo(0.42, 4);
+    expect(dsp.peakTime(a, 0.6, 1)).toBeCloseTo(0.8, 4);
+    // a full-scale sine's loudest 100 ms is 3 dB under its peak
+    expect(dsp.shortTermLoudness(sine(1000, 0.5, rate, 1))).toBeCloseTo(-3.01, 1);
+  });
+
+  it('matches loudness, limiting peaks to the ceiling only where it must', () => {
+    const rate = 44100;
+    // a quiet bed under one spike: peak-normalizing would leave it quiet
+    const spiky = sine(300, 0.4, rate, 0.05);
+    spiky.channels[0][8000] = 0.9;
+    const m = dsp.matchLoudness(spiky, { loudnessDb: -15, ceilingDb: -3 });
+    expect(dsp.shortTermLoudness(m.audio)).toBeCloseTo(-15, 1);
+    expect(dsp.gainToDb(dsp.peak(m.audio))).toBeLessThanOrEqual(-3 + 1e-4);
+    expect(m.limitedDb).toBeGreaterThan(0);
+    // a loud, dense clip is only turned down
+    const dense = dsp.matchLoudness(sine(300, 0.4, rate, 0.8), { loudnessDb: -15, ceilingDb: -3 });
+    expect(dense.limitedDb).toBe(0);
+    expect(dsp.shortTermLoudness(dense.audio)).toBeCloseTo(-15, 1);
+    // the limiter never lets a sample over its ceiling
+    const limited = dsp.limit(dsp.gain(sine(80, 0.3, rate, 0.9), 12), -6);
+    expect(dsp.gainToDb(dsp.peak(limited))).toBeLessThanOrEqual(-6 + 1e-4);
+  });
+
+  it('decays 20 dB per period and takes out DC', () => {
+    const rate = 44100;
+    const ones = { sampleRate: rate, channels: [new Float32Array(rate).fill(1)] };
+    const d = dsp.decay(ones, 0.5);
+    expect(d.channels[0][Math.round(0.5 * rate)]).toBeCloseTo(0.1, 3);
+    const offset = sine(441, 0.2, rate, 0.3);
+    for (let i = 0; i < offset.channels[0].length; i++) offset.channels[0][i] += 0.2;
+    const fixed = dsp.removeDc(offset).channels[0];
+    expect(Math.abs(fixed.reduce((x, y) => x + y, 0) / fixed.length)).toBeLessThan(1e-6);
+  });
+
   it('normalizes to a peak and mixes layers at offsets', () => {
     const a = dsp.normalize(sine(100, 0.1, 44100, 0.2), { peakDb: -6 });
     expect(dsp.gainToDb(dsp.peak(a))).toBeCloseTo(-6, 1);
@@ -244,6 +287,39 @@ describe('synthesis', () => {
       const measured = SR / (bestLag + (y0 - y2) / (2 * (y0 - 2 * y1 + y2)));
       expect(Math.abs(1200 * Math.log2(measured / f))).toBeLessThan(2);
     }
+  });
+
+  it('keeps the electric piano free of DC (its 1:1 FM pair stays phase-locked)', () => {
+    const r = makeRandom(1234);
+    for (const midi of [41, 53, 57, 64, 72]) {
+      const b = epiano(r, midi, { length: 0.4 });
+      let s = 0;
+      let q = 0;
+      for (const v of b) (s += v), (q += v * v);
+      const meanDb = 20 * Math.log10(Math.abs(s / b.length) / Math.sqrt(q / b.length));
+      expect(meanDb, `MIDI ${midi}`).toBeLessThan(-40);
+    }
+  });
+
+  it('high-passes a loop without breaking its seam', () => {
+    // one second of a 220 Hz tone riding on DC and a 2 Hz drift, whole cycles
+    const n = SR;
+    const L = new Float32Array(n);
+    const R = new Float32Array(n);
+    for (let i = 0; i < n; i++) {
+      L[i] = 0.3 * Math.sin((2 * Math.PI * 220 * i) / n) + 0.2 + 0.2 * Math.sin((2 * Math.PI * 2 * i) / n);
+      R[i] = L[i];
+    }
+    highpassLoop([L, R], 20);
+    const mean = L.reduce((x, y) => x + y, 0) / n;
+    expect(Math.abs(mean)).toBeLessThan(1e-4);
+    // the drift is gone and the tone kept: the wrapped step is a tone step
+    const step = Math.abs(L[0] - L[n - 1]);
+    expect(step).toBeLessThan(0.3 * ((2 * Math.PI * 220) / n) * 1.1);
+    let peak = 0;
+    for (let i = n / 2; i < n; i++) peak = Math.max(peak, Math.abs(L[i]));
+    expect(peak).toBeGreaterThan(0.29);
+    expect(peak).toBeLessThan(0.31);
   });
 
   it('renders every generated sound the same way twice', () => {
@@ -295,38 +371,22 @@ describe('committed audio', () => {
           expect(Math.abs(ch[0] - ch[n - 1])).toBeLessThanOrEqual(local * 1.5 + 1e-3);
         }
 
-        // Tempo measured from the audio: the strongest periodicity of the
-        // onset envelope (circular, as the track loops) is the beat, or half
-        // or double it.
-        const m = dsp.toMono(a).channels[0];
-        const hop = Math.round(a.sampleRate / 200);
-        const n = Math.floor(m.length / hop);
-        const energy = new Float64Array(n);
-        for (let k = 0; k < n; k++) {
-          let s = 0;
-          for (let i = k * hop; i < (k + 1) * hop; i++) s += m[i] * m[i];
-          energy[k] = Math.log(1e-9 + s);
-        }
-        const flux = new Float64Array(n);
-        for (let k = 0; k < n; k++) flux[k] = Math.max(0, energy[k] - energy[(k - 1 + n) % n]);
-        const mean = flux.reduce((x, y) => x + y, 0) / n;
-        for (let k = 0; k < n; k++) flux[k] -= mean;
-        let best = -Infinity;
-        let bestBpm = 0;
-        for (let bpm = 60; bpm <= 200; bpm += 0.25) {
-          const lag = (200 * 60) / bpm;
-          let s = 0;
-          for (let k = 0; k < n; k++) {
-            const x = (k + lag) % n;
-            const i0 = Math.floor(x);
-            const f = x - i0;
-            s += flux[k] * (flux[i0] * (1 - f) + flux[(i0 + 1) % n] * f);
+        // Tempo measured from the audio: the strongest beat between 60 and
+        // 200 BPM is the track's own tempo, not half or double it.
+        const measured = strongestBeat(a);
+        expect(Math.abs(measured - track.bpm), `measured ${measured.toFixed(2)} BPM`).toBeLessThanOrEqual(2);
+
+        // No DC or sub-sonic drift: the whole loop and every second of it
+        // average out to (nearly) zero.
+        for (const ch of a.channels) {
+          const sr = a.sampleRate;
+          expect(dsp.gainToDb(Math.abs(ch.reduce((x, y) => x + y, 0) / ch.length))).toBeLessThan(-70);
+          for (let s = 0; s + sr <= ch.length; s += sr) {
+            let sum = 0;
+            for (let i = s; i < s + sr; i++) sum += ch[i];
+            expect(Math.abs(sum / sr)).toBeLessThan(0.003); // about 100 LSB, -50 dBFS
           }
-          if (s > best) (best = s), (bestBpm = bpm);
         }
-        const ratio = bestBpm / track.bpm;
-        const near = [0.5, 1, 2].some((r) => Math.abs(ratio / r - 1) < 0.02);
-        expect(near, `measured ${bestBpm} BPM`).toBe(true);
       }, 60000);
     }
   });

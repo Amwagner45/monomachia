@@ -11,6 +11,11 @@ extends RefCounted
 ## [br]- from the round call (the roundStart event) of any round in which either
 ## fighter already has two wins: the match-point track (160 BPM), until the
 ## match ends.
+##
+## Note for the player: every track starts mid-signal, not at silence (the
+## reverb tail of the last bar wraps into the first so the loop is seamless),
+## so the player must fade a track in when it starts and out when it stops,
+## over 10-20 ms (or crossfade on a switch). Started or stopped cold, it clicks.
 
 signal track_changed(track: StringName)
 

@@ -7,7 +7,9 @@
 // The recipes are ports of the web demo's Web Audio sounds (src/audio/audio.ts),
 // kept in character and given more body: modal resonances, beating partials,
 // several seeded variations. Every sound has its own seed, so the output is the
-// same on every run.
+// same on every run. Each is high-passed at 25 Hz to remove DC, normalized,
+// matched in loudness to the other variations of its pool (lib/pools.mjs) and
+// trimmed where its tail falls under -60 dBFS.
 //
 // usage: node scripts/audio/synth.mjs [--only=<regex>]
 
@@ -33,6 +35,8 @@ import { makeRandom, seedFrom } from './lib/rng.mjs';
 import { writeWav } from './lib/wav.mjs';
 import { writeSourcesMd } from './lib/sources.mjs';
 import { gong, ka, taiko } from './lib/instruments.mjs';
+import { matchLoudness, removeDc, settleLoudness } from './lib/dsp.mjs';
+import { poolFor } from './lib/pools.mjs';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_DIR = resolve(HERE, '..', '..', 'game', 'assets', 'audio', 'sfx');
@@ -440,6 +444,28 @@ sound(
 
 // ------------------------------------------------------------------ main
 
+/** High-pass corner (Hz) that takes the DC and sub-sonic drift out of every sound. */
+export const DC_BLOCK_HZ = 25;
+
+/**
+ * Renders one sound, finished: high-passed (the pitch-dropping sines and
+ * one-sided noise bursts leave a DC offset), normalized to its peak level,
+ * matched to its variation pool's loudness (lib/pools.mjs), and trimmed.
+ * `report` receives the pool, the gain and any limiting.
+ */
+export function renderSound(s, report = {}) {
+  const raw = s.render(makeRandom(seedFrom(s.file)));
+  filter(raw, 'highpass', DC_BLOCK_HZ, { q: Math.SQRT1_2 });
+  const out = normalizeBuf(raw, s.peakDb);
+  const pool = poolFor(s.file);
+  if (!pool) return tidy(out);
+  const m = matchLoudness({ sampleRate: SR, channels: [out] }, pool);
+  Object.assign(report, { pool: pool.name, gainDb: m.gainDb, limitedDb: m.limitedDb });
+  // the limiter can leave a little DC on a one-sided transient
+  const tidied = { sampleRate: SR, channels: [tidy(removeDc(m.audio).channels[0])] };
+  return settleLoudness(tidied, pool).channels[0];
+}
+
 function main() {
   const onlyArg = process.argv.find((a) => a.startsWith('--only='));
   const only = onlyArg ? new RegExp(onlyArg.slice(7), 'i') : null;
@@ -447,11 +473,15 @@ function main() {
   let n = 0;
   for (const s of SOUNDS) {
     if (only && !only.test(s.file)) continue;
-    const r = makeRandom(seedFrom(s.file));
-    const raw = s.render(r);
-    const out = tidy(normalizeBuf(raw, s.peakDb));
+    const report = {};
+    const out = renderSound(s, report);
     writeFileSync(join(OUT_DIR, s.file), writeWav({ sampleRate: SR, channels: [out] }, { seed: seedFrom(s.file) }));
-    console.log(`  sfx/${s.file.padEnd(28)} ${(out.length / SR).toFixed(2).padStart(5)} s`);
+    let matched = '';
+    if (report.pool) {
+      matched = `  ${report.pool} ${report.gainDb >= 0 ? '+' : ''}${report.gainDb.toFixed(1)} dB`;
+      if (report.limitedDb > 0.05) matched += `, limited ${report.limitedDb.toFixed(1)} dB`;
+    }
+    console.log(`  sfx/${s.file.padEnd(28)} ${(out.length / SR).toFixed(2).padStart(5)} s${matched}`);
     n++;
   }
   return n;

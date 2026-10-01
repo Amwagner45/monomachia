@@ -161,27 +161,31 @@ export function koto(r, midi, { seconds = 0.9, accent = 1, mute = 0.5 } = {}) {
 /**
  * Electric piano (FM, Rhodes-like): a sine carrier with a 1:1 modulator whose
  * index falls after the strike, a short high "tine" partial and a soft release.
+ *
+ * The carrier and the modulator share one phase. With a 1:1 ratio the lower
+ * sideband sits at carrier minus modulator, so any detune or phase offset
+ * between them puts a component at or near 0 Hz: a slow DC drift under the
+ * note. Locked together, sin(p + I sin p) is odd about p = 0 and has no DC.
+ * The random detune moves the whole voice instead.
  */
 export function epiano(r, midi, { length = 0.5, accent = 1 } = {}) {
   const f = midiToHz(midi);
   const tail = 0.5;
   const b = buffer(length + tail);
-  let pc = r.next();
-  let pm = r.next();
+  let p = r.next();
+  r.next(); // was the modulator's own phase; still drawn so the seeded sequence is unchanged
   let pt = 0;
-  const detune = 1 + r.range(-0.0015, 0.0015);
+  const fv = f * (1 + r.range(-0.0015, 0.0015));
   for (let i = 0; i < b.length; i++) {
     const t = i / SR;
     const idx = 0.35 + (1.8 * accent + 0.4) * Math.exp(-t * 6);
-    const mod = Math.sin(2 * Math.PI * pm) * idx;
+    const mod = Math.sin(2 * Math.PI * p) * idx;
     const amp = Math.min(1, t / 0.003) * Math.exp(-t * 1.4) * (t > length ? Math.exp(-(t - length) * 14) : 1);
     const tine = Math.sin(2 * Math.PI * pt) * 0.18 * Math.exp(-t * 40);
-    b[i] = (Math.sin(2 * Math.PI * pc + mod) + tine) * amp * 0.35 * accent;
-    pc += (f * detune) / SR;
-    pm += f / SR;
+    b[i] = (Math.sin(2 * Math.PI * p + mod) + tine) * amp * 0.35 * accent;
+    p += fv / SR;
     pt += (f * 14.1) / SR;
-    pc -= Math.floor(pc);
-    pm -= Math.floor(pm);
+    p -= Math.floor(p);
     pt -= Math.floor(pt);
   }
   return b;

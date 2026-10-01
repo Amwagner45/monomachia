@@ -254,8 +254,11 @@ export function normalizeBuf(buf, peakDb = -1) {
   return buf;
 }
 
-/** Cuts trailing near-silence and fades the last few milliseconds. */
-export function tidy(buf, { thresholdDb = -66, fade = 0.01 } = {}) {
+/**
+ * Cuts the tail where it falls under thresholdDb (dBFS), keeping 5 ms, then
+ * fades the last few milliseconds.
+ */
+export function tidy(buf, { thresholdDb = -60, fade = 0.01 } = {}) {
   const thr = Math.pow(10, thresholdDb / 20);
   let end = buf.length;
   while (end > 1 && Math.abs(buf[end - 1]) < thr) end--;
@@ -433,6 +436,21 @@ export function compress([L, R], { thresholdDb = -12, ratio = 3, attack = 0.005,
     R[i] *= g * makeup;
   }
   return [L, R];
+}
+
+/**
+ * A second-order (Butterworth) high-pass on a seamless loop, in place: it
+ * blocks DC and sub-sonic drift. The filter runs over the loop twice and
+ * keeps the second pass, so its state at the start is the state the end
+ * leaves and the loop stays seamless.
+ */
+export function highpassLoop(channels, hz) {
+  for (const ch of channels) {
+    const bq = new Biquad('highpass', hz, Math.SQRT1_2);
+    for (let i = 0; i < ch.length; i++) bq.step(ch[i]);
+    for (let i = 0; i < ch.length; i++) ch[i] = bq.step(ch[i]);
+  }
+  return channels;
 }
 
 /** Equal-power pan gains for p in [-1, 1]. */

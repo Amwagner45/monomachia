@@ -13,16 +13,18 @@
 // 16-bar loops with bass, electric piano, a lead motif and a mix.
 //
 // Each file is exactly `bars` long and loops seamlessly: every note that rings
-// past the end is wrapped round to the start, and the reverb, echo and
-// compressor run over the loop twice so the start already carries the end's
-// tail. The loop is also written into a 'smpl' chunk for Godot.
+// past the end is wrapped round to the start, and the reverb, echo, DC-blocking
+// high-pass and compressor run over the loop twice so the start already
+// carries the end's tail. The loop is also written into a 'smpl' chunk for
+// Godot. Because of that wrapped tail every loop starts mid-signal: the player
+// has to fade a track in and out (10-20 ms) or it clicks.
 //
 // usage: node scripts/audio/music.mjs [--only=<regex>]
 
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { SR, compress, panGains, pingPong, reverb } from './lib/synthkit.mjs';
+import { SR, compress, highpassLoop, panGains, pingPong, reverb } from './lib/synthkit.mjs';
 import {
   bass,
   epiano,
@@ -77,6 +79,22 @@ export const TRACKS = [
 
 // ------------------------------------------------------------------ mixer
 
+/** Corner of the master DC-blocking high-pass (Hz); the sub bass reaches down to A0 (27.5 Hz). */
+export const MASTER_HIGHPASS_HZ = 20;
+
+/**
+ * The ensemble sway: the whole band runs a little ahead of and behind the grid
+ * together, as players do, by up to SWAY_SECONDS over SWAY_CYCLES slow cycles
+ * per loop (one every 6.4 beats in a 16-bar loop; never more than 0.8% off tempo, so
+ * nobody hears it as rushing). Next to the per-note jitter it keeps
+ * neighbouring beats closer in time than beats further apart, as in played
+ * music: with machine-exact timing, a beat and the beat two later match as
+ * well as neighbours do, and a kick-snare groove measures at half its tempo.
+ * Whole cycles per loop keep the loop seamless.
+ */
+export const SWAY_SECONDS = 0.003;
+export const SWAY_CYCLES = 10;
+
 /**
  * A loop-length stereo mix with a reverb bus and an echo bus. Everything
  * added past the end wraps round to the start.
@@ -104,10 +122,19 @@ class LoopMix {
     return (b * 16 + s) * this.sixteenth + swingDelay;
   }
 
-  /** Mixes a mono buffer in at time t (seconds) with gain, pan and sends. */
+  /** The ensemble sway at time t (seconds): see SWAY_SECONDS. */
+  sway(t) {
+    return SWAY_SECONDS * Math.sin((2 * Math.PI * SWAY_CYCLES * t) / this.seconds);
+  }
+
+  /**
+   * Mixes a mono buffer in at time t (seconds) with gain, pan and sends.
+   * `humanize` is the per-note timing jitter; every note also follows the
+   * ensemble sway.
+   */
   add(buf, t, { gain = 1, pan = 0, rev = 0, dly = 0, stem = 'misc', humanize = 0.002 } = {}) {
     const jitter = humanize ? this.r.range(-humanize, humanize) : 0;
-    let p = Math.round((t + jitter) * SR) % this.n;
+    let p = Math.round((t + jitter + this.sway(t)) * SR) % this.n;
     if (p < 0) p += this.n;
     const [gl, gr] = panGains(pan);
     const [ml, mr] = this.main;
@@ -132,7 +159,10 @@ class LoopMix {
     this.energy.set(stem, (this.energy.get(stem) ?? 0) + e);
   }
 
-  /** Final mix: reverb and echo (both circular), glue compression, a soft limiter. */
+  /**
+   * Final mix: reverb and echo (both circular), a DC-blocking high-pass, glue
+   * compression, a soft limiter.
+   */
   master({ revGain = 1, dlyGain = 0.6, dlyTime, peakDb = -1 }) {
     const wetR = reverb(this.rev, { room: 0.82, damp: 0.35, loop: true });
     const wetD = pingPong(this.dly, { time: dlyTime ?? this.sixteenth * 3, feedback: 0.38, lowpass: 3500, loop: true });
@@ -150,6 +180,10 @@ class LoopMix {
     }
     // Reverb and echo levels against the dry mix, for the log.
     this.wetReport = `reverb ${(10 * Math.log10(wetRev / dry)).toFixed(1)} dB, echo ${(10 * Math.log10(wetDly / dry)).toFixed(1)} dB`;
+    // Block DC and sub-sonic drift (short notes that start on a sine phase
+    // leave some) before it can take headroom or push the compressor about.
+    // The filter wraps round the loop, so the seam stays seamless.
+    highpassLoop([L, R], MASTER_HIGHPASS_HZ);
     // Level the mix before compressing so the settings mean the same for every track.
     let pk = 0;
     for (let i = 0; i < this.n; i++) pk = Math.max(pk, Math.abs(L[i]), Math.abs(R[i]));
@@ -461,14 +495,19 @@ const RENDER = {
   match_point: (t) => renderBattle(t, { intense: true }),
 };
 
+/** Renders and masters one track: {mix, channels: [L, R]}. */
+export function renderTrack(track) {
+  const mix = RENDER[track.id](track);
+  return { mix, channels: mix.master({ revGain: 1.1, dlyGain: 1.0 }) };
+}
+
 function main() {
   const onlyArg = process.argv.find((a) => a.startsWith('--only='));
   const only = onlyArg ? new RegExp(onlyArg.slice(7), 'i') : null;
   mkdirSync(OUT_DIR, { recursive: true });
   for (const track of TRACKS) {
     if (only && !only.test(track.file)) continue;
-    const mix = RENDER[track.id](track);
-    const [L, R] = mix.master({ revGain: 1.1, dlyGain: 1.0 });
+    const { mix, channels: [L, R] } = renderTrack(track);
     writeFileSync(join(OUT_DIR, track.file), writeWav({ sampleRate: SR, channels: [L, R] }, { loop: { start: 0, end: mix.n }, seed: seedFrom(track.file) }));
     console.log(`  music/${track.file.padEnd(22)} ${track.bpm} BPM, ${track.bars} bars, ${(mix.n / SR).toFixed(3)} s, RMS ${mix.rmsDb.toFixed(1)} dBFS`);
     console.log(`    stems (dB of total): ${mix.stemReport()}; ${mix.wetReport} against the dry mix`);

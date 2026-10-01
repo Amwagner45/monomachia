@@ -207,6 +207,16 @@ export function fade(a, { fadeIn = 0, fadeOut = 0, curve = 'exp' } = {}) {
   return out;
 }
 
+/**
+ * An exponential decay from the first sample, falling 20 dB every `seconds`:
+ * tightens an impact whose recording keeps rumbling, so its first hit stays
+ * the loudest.
+ */
+export function decay(a, seconds) {
+  const k = Math.log(10) / (seconds * a.sampleRate);
+  return { sampleRate: a.sampleRate, channels: a.channels.map((c) => c.map((v, i) => v * Math.exp(-k * i))) };
+}
+
 export function gain(a, db) {
   const g = dbToGain(db);
   return { sampleRate: a.sampleRate, channels: a.channels.map((c) => c.map((v) => v * g)) };
@@ -464,6 +474,136 @@ export function levels(a, hop = 0.01) {
     out.push(gainToDb(Math.sqrt(s / w) + 1e-12));
   }
   return out;
+}
+
+/**
+ * The time (s) of the loudest sample between start and end seconds, all
+ * channels mixed: where an impact lands, for anchoring a slice to it.
+ */
+export function peakTime(a, start = 0, end = Infinity) {
+  const n = frames(a);
+  const s = Math.max(0, Math.round(start * a.sampleRate));
+  const e = Math.min(n, Math.round(end * a.sampleRate));
+  const k = 1 / a.channels.length;
+  let best = -1;
+  let at = s;
+  for (let i = s; i < e; i++) {
+    let v = 0;
+    for (const ch of a.channels) v += ch[i];
+    v = Math.abs(v * k);
+    if (v > best) (best = v), (at = i);
+  }
+  return at / a.sampleRate;
+}
+
+/**
+ * Short-term loudness: the RMS level (dBFS) of the loudest `seconds` window,
+ * channels averaged. With the default 100 ms it is what the variations of a
+ * pool are matched on, because it follows how loud a short effect sounds far
+ * better than its sample peak does.
+ */
+export function shortTermLoudness(a, seconds = 0.1) {
+  const n = frames(a);
+  if (!n) return -Infinity;
+  const w = Math.max(1, Math.round(seconds * a.sampleRate));
+  const k = 1 / a.channels.length;
+  const sq = new Float64Array(n);
+  for (const ch of a.channels) for (let i = 0; i < n; i++) sq[i] += ch[i] * ch[i] * k;
+  let s = 0;
+  let best = 0;
+  for (let i = 0; i < n; i++) {
+    s += sq[i];
+    if (i >= w) s -= sq[i - w];
+    if (s > best) best = s;
+  }
+  return gainToDb(Math.sqrt(best / Math.min(w, n)));
+}
+
+/**
+ * A look-ahead peak limiter: no sample comes out above ceilingDb. The gain
+ * ramps down over `lookahead` seconds before each peak and recovers over
+ * `release` seconds (channels linked).
+ */
+export function limit(a, ceilingDb, { lookahead = 0.002, release = 0.05 } = {}) {
+  const c = dbToGain(ceilingDb);
+  const n = frames(a);
+  const L = Math.max(1, Math.round(lookahead * a.sampleRate));
+  const need = new Float32Array(n);
+  for (let i = 0; i < n; i++) {
+    let m = 0;
+    for (const ch of a.channels) m = Math.max(m, Math.abs(ch[i]));
+    need[i] = m > c ? c / m : 1;
+  }
+  // The lowest gain needed over the next L samples, with a smooth recovery.
+  const rel = Math.exp(-1 / (release * a.sampleRate));
+  const held = new Float32Array(n);
+  let g = 1;
+  for (let i = 0; i < n; i++) {
+    let m = 1;
+    for (let j = i; j < Math.min(n, i + L); j++) if (need[j] < m) m = need[j];
+    g = Math.min(m, 1 - (1 - g) * rel);
+    held[i] = g;
+  }
+  // Averaging the last L values ramps the gain down in time and, as each of
+  // them already covers sample i, never lets it exceed what sample i needs.
+  const gains = new Float32Array(n);
+  let sum = 0;
+  for (let i = 0; i < n; i++) {
+    sum += held[i];
+    if (i >= L) sum -= held[i - L];
+    gains[i] = sum / Math.min(L, i + 1);
+  }
+  return { sampleRate: a.sampleRate, channels: a.channels.map((ch) => ch.map((v, i) => v * gains[i])) };
+}
+
+/**
+ * Sets a clip's short-term loudness (see shortTermLoudness) to loudnessDb.
+ * Where that would push a peak over ceilingDb, the peaks are limited instead,
+ * and the gain is corrected until the loudness lands on the target.
+ * Returns the audio, the gain applied and the most the limiter took off (dB).
+ */
+export function matchLoudness(a, { loudnessDb, ceilingDb = -1, window = 0.1 }) {
+  let g = loudnessDb - shortTermLoudness(a, window);
+  let out = a;
+  let reduction = 0;
+  for (let iter = 0; iter < 8; iter++) {
+    out = gain(a, g);
+    const over = gainToDb(peak(out)) - ceilingDb;
+    reduction = Math.max(0, over);
+    // A quick release: what is limited here are short transients.
+    if (over > 0) out = limit(out, ceilingDb, { release: 0.01 });
+    const err = loudnessDb - shortTermLoudness(out, window);
+    if (Math.abs(err) < 0.02) break;
+    g += err;
+  }
+  return { audio: out, gainDb: g, limitedDb: reduction };
+}
+
+/**
+ * A last small gain toward the pool's loudness after trimming and fading,
+ * which shift it a little on clips shorter than the 100 ms window; it never
+ * lifts a peak over the ceiling.
+ */
+export function settleLoudness(a, { loudnessDb, ceilingDb = -1, window = 0.1 }) {
+  const g = Math.min(loudnessDb - shortTermLoudness(a, window), ceilingDb - gainToDb(peak(a)));
+  return Math.abs(g) < 0.005 ? a : gain(a, g);
+}
+
+/**
+ * Subtracts each channel's mean. Limiting a one-sided transient, or cutting
+ * a high-passed tail short, leaves a small DC offset; on a one-shot effect,
+ * before its fades, this takes it out.
+ */
+export function removeDc(a) {
+  return {
+    sampleRate: a.sampleRate,
+    channels: a.channels.map((c) => {
+      let s = 0;
+      for (let i = 0; i < c.length; i++) s += c[i];
+      const m = c.length ? s / c.length : 0;
+      return c.map((v) => v - m);
+    }),
+  };
 }
 
 /** Peak and RMS in dBFS, and length. */

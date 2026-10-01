@@ -125,18 +125,23 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1. Next: 16.2.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1. Next: 16.2. **Paused after 16.1 (commit ced763d) for the owner's review;** 16.2 starts when the owner says so.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
   - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
   - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`). The Rogue and the Hunter and the three weapon models are in the project, shown by `fighters/preview/preview.tscn`, but not yet in the match (14.2).
-- **Checks after 13.1:**
-  - 431 Godot tests: rules 138, input 118, audio 31, core 14, view 79, content 49;
-  - 112 web tests;
-  - the typecheck loads 119 scripts cleanly;
-  - CI passes on the latest push, including its first import of the art;
-  - the art comes to 56.4 MB of its 60 MB budget.
+  - The safety nets (25.1–25.3, 16.1):
+    - `npm run check:sizes` fails CI on any tracked file over 10 MB;
+    - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
+    - CI runs a 4-match soak and exports the Windows build as the `Monomachia-windows` artifact, which passes `--smoke`;
+    - `npm run shots` fails on shader and script errors, `tools/shot_scenes/shader_check.tscn` draws every shader, and `test_scene_smoke.gd` loads every scene.
+- **Checks after 16.1:**
+  - 441 Godot tests: rules 138, input 118, audio 31, core 14, view 88, content 49, and 3 project-wide smoke tests;
+  - 121 web tests;
+  - the typecheck loads 123 scripts cleanly;
+  - CI passes on the latest push (ced763d), both the tests and the Windows export;
+  - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
 - **Waiting on its own worktree:**
   - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).

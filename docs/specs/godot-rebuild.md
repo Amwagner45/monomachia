@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done; next is 16.2 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3 and 16.1; paused for the owner's review, then next is 16.2 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -263,9 +263,12 @@ Swings are stored as sampled data, so a move can later take its path from an aut
 - `soak`: headless computer-vs-computer matches with balance numbers.
 - `build`: Windows export.
 - `dev`: opens the editor.
-- `shots`: renders chosen scenes to PNG in a window.
+- `shots`: renders chosen scenes to PNG in a window, and fails on any shader or script error.
+- `check:sizes`: fails on any tracked file over 10 MB that isn't allow-listed, and prints the asset and repo sizes.
 
-CI installs Godot 4.7.2 and its export templates, runs tests and a short soak, and uploads the Windows build. The Pages workflow is removed, and the Release workflow uploads a zipped Windows build.
+The exported game takes a `--smoke` flag: it plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout.
+
+CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs tests and a short soak, and uploads the Windows build. CI has no GPU, so its build is exported headless without baked shaders and compiles them on first use; a build from `npm run build` on a PC has them baked. The Pages workflow is removed, and the Release workflow uploads a zipped Windows build.
 
 ### The new strings
 
@@ -342,7 +345,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
   - Versus split screen;
   - the parry, disarm and ultimate moments.
 
-  They are reviewed by eye for clipping, hands off the grip, weapons through bodies and unreadable effects. A smoke test loads every scene headless and fails on errors.
+  They are reviewed by eye for clipping, hands off the grip, weapons through bodies and unreadable effects. A smoke test loads every scene headless and fails on errors. Shaders compile only in a window, so a shader-check scene draws every shader and its `shots` run fails on any shader error.
 - **Prior art:** the demo's tests (combat, match, regressions and ultimate suites) and their helpers (world builder, button and stick input helpers, event recorder, run loop) are ported first and reused for new tests.
 
 ## Out of Scope

@@ -125,7 +125,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1. Next: 16.2. **Paused after 16.1 (commit ced763d) for the owner's review;** 16.2 starts when the owner says so.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2. Next: 16.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -136,10 +136,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
     - CI runs a 4-match soak and exports the Windows build as the `Monomachia-windows` artifact, which passes `--smoke`;
     - `npm run shots` fails on shader and script errors, `tools/shot_scenes/shader_check.tscn` draws every shader, and `test_scene_smoke.gd` loads every scene.
-- **Checks after 16.1:**
-  - 441 Godot tests: rules 138, input 118, audio 31, core 14, view 88, content 49, and 3 project-wide smoke tests;
+  - The look's first piece (16.2): `MeshKit` and `MeshKitSet` build props from boxes, discs, lathes, tubes, tori, spheres and roofs, one mesh per material, with outline normals in CUSTOM0.
+- **Checks after 16.2:**
+  - 451 Godot tests: rules 138, input 118, audio 31, core 14, view 98, content 49, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 123 scripts cleanly;
+  - the typecheck loads 126 scripts cleanly;
   - CI passes on the latest push (ced763d), both the tests and the Windows export;
   - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 99.9 MB.
 - **Waiting on its own worktree:**
@@ -760,9 +761,18 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: a deliberately broken scratch shader makes the shot fail, and passes once it is removed; a deliberately broken scratch scene fails the smoke test.
     - Blocked by: none · Stories: 46, 60, 65
     - Done: `npm run shots` fails on `SHADER ERROR` and on script errors. Every existing shot scene and the fighter preview sheet still pass. `tools/shot_scenes/shader_check.tscn` scans the whole project rather than only `res://shaders`, which arrives in 16.3. It draws spatial, canvas_item, particle, fog and sky shaders, and reports any other mode as an error. A scratch broken shader failed it (exit 1). `tests/test_scene_smoke.gd` instantiates every `.tscn` outside `addons/` (imported models are left to the content tests), and a scratch scene pointing at a missing script failed it. Run `shader_check` before every visual commit in 16-18.
-  - [ ] **16.2 MeshKit and MeshKitSet.** The procedural mesh builders (boxes, discs, lathes, tubes, tori, spheres, roofs), merged per material, with smoothed outline normals baked into CUSTOM0.
+  - [x] **16.2 MeshKit and MeshKitSet.** The procedural mesh builders (boxes, discs, lathes, tubes, tori, spheres, roofs), merged per material, with smoothed outline normals baked into CUSTOM0.
     - Check: front faces face outward for every primitive; CUSTOM0 is baked only for outlined kits; one mesh per non-empty kit.
     - Blocked by: 16.1 · Stories: 47, 63
+    - Done: `view/mesh_kit.gd` and `view/mesh_kit_set.gd` come from the worktree, reviewed and fixed:
+      - Tubes carry their frame round each bend by the smallest rotation, and mitre their joints. Before, a sharp turn collapsed a ring to a point, and a short segment next to a long one was squashed flat.
+      - The outline normals counted a face once per triangle, so a box corner's CUSTOM0 leaned about 0.27 towards the faces split into more triangles. It is now the sum of the distinct normals at each spot, which runs along the corner's diagonal.
+      - `MeshKitSet.finish` now reports a kit with no material, and `MeshKit.multimesh` a colour count that doesn't match. Both used to fail silently.
+      - Parameters and methods that nothing calls are dropped: `mesh()`, the lathe's twist, the sphere's flat bottom, the quad's UV scale, the cylinder's caps and smoothing, and the tube's end cap. When 17.x salvages the shrine's builders, `rope.tube(pts, radii, 7, false)` loses its `false`.
+    - `tests/view/test_mesh_kit.gd` has 10 tests:
+      - every triangle of 19 shapes is checked against both its own normals and the shape's inside (the worktree's test only compared triangles with their normals, and let 3% disagree);
+      - tube rings keep their radius;
+      - grid colours, CUSTOM0, multimeshes and `MeshKitSet` are each checked.
   - [ ] **16.3 Toon material and ink outlines.** The toon shader (three soft bands, brushed terminator, cold shadow fill, rim, hard specular); inverted-hull outlines sized in pixels at 1080p; `ToonMaterials` for fighter, weapon and prop classes; `LookNoise`; and a trimmed `LookPalette`. A look bench shot shows toon capsules and props near and 14 m back, with outlines on and off. The outlines are widened for the owner's review.
     - Check: the material tests pass; the shader check passes; bench shots reviewed (bands, rim, outlines visible near and far).
     - Owner: the outline width.

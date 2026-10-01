@@ -1,15 +1,11 @@
 extends SceneTree
 ## Bakes each fighter palette's outfit texture from the Ranger outfit's
-## T_Ranger_3 base colour, and the outfit's shared roughness map:
-##
-## - <palette>_outfit.png next to each palette: every garment recoloured to
-##   the palette (see FighterPalette), then worn: the outfit's ambient
-##   occlusion multiplied in, dust rising from the ground up the boots and
-##   trouser hems, scuffed knees, grimy cuffs and hems, pale scuffs on the
-##   edges of straps and leather, and blotchy grime all over;
-## - fighters/materials/ranger_orm.png: the outfit's ORM map with cloth and
-##   leather made rough (at least ROUGH_CLOTH), which kills the new-vinyl
-##   sheen the source has on the hood and vest. Metal keeps its roughness.
+## T_Ranger_3 base colour: <palette>_outfit.png next to each palette, every
+## garment recoloured to the palette (see FighterPalette), then worn: the
+## outfit's ambient occlusion multiplied in, dust rising from the ground up
+## the boots and trouser hems, scuffed knees, grimy cuffs and hems, pale
+## scuffs on the edges of straps and leather, and blotchy grime all over.
+## (The toon look ignores roughness, so the outfit needs no roughness map.)
 ##
 ## Which garment a texel belongs to comes from the fighter's own outfit
 ## meshes (their UVs, rasterised by tools/texel_map.gd), so the hood, vest,
@@ -31,9 +27,6 @@ const TexelMap = preload("res://tools/texel_map.gd")
 const SOURCE: String = "res://assets/quaternius/outfits/T_Ranger_3_BaseColor.png"
 const SOURCE_ORM: String = "res://assets/quaternius/outfits/T_Ranger_ORM.png"
 const SOURCE_NORMAL: String = "res://assets/quaternius/outfits/T_Ranger_Normal.png"
-const ORM_OUT: String = "res://fighters/materials/ranger_orm.png"
-## Cloth and leather are at least this rough.
-const ROUGH_CLOTH: float = 0.9
 
 ## Garments, from the outfit mesh names (the first match wins).
 enum Piece { HOOD, BODY, BELT, ARMS, BRACER, LEGS, BOOTS, PAULDRON }
@@ -57,7 +50,6 @@ func _initialize() -> void:
 	var orm: Image = _load(SOURCE_ORM)
 	var normal_map: Image = _load(SOURCE_NORMAL)
 	var failed: bool = false
-	var orm_map: Image = orm.duplicate()
 	orm.resize(size.x, size.y, Image.INTERPOLATE_BILINEAR)
 	normal_map.resize(size.x, size.y, Image.INTERPOLATE_BILINEAR)
 	var materials: Dictionary = classify(src)
@@ -78,9 +70,6 @@ func _initialize() -> void:
 				continue
 			ImportAssets.write_texture_import(out_path, false)
 			print("bake_palettes: %s (%s) -> %s" % [id, p.display_name, out_path])
-	# Last: rewriting a texture the looks use (and its import settings) makes
-	# it unloadable until the next import.
-	failed = not _bake_orm(orm_map) or failed
 	print("bake_palettes: done in %.0f s" % ((Time.get_ticks_msec() - t0) / 1000.0))
 	quit(1 if failed else 0)
 
@@ -89,27 +78,6 @@ static func _load(path: String) -> Image:
 	var img: Image = Image.load_from_file(ProjectSettings.globalize_path(path))
 	img.convert(Image.FORMAT_RGB8)
 	return img
-
-
-## The shared roughness map: the source ORM (R occlusion, G roughness,
-## B metallic) with every non-metal texel at least ROUGH_CLOTH rough.
-static func _bake_orm(orm: Image) -> bool:
-	var data: PackedByteArray = orm.get_data()
-	var out: PackedByteArray = data.duplicate()
-	for i: int in data.size() / 3:
-		var rough: float = data[i * 3 + 1] / 255.0
-		var metal: float = data[i * 3 + 2] / 255.0
-		var cloth: float = 1.0 - smoothstep(0.3, 0.6, metal)
-		out[i * 3 + 1] = roundi(lerpf(rough, maxf(rough, ROUGH_CLOTH), cloth) * 255.0)
-	var img: Image = Image.create_from_data(orm.get_width(), orm.get_height(), false, Image.FORMAT_RGB8, out)
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(ORM_OUT.get_base_dir()))
-	var err: Error = img.save_png(ProjectSettings.globalize_path(ORM_OUT))
-	if err != OK:
-		printerr("bake_palettes: cannot save %s (%s)" % [ORM_OUT, error_string(err)])
-		return false
-	ImportAssets.write_texture_import(ORM_OUT, false)
-	print("bake_palettes: -> %s" % ORM_OUT)
-	return true
 
 
 ## The garment a mesh belongs to, from its name, or -1.

@@ -13,7 +13,6 @@
 [ext_resource type="Resource" path="res://fighters/rogue/rogue_palette_a.tres" id="11_ooh5w"]
 [ext_resource type="Resource" path="res://fighters/rogue/rogue_palette_b.tres" id="12_d133r"]
 [ext_resource type="Script" path="res://fighters/fighter_look.gd" id="13_g01jy"]
-[ext_resource type="Texture2D" path="res://fighters/materials/ranger_orm.png" id="14_orm"]
 [ext_resource type="Script" path="res://fighters/weapon_hold.gd" id="15_hold"]
 [ext_resource type="Texture2D" path="res://fighters/rogue/rogue_skin.png" id="16_skin"]
 
@@ -46,7 +45,6 @@ head_mesh = ExtResource("3_w2ugp")
 outfit_parts = Array[PackedScene]([ExtResource("4_uobiw"), ExtResource("5_ct78d"), ExtResource("6_bvehj"), ExtResource("7_htuxw"), ExtResource("8_y2gux")])
 hair = Array[PackedScene]([ExtResource("2_k48sm")])
 head_wrap = ExtResource("9_mask")
-outfit_orm = ExtResource("14_orm")
 palettes = Array[ExtResource("10_6pd44")]([ExtResource("11_ooh5w"), ExtResource("12_d133r")])
 signature_weapon = &"daggers"
 idle_clip = &"Sword_Idle"

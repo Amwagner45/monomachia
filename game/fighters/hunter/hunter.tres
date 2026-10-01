@@ -15,7 +15,6 @@
 [ext_resource type="Resource" path="res://fighters/hunter/hunter_palette_a.tres" id="12_1eyxl"]
 [ext_resource type="Resource" path="res://fighters/hunter/hunter_palette_b.tres" id="13_3u6ed"]
 [ext_resource type="Script" path="res://fighters/fighter_look.gd" id="14_x5y8a"]
-[ext_resource type="Texture2D" path="res://fighters/materials/ranger_orm.png" id="15_orm"]
 [ext_resource type="Script" path="res://fighters/weapon_hold.gd" id="16_hold"]
 [ext_resource type="Texture2D" path="res://fighters/hunter/hunter_skin.png" id="17_skin"]
 
@@ -50,7 +49,6 @@ outfit_parts = Array[PackedScene]([ExtResource("5_mkq3h"), ExtResource("6_d5ncl"
 hair = Array[PackedScene]([ExtResource("2_7yf3b"), ExtResource("3_uf8wu")])
 head_wrap = ExtResource("18_scarf")
 hat = ExtResource("9_hat")
-outfit_orm = ExtResource("15_orm")
 palettes = Array[ExtResource("11_pccrn")]([ExtResource("12_1eyxl"), ExtResource("13_3u6ed")])
 signature_weapon = &"greatsword"
 idle_clip = &"Idle_Shield"

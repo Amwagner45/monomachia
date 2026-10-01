@@ -13,6 +13,8 @@ extends Node3D
 ##   --view=front|three_quarter|side|back|head|head_back|right_hand|left_hand
 ##   (hands also with _below or _side) and --range=close|gameplay;
 ## - weapons: the weapons upright on a 10 cm grid, with their markers;
+## - mirror: a mirror match of --fighter=, palette A against B, side on, or
+##   with --shoulder=0|1 from the gameplay camera over that side's shoulder;
 ## - sheet: renders the whole review set into contact sheets in the folder
 ##   given by --sheet=<folder>: both fighters in both palettes from the front,
 ##   three-quarters, side and back, close and at gameplay distance; head
@@ -23,10 +25,16 @@ extends Node3D
 ## A fighter holds each weapon the way its look's WeaponHold says, frozen
 ## in the hold's idle clip.
 ##
+## Stages (--stage=): studio (default), a neutral grey room for judging the
+## art; or night, the match's look: the stand-in arena's night environment,
+## moon, fighter rim light, lanterns and ink-wash pass. --preset=low|medium|
+## high applies that graphics preset to the whole stage (the chosen one
+## otherwise).
+##
 ## Markers: green is BladeBase, red BladeTip, blue OffHandGrip, yellow the
 ## weapon origin (the main hand's grip).
 
-enum Mode { LINEUP, TURNTABLE, FIGHTER, WEAPONS, SHEET }
+enum Mode { LINEUP, TURNTABLE, FIGHTER, WEAPONS, MIRROR, SHEET }
 
 const VIEWS: Dictionary[StringName, float] = {
 	&"front": 0.0, &"three_quarter": -38.0, &"side": -90.0, &"back": 180.0,
@@ -46,8 +54,14 @@ const POSE_TIME: float = 0.5
 @export var weapon_id: StringName = &""
 @export var view: StringName = &"front"
 @export var gameplay_range: bool = false
+## Mirror mode: -1 side on, or the side whose shoulder the camera looks over.
+@export_range(-1, 1) var shoulder: int = -1
 ## Turntable speed in radians per second.
 @export var turntable_speed: float = 0.6
+## studio or night (see above).
+@export var stage: StringName = &"studio"
+## A graphics preset id to apply to the stage, or empty for the chosen one.
+@export var preset_id: StringName = &""
 
 var _camera: Camera3D
 var _label: Label
@@ -69,10 +83,13 @@ func _ready() -> void:
 			_setup_fighter(fighter_id, palette, weapon_id, view, gameplay_range)
 		Mode.WEAPONS:
 			_setup_weapons()
+		Mode.MIRROR:
+			_setup_mirror(fighter_id, shoulder)
 		Mode.SHEET:
 			_setup_lineup()
 			_run_sheet.call_deferred()
 	if mode != Mode.SHEET:
+		_apply_preset()
 		_done = true
 
 
@@ -114,11 +131,62 @@ func _read_args() -> void:
 				gameplay_range = value == "gameplay"
 			"sheet":
 				_sheet_dir = value
+			"shoulder":
+				shoulder = clampi(int(value), -1, 1)
+			"stage":
+				stage = StringName(value)
+			"preset":
+				preset_id = StringName(value)
 
 
 # --- stage -------------------------------------------------------------------
 
 func _build_stage() -> void:
+	if stage == &"night":
+		_build_night_stage()
+	elif stage != &"studio":
+		push_error("preview.gd: --stage must be studio or night, not '%s'" % stage)
+	else:
+		_build_studio_stage()
+	_camera = Camera3D.new()
+	add_child(_camera)
+	_camera.current = true
+	var layer: CanvasLayer = CanvasLayer.new()
+	add_child(layer)
+	# Bottom centre, so it survives the portrait crops of the contact sheets.
+	_label = Label.new()
+	_label.position = Vector2(505.0, 790.0)
+	_label.size = Vector2(590.0, 100.0)
+	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
+	_label.add_theme_font_size_override("font_size", 24)
+	_label.add_theme_color_override("font_outline_color", Color.BLACK)
+	_label.add_theme_constant_override("outline_size", 8)
+	layer.add_child(_label)
+
+
+## The stand-in arena, turned round so its moon lights the fighters' fronts
+## (they face the preview's cameras, along +Z).
+func _build_night_stage() -> void:
+	var arena: Node3D = ArenaScenes.instantiate(ArenaScenes.STANDIN)
+	arena.rotation.y = PI
+	add_child(arena)
+
+
+## The graphics preset --preset= names, or the chosen one, applied to the
+## whole stage (the renderer, the viewport and every node).
+func _apply_preset() -> void:
+	var preset: GraphicsPreset = GameServices.graphics_preset()
+	if preset_id != &"":
+		preset = GraphicsPreset.load_id(preset_id)
+		if preset == null:
+			push_error("preview.gd: --preset must be low, medium or high, not '%s'" % preset_id)
+			return
+	GraphicsApplier.apply(preset, self, get_viewport())
+
+
+func _build_studio_stage() -> void:
 	var env: Environment = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.3, 0.32, 0.35)
@@ -152,22 +220,6 @@ func _build_stage() -> void:
 	for i: int in range(-10, 11):
 		grid.append_array([Vector3(i, 0.002, -10), Vector3(i, 0.002, 10), Vector3(-10, 0.002, i), Vector3(10, 0.002, i)])
 	add_child(_lines(grid, Color(0.3, 0.3, 0.31)))
-	_camera = Camera3D.new()
-	add_child(_camera)
-	_camera.current = true
-	var layer: CanvasLayer = CanvasLayer.new()
-	add_child(layer)
-	# Bottom centre, so it survives the portrait crops of the contact sheets.
-	_label = Label.new()
-	_label.position = Vector2(505.0, 790.0)
-	_label.size = Vector2(590.0, 100.0)
-	_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_label.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
-	_label.add_theme_font_size_override("font_size", 24)
-	_label.add_theme_color_override("font_outline_color", Color.BLACK)
-	_label.add_theme_constant_override("outline_size", 8)
-	layer.add_child(_label)
 
 
 func _look_from(pos: Vector3, target: Vector3, fov: float) -> void:
@@ -237,7 +289,7 @@ func _add_fighter(id: StringName, pal: int, weapon: StringName, pos: Vector3, re
 
 ## Stands a weapon upright with its origin at `pos`, with its markers shown.
 func _add_weapon_display(look: WeaponLook, pos: Vector3) -> Node3D:
-	var w: Node3D = look.scene.instantiate()
+	var w: Node3D = look.instantiate()
 	w.position = pos
 	_actors.add_child(w)
 	_show_markers(w)
@@ -371,7 +423,7 @@ func _setup_weapons() -> void:
 func _setup_weapon_detail(id: StringName, part: StringName, edge_on: bool) -> void:
 	_clear()
 	var look: WeaponLook = WeaponLook.load_id(id)
-	var w: Node3D = look.scene.instantiate()
+	var w: Node3D = look.instantiate()
 	w.position = Vector3(0.0, 0.3, 0.0)
 	if edge_on:
 		w.rotation.y = deg_to_rad(80.0)
@@ -413,6 +465,7 @@ func _setup_mirror(id: StringName, shoulder_of: int) -> void:
 # --- sheet -------------------------------------------------------------------
 
 func _capture() -> Image:
+	_apply_preset()
 	for i: int in SETTLE_FRAMES:
 		await get_tree().process_frame
 	await RenderingServer.frame_post_draw

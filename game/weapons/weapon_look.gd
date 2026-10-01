@@ -52,11 +52,33 @@ static func load_id(weapon_id: StringName) -> WeaponLook:
 	return load(path_for(weapon_id)) as WeaponLook
 
 
-## Instantiates the model and puts it in `socket`: placed by the grip offset,
-## then turned by `grip`, a fighter's way of holding it (see
-## WeaponHold.grip_transform()).
-func attach(socket: Node3D, grip: Transform3D = Transform3D.IDENTITY) -> Node3D:
+## Instantiates the model in the toon look: each surface's material (as the
+## model was made) becomes a toon weapon material with an ink outline
+## (ToonMaterials.weapon_from()), and every mesh goes on the fighters' render
+## layer, so the arena's rim light finds it. Each instance gets its own
+## materials, so a graphics preset applied to one scene leaves the others
+## alone.
+func instantiate() -> Node3D:
 	var weapon: Node3D = scene.instantiate()
+	for node: Node in weapon.find_children("*", "MeshInstance3D", true, false):
+		var mi: MeshInstance3D = node
+		mi.layers = 1 | LookPalette.FIGHTER_LAYER
+		var toon: Array[Material] = []
+		for s: int in mi.mesh.get_surface_count():
+			toon.append(ToonMaterials.weapon_from(mi.mesh.surface_get_material(s)))
+			mi.set_surface_override_material(s, toon[s])
+		# Held in the node's metadata too: a material only the override holds
+		# is freed before the mesh instance lets go of it, which the renderer
+		# reports. Metadata outlives the instance.
+		mi.set_meta(&"toon_materials", toon)
+	return weapon
+
+
+## Instantiates the model (in the toon look) and puts it in `socket`: placed
+## by the grip offset, then turned by `grip`, a fighter's way of holding it
+## (see WeaponHold.grip_transform()).
+func attach(socket: Node3D, grip: Transform3D = Transform3D.IDENTITY) -> Node3D:
+	var weapon: Node3D = instantiate()
 	weapon.transform = grip * grip_offset
 	socket.add_child(weapon)
 	return weapon

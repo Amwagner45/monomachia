@@ -116,19 +116,20 @@ func _rasterise(tris: Array[Dictionary], look: Vector3) -> Dictionary:
 
 
 ## The unlit base colour at every hit pixel, with the fighter's current
-## materials.
+## (toon) materials: the base colour times the texture.
 func _shade(tris: Array[Dictionary], hits: Dictionary) -> PackedColorArray:
 	var out: PackedColorArray = PackedColorArray()
 	for i: int in hits:
 		var hit: Array = hits[i]
 		var tri: Dictionary = tris[hit[0]]
-		var mat: BaseMaterial3D = (tri.mesh as MeshInstance3D).get_active_material(tri.surface) as BaseMaterial3D
+		var mat: ShaderMaterial = (tri.mesh as MeshInstance3D).get_active_material(tri.surface) as ShaderMaterial
 		var c: Color = Color.WHITE
 		if mat != null:
-			c = mat.albedo_color
-			if mat.albedo_texture != null:
+			c = mat.get_shader_parameter(&"base_color")
+			var tex: Texture2D = mat.get_shader_parameter(&"albedo_texture")
+			if tex != null:
 				var uv: Vector2 = tri.uv[0] * hit[1] + tri.uv[1] * hit[2] + tri.uv[2] * (1.0 - hit[1] - hit[2])
-				c *= _sample(mat.albedo_texture, uv)
+				c *= _sample(tex, uv)
 		out.append(c)
 	return out
 

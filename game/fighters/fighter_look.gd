@@ -40,9 +40,6 @@ const IDS: Array[StringName] = [&"rogue", &"hunter"]
 @export var hat: ArrayMesh
 ## The outfit material the palettes recolour (by its imported name).
 @export var outfit_material: StringName = &"MI_Ranger"
-## The outfit's occlusion-roughness-metallic map with cloth and leather made
-## matt (baked by tools/bake_palettes.gd).
-@export var outfit_orm: Texture2D
 ## Exactly two: the first is the default, the second dresses the second
 ## fighter of a mirror match.
 @export var palettes: Array[FighterPalette] = []

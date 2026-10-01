@@ -18,6 +18,12 @@ extends Node3D
 ## - `idle_clip()` / `play_idle()`: the clip to idle in with the held weapon;
 ## - `apply_palette()`: switches between the look's two palettes.
 ##
+## Every surface is drawn in the toon look (ToonMaterials.fighter_from(): the
+## imported texture, normal map and vertex colour kept, drawn from both sides
+## like the import, with an ink outline), and every mesh is on the fighters'
+## render layer (LookPalette.FIGHTER_LAYER), so the arena's rim light finds
+## it. The palettes recolour the toon materials.
+##
 ## Built nodes are not owned by the scene, so they are never saved into it;
 ## the skeleton alone is owned by this node, so that its unique name resolves.
 ## The script doesn't run in the editor, where a fighter scene shows empty:
@@ -27,10 +33,8 @@ const ANIMATION_LIBRARY: AnimationLibrary = preload("res://assets/quaternius/ani
 const HEADWEAR_CLOTH: Material = preload("res://fighters/materials/headwear_cloth.tres")
 const LIBRARY: StringName = &"ual"
 const SKELETON_NAME: StringName = &"GeneralSkeleton"
-## Specular strength of the outfit and the skin (the material default is
-## 0.5): worn cloth and leather barely shine, and the skin is matt.
-const OUTFIT_SPECULAR: float = 0.25
-const SKIN_SPECULAR: float = 0.2
+## The render layers of every fighter mesh.
+const LAYERS: int = 1 | LookPalette.FIGHTER_LAYER
 
 ## Hand sockets in hand-bone space. After retargeting, a hand bone's +Y runs
 ## from the wrist to the knuckles and +Z comes out of the palm; +X points to
@@ -150,10 +154,7 @@ func _dress(index: int) -> void:
 	for entry: Array in _outfit_surfaces:
 		_override(entry, "outfit", p, func(m: BaseMaterial3D) -> void:
 			if p.outfit_albedo != null:
-				m.albedo_texture = p.outfit_albedo
-			if look.outfit_orm != null:
-				m.roughness_texture = look.outfit_orm
-			m.metallic_specular = OUTFIT_SPECULAR)
+				m.albedo_texture = p.outfit_albedo)
 	for entry: Array in _hair_surfaces:
 		_override(entry, "hair", p, func(m: BaseMaterial3D) -> void:
 			m.albedo_color = p.hair_color)
@@ -162,15 +163,16 @@ func _dress(index: int) -> void:
 			m.albedo_color = p.headwear_color)
 
 
-## Gives a surface a copy of its material made for palette `p` by `setup`
-## (copies are cached, so switching back and forth makes no new ones).
+## Gives a surface the toon version of its imported material, recoloured for
+## palette `p` by `setup` (on a copy of the import). The toon materials are
+## cached, so switching back and forth makes no new ones.
 func _override(entry: Array, kind: String, p: FighterPalette, setup: Callable) -> void:
 	var base: BaseMaterial3D = entry[2]
 	var key: String = "%s:%d:%d" % [kind, p.get_instance_id(), base.get_instance_id()]
 	if not _materials.has(key):
 		var m: BaseMaterial3D = base.duplicate()
 		setup.call(m)
-		_materials[key] = m
+		_materials[key] = ToonMaterials.fighter_from(m)
 	(entry[0] as MeshInstance3D).set_surface_override_material(entry[1], _materials[key])
 
 
@@ -267,7 +269,7 @@ func _take_meshes(part: PackedScene) -> Array[MeshInstance3D]:
 
 ## Brings in the body's eyes and eyebrows, and its head-only mesh in place
 ## of the full body, keeping the body's materials but with the look's baked
-## skin and a matt finish. Returns the head.
+## skin. Returns the head.
 func _take_head() -> MeshInstance3D:
 	var moved: Array[MeshInstance3D] = _take_meshes(look.body_scene)
 	var body: MeshInstance3D = null
@@ -281,11 +283,7 @@ func _take_head() -> MeshInstance3D:
 		var skin: BaseMaterial3D = (full.surface_get_material(s) as BaseMaterial3D).duplicate()
 		if look.skin_albedo != null:
 			skin.albedo_texture = look.skin_albedo
-		skin.metallic_specular = SKIN_SPECULAR
 		body.set_surface_override_material(s, skin)
-		# Held here too: a material only the override holds is freed before
-		# the mesh instance lets go of it, which the renderer reports.
-		_materials["skin:%d" % s] = skin
 	return body
 
 
@@ -310,13 +308,17 @@ func _take_headwear(head: MeshInstance3D) -> void:
 		attachment.add_child(hat)
 
 
-## Finds the surfaces the palettes recolour, and makes the hands' skin matt.
+## Puts every mesh on the fighters' layer, finds the surfaces the palettes
+## recolour (_dress() puts those in the toon look), and puts every other
+## surface (the skin, the eyes, the hat's band) in the toon look now.
 func _collect_surfaces() -> void:
 	for node: Node in skeleton.find_children("*", "MeshInstance3D", true, false):
 		var mi: MeshInstance3D = node
+		mi.layers = LAYERS
 		for s: int in mi.mesh.get_surface_count():
 			var mat: Material = mi.get_active_material(s)
 			if not (mat is BaseMaterial3D):
+				push_error("FighterModel: %s surface %d has no imported material to draw in the toon look" % [mi.name, s])
 				continue
 			if StringName(mat.resource_name) == look.outfit_material:
 				_outfit_surfaces.append([mi, s, mat])
@@ -324,11 +326,13 @@ func _collect_surfaces() -> void:
 				_hair_surfaces.append([mi, s, mat])
 			elif mat.resource_name == HEADWEAR_CLOTH.resource_name:
 				_headwear_surfaces.append([mi, s, mat])
-			elif mat.resource_name.begins_with("MI_Regular"):
-				var matt: BaseMaterial3D = mat.duplicate()
-				matt.metallic_specular = SKIN_SPECULAR
-				mi.set_surface_override_material(s, matt)
-				_materials["matt:%d:%d" % [mi.get_instance_id(), s]] = matt
+			else:
+				var toon: ShaderMaterial = ToonMaterials.fighter_from(mat)
+				mi.set_surface_override_material(s, toon)
+				# Held here too: a material only the override holds is freed
+				# before the mesh instance lets go of it, which the renderer
+				# reports.
+				_materials["toon:%d:%d" % [mi.get_instance_id(), s]] = toon
 
 
 func _add_socket(bone: StringName, offset: Transform3D) -> Node3D:

@@ -25,6 +25,9 @@ extends RefCounted
 enum OutlineKind { NONE, FIGHTER, WEAPON, PROP }
 
 const TOON_SHADER: Shader = preload("res://shaders/toon.gdshader")
+## The same toon surface drawn from both sides, for open shells (hoods, cloth
+## edges, hair cards).
+const TOON_TWO_SIDED_SHADER: Shader = preload("res://shaders/toon_two_sided.gdshader")
 const OUTLINE_SHADER: Shader = preload("res://shaders/outline.gdshader")
 
 const META_OUTLINE: StringName = &"look_outline"
@@ -64,25 +67,94 @@ static func make_with_shader(shader: Shader, kind: OutlineKind, params: Dictiona
 	return m
 
 
-## A fighter's cloth or skin: strong rim, a little fresnel glow, less brush
-## noise (clean reads beat painterly ones on the fighters).
+## A fighter's lighting: strong rim, a little fresnel glow, less brush noise
+## (clean reads beat painterly ones on the fighters), and no hard highlight
+## on cloth, leather or skin.
+const FIGHTER_PARAMS: Dictionary = {
+	&"rim_strength": 0.6,
+	&"rim_width": 0.2,
+	&"rim_emission": 0.1,
+	&"brush_noise": 0.05,
+	&"shadow_fill": 0.16,
+	&"specular_strength": 0.0,
+}
+## How much of an imported normal map a fighter keeps: fine bumps would break
+## the toon bands into noise.
+const FIGHTER_NORMAL_STRENGTH: float = 0.4
+## A weapon: rim, no brush noise, and (WEAPON_METAL_PARAMS) a hard toon
+## highlight for steel.
+const WEAPON_PARAMS: Dictionary = {
+	&"rim_strength": 0.8,
+	&"rim_width": 0.3,
+	&"brush_noise": 0.0,
+	&"specular_strength": 0.0,
+}
+const WEAPON_METAL_PARAMS: Dictionary = {
+	&"specular_strength": 1.6,
+	&"specular_size": 0.06,
+}
+
+
+## A fighter's cloth or skin in one colour.
 static func fighter(color: Color, ink: Color = LookPalette.INK) -> ShaderMaterial:
-	return make(color, OutlineKind.FIGHTER, {
-		&"rim_strength": 0.9,
-		&"rim_width": 0.32,
-		&"rim_emission": 0.22,
-		&"brush_noise": 0.05,
-		&"shadow_fill": 0.16,
-	}, ink)
+	return make(color, OutlineKind.FIGHTER, FIGHTER_PARAMS, ink)
+
+
+## A fighter surface from the material it was imported with: its colour,
+## base-colour texture, normal map and vertex colour carried over, drawn from
+## both sides when the import is. Its name is kept, so the palettes still
+## find the outfit by name.
+static func fighter_from(source: BaseMaterial3D, ink: Color = LookPalette.INK) -> ShaderMaterial:
+	var two_sided: bool = source.cull_mode == BaseMaterial3D.CULL_DISABLED
+	var params: Dictionary = FIGHTER_PARAMS.merged({
+		&"base_color": source.albedo_color,
+		&"albedo_texture": source.albedo_texture,
+		&"use_vertex_color": source.vertex_color_use_as_albedo,
+		&"normal_strength": 0.0,
+	}, true)
+	if source.normal_enabled and source.normal_texture != null:
+		params[&"normal_texture"] = source.normal_texture
+		params[&"normal_strength"] = source.normal_scale * FIGHTER_NORMAL_STRENGTH
+	var m: ShaderMaterial = make_with_shader(TOON_TWO_SIDED_SHADER if two_sided else TOON_SHADER,
+		OutlineKind.FIGHTER, params, ink)
+	m.resource_name = source.resource_name
+	return m
 
 
 ## A weapon: hard toon highlight for steel, thinner outline.
 static func weapon(color: Color, metal: bool = true) -> ShaderMaterial:
-	var params: Dictionary = {&"rim_strength": 0.8, &"rim_width": 0.3, &"brush_noise": 0.0}
-	if metal:
-		params[&"specular_strength"] = 1.6
-		params[&"specular_size"] = 0.06
-	return make(color, OutlineKind.WEAPON, params)
+	return make(color, OutlineKind.WEAPON, WEAPON_PARAMS.merged(WEAPON_METAL_PARAMS, true) if metal else WEAPON_PARAMS)
+
+
+## A weapon surface from the material its model was made with, keeping its
+## name:
+## - a StandardMaterial3D becomes toon steel (with the highlight) when it is
+##   at all metallic, and toon leather or wood otherwise, in its colour;
+## - a ShaderMaterial whose shader is toon-lit (includes
+##   toon_light.gdshaderinc, like the Katana's blade and wrap) is copied with
+##   the weapon's rim and outline, and every parameter the source sets (its
+##   own colours, a highlight it asks for) kept.
+static func weapon_from(source: Material) -> ShaderMaterial:
+	var m: ShaderMaterial
+	if source is BaseMaterial3D:
+		var base := source as BaseMaterial3D
+		m = weapon(base.albedo_color, base.metallic > 0.0)
+	else:
+		var shaded := source as ShaderMaterial
+		var params: Dictionary = WEAPON_PARAMS.duplicate()
+		for u: Dictionary in shaded.shader.get_shader_uniform_list():
+			var value: Variant = shaded.get_shader_parameter(u[&"name"])
+			if value != null:
+				params[StringName(u[&"name"])] = value
+		m = make_with_shader(shaded.shader, OutlineKind.WEAPON, params)
+	m.resource_name = source.resource_name
+	return m
+
+
+## Whether material was made here (by make() or make_with_shader()), so it
+## carries the look's outline kind.
+static func is_toon(material: Material) -> bool:
+	return material is ShaderMaterial and material.has_meta(META_KIND)
 
 
 ## A prop: painterly wash stains and no rim (a floor seen at a grazing angle

@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3 and 16.1–16.6; next is 16.7 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Oct 1, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3 and 16.1–16.7; next is 14.1 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -218,7 +218,8 @@ Swings are stored as sampled data, so a move can later take its path from an aut
 **Presentation of fighters.**
 
 - Each fighter is a scene built from the Quaternius base body (head only, cut from the full body at import), the outfit parts, hair, headwear built in code and palette, all on the shared 65-bone skeleton. Animations are retargeted through Godot's humanoid bone map.
-- The two palettes differ over a large area seen from every side (the Rogue's second palette swaps dark for ash on the hood and sleeves), not just in trim. The outfit textures are baked with wear: ambient occlusion, dust up the boots and trouser hems, scuffed knees and cuffs, worn leather edges and grime; cloth and leather are matt. Faces get soot and shadowed eyes.
+- The two palettes differ over a large area seen from every side (the Rogue's second palette swaps dark for ash on the hood and sleeves), not just in trim. The outfit textures are baked with wear: ambient occlusion, dust up the boots and trouser hems, scuffed knees and cuffs, worn leather edges and grime. Faces get soot and shadowed eyes.
+- Fighters and weapons are drawn in the toon look. Their imported materials become toon materials when a model is built, keeping the textures, the vertex colour and the palettes. Normal maps are kept at 40%, since full-strength bumps break the toon bands into blotches. The hoods, cloth edges and hair cards are drawn from both sides, as the imports are, and the fighters' rim is narrow, so dark cloth doesn't read as glossy. The Katana's blade and grip keep their own toon-lit shaders.
 - Until the guard poses exist, each fighter has a stand-in hold per weapon: the clip it idles in, how the weapon sits in the fist and which wrists are set. The Rogue idles low with her daggers reversed along her forearms; the Hunter idles in a raised guard with the greatsword trailing from his hanging hand.
 - An animation tree blends idle, walk, jog and sprint by speed. Unguarded strafing and backpedalling turn the hips and legs toward the direction of travel while the chest keeps facing the opponent, and the cycle runs backwards when retreating.
 - Guard walking, where duels spend most of their time, is a procedural shuffle step instead: the lead foot moves first, the trailing foot closes, the feet never cross and the stance width holds. The stance is grounded, with knees over toes, the front foot toward the opponent and the rear foot turned out.

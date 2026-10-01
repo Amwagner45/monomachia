@@ -126,12 +126,12 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2, 16.3, 16.4, 16.5 and 16.6. The owner now approves each task before the next starts. Next: 16.7.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16. The owner now approves each task before the next starts. Next: 14.1.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
   - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
-  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`). The Rogue and the Hunter and the three weapon models are in the project, shown by `fighters/preview/preview.tscn`, but not yet in the match (14.2).
+  - The rules port matches the TypeScript bit for bit, and a stand-in Duel plays from title to results (`npm run godot:run`). The Rogue and the Hunter and the three weapon models are in the project in the toon look, shown by `fighters/preview/preview.tscn` (in the studio or on the night stage), but not yet in the match (14.2).
   - The safety nets (25.1–25.3, 16.1):
     - `npm run check:sizes` fails CI on any tracked file over 10 MB;
     - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
@@ -142,25 +142,26 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - the toon material and the ink outlines (16.3), through `ToonMaterials`, with `tools/shot_scenes/look_bench.tscn` to judge them by eye and `outline_check.tscn` to prove the outlines draw;
     - the ink-wash pass and the colour grade (16.4): `InkWashPass`, `InkGrade` and the night environment, with `ink_check.tscn` to prove the ink lines draw where depth breaks and nowhere else;
     - the Low, Medium and High presets (16.5): `GraphicsPreset` and `GraphicsApplier`, with the chosen preset saved by `GameSettings` and applied at start by `GameServices`;
-    - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset. The capsule fighters stay as they are until 14.2.
-- **Checks after 16.6:**
-  - 503 Godot tests: rules 138, input 118, audio 31, core 22, view 142, content 49, and 3 project-wide smoke tests;
+    - the stand-in arena and the dropped weapons in the look (16.6): toon props, the night environment, the ink-wash pass and the chosen preset. The capsule fighters stay as they are until 14.2;
+    - the Rogue, the Hunter and the three weapons in the look (16.7): `ToonMaterials.fighter_from` and `weapon_from` convert their imported materials, with a two-sided toon shader for open shells, and the Katana's shaders are toon-lit.
+- **Checks after 16.7:**
+  - 510 Godot tests: rules 138, input 118, audio 31, core 22, view 146, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
   - the typecheck loads 142 scripts cleanly;
-  - CI passed on the pushes of 16.5 (494bfb2) and the Progress update after it (bf587fc);
+  - CI passed on the push of 16.6 (a83f1b3);
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
-  - the art comes to 56.4 MB of its 60 MB budget, and the tracked repo to 100.1 MB.
+  - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
 - **Waiting on its own worktree:**
-  - **Tasks 16 and 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af).
+  - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, and the presets. 16.6 (the stand-in arena in the look) was new work. Still to come: the fighters and weapons in the look (16.7), and the shrine (17.x).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, and the presets. 16.6 and 16.7 (the stand-in arena, the fighters and the weapons in the look) were new work. Still to come: the shrine (17.x).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -757,8 +758,9 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 
 ### Phase E: look, arena and effects
 
-- [ ] **16. Toon, outline and ink-wash look.** The toon material, inverted-hull outlines, the ink-wash post pass, and graphics presets.
+- [x] **16. Toon, outline and ink-wash look.** The toon material, inverted-hull outlines, the ink-wash post pass, and graphics presets.
   - Check: side-by-side screenshots of each preset; no shader errors when loading.
+  - Done (16.1–16.7): the toon material (one- and two-sided), the ink outlines, the ink-wash pass and grade, and the three presets with the saved setting. They cover the stand-in arena, the dropped weapons, the Rogue, the Hunter and the three weapons. The presets were compared side by side on the look bench (16.5) and the fighter lineup (16.7). `shader_check` compiles every shader in a real window, and screenshot runs fail on any shader error. The capsule fighters in the match keep their old materials until 14.2 replaces them.
   - Each piece below is salvaged from the uncommitted `look-and-arena` worktree (`.claude/worktrees/wf_c7f99fe5-f9a-1`), reviewed, fixed and tested on its own. Its stand-in fighter and `game/_probe` are dropped.
   - [x] **16.1 Screenshot runs fail on shader errors, and a scene smoke test.**
     - Delivers:
@@ -906,10 +908,39 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - `tools/shot_scenes/skeleton_dropped.tscn` is new: a Watch match until a weapon lies on the floor, with the camera beyond it.
       - The seven skeleton shots were re-rendered and reviewed: the dark floor and pale rings, the outlined wall and pillars, paper grain and vignette, both fighters standing out, and the dropped Greatsword's toon blade with its outline.
       - `shader_check`, `outline_check` and `ink_check` pass.
-  - [ ] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. Palettes then recolour the toon materials, since `apply_palette` and `test_palettes` only handle `BaseMaterial3D` today. The weapons and the Katana's own shaders get toon versions. The art budget (56.4 of 60 MB after 13.1) covers any new textures.
+  - [x] **16.7 The toon look on the Rogue, the Hunter and the three weapons; task 16 ticked.** FighterModel turns every outfit, skin, hair and headwear surface into a toon material that keeps its textures and palette, outlined and on the fighter layer. Palettes then recolour the toon materials, since `apply_palette` and `test_palettes` only handle `BaseMaterial3D` today. The weapons and the Katana's own shaders get toon versions. The art budget (56.4 of 60 MB after 13.1) covers any new textures.
     - Check: content tests that every fighter and weapon surface is toon, outlined and on layer 2, and that the palettes still differ; lineup and mirror shots at Low and High reviewed, with no split outlines at seams.
     - Blocked by: 13.1, 16.6 · Stories: 43, 45, 46
     - Note from 16.3: CUSTOM0 doesn't follow skinning, so the research notes' fallback for split outlines (smoothed normals baked into CUSTOM0) won't work on the skinned fighters. If seams split, weld the normals at import, or give each fighter a second skinned outline mesh.
+    - Done:
+      - **Converters in `ToonMaterials`:**
+        - `fighter_from(material)` turns an imported StandardMaterial3D into a toon fighter material. It keeps the colour, the base-colour texture, the vertex colour, the normal map (at `FIGHTER_NORMAL_STRENGTH`, 40%) and the name.
+        - `weapon_from(material)` turns a StandardMaterial3D into toon steel (with the hard highlight) when it is at all metallic, and toon leather or wood otherwise. A toon-lit ShaderMaterial is copied with the weapon's rim and outline, and every parameter it sets is kept.
+        - `is_toon(material)` tells the look's materials apart.
+      - **Two-sided toon shader.** The Quaternius imports are all double-sided (hoods, cloth edges, hair cards), so the toon surface moved to `shaders/toon_surface.gdshaderinc`. `toon.gdshader` (back faces culled) and the new `toon_two_sided.gdshader` share it, and `fighter_from` picks by the import's cull mode.
+      - **Fighters (`FighterModel`):**
+        - every mesh goes on layers 1 and 2;
+        - the skin, eyes and hat band become toon materials when the model is built;
+        - the palettes recolour the imported material on a copy and convert that, cached per palette as before.
+        - A surface with no imported material is reported.
+      - **Weapons.** `WeaponLook.instantiate()` puts a model in the look (each instance with its own materials, held in the mesh's metadata so the renderer never sees them freed early), and `attach()` uses it. The Katana's blade and wrap shaders are now toon-lit, and `blade.tres` asks for the steel highlight.
+      - **Tuned on the real fighters.** The fighter parameters were set on capsules in 16.3. On the Quaternius meshes, a rim 0.32 wide at 0.9 plus a 0.22 fresnel glow drew a thick white band round the hood, and turned the face mask, the hat and dark cloth into glossy latex. Full-strength normal maps broke the bands into camouflage blotches. The rim is now 0.2 wide at 0.6, the glow 0.1, and normal maps 40%. The look bench's capsules still read well.
+      - **No split outlines.** Head, hood, hat, beard, hands and gloves were checked close up, and the hulls run unbroken over the Quaternius seams. The skinned outline uses the skinned normals.
+      - **The outfit's roughness map is gone.** The toon shader ignores roughness, so `fighters/materials/ranger_orm.png` (0.6 MB) and `FighterLook.outfit_orm` went, and `bake_palettes.gd` no longer bakes it. The art is now 55.8 MB.
+    - Tests:
+      - `test_look.gd` (+4): the two-sided shader differs only in culling; an imported fighter surface keeps what it was imported with; weapon materials become steel or leather; a toon-lit shader of its own keeps its parameters.
+      - `test_weapons.gd` (+2, and the attach test): every surface of an instanced weapon is toon, outlined as a weapon and on layer 2, keeps its colour, and shines only if metal; the Katana keeps its temper line and wrap.
+      - `test_fighters.gd` (+1): every fighter surface is toon, outlined and on layers 1 and 2 in both palettes. The texture, headwear and skin tests read the toon materials.
+      - `test_palettes.gd` reads the toon materials, and the palettes still differ by 12.7 to 16.6 from every side.
+    - Review shots:
+      - The fighter preview (`fighters/preview/preview.tscn`) has a night stage (`--stage=night`: the stand-in arena's environment, moon, rim light, lanterns and ink-wash pass, turned so the moon lights the fighters' fronts), `--preset=low|medium|high`, and a `mirror` mode (`--fighter=`, `--shoulder=-1|0|1`).
+      - Reviewed: the lineup in the studio and at night on Low and High; mirror matches side on and from the gameplay camera on Low and High; the heads, the back, the hands on the grips and the weapons close up.
+      - A "before" render from 16.6 showed the fighters just as dark at night with their old materials. The Rogue's charcoal palette is near-black under the moon either way, and the ink outlines now help her read.
+      - `shader_check` (7 shaders), `outline_check` and `ink_check` pass.
+    - For 14.1 and 14.2:
+      - a posed weapon comes from `WeaponLook.instantiate()`;
+      - `FighterView` applies `GameServices.graphics_preset()` to its fighters with `GraphicsApplier.apply_to_tree()`, as the arena and the dropped weapons do;
+      - the body flash stays a material overlay, leaving the toon materials alone.
 - [ ] **17. The floating Moonlit Shrine.**
   - Delivers:
     - the platform at radius 15 with its parapet, torii, lanterns and pillars;

@@ -21,7 +21,10 @@
     "godot:dev": "node scripts/godot.mjs dev",
     "godot:run": "node scripts/godot.mjs run",
     "shots": "node scripts/godot.mjs shots",
-    "godot:fixtures": "tsx scripts/sim-fixtures.ts && tsx scripts/port-fixtures.ts"
+    "godot:fixtures": "tsx scripts/sim-fixtures.ts && tsx scripts/port-fixtures.ts",
+    "audio:sonniss": "node scripts/audio/extract-sonniss.mjs",
+    "audio:synth": "node scripts/audio/synth.mjs",
+    "audio:music": "node scripts/audio/music.mjs"
   },
   "dependencies": {
     "three": "^0.186.1"

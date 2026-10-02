@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. 8.4 then raised the blocking walk to 60% of running speed, 8.5 let attacks keep half their speed as they start, 8.6 eased lunges in and out, 8.7 cut light hitstun to 14 frames, 8.8 let heavies dodge-cancel late in recovery, and 8.9 added the Greatsword's recovery slide, which finishes task 8. The owner approves each task before the next starts. Next: 12.1.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. 8.4 then raised the blocking walk to 60% of running speed, 8.5 let attacks keep half their speed as they start, 8.6 eased lunges in and out, 8.7 cut light hitstun to 14 frames, 8.8 let heavies dodge-cancel late in recovery, and 8.9 added the Greatsword's recovery slide, which finishes task 8. 12.1 then made the soak report the balance targets, which finishes stage 4. The owner approves each task before the next starts. Next in this lane: 9.1, the first task of stage 6 (stage 5, sound, and 14.3–14.9, animation, go on in their own lanes).
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -156,11 +156,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
   - The shrine as every match's arena (17.10): fighters and dropped weapons stay inside its parapet, and every match camera stays within 16.2 m of the centre (`camera_max_radius`, was 19.5), short of the props on the ledge. `test_shrine_as_arena.gd` sweeps the cameras round the wall against the props' real triangles, and `arena_wall.tscn` (or `--wall=<degrees>` on any arena view) shoots a fighter backed against the wall.
-- **Checks after 8.9** (the bench and the wall shots are from 17.10, the shrine's other shots and CI from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
-  - 619 Godot tests (48 s): rules 132, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
+- **Checks after 12.1** (the bench and the wall shots are from 17.10, the shrine's other shots and CI from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
+  - 623 Godot tests (49 s): rules 136, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
-  - the typecheck loads 161 scripts cleanly;
-  - `soak:godot -- 40` (8.9) has 0 failures on task 8's finished rules, and the counterlab still reaches every counter; both reports, and their drift from the baseline, are under "Task 8's drift" below;
+  - the typecheck loads 162 scripts cleanly;
+  - `soak:godot -- 40` (8.9; 12.1 printed the same, with its new lines) has 0 failures on task 8's finished rules, and the counterlab still reaches every counter; both reports, and their drift from the baseline, are under "Task 8's drift" below. The first 300-match `soak:tune` (12.1) is under "The first tuning run";
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 66.8 fps at 1080p on the target laptop (`arena_bench.tscn`, 17.10, on mains power; 95th percentile 16.3 ms), Medium 76.9 and Low 99.9, against 69, 79 and 102 at 17.9 with the rules' wall at 11.5 m;
   - CI passed on every push from 14.1 to 17.9 (8c188c4);
@@ -239,6 +239,22 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - Wins and losses by weapon: the Greatsword 9–15 (12–12 at the baseline), the Katana 17–14 (15–16), the Daggers 14–11 (13–12). The Greatsword lost ground at 8.7 and stayed there.
   - Against the spec's targets: rounds of 35–60 s are met; disarms (0.83, target 0.3–0.6) and the Greatsword's wins (9 of 24, target 45–55%) are not. A 40-match soak is noisy (mirror matches included); task 12's 300-match soaks tune toward the targets.
   - The counterlab reaches every counter less often than at the baseline: 13 evades from 23 slams (17 from 24), 13 stomps from 23 thrusts (15 from 24), 15 leaps from 24 sweeps (16 from 25), with more hits against the countering fighter.
+- **The first tuning run (12.1).** `npm run soak:tune` on task 8's finished rules, the starting point for 12.8 and 12.9: 300 matches, 0 failures, 1098 rounds, longest 116.3 s. It took about 4 minutes on the target laptop (with the test suite running for part of it), well inside `godot.mjs`'s one-hour limit.
+  ```
+  win rates, mirror matches left out:
+    katana: 48.5% (63 of 130)
+    greatsword: 37.4% (43 of 115)
+    daggers: 62.8% (81 of 129)
+  disarms per round: 0.74
+  targets (the spec's):
+    rounds of 35-60 s: 39.9 s, in
+    disarms 0.3-0.6 per round: 0.74, out
+    katana wins 45-55%: 48.5%, in
+    greatsword wins 45-55%: 37.4%, out
+    daggers wins 45-55%: 62.8%, out
+  ```
+  - Per round: blocks 17.06, parries 3.76, counters 0.89, ultimates 1.07 (the disarmed choice included).
+  - With the mirror matches left out the Daggers lead clearly, which the 40-match soak's raw wins and losses (14–11) hid.
 
 ### Waiting on the owner
 
@@ -672,9 +688,18 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Blocked by: 7.37 · Stories: 21, 58, 59, 62
 - [ ] **12. Computer opponent and balance pass.** The brain and dummy learn the Iai, the new unblockables and the dodge cancels; tuning follows soak data; the spec's numbers are updated.
   - Check: soak targets from the spec (rounds 35–60 s, 0.3–0.6 disarms per round, each weapon 45–55%); the counterlab shows every counter reachable.
-  - [ ] **12.1 The soak reports the balance targets.** Win rates in percent (mirror matches left out), disarms per round, average round length, a targets block, and a 300-match tuning mode. The exit code still reflects only failures.
+  - [x] **12.1 The soak reports the balance targets.** Win rates in percent (mirror matches left out), disarms per round, average round length, a targets block, and a 300-match tuning mode. The exit code still reflects only failures.
     - Check: a short soak test checks the report lines and the mirror exclusion; a 40-match soak is clean.
     - Blocked by: 8.9 · Stories: 62
+    - Done:
+      - After its ported report, unchanged, the soak prints each weapon's win rate in percent against the other weapons (mirror matches left out, with wins and matches), disarms per round, and a targets block that marks each number in or out of the spec's ranges: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55%. The ranges are `TARGET_ROUND_S`, `TARGET_DISARMS` and `TARGET_WIN_RATE` in `soak.gd`. A weapon with no matches against another reads "no matches" and counts as out. Each number is judged as printed, so a line never reads "0.60, out". `report_balance` prints these lines from plain numbers, and the soak counts disarms as they happen.
+      - `npm run soak:tune` runs 300 matches; `soak:godot -- 40` stays the clean check, and CI's 4-match soak is unchanged. The exit code still reflects only failures: a target out of range is not one.
+      - `test_soak.gd` (new), red first:
+        - Soaks in which fighter 1 is knocked out as each round's fight starts, so fighter 0 wins every match. In the seed's 9 matches, 4 are mirrors, and the win rates count only the other 5 (the Greatsword 4 of 4, the Katana 1 of 4, the Daggers 0 of 2); the ported wins-and-losses line still counts the mirrors. In its 3 matches the Daggers meet only themselves and read "no matches"; the 0.7 s rounds and 0.00 disarms are out, and with every target out the soak still has 0 failures.
+        - `report_balance` on chosen numbers: 35 s, 0.60 disarms, 45.0% and 55.0% (and 55.05%, printed 55.0%) are in; 60.1 s, 44.5% and 55.6% are out, and 0.296 disarms, printed 0.30, is in.
+        - Counting the mirror matches in the rates, making the ranges' ends out, or judging a number other than as printed fails a test.
+      - The 40-match soak is clean and its ported report is 8.9's. The first 300-match run is in Progress ("The first tuning run"): rounds and the Katana in range; disarms (0.74), the Greatsword (37.4%) and the Daggers (62.8%) out.
+      - Stage 4 is done.
   - [ ] **12.2 The computer times its defence from the swing's first touch.** `_respond_to` predicts impact with `SwingReach.first_contact` and ignores moves that can't reach.
     - Check: Hard parries a late-touching swing about as often as an early one over seeded runs; it ignores a move that can't reach; a 40-match soak is clean.
     - Blocked by: 7.38 · Stories: 5, 41, 54

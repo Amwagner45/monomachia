@@ -118,9 +118,17 @@ static func js_round(x: float) -> int:
 
 ## The shortest distance between the segment from `a0` to `a1` and the one
 ## from `b0` to `b1` (either may be a single point), in 64-bit (task 7.7).
-## Ericson's closest points between segments: the closest points of the two
-## lines, each clamped onto its segment, the other then re-found.
 static func segment_distance(a0: V3, a1: V3, b0: V3, b1: V3) -> float:
+	var p: Array[V3] = segment_closest(a0, a1, b0, b1)
+	return V3.distance(p[0], p[1])
+
+
+## The closest points of the segment from `a0` to `a1` and the one from `b0`
+## to `b1` (either may be a single point), in 64-bit (task 7.8): the point on
+## the first, then the point on the second, each a new V3. Ericson's closest
+## points between segments: the closest points of the two lines, each clamped
+## onto its segment, the other then re-found.
+static func segment_closest(a0: V3, a1: V3, b0: V3, b1: V3) -> Array[V3]:
 	var da: V3 = V3.sub(a1, a0)
 	var db: V3 = V3.sub(b1, b0)
 	var r: V3 = V3.sub(a0, b0)
@@ -130,8 +138,8 @@ static func segment_distance(a0: V3, a1: V3, b0: V3, b1: V3) -> float:
 	var s: float = 0.0
 	var t: float = 0.0
 	if aa <= 1e-24 and bb <= 1e-24:
-		return V3.length(r)
-	if aa <= 1e-24:
+		pass
+	elif aa <= 1e-24:
 		t = clampf(rb / bb, 0.0, 1.0)
 	else:
 		var ra: float = V3.dot(da, r)
@@ -149,4 +157,4 @@ static func segment_distance(a0: V3, a1: V3, b0: V3, b1: V3) -> float:
 			elif t > 1.0:
 				t = 1.0
 				s = clampf((ab - ra) / aa, 0.0, 1.0)
-	return V3.distance(V3.add(a0, V3.scale(da, s)), V3.add(b0, V3.scale(db, t)))
+	return [V3.add(a0, V3.scale(da, s)), V3.add(b0, V3.scale(db, t))]

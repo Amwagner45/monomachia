@@ -75,7 +75,7 @@ _Avoid_: Hitbox
 The surface a blade (or another strike segment) covers from one frame to the next. A hit lands on the first active frame whose sweep touches the defender's hurt capsule. Not the low sweep attack that the leap counters: say "blade sweep" where the two could be confused.
 
 **Contact point**:
-Where a sweep first touches the hurt capsule. Hit, block and parry effects start there.
+Where a sweep first touches the hurt capsule: on the first frame it touches, the point where the blade went deepest, nearest the capsule's axis. Hit, block and parry effects start there.
 
 ## Defending
 

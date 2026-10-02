@@ -236,3 +236,18 @@ func test_segment_distance() -> void:
 	assert_eq(_seg_dist([1, 1, 1], [1, 1, 1], [1, 1, 3], [1, 1, 3]), 2.0, "two points")
 	assert_almost_eq(_seg_dist([0, 1, 2], [3, -1, 0.5], [-2, 0, 1], [1, 2, -1]), _seg_dist([1, 2, -1], [-2, 0, 1], [3, -1, 0.5], [0, 1, 2]), 1e-15,
 			"either order")
+
+
+func test_segment_closest_points() -> void:
+	var a0: V3 = V3.make(-1.0, 0.0, 0.0)
+	var a1: V3 = V3.make(1.0, 0.0, 0.0)
+	var p: Array[V3] = SimMath.segment_closest(a0, a1, V3.make(0.5, -1.0, 2.0), V3.make(0.5, 1.0, 2.0))
+	_assert_v3(p[0], 0.5, 0.0, 0.0, "skew: on the first")
+	_assert_v3(p[1], 0.5, 0.0, 2.0, "skew: on the second")
+	p = SimMath.segment_closest(a0, a1, V3.make(3.0, 1.0, 0.0), V3.make(4.0, 1.0, 0.0))
+	_assert_v3(p[0], 1.0, 0.0, 0.0, "end to end: the first's end")
+	_assert_v3(p[1], 3.0, 1.0, 0.0, "end to end: the second's start")
+	p = SimMath.segment_closest(a0, a0, V3.make(0.0, 1.0, 0.0), V3.make(0.0, 1.0, 0.0))
+	_assert_v3(p[0], -1.0, 0.0, 0.0, "two points: the first")
+	_assert_v3(p[1], 0.0, 1.0, 0.0, "two points: the second")
+	assert_ne(p[0], a0, "a new V3, not the one passed in")

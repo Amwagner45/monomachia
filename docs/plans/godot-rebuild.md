@@ -1378,7 +1378,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 - [ ] **19. Sound effects.** The Sonniss extraction and processing script with its sources list; generated gap-fill sounds; the event-to-sound table with variations; buses; 3D impacts; footsteps; arena ambience.
   - Check: every event in the demo's audio table has a sound; a headless run logs no missing sound files; the committed audio is under 40 MB.
   - The assets, the sound bank and the bus layout were built early and merged; what remains is playback.
-  - [ ] **19.1 Pooled sound player.** `SoundPlayer` with cached streams, flat and 3D voice pools that steal their oldest voice, variations that never repeat back to back, pitch ranges, delayed cues, hold and stop, and a list of anything missing.
+  - [x] **19.1 Pooled sound player.** `SoundPlayer` with cached streams, flat and 3D voice pools that steal their oldest voice, variations that never repeat back to back, pitch ranges, delayed cues, hold and stop, and a list of anything missing.
     - Check: a colossal hit requests both its cues on Combat; delayed cues fire when due and never while held; pools steal; spatial cues get 3D voices; nothing is missing for the real bank.
     - Blocked by: none · Stories: 50, 63
   - [ ] **19.2 The rules events' sounds in a match.** `MatchAudio` in the match host plays every event's cues in played matches and on the results screen, keeps the attract duel silent, holds sound in pause, and stops on quit.

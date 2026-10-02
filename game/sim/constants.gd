@@ -104,6 +104,10 @@ const MOVE_TURN_RATE: float = 14.0 # rad/s when free
 const MOVE_FOLLOW_WINDOW: int = 12 # frames after a dodge/backstep that count for follow-up attacks
 const MOVE_SPRINT_ATTACK_MIN_FRAMES: int = 8
 
+## The share of its speed a fighter keeps as an attack starts; jump attacks and
+## hop attacks keep it all. The demo's was 0.3.
+const ATTACK_MOMENTUM_KEEP: float = 0.5
+
 # DISARMED_MULT = { speed, dodge, jump }
 const DISARMED_MULT_SPEED: float = 1.2
 const DISARMED_MULT_DODGE: float = 1.5

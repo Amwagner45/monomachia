@@ -26,6 +26,13 @@ const RUN_STRAFE: float = 3.5
 const RUN_BACK: float = 3.0
 const SPRINT: float = 7.2
 
+## The spec's momentum carry: an attack keeps half the speed it starts at.
+const MOMENTUM_KEEP: float = 0.5
+## Kept from the demo: a running jump flies at strafing speed, and an attack
+## on the ground brakes by a fifth of its speed each step after the first.
+const JUMP_FLIGHT: float = 3.5
+const ATTACK_BRAKE: float = 0.8
+
 
 func after_each() -> void:
 	H.dispose_all()
@@ -111,23 +118,51 @@ func test_a_vertical_moonsplitter_hits_across_the_widest_gap() -> void:
 	assert_almost_eq(b.hp, 70.0, CLOSE, "the wave reaches and hits")
 
 
+# ------------------------------------------------------------------ helpers
+
+## Fighter 0 on each step of a run: how far it moved along the ground, and the
+## attack it was in afterwards (&"" outside one).
+class FighterSteps:
+	var moved: PackedFloat64Array = []
+	var attack: Array[StringName] = []
+
+	## The step that started attack id, or -1.
+	func start_of(id: StringName) -> int:
+		for i: int in attack.size():
+			if attack[i] == id and (i == 0 or attack[i - 1] != id):
+				return i
+		return -1
+
+	## How far it moved from step from on, adding up each step (so an orbit
+	## counts in full).
+	func walked(from: int = 0) -> float:
+		var total: float = 0.0
+		for d: float in moved.slice(from):
+			total += d
+		return total
+
+
+## Runs n steps with fighter 0's input from p0 (step index -> RawInput) and an
+## idle Katana opponent gap m away.
+static func _record(weapon: WeaponDef, gap: float, n: int, p0: Callable) -> FighterSteps:
+	var W: World = H.make_world(weapon, Moves.KATANA, gap)
+	var a: Fighter = W.fighters[0]
+	var s := FighterSteps.new()
+	for i: int in n:
+		var x: float = a.pos.x
+		var z: float = a.pos.z
+		W.step([p0.call(i), H.idle()])
+		s.moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
+		s.attack.append(a.atk.def.id if a.state == &"attack" and a.atk != null else &"")
+	return s
+
+
 # ------------------------------------------------------------------ block walk
 
 ## How far fighter 0 walks in one second holding inp, once up to speed (20
-## frames in), against an idle opponent gap m away. It adds up each step, so
-## a strafe's orbit counts in full.
+## steps in), against an idle opponent gap m away.
 static func _walk_one_second(weapon: WeaponDef, gap: float, inp: RawInput) -> float:
-	var W: World = H.make_world(weapon, Moves.KATANA, gap)
-	var a: Fighter = W.fighters[0]
-	for _i: int in 20:
-		W.step([inp, H.idle()])
-	var walked: float = 0.0
-	for _i: int in 60:
-		var x: float = a.pos.x
-		var z: float = a.pos.z
-		W.step([inp, H.idle()])
-		walked += JsMath.hypot(a.pos.x - x, a.pos.z - z)
-	return walked
+	return _record(weapon, gap, 80, func(_i: int) -> RawInput: return inp).walked(20)
 
 
 func test_walking_forward_while_blocking_is_60_percent_of_running() -> void:
@@ -155,3 +190,53 @@ func test_holding_block_stops_a_sprint() -> void:
 	var blocking: float = _walk_one_second(Moves.KATANA, 20.0, H.move(0.0, 1.0, Btn.SPRINT, Btn.BLOCK))
 	assert_almost_eq(sprint, SPRINT, 1e-6, "the sprint button sprints")
 	assert_almost_eq(blocking, RUN_FORWARD * BLOCK_WALK, 1e-6, "blocking walks at the blocking walk instead")
+
+
+# ------------------------------------------------------------------ momentum
+# Each run starts 10 m from the opponent, so nobody meets.
+
+func test_a_light_thrown_at_a_run_keeps_half_the_running_speed() -> void:
+	var s: FighterSteps = _record(Moves.KATANA, 10.0, 40, func(i: int) -> RawInput:
+		return H.move(0.0, 1.0, Btn.LIGHT) if i == 30 else H.move(0.0, 1.0))
+	var i: int = s.start_of(&"k_l1")
+	assert_eq(i, 30, "Right Cut starts on the press")
+	assert_almost_eq(s.moved[i - 1], RUN_FORWARD / 60.0, 1e-9, "running at full speed the step before")
+	assert_almost_eq(s.moved[i], MOMENTUM_KEEP * s.moved[i - 1], 1e-12, "the step it starts on keeps exactly half")
+
+
+func test_a_light_thrown_at_a_run_carries_the_attacker_further_than_one_thrown_standing() -> void:
+	var standing: FighterSteps = _record(Moves.KATANA, 10.0, 60, func(i: int) -> RawInput:
+		return H.btn(Btn.LIGHT) if i == 0 else H.idle())
+	var running: FighterSteps = _record(Moves.KATANA, 10.0, 90, func(i: int) -> RawInput:
+		if i < 30:
+			return H.move(0.0, 1.0)
+		return H.btn(Btn.LIGHT) if i == 30 else H.idle())
+	assert_eq(standing.start_of(&"k_l1"), 0, "the standing Right Cut starts on the press")
+	assert_eq(running.start_of(&"k_l1"), 30, "the running one too")
+	# The kept speed for one step, then braked each step after:
+	# 1.95 m/s x 1/60 s x (1 + 0.8 + 0.8^2 + ...) = 1.95 / 12 m. The cut ends
+	# after 31 steps, which leaves 0.1% of the series out.
+	var expected: float = MOMENTUM_KEEP * RUN_FORWARD / 60.0 / (1.0 - ATTACK_BRAKE)
+	assert_almost_eq(running.walked(30) - standing.walked(), expected, 0.0005, "the same cut, 16 cm further")
+
+
+func test_a_jump_attack_keeps_all_its_speed() -> void:
+	# the stick is let go in the air, so the flight is straight
+	var s: FighterSteps = _record(Moves.KATANA, 10.0, 40, func(i: int) -> RawInput:
+		if i < 30:
+			return H.move(0.0, 1.0, Btn.JUMP) if i == 29 else H.move(0.0, 1.0)
+		return H.btn(Btn.LIGHT) if i == 34 else H.idle())
+	var i: int = s.start_of(&"k_jl")
+	assert_eq(i, 34, "Aerial Cut starts on the press")
+	assert_almost_eq(s.moved[i - 1], JUMP_FLIGHT / 60.0, 1e-9, "flying at the jump's speed the step before")
+	assert_almost_eq(s.moved[i], s.moved[i - 1], 1e-12, "the step it starts on keeps it all")
+
+
+func test_a_hop_attack_keeps_all_its_speed() -> void:
+	# Leaping Cleave, the Katana's sprint heavy, hops forward
+	var s: FighterSteps = _record(Moves.KATANA, 10.0, 40, func(i: int) -> RawInput:
+		return H.move(0.0, 1.0, Btn.SPRINT, Btn.HEAVY) if i == 30 else H.move(0.0, 1.0, Btn.SPRINT))
+	var i: int = s.start_of(&"k_sh")
+	assert_eq(i, 30, "Leaping Cleave starts on the press")
+	assert_almost_eq(s.moved[i - 1], SPRINT / 60.0, 1e-9, "sprinting the step before")
+	assert_almost_eq(s.moved[i], s.moved[i - 1], 1e-12, "the step it starts on keeps it all")

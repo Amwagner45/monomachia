@@ -13,6 +13,10 @@ extends Control
 ## The menus act in _unhandled_input(), after the GUI, and never take an
 ## event in _input(): the InputFeed (GameServices) sees every event in
 ## _input(), and a node that takes one there hides it from the feed.
+##
+## Sounds (GameServices.play_ui): ui_move when the focus moves from one of its
+## buttons to another (keys, controller or mouse; opening the screen is
+## silent), ui_select when a button is pressed, ui_back on Back.
 
 ## Back (Esc, Backspace, controller B) was pressed while the screen is open.
 signal back_requested
@@ -25,6 +29,8 @@ const MUTED: Color = Color(0.75, 0.72, 0.68)
 var panel: PanelContainer
 var box: VBoxContainer
 var buttons: Array[Button] = []
+## The button that last lost the focus, while the focus is between buttons.
+var _left: Button = null
 
 
 func _init() -> void:
@@ -88,8 +94,11 @@ func add_button(text: String, sub: String, on_pressed: Callable) -> Button:
 	b.add_theme_stylebox_override("hover", focus)
 	b.add_theme_stylebox_override("focus", focus)
 	b.add_theme_stylebox_override("pressed", focus)
+	b.pressed.connect(GameServices.play_ui.bind(&"ui_select"))
 	b.pressed.connect(on_pressed)
 	b.mouse_entered.connect(b.grab_focus)
+	b.focus_entered.connect(_on_button_focused.bind(b))
+	b.focus_exited.connect(func() -> void: _left = b)
 	box.add_child(b)
 	buttons.append(b)
 	_link_focus()
@@ -99,6 +108,7 @@ func add_button(text: String, sub: String, on_pressed: Callable) -> Button:
 ## Shows the screen and focuses its first button.
 func open() -> void:
 	visible = true
+	_left = null
 	if not buttons.is_empty() and is_inside_tree():
 		buttons[0].grab_focus.call_deferred()
 
@@ -114,6 +124,12 @@ func focused_button() -> Button:
 	return f as Button if f is Button and buttons.has(f) else null
 
 
+func _on_button_focused(b: Button) -> void:
+	if _left != null and _left != b:
+		GameServices.play_ui(&"ui_move")
+	_left = null
+
+
 func _link_focus() -> void:
 	for i: int in buttons.size():
 		var b: Button = buttons[i]
@@ -126,6 +142,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _is_back(event):
 		get_viewport().set_input_as_handled()
+		GameServices.play_ui(&"ui_back")
 		back_requested.emit()
 		return
 	if event is InputEventJoypadButton:

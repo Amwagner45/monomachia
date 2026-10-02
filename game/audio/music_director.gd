@@ -3,7 +3,7 @@ extends RefCounted
 ## Decides which music track should be playing. Plain logic with no nodes: the
 ## screens tell it where the game is ([method enter_menu], [method enter_match])
 ## and the match feeds it the rules events; [method current_track] is the
-## answer. The audio player (a later task) plays and crossfades the tracks.
+## answer. [MusicPlayer] plays and crossfades the tracks.
 ##
 ## Rules (docs/specs/godot-rebuild.md, Sound and Music):
 ## [br]- menus, character select and results: the menu track (110 BPM);
@@ -12,10 +12,9 @@ extends RefCounted
 ## fighter already has two wins: the match-point track (160 BPM), until the
 ## match ends.
 ##
-## Note for the player: every track starts mid-signal, not at silence (the
-## reverb tail of the last bar wraps into the first so the loop is seamless),
-## so the player must fade a track in when it starts and out when it stops,
-## over 10-20 ms (or crossfade on a switch). Started or stopped cold, it clicks.
+## Every track starts mid-signal, not at silence (the reverb tail of the last
+## bar wraps into the first so the loop is seamless), so started or stopped
+## cold it clicks: [FadedLoop] fades it in and out over 10-20 ms.
 
 signal track_changed(track: StringName)
 

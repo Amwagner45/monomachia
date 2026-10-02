@@ -1,14 +1,15 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 2, 2026 · status: in build, one task at a time. Stages 1–4 of the build order are done, and with them tasks 1–6, 8, 13, 16, 17 and 21:
+Oct 2, 2026 · status: in build, one task at a time. Stages 1–5 of the build order are done, and with them tasks 1–6, 8, 13, 16, 17, 19, 20 and 21:
 - the rules port, bit for bit with the TypeScript up to its last checked commit (4222167);
 - the fighter models merged, and the safety nets: a file-size guard, the Windows export with a smoke run, and CI (13.1, 25.1–25.3, 16.1);
 - the real fighters and weapons in the match, in the toon and ink-wash look (16.1–16.7, 14.1, 14.2);
 - the Moonlit Shrine as every match's arena (17.1–17.10; High 67 fps at 1080p on the target laptop);
 - the fluid combat rules (8.1–8.10): a 15 m arena, a 60% blocking walk, half the momentum kept, eased lunges, light hitstun 14, heavy dodge cancels and the Greatsword's recovery slide;
-- a soak that reports the balance targets (12.1).
+- a soak that reports the balance targets (12.1);
+- sound and music in the game (19.1–19.9, 20.1–20.3): every rules event's sounds, placed in 3D and through the arena's reverb, footsteps, the arena's ambience, the three music tracks switched by the menus and the round call, ducking, menu sounds and saved volumes, with a sound check scene for listening. Stories 50 and 51 wait for the owner's listening pass, and story 52 for the Settings screen (22.9).
 
-Stage 5 (sound and music, draft PR #3) and 14.3–14.9 (animation, draft PR #4) go on in their own lanes. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check. Next in this lane is 9.2, the Iai Slash (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+14.3–14.9 (animation, draft PR #4) goes on in its own lane. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check. Next in this lane is 9.2, the Iai Slash (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -258,7 +259,7 @@ Task 8 built the rules above. On them the first 300-match tuning run (12.1) has 
 
 **Sound.**
 
-- An event-to-sound table (`game/audio/sound_bank.gd`) picks randomized variations and sends them to buses (Master > Music, Ambience, SFX > Combat, Foley and an Arena reverb; UI); impacts play in 3D.
+- An event-to-sound table (`game/audio/sound_bank.gd`) picks randomized variations and sends them to buses (Master > Music, Ambience, SFX > Arena reverb > Combat, Foley; UI); impacts play in 3D, every combat and foley sound passes through the arena's reverb, and the music and ambience duck a few dB under loud combat sounds.
 - A Node script (`npm run audio:sonniss`) extracts the chosen Sonniss clips from the zips, trims, pitches and layers them, converts them to 16-bit mono at 44.1 kHz (the arena ambience is a stereo 60 s loop), and writes them into the project with a sources list (`game/assets/audio/SOURCES.md`).
 - A second script (`npm run audio:synth`) generates the missing sounds, and a third (`npm run audio:music`) the placeholder music as seamless stereo loops whose tempos are listed in `game/assets/audio/music/tracks.json`.
 - A music director (`game/audio/music_director.gd`) picks the menu, battle or match-point track; the switch to match point happens at the round call when either fighter has two wins. The loops start mid-signal (the tail of the last bar wraps into the first), so the player fades a track in and out over 10–20 ms whenever it starts, stops or switches one.

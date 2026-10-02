@@ -198,6 +198,34 @@ const ARCH: Dictionary[StringName, Array] = {
 	],
 }
 
+## The sheathed hold (the Iai's sheathe and stance): the right hand on the
+## hilt in front of the left hip, the blade lying back along the hip. The left
+## hand's key, just behind it where the saya's mouth will be (14.16), goes
+## unused while the two-handed Katana is posed from the right hand. A key as
+## ARCH's are.
+const SHEATHE: Dictionary = {
+	"rh": [-0.1, 1.0, 0.22], "rd": [-0.3, -0.22, -0.93],
+	"lh": [-0.18, 0.98, 0.1], "ld": [-0.3, -0.22, -0.93],
+	"lean": 0.06, "dy": -0.08,
+}
+
+## Halfway through a draw from the sheathe: the blade out in front, pointing
+## forward, so it clears the body before it rises into the cut's wind-up.
+const DRAWN: Dictionary = {
+	"rh": [-0.05, 1.15, 0.5], "rd": [0.15, 0.15, 0.97],
+	"lh": [0.05, 1.1, 0.42], "ld": [0.15, 0.15, 0.97],
+	"lean": 0.1, "dy": -0.1,
+}
+
+## Anims that draw from the sheathe: the move sheathes over its first
+## Fighter.CHARGE_CHECK_FRAME frames, holds the sheathe while it charges (the
+## stance), then draws the blade out in front (DRAWN) and up into the wind-up
+## of the archetype named here, and cuts as that archetype does.
+const SHEATHED_DRAWS: Dictionary[StringName, StringName] = {
+	&"iaiVertical": &"overhead",
+	&"iaiHorizontal": &"slashRL",
+}
+
 ## The archetype for a move type when its anim has none.
 const TYPE_ARCH: Dictionary[StringName, StringName] = {
 	&"slash": &"slashRL",
@@ -284,10 +312,22 @@ static func _from_table(table: Dictionary[StringName, Array], wid: StringName) -
 	return [Hand.make(local(row[0]), local(row[1])), Hand.make(local(row[2]), local(row[3]))]
 
 
+## A key of the draw from the sheathe (SHEATHE, DRAWN) as attack_keys gives
+## an attack's keys: { right, left, lean, crouch, spin }.
+static func _draw_key(kf: Dictionary) -> Dictionary:
+	return {
+		"right": Hand.make(local(kf["rh"]), local(kf["rd"])),
+		"left": Hand.make(local(kf["lh"]), local(kf["ld"])),
+		"lean": float(kf.get("lean", 0.0)),
+		"crouch": -float(kf.get("dy", 0.0)),
+		"spin": 0.0,
+	}
+
+
 ## The three keys of an attack as [[right hand, left hand], ...] plus the body
 ## numbers, for the fighter's weapon and the move's hand.
 static func attack_keys(def: AttackDef, wid: StringName) -> Array[Dictionary]:
-	var key: StringName = def.anim
+	var key: StringName = SHEATHED_DRAWS.get(def.anim, def.anim)
 	if wid == &"daggers" and key == &"spin":
 		key = &"spinBoth"
 	if not ARCH.has(key):
@@ -447,6 +487,23 @@ static func _attack(p: Pose, f: Fighter, wid: StringName, guard: Array[Hand], al
 	var k0: Dictionary = keys[0]
 	var k1: Dictionary = keys[1]
 	var k2: Dictionary = keys[2]
+	var sheathes: bool = SHEATHED_DRAWS.has(def.anim)
+	var sheathe_end: float = float(Fighter.CHARGE_CHECK_FRAME)
+	if sheathes and (at.charging or fr <= sheathe_end):
+		# the Iai: sheathe the blade at the left hip, and hold it there while
+		# charging (the stance)
+		var sheathe: Dictionary = _draw_key(SHEATHE)
+		var t_in: float = 1.0 if at.charging else smooth(fr / sheathe_end)
+		p.right = blend_hand(guard[0], sheathe["right"], t_in)
+		p.left = blend_hand(guard[1], sheathe["left"], t_in)
+		p.lean = lerpf(0.0, sheathe["lean"], t_in)
+		p.crouch = lerpf(0.0, sheathe["crouch"], t_in)
+		p.phase = &"sheathe"
+		if at.charging:
+			p.glow = &"charge"
+			p.glow_amount = at.charge_frac
+			p.phase = &"sheathed"
+		return
 	if at.charging:
 		# a held heavy: hold the wind-up, trembling as it charges
 		var tremble: float = sin(time * 40.0) * 0.012 * at.charge_frac
@@ -468,7 +525,20 @@ static func _attack(p: Pose, f: Fighter, wid: StringName, guard: Array[Hand], al
 	var windup_end: float = s * 0.7
 	var impact: float = s + 1.0
 	var follow_end: float = s + a + r * 0.3
-	if fr < windup_end:
+	if fr < windup_end and sheathes:
+		# drawn from the sheathe: out in front for the first half, then up
+		# into the wind-up
+		var u: float = (fr - sheathe_end) / (windup_end - sheathe_end)
+		var first_half: bool = u < 0.5
+		var a_key: Dictionary = _draw_key(SHEATHE if first_half else DRAWN)
+		var b_key: Dictionary = _draw_key(DRAWN) if first_half else k0
+		from = [a_key["right"], a_key["left"]]
+		body_from = [a_key["lean"], a_key["crouch"], a_key["spin"]]
+		to = [b_key["right"], b_key["left"]]
+		body_to = [b_key["lean"], b_key["crouch"], b_key["spin"]]
+		t = smooth(u * 2.0 if first_half else u * 2.0 - 1.0)
+		p.phase = &"draw"
+	elif fr < windup_end:
 		to = [k0["right"], k0["left"]]
 		body_to = [k0["lean"], k0["crouch"], k0["spin"]]
 		t = smooth(fr / windup_end)

@@ -641,13 +641,14 @@ func test_all_nine_rows_match_the_spec_table() -> void:
 
 
 func test_the_horizontal_iai_hits_with_the_specs_interim_cone() -> void:
-	# until weapon paths decide hits (task 7): a right-to-left slash (the
-	# stand-in's slashRL), as far as the vertical Iai and as wide as Right Cut
+	# until weapon paths decide hits (task 7): a right-to-left slash drawn
+	# from the sheathe (its anim, iaiHorizontal), as far as the vertical Iai
+	# and as wide as Right Cut
 	var m: AttackDef = Moves.KATANA.moves.get(&"k_iai_h", null)
 	assert_not_null(m, "the horizontal Iai exists")
 	if m == null:
 		return
-	assert_eq([m.type, m.anim], [&"slash", &"slashRL"], "a right-to-left slash")
+	assert_eq([m.type, m.anim], [&"slash", &"iaiHorizontal"], "a right-to-left slash, drawn from the sheathe")
 	assert_eq([m.range, m.arc, m.lunge, m.knockback], [3.6, 110.0, 0.4, 1.0], "range, arc, lunge and knockback")
 
 

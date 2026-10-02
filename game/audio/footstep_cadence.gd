@@ -5,8 +5,9 @@ extends RefCounted
 ## every rules step and plays the footstep cue at each footfall.
 ##
 ## Only a fighter moving freely on the ground counts (the free state, which
-## covers walking, running, sprinting and the guard walk). Nothing counts in
-## the air, in a dodge, a tap step (it has its own scuff), an attack's lunge,
+## covers walking, running, sprinting and the guard walk), or walking in the
+## Iai stance (Fighter.in_stance). Nothing counts in the air, in a dodge, a
+## tap step (it has its own scuff), an attack's lunge,
 ## while knocked back or down, in hit-stop (the world's frame stands still),
 ## or across a jump in position (a new round places the fighters).
 ##
@@ -54,7 +55,7 @@ func update(fighters: Array, frame: int) -> Array[Dictionary]:
 		var at := Vector3(f.pos.x, f.pos.y, f.pos.z)
 		var last: Variant = _last[i]
 		_last[i] = at
-		if last == null or not moved or f.state != &"free" or f.airborne():
+		if last == null or not moved or not (f.state == &"free" or f.in_stance()) or f.airborne():
 			continue
 		var d := Vector2(at.x - (last as Vector3).x, at.z - (last as Vector3).z).length()
 		if d > max_step:

@@ -344,7 +344,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 - **Host and camera (GUT, headless):** the fixed step, hit-stop and slow motion, pause and focus loss, the camera's distances, the HUD's timing, and the flow from title to results, all driven through `step()` without a window.
 - **Soak:** 40 computer-vs-computer matches must finish without errors or impossible values (NaN, a fighter outside the arena, posture out of range). They report round length, parries, counters, disarms and ultimates per round, and each weapon's win rate. Target after tuning: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55% of its matches.
 - **Presentation:** scripted screenshot scenes, rendered in a window from the command line:
-  - a pose gallery of every attack at wind-up, contact and follow-through, for each weapon, on each fighter;
+  - a pose gallery of every attack at wind-up, contact and follow-through, for each weapon, on each fighter: contact sheets (`tools/shot_scenes/move_sheet.tscn`) play a move against a defender 2.5 m away and show its chosen frames from the gameplay camera behind each fighter, three-quarter, close and at the hands, each frame captioned with its phase and PoseCheck numbers; `--move=all` renders a weapon's whole set, the same images on every run;
   - the arena from the gameplay camera and the Watch camera;
   - every menu screen;
   - Versus split screen;

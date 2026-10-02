@@ -171,7 +171,7 @@ func _build_stage() -> void:
 	elif stage != &"studio":
 		push_error("preview.gd: --stage must be studio or night, not '%s'" % stage)
 	else:
-		_build_studio_stage()
+		build_studio_stage(self)
 	_camera = Camera3D.new()
 	add_child(_camera)
 	_camera.current = true
@@ -210,7 +210,9 @@ func _apply_preset() -> void:
 	GraphicsApplier.apply(preset, self, get_viewport())
 
 
-func _build_studio_stage() -> void:
+## The neutral grey studio for judging the art: lights, a floor and a 1 m
+## grid, added under `parent` (the move sheets use it too).
+static func build_studio_stage(parent: Node) -> void:
 	var env: Environment = Environment.new()
 	env.background_mode = Environment.BG_COLOR
 	env.background_color = Color(0.3, 0.32, 0.35)
@@ -220,17 +222,17 @@ func _build_studio_stage() -> void:
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	var world_env: WorldEnvironment = WorldEnvironment.new()
 	world_env.environment = env
-	add_child(world_env)
+	parent.add_child(world_env)
 	var key: DirectionalLight3D = DirectionalLight3D.new()
 	key.rotation_degrees = Vector3(-40.0, -30.0, 0.0)
 	key.light_energy = 1.5
 	key.shadow_enabled = true
-	add_child(key)
+	parent.add_child(key)
 	var fill: DirectionalLight3D = DirectionalLight3D.new()
 	fill.rotation_degrees = Vector3(-15.0, 160.0, 0.0)
 	fill.light_energy = 0.7
 	fill.light_color = Color(0.75, 0.82, 1.0)
-	add_child(fill)
+	parent.add_child(fill)
 	var floor_mesh: MeshInstance3D = MeshInstance3D.new()
 	var plane: PlaneMesh = PlaneMesh.new()
 	plane.size = Vector2(40.0, 40.0)
@@ -239,11 +241,11 @@ func _build_studio_stage() -> void:
 	floor_mat.albedo_color = Color(0.4, 0.4, 0.41)
 	floor_mat.roughness = 0.95
 	floor_mesh.material_override = floor_mat
-	add_child(floor_mesh)
+	parent.add_child(floor_mesh)
 	var grid: PackedVector3Array = PackedVector3Array()
 	for i: int in range(-10, 11):
 		grid.append_array([Vector3(i, 0.002, -10), Vector3(i, 0.002, 10), Vector3(-10, 0.002, i), Vector3(10, 0.002, i)])
-	add_child(_lines(grid, Color(0.3, 0.3, 0.31)))
+	parent.add_child(_lines(grid, Color(0.3, 0.3, 0.31)))
 
 
 func _look_from(pos: Vector3, target: Vector3, fov: float) -> void:

@@ -11,7 +11,8 @@ extends RefCounted
 ## poses and measures the view once per attack frame (steps the rules spend
 ## in hit-stop don't advance the move, so they are skipped). Reach is
 ## measured against the defender standing where it stood when the move
-## began.
+## began. begin() and next_frame() step through a move a frame at a time,
+## for a caller that shows each frame (the contact sheets).
 ##
 ## Benches made in a test are freed together by free_all().
 
@@ -38,6 +39,13 @@ var attacker: Fighter
 var defender: Fighter
 var view: FighterView
 var check: PoseCheck
+## The move begin() started, until it ends.
+var move: AttackDef
+
+## Where the defender stood when the move began, and the move's last frame
+## stepped to.
+var _start_feet: Vector3 = Vector3.ZERO
+var _last: int = 0
 
 
 ## A bench for fighter `fighter_id` (a FighterLook id) with `weapon`, its
@@ -62,6 +70,14 @@ static func free_all() -> void:
 		if is_instance_valid(bench.view):
 			bench.view.free()
 	_benches.clear()
+
+
+## Lets go of the bench's world, for a bench whose view is freed with its
+## parent.
+func dispose() -> void:
+	if world != null:
+		world.dispose()
+	_benches.erase(self)
 
 
 ## Puts both fighters back at the duelling distance, free and facing each
@@ -90,29 +106,51 @@ func frame() -> PoseCheck.Frame:
 ## attack frame, up to the frame the move ends on (await it: each frame
 ## waits for the skeleton to update).
 func play(move_id: StringName) -> Array[Step]:
-	stand()
-	var feet: Vector3 = _feet(defender)
 	var out: Array[Step] = []
-	if not attacker.start_attack(move_id):
-		push_error("MoveBench.play: %s has no move %s" % [weapon.id, move_id])
+	if not begin(move_id):
 		return out
-	var def: AttackDef = attacker.atk.def
-	var last: int = 0
+	var s: Step = await next_frame()
+	while s != null:
+		out.append(s)
+		s = await next_frame()
+	return out
+
+
+## Starts move `move_id` from the guard in a fresh world, for next_frame()
+## to step through; false (reported) when the weapon has no such move.
+func begin(move_id: StringName) -> bool:
+	stand()
+	move = null
+	if not attacker.start_attack(move_id):
+		push_error("MoveBench.begin: %s has no move %s" % [weapon.id, move_id])
+		return false
+	move = attacker.atk.def
+	_start_feet = _feet(defender)
+	_last = 0
+	return true
+
+
+## Steps the rules to the move's next frame, shows and measures it (await
+## it); null once the move has ended.
+func next_frame() -> Step:
+	if move == null:
+		return null
 	for i: int in MAX_STEPS:
 		world.step([RawInput.empty(), RawInput.empty()])
-		if attacker.state != &"attack" or attacker.atk == null or attacker.atk.def != def:
+		if attacker.state != &"attack" or attacker.atk == null or attacker.atk.def != move:
 			break
-		if attacker.atk.frame == last:
+		if attacker.atk.frame == _last:
 			continue
-		last = attacker.atk.frame
+		_last = attacker.atk.frame
 		_show()
 		var s: Step = Step.new()
-		s.frame = last
-		s.phase = &"startup" if last <= def.startup else (&"active" if last <= def.startup + def.active else &"recovery")
-		s.contact = last == def.startup + 1
-		s.report = check.measure(await _frame(feet), s.contact)
-		out.append(s)
-	return out
+		s.frame = _last
+		s.phase = &"startup" if _last <= move.startup else (&"active" if _last <= move.startup + move.active else &"recovery")
+		s.contact = _last == move.startup + 1
+		s.report = check.measure(await _frame(_start_feet), s.contact)
+		return s
+	move = null
+	return null
 
 
 ## A move's frames on one line: the worst of each measure, and how many
@@ -155,9 +193,12 @@ static func summary(move_id: StringName, steps: Array[Step]) -> String:
 		for f: String in fails:
 			var kind: String = f.get_slice(" ", 0) + " " + f.get_slice(" ", 1) if not f.begins_with("blade") else "blade"
 			kinds[kind] = kinds.get(kind, 0) + 1
-	return "%-9s %3d fr  wrist %+4.0f/%+4.0f  elbow at contact %-11s most %3.0f  blade %5.1f cm (%s)  knee %+5.1f cm  reach %4.1f cm  fails %d/%d %s" % [
+	var counts: PackedStringArray = []
+	for kind: String in kinds:
+		counts.append("%s %d" % [kind, kinds[kind]])
+	return "%-9s %3d fr  wrist %+4.0f/%+4.0f  elbow at contact %-11s most %3.0f  blade %5.1f cm (%s)  knee %+5.1f cm  reach %4.1f cm  fails %d/%d%s" % [
 		move_id, steps.size(), bend, deviation, contact, straightest, gap * 100.0, near, knee * 100.0, reach * 100.0,
-		failing, steps.size(), str(kinds) if not kinds.is_empty() else ""]
+		failing, steps.size(), ": " + ", ".join(counts) if not counts.is_empty() else ""]
 
 
 ## Shows the fighter where the rules have it, at the end of the step.

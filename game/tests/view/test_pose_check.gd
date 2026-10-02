@@ -326,6 +326,24 @@ func test_the_bench_gives_the_same_reports_twice() -> void:
 
 ## Not yet required to pass: the stand-in stick poses were made for a stick
 ## figure. Swings (plan task 14.10 on) must pass.
+func test_a_move_stepped_by_hand_gives_the_frames_it_plays() -> void:
+	var bench: MoveBench = _bench(&"rogue")
+	var played: Array[MoveBench.Step] = await bench.play(&"k_l1")
+	assert_true(bench.begin(&"k_l1"))
+	assert_eq(bench.move, Moves.KATANA.moves[&"k_l1"], "the move being played")
+	var stepped: Array[MoveBench.Step] = []
+	var s: MoveBench.Step = await bench.next_frame()
+	while s != null:
+		stepped.append(s)
+		s = await bench.next_frame()
+	assert_eq(stepped.size(), played.size())
+	for i: int in mini(stepped.size(), played.size()):
+		assert_eq(stepped[i].frame, played[i].frame)
+		assert_eq(stepped[i].phase, played[i].phase)
+		assert_eq(stepped[i].report.summary(), played[i].report.summary(), "frame %d measures the same" % played[i].frame)
+	assert_null(await bench.next_frame(), "nothing after the move ends")
+
+
 func test_a_report_over_the_stick_pose_katana_attacks_prints() -> void:
 	for id: StringName in FighterLook.IDS:
 		var bench: MoveBench = _bench(id)

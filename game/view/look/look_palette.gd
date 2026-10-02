@@ -29,6 +29,7 @@ const STONE_DARK: Color = Color("3c3b44")
 const WOOD_DARK: Color = Color("2a201c")
 const ROPE: Color = Color("b3a078")
 const PINE: Color = Color("1e2b28")
+const IRON: Color = Color("34343c")
 const STEEL: Color = Color("b8bec8")
 
 ## Render layer bit for fighters and their weapons (layer 2). Lights whose
@@ -42,6 +43,10 @@ const FIGHTER_LAYER: int = 2
 const GROUND_LAYER: int = 8
 ## Cull mask for small lights: every layer but the ground.
 const SMALL_LIGHT_MASK: int = 0xFFFFF & ~GROUND_LAYER
+## Render layer bit for the rock under an arena's rim (layer 5). Cameras
+## above the courtyard can't see it, so the arena leaves this layer out of
+## their cull masks, camera by camera.
+const BELOW_DECK_LAYER: int = 16
 
 
 ## The colour of a side with palette index `palette`.

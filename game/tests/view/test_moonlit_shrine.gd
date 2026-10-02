@@ -3,8 +3,10 @@ extends GutTest
 ## and ink-wash pass, the markers the match reads, a floor at y = 0 under the
 ## spawns, a parapet, gate ropes and props outside the walkable circle with
 ## only flat pebbles inside it, the torii on the gate landings, the lanterns'
-## lights, halos and flicker, bought art in place of a procedural prop, and
-## the chosen preset applied.
+## lights, halos and flicker, bought art in place of a procedural prop, the
+## ledge under the props, the rock under the rim left out per camera by the
+## cameras above the courtyard, the floating rocks bobbing, and the chosen
+## preset applied.
 
 const SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
 
@@ -278,12 +280,164 @@ func test_every_prop_kind_can_be_swapped_for_bought_art() -> void:
 		assert_eq(placed, expected[kind], "bought %s in every spot" % kind)
 	for kit_name: String in ["Stone", "Lacquer", "BlackLacquer", "Bark", "Pine", "Glow"]:
 		assert_null(props.get_node_or_null(kit_name), "no procedural %s left" % kit_name)
+	var rocks: Array[Node] = shrine.get_node("Underside/FloatingRocks").get_children()
+	assert_eq(rocks.size(), layout.floating_rocks.size(), "a bought floating rock in every spot")
+	for rock: Node in rocks:
+		assert_null(rock.get_node_or_null("Rock"), "%s is the bought one" % rock.name)
 
 
 func test_bought_art_under_an_unknown_kind_is_reported() -> void:
 	var shrine: MoonlitShrine = _shrine_with_art([&"lanturn"])
 	assert_push_error("lanturn")
 	assert_not_null(shrine.get_node_or_null("Platform/Props/Glow"), "the lanterns are built as usual")
+
+
+# ------------------------------------------------------------------ the underside
+
+## How far the ledge reaches at angle_deg: its farthest vertex within 4
+## degrees of it.
+func _ledge_reach(ledge: MeshInstance3D, angle_deg: float) -> float:
+	var best: float = 0.0
+	for w: Vector3 in _world_vertices(ledge):
+		if absf(wrapf(rad_to_deg(atan2(w.x, w.z)) - angle_deg, -180.0, 180.0)) < 4.0:
+			best = maxf(best, Vector2(w.x, w.z).length())
+	return best
+
+
+func test_the_ledge_on_the_ground_layer_reaches_past_every_prop_on_it() -> void:
+	var ledge := arena.get_node("Underside/Ledge") as MeshInstance3D
+	assert_eq(ledge.layers, LookPalette.GROUND_LAYER, "lantern lights skip it")
+	var spots: Array[Vector2] = []
+	for angle: float in arena.layout.lantern_angles:
+		spots.append(Vector2(angle, arena.layout.lantern_radius))
+	for p: Vector4 in arena.layout.pillars:
+		spots.append(Vector2(p.x, p.y))
+	for t: Vector4 in arena.layout.trees:
+		spots.append(Vector2(t.x, t.y))
+	for spot: Vector2 in spots:
+		assert_gt(_ledge_reach(ledge, spot.x), spot.y + 0.6, "the ledge holds the prop at %.0f degrees, %.1f m" % [spot.x, spot.y])
+	var aabb: AABB = ledge.get_aabb()
+	assert_lt(aabb.position.y, ShrinePlatform.LEDGE_Y, "it droops toward its rim")
+	assert_lt(aabb.end.y, 0.0, "under the floor's height")
+
+
+func test_the_rock_under_the_rim_hangs_on_its_own_layer() -> void:
+	var below: Array[Node] = arena.get_node("Underside/BelowDeck").find_children("*", "GeometryInstance3D", true, false)
+	var names: Array[StringName] = []
+	for node: Node in below:
+		names.append(node.name)
+		assert_eq((node as GeometryInstance3D).layers, LookPalette.BELOW_DECK_LAYER, "%s on the below-deck layer only" % node.name)
+	for part: StringName in [&"Crag", &"Roots", &"Chains"]:
+		assert_has(names, part)
+	var crag: AABB = (arena.get_node("Underside/BelowDeck/Crag") as MeshInstance3D).get_aabb()
+	assert_lt(crag.end.y, ShrinePlatform.LEDGE_Y, "the crag hangs under the ledge")
+	assert_gt(crag.size.y, arena.layout.crag_depth * 0.9, "down to its tip")
+
+
+## The ledge hides the crag from every camera above it and inside its rim:
+## the crag never reaches out past the rim, and the cameras' limit stays
+## inside the ledge's least reach.
+## (Keys in quarter degrees: the lattice's columns sit every 3.75 degrees.)
+func test_the_crag_stays_inside_the_ledges_rim() -> void:
+	assert_lt(arena.def.camera_max_radius, arena.layout.crag_radius, "cameras stay over the ledge")
+	var ledge := arena.get_node("Underside/Ledge") as MeshInstance3D
+	var rim: Dictionary[int, float] = {}
+	for w: Vector3 in _world_vertices(ledge):
+		var key: int = roundi(rad_to_deg(atan2(w.x, w.z)) * 4.0)
+		rim[key] = maxf(rim.get(key, 0.0), Vector2(w.x, w.z).length())
+	var outside: int = 0
+	var worst: float = 0.0
+	for w: Vector3 in _world_vertices(arena.get_node("Underside/BelowDeck/Crag") as MeshInstance3D):
+		var key: int = roundi(rad_to_deg(atan2(w.x, w.z)) * 4.0)
+		var past: float = Vector2(w.x, w.z).length() - rim.get(key, INF)
+		if past > 0.001:
+			outside += 1
+			worst = maxf(worst, past)
+	assert_eq(outside, 0, "crag points past the rim at their angle (worst %.2f m)" % worst)
+
+
+func _camera_at(pos: Vector3) -> Camera3D:
+	var cam := Camera3D.new()
+	add_child_autofree(cam)
+	cam.global_position = pos
+	return cam
+
+
+func _draws_below_deck(cam: Camera3D) -> bool:
+	return cam.cull_mask & LookPalette.BELOW_DECK_LAYER != 0
+
+
+func test_the_fight_and_menu_cameras_leave_out_the_rock_under_the_rim() -> void:
+	var rig: CameraRig = autofree(CameraRig.new())
+	rig.apply_arena(arena.def.camera_max_radius, arena.def.camera_far)
+	# The rig clamps the fight cameras to its limit, but not the menu's orbit.
+	var spots: Array[Vector3] = [rig.menu_target(0.0)["pos"], rig.menu_target(10.0)["pos"]]
+	for side: int in 2:
+		var me: Vector3 = arena.def.spawn_point(side).origin
+		var them: Vector3 = arena.def.spawn_point(1 - side).origin
+		# At the spawns, and backed against opposite walls, where the cameras
+		# go furthest out and highest.
+		var at_wall: Vector3 = me.normalized() * (arena.def.walkable_radius - 0.5)
+		for pair: Array in [[me, them], [at_wall, -at_wall]]:
+			var a: Vector3 = pair[0]
+			var b: Vector3 = pair[1]
+			var dir: Vector3 = (b - a).normalized()
+			spots.append(rig.clamp_to_arena(rig.follow_target(a, b, dir)["pos"]))
+			spots.append(rig.clamp_to_arena(rig.watch_target(a, b, dir, 0.0)["pos"]))
+	for pos: Vector3 in spots:
+		var cam: Camera3D = _camera_at(pos)
+		arena.cull_below_deck(cam)
+		assert_false(_draws_below_deck(cam), "a camera at %s leaves it out" % cam.global_position)
+
+
+func test_cameras_beyond_or_below_the_courtyard_draw_the_rock_under_the_rim() -> void:
+	var a: float = deg_to_rad(228.0)
+	var establishing := Vector3(sin(a) * 58.0, -5.0, cos(a) * 58.0)
+	for pos: Vector3 in [establishing, Vector3(-12.0, 90.0, 0.0), Vector3(0.0, -2.0, 10.0), Vector3(30.0, 3.0, 0.0)]:
+		var cam: Camera3D = _camera_at(pos)
+		cam.cull_mask &= ~LookPalette.BELOW_DECK_LAYER
+		arena.cull_below_deck(cam)
+		assert_true(_draws_below_deck(cam), "a camera at %s draws it" % pos)
+
+
+func test_each_camera_is_decided_on_its_own() -> void:
+	var fight: Camera3D = _camera_at(Vector3(0.0, 2.0, -8.0))
+	var far: Camera3D = _camera_at(Vector3(0.0, -5.0, 58.0))
+	far.cull_mask &= ~LookPalette.BELOW_DECK_LAYER
+	arena.cull_below_deck(fight)
+	arena.cull_below_deck(far)
+	assert_false(_draws_below_deck(fight))
+	assert_true(_draws_below_deck(far))
+	assert_eq(fight.cull_mask | LookPalette.BELOW_DECK_LAYER, far.cull_mask, "no other layer changes")
+
+
+func test_each_frame_the_arena_decides_for_its_viewports_camera() -> void:
+	var cam: Camera3D = _camera_at(Vector3(0.0, -5.0, 58.0))
+	cam.make_current()
+	cam.cull_mask &= ~LookPalette.BELOW_DECK_LAYER
+	simulate(arena, 1, 0.016)
+	assert_true(_draws_below_deck(cam), "from out beyond the edge")
+	cam.global_position = Vector3(0.0, 2.0, -8.0)
+	simulate(arena, 1, 0.016)
+	assert_false(_draws_below_deck(cam), "from the courtyard")
+
+
+func test_floating_rocks_bob_over_their_spots() -> void:
+	var rocks: Array[Node] = arena.get_node("Underside/FloatingRocks").get_children()
+	assert_eq(rocks.size(), arena.layout.floating_rocks.size())
+	var start: Array[float] = []
+	for rock: Node in rocks:
+		start.append((rock as Node3D).position.y)
+	simulate(arena, 30, 0.1)
+	var moved: bool = false
+	for i: int in rocks.size():
+		var f: Vector4 = arena.layout.floating_rocks[i]
+		var home: Vector3 = ShrineLayout.polar(f.x, f.y, f.z)
+		var at: Vector3 = (rocks[i] as Node3D).position
+		assert_almost_eq(Vector2(at.x, at.z), Vector2(home.x, home.z), Vector2.ONE * 0.001, "rock %d stays over its spot" % i)
+		assert_between(at.y, home.y - ShrineUnderside.BOB_HEIGHT - 0.001, home.y + ShrineUnderside.BOB_HEIGHT + 0.001, "rock %d bobs gently" % i)
+		moved = moved or not is_equal_approx(at.y, start[i])
+	assert_true(moved, "they bob")
 
 
 # ------------------------------------------------------------------ presets
@@ -311,6 +465,12 @@ func test_every_preset_applies_to_the_courtyard_and_its_props() -> void:
 			assert_false(ToonMaterials.is_outlined(mi.material_override), "%s: %s never outlined" % [id, kit_name])
 		for light: Node in _lantern_lights(arena):
 			assert_eq((light as Light3D).visible, preset.minor_lights, "%s: lantern lights" % id)
+		for part: String in ["Roots", "Chains"]:
+			var geo := arena.get_node("Underside/BelowDeck/" + part) as GeometryInstance3D
+			assert_eq(ToonMaterials.is_outlined(geo.material_override), preset.outline_props, "%s: %s outline" % [id, part])
+		for rock: String in ["Ledge", "BelowDeck/Crag"]:
+			var geo := arena.get_node("Underside/" + rock) as GeometryInstance3D
+			assert_false(ToonMaterials.is_outlined(geo.material_override), "%s: %s never outlined" % [id, rock])
 		var key := arena.get_node("Lights/MoonKey") as DirectionalLight3D
 		assert_eq(key.directional_shadow_max_distance, preset.shadow_max_distance, "%s: moon shadows" % id)
 		assert_eq((arena.get_node("InkWash") as InkWashPass).quality, preset.post_quality, "%s: ink wash" % id)

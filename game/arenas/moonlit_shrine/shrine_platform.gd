@@ -11,7 +11,8 @@ extends RefCounted
 ## Each gate's rope barrier is its own node (GateRope0, GateRope1, by gate
 ## index), so the match intro can drop it while a fighter walks in. A prop
 ## kind with a scene in ShrineLayout.prop_scenes is instanced at the same
-## spots (Platform/Props/Lantern0 and so on) instead of being built.
+## spots (Platform/Props/Lantern0 and so on, by ShrineLayout.place_art)
+## instead of being built.
 
 const STONE_FLOOR: Shader = preload("res://shaders/stone_floor.gdshader")
 const HALO: Shader = preload("res://shaders/particle_glow.gdshader")
@@ -49,7 +50,7 @@ static func build(layout: ShrineLayout, def: ArenaDef) -> Node3D:
 	var props := Node3D.new()
 	props.name = "Props"
 	root.add_child(props)
-	_parapet(kits, layout, def, _rng(layout, &"parapet"))
+	_parapet(kits, layout, def, layout.random_stream(&"parapet"))
 	_gates(kits, root, props, layout, def, mats)
 	_pebbles(kits, layout, def)
 	_lanterns(kits, root, props, layout)
@@ -58,14 +59,6 @@ static func build(layout: ShrineLayout, def: ArenaDef) -> Node3D:
 	_debris(kits, layout, def)
 	kits.finish(props, mats, OUTLINED, NO_SHADOW)
 	return root
-
-
-## A random stream of its own for one group of pieces, from the layout's
-## seed, so bought art in place of one kind leaves the others as they were.
-static func _rng(layout: ShrineLayout, group: StringName) -> RandomNumberGenerator:
-	var rng := RandomNumberGenerator.new()
-	rng.seed = hash([layout.seed, group])
-	return rng
 
 
 ## Where each stone lantern stands on the ledge, by layout.lantern_angles.
@@ -229,7 +222,7 @@ static func _gates(kits: MeshKitSet, root: Node3D, props: Node3D, layout: Shrine
 		for k: int in 2:
 			stone.box(xform * Transform3D(Basis(), Vector3(0, -0.12 - 0.17 * k - 0.35, far_z + 0.3 + 0.45 * k)),
 				Vector3(layout.torii_span + 1.0 - k * 0.4, 0.7, 0.6))
-		if not _place_art(props, layout, &"torii", side, xform):
+		if not layout.place_art(props, &"torii", side, xform):
 			ShrineProps.torii(kits, xform, layout.torii_height, layout.torii_span)
 		# A rope barrier across the parapet opening, tied to the outer faces of
 		# the end posts so its sag stays outside the walkable circle.
@@ -257,14 +250,14 @@ static func _gate_end_angle(layout: ShrineLayout, def: ArenaDef) -> float:
 ## Flat pebbles along the inside foot of the parapet, clear of the gates:
 ## the only things inside the walkable circle, and never in the way.
 static func _pebbles(kits: MeshKitSet, layout: ShrineLayout, def: ArenaDef) -> void:
-	_scatter_rocks(kits.kit(&"pebbles"), def, _rng(layout, &"pebbles"), layout.pebble_count,
+	_scatter_rocks(kits.kit(&"pebbles"), def, layout.random_stream(&"pebbles"), layout.pebble_count,
 		Vector2(def.walkable_radius - 0.5, def.wall_inner_radius() - 0.05), Vector2(0.04, 0.08), 0.0)
 
 
 ## Loose rocks on the ledge, between the plinth and the crag's edge, clear of
 ## the gates.
 static func _debris(kits: MeshKitSet, layout: ShrineLayout, def: ArenaDef) -> void:
-	_scatter_rocks(kits.kit(&"stone_dark"), def, _rng(layout, &"debris"), layout.debris_count,
+	_scatter_rocks(kits.kit(&"stone_dark"), def, layout.random_stream(&"debris"), layout.debris_count,
 		Vector2(def.floor_radius + 0.3, layout.crag_radius - 1.2), Vector2(0.08, 0.32), LEDGE_Y)
 
 
@@ -290,10 +283,10 @@ static func _scatter_rocks(kit: MeshKit, def: ArenaDef, rng: RandomNumberGenerat
 
 ## The stone lanterns on the ledge, and a light and a halo at each fire.
 static func _lanterns(kits: MeshKitSet, root: Node3D, props: Node3D, layout: ShrineLayout) -> void:
-	var rng: RandomNumberGenerator = _rng(layout, &"lantern")
+	var rng: RandomNumberGenerator = layout.random_stream(&"lantern")
 	var spots: Array[Transform3D] = _lantern_spots(layout)
 	for i: int in spots.size():
-		if not _place_art(props, layout, &"lantern", i, spots[i]):
+		if not layout.place_art(props, &"lantern", i, spots[i]):
 			ShrineProps.lantern(kits, spots[i], rng)
 	var fires: PackedVector3Array = _fire_points(layout)
 	var lights := Node3D.new()
@@ -342,43 +335,26 @@ static func _lantern_halos(fires: PackedVector3Array) -> MultiMeshInstance3D:
 
 ## The pillars on the ledge, each turned at random.
 static func _pillars(kits: MeshKitSet, props: Node3D, layout: ShrineLayout) -> void:
-	var rng: RandomNumberGenerator = _rng(layout, &"pillar")
+	var rng: RandomNumberGenerator = layout.random_stream(&"pillar")
 	for i: int in layout.pillars.size():
 		var p: Vector4 = layout.pillars[i]
 		var xform := Transform3D(Basis(Vector3.UP, rng.randf_range(0, TAU)), ShrineLayout.polar(p.x, p.y, LEDGE_Y))
-		if not _place_art(props, layout, &"pillar", i, xform):
+		if not layout.place_art(props, &"pillar", i, xform):
 			ShrineProps.pillar(kits, xform, p.z, p.w > 0.5, rng)
 
 
 ## The pines and dead trees on the ledge, leaning outward (their local +x).
 static func _trees(kits: MeshKitSet, props: Node3D, layout: ShrineLayout) -> void:
-	var pine_rng: RandomNumberGenerator = _rng(layout, &"pine")
-	var dead_rng: RandomNumberGenerator = _rng(layout, &"dead_tree")
+	var pine_rng: RandomNumberGenerator = layout.random_stream(&"pine")
+	var dead_rng: RandomNumberGenerator = layout.random_stream(&"dead_tree")
 	for i: int in layout.trees.size():
 		var t: Vector4 = layout.trees[i]
 		var xform := Transform3D(Basis(Vector3.UP, deg_to_rad(t.x - 90.0)), ShrineLayout.polar(t.x, t.y, LEDGE_Y))
 		var kind: StringName = &"pine" if t.w < 0.5 else &"dead_tree"
-		if _place_art(props, layout, kind, i, xform):
+		if layout.place_art(props, kind, i, xform):
 			continue
 		if kind == &"pine":
 			ShrineProps.pine(kits, xform, t.z, pine_rng)
 		else:
 			ShrineProps.dead_tree(kits, xform, t.z, dead_rng)
 
-
-## Instances the bought art for kind under props at xform, named by kind and
-## index (Lantern0, DeadTree2), when layout.prop_scenes has it. Returns
-## whether it did, so the caller builds the procedural prop otherwise.
-static func _place_art(props: Node3D, layout: ShrineLayout, kind: StringName, index: int, xform: Transform3D) -> bool:
-	var scene: PackedScene = layout.prop_scenes.get(kind)
-	if scene == null:
-		return false
-	var node: Node = scene.instantiate()
-	if not node is Node3D:
-		push_error("ShrinePlatform: the %s art isn't a Node3D scene" % kind)
-		node.free()
-		return false
-	node.name = "%s%d" % [String(kind).to_pascal_case(), index]
-	(node as Node3D).transform = xform
-	props.add_child(node)
-	return true

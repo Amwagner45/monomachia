@@ -15,7 +15,7 @@ extends Resource
 ## same spots instead of building the procedural one.
 
 ## The prop kinds that bought art can replace.
-const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine", &"dead_tree"]
+const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine", &"dead_tree", &"floating_rock"]
 
 ## Seed for every random choice in the builders (stone shades, pebbles,
 ## debris, trees).
@@ -65,8 +65,21 @@ const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine",
 @export var debris_count: int = 48
 
 @export_group("Underside")
-## The crag under the courtyard: its radius at the top, where the ledge ends.
-@export var crag_radius: float = 21.0
+## The crag under the courtyard: the least reach of its top, the ledge, all
+## round (bumps push the rim up to 16% further: 22.3 to 23.8 m with this
+## seed), and how far below the floor its tip hangs.
+@export var crag_radius: float = 21.3
+@export var crag_depth: float = 38.0
+## Roots hanging from the crag's sides.
+@export var root_count: int = 26
+## Chains from the crag's sides down into the clouds: angles.
+@export var chain_angles: PackedFloat32Array = PackedFloat32Array([210, 330, 35, 150])
+## Floating rocks round the shrine: (angle, distance, height, size).
+@export var floating_rocks: PackedVector4Array = PackedVector4Array([
+	Vector4(250, 34, -6, 3.2), Vector4(298, 46, 4, 2.0), Vector4(20, 38, -14, 4.0),
+	Vector4(78, 52, 9, 2.4), Vector4(120, 31, -3, 1.6), Vector4(200, 58, -20, 5.0),
+	Vector4(345, 64, 12, 2.8),
+])
 
 @export_group("World")
 ## Direction toward the moon (normalised by the builders). The red rim light
@@ -75,10 +88,38 @@ const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine",
 ## Direction the moonlight comes from (the key light), independent of the
 ## moon's disc.
 @export var key_light_direction: Vector3 = Vector3(-0.95, 1.05, -0.25)
+## Height of the sea of clouds (task 17.7), which the chains run down into.
+@export var cloud_sea_height: float = -46.0
 
 @export_group("Art overrides")
 ## Bought art per prop kind; a kind left out is built procedurally.
 @export var prop_scenes: Dictionary[StringName, PackedScene] = {}
+
+
+## A random stream of its own for one group of pieces, from the seed, so
+## bought art in place of one kind leaves the others as they were.
+func random_stream(group: StringName) -> RandomNumberGenerator:
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash([seed, group])
+	return rng
+
+
+## Instances the bought art for kind under parent at xform, named by kind
+## and index (Lantern0, DeadTree2), when prop_scenes has it. Returns whether
+## it did, so the builder makes the procedural piece otherwise.
+func place_art(parent: Node3D, kind: StringName, index: int, xform: Transform3D) -> bool:
+	var scene: PackedScene = prop_scenes.get(kind)
+	if scene == null:
+		return false
+	var node: Node = scene.instantiate()
+	if not node is Node3D:
+		push_error("ShrineLayout: the %s art isn't a Node3D scene" % kind)
+		node.free()
+		return false
+	node.name = "%s%d" % [String(kind).to_pascal_case(), index]
+	(node as Node3D).transform = xform
+	parent.add_child(node)
+	return true
 
 
 ## Converts an angle (degrees, from +Z toward +X) and a radius to a point.

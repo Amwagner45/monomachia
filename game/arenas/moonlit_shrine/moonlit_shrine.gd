@@ -8,23 +8,31 @@ extends Node3D
 ##
 ## Like every arena it brings its own environment, lights and the ink-wash
 ## pass, and applies the chosen graphics preset to itself when it loads; the
-## match brings the camera and the fighters. It flickers its lantern lights.
+## match brings the camera and the fighters. It flickers its lantern lights,
+## bobs its floating rocks, and leaves the rock under its rim out of the
+## cameras above the courtyard (cull_below_deck).
 ##
 ## Seams for the match (see ArenaScenes): `def`, from which the camera takes
 ## its limits; Marker3D children Spawn0, Spawn1 (where the rules start each
 ## side) and Gate0, Gate1 (the gate anchors); and Platform/GateRope0 and
 ## GateRope1 (each gate's rope barrier, for the match intro to drop).
 ##
-## Built so far: the courtyard (17.3) and its props (17.4). The underside,
-## the sky, the backdrop and the embers and ash come with tasks 17.5 to 17.8.
+## Built so far: the courtyard (17.3), its props (17.4) and the underside
+## (17.5). The sky, the backdrop and the embers and ash come with tasks 17.6
+## to 17.8.
 
 ## The environment until the arena's own sky (task 17.6) sets def.environment.
 const NIGHT_ENVIRONMENT: Environment = preload("res://view/look/ink_night_environment.tres")
+## The highest camera (m above the floor) that leaves out the rock under the
+## rim: from there and inside the camera's limit (def.camera_max_radius),
+## sight lines over the ledge pass above the crag, its roots and its chains.
+const BELOW_DECK_MAX_HEIGHT := 5.0
 
 @export var def: ArenaDef
 @export var layout: ShrineLayout
 
 var _lantern_lights: Array[OmniLight3D] = []
+var _floating_rocks: Node3D
 var _time: float = 0.0
 
 
@@ -37,6 +45,32 @@ func _process(delta: float) -> void:
 	_time += delta
 	for i: int in _lantern_lights.size():
 		_lantern_lights[i].light_energy = ShrinePlatform.LANTERN_ENERGY * _flicker(_time, i)
+	ShrineUnderside.bob_rocks(_floating_rocks, layout, _time)
+	var camera: Camera3D = get_viewport().get_camera_3d()
+	if camera != null:
+		cull_below_deck(camera)
+
+
+## Leaves the rock under the rim out of camera's view, or puts it back, by
+## where the camera is. It's the camera's choice (the BELOW_DECK_LAYER bit of
+## its cull mask), so each view of a split screen decides for itself: the
+## arena does this for its viewport's camera every frame, after the match
+## view has moved it, and another view's camera needs it called too. The bit
+## stays as set when the arena leaves, which only matters to an arena that
+## draws on that layer, and it sets the bit again itself.
+func cull_below_deck(camera: Camera3D) -> void:
+	if _sees_below_deck(to_local(camera.global_position)):
+		camera.cull_mask |= LookPalette.BELOW_DECK_LAYER
+	else:
+		camera.cull_mask &= ~LookPalette.BELOW_DECK_LAYER
+
+
+## Whether a camera at point (arena space) can see the rock under the rim.
+## The fight and menu cameras can't, so they leave it out: drawn behind the
+## floor it still cost about 0.4 ms a frame on the target laptop.
+func _sees_below_deck(point: Vector3) -> bool:
+	var over_courtyard: bool = Vector2(point.x, point.z).length() <= def.camera_max_radius
+	return not (over_courtyard and point.y >= 0.0 and point.y <= BELOW_DECK_MAX_HEIGHT)
 
 
 ## Lantern i's brightness at time t, around 1: three waves at odd rates,
@@ -57,6 +91,8 @@ func _build() -> void:
 	add_child(ShrinePlatform.build(layout, def))
 	for light: Node in get_node(^"Platform/LanternLights").get_children():
 		_lantern_lights.append(light as OmniLight3D)
+	add_child(ShrineUnderside.build(layout, def))
+	_floating_rocks = get_node(^"Underside/FloatingRocks")
 	_add_markers()
 	var ink := InkWashPass.new()
 	ink.name = "InkWash"

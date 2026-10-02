@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.4, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.5.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.5, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.6.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -150,11 +150,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The arena screenshot rig (17.2): `tools/shot_scenes/arena_shot.gd` shoots an arena on a stepped `MatchHost` with the real fighters on its spawns, from the gameplay, Watch and menu cameras, an establishing view and a top-down debug view, at any preset (`arena_gameplay.tscn` … `arena_top_down.tscn`, `--preset=`, `--arena=`). It shoots an arena's own scene past the radius guard.
   - The shrine's courtyard (17.3): `arenas/moonlit_shrine/moonlit_shrine.tscn` builds the paved floor, the plinth, the parapet, the gate landings and rope barriers and the pebbles from its `ArenaDef` and `ShrineLayout`, with its own night environment, moon key light, red fighter-only rim light and ink-wash pass. Matches still use the stand-in until 8.3; the arena shots show the shrine.
   - The shrine's props (17.4): a torii on each gate landing, and on the ledge the stone lanterns (with flickering lights that skip the ground, and halos), the roped and broken pillars, the pines, the dead trees and loose rocks. `ShrineLayout.prop_scenes` swaps any prop kind for bought art at the same spots.
-- **Checks after 17.4** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 578 Godot tests (52 s): rules 138, input 118, audio 31, core 22, view 214, content 52, and 3 project-wide smoke tests;
+  - The shrine's underside (17.5): the rock ledge the props stand on, the crag hanging under it with roots and chains into the clouds, and floating rocks that bob. Cameras above the courtyard leave the rock under the rim out, each camera deciding for itself.
+- **Checks after 17.5** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 586 Godot tests (53 s): rules 138, input 118, audio 31, core 22, view 222, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 157 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor and the two glow shaders) passes in a window;
+  - the typecheck loads 158 scripts cleanly;
+  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders and the rock) passes in a window;
   - CI passed on the push of 14.1 (6a986cb);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
@@ -162,7 +163,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - **Waiting on its own worktree:**
   - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3, 17.4): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard and props. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's underside, sky, backdrop and ambience (17.5–17.9).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props and underside. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's sky, backdrop and ambience (17.6–17.9).
 
 ### Waiting on the owner
 
@@ -1148,14 +1149,45 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - Where the halos sit is checked in the shots: the headless renderer keeps no MultiMesh transforms.
       - **Shots reviewed:** gameplay and Watch at High and Medium (Medium drops the prop outlines and the lantern lights, and keeps the halos), plus menu, establishing and top-down. The lanterns, pillars, trees and rocks stand on nothing until the ledge (17.5), and the trees barely show against the black sky until 17.6.
       - For 17.8: the embers need the lantern fires, which `ShrinePlatform._fire_points()` gives; make it public then.
-  - [ ] **17.5 The rocky underside, roots, chains and floating rocks.** The rock under the rim is hidden only from cameras above the courtyard, decided per camera so split screen works later.
+  - [x] **17.5 The rocky underside, roots, chains and floating rocks.** The rock under the rim is hidden only from cameras above the courtyard, decided per camera so split screen works later.
     - Check: the underside tests pass; establishing and top-down shots reviewed.
     - Blocked by: 17.3 · Stories: 47
+    - Done:
+      - **`ShrineUnderside`** (`arenas/moonlit_shrine/shrine_underside.gd`), salvaged and trimmed (the floating rocks' temple hall waits for 17.7; no rock in the data was big enough to carry one):
+        - `Underside/Ledge`, the lattice's top rows, on the ground layer;
+        - `Underside/BelowDeck/Crag` (the sides down to the tip, and three spurs);
+        - `Roots`, hanging from the upper sides;
+        - `Chains`, one MultiMesh of iron links from `chain_angles` down into the clouds at `cloud_sea_height`;
+        - `Underside/FloatingRocks/FloatingRock0` and on, small crags carrying a lantern and a dead tree, a pine or a broken pillar. `bob_rocks()` places them, bobbing 0.7 m and slowly turning, from the layout and the time alone.
+        - The rock uses `shaders/rock.gdshader` (strata, ink strokes, dust on top, crevice shading), with no outline.
+      - **Two fixes to the worktree's crag:**
+        - Its rim's noise pulled the rim in by up to 14%, so trees and a pillar stood past it in mid-air. The bumps now only push outward. `crag_radius` (21.3 m, was 21.0) is the ledge's least reach all round, and the rim runs 22.3–23.8 m with this seed.
+        - Its buttresses bulged up to 1.8 m past the rim, where a grazing view from a fight camera could catch rock that is left out. The sides now stay 3% inside the rim (`UNDERCUT`).
+      - **The rock under the rim, left out per camera:**
+        - everything under `BelowDeck` is on `LookPalette.BELOW_DECK_LAYER` (layer 5);
+        - `MoonlitShrine.cull_below_deck(camera)` clears or sets that bit of the camera's cull mask. It is cleared for a camera inside `camera_max_radius` and 0–5 m above the floor (`BELOW_DECK_MAX_HEIGHT`), where the ledge hides the crag;
+        - the arena does this for its viewport's camera every frame, after the match view moves it. The bit stays as set when the arena leaves.
+      - **`MoonlitShrine`** also bobs the floating rocks.
+      - **`ShrineLayout`** gains:
+        - `crag_depth`, `root_count`, `chain_angles`, `floating_rocks` and `cloud_sea_height` (17.7's sea of clouds, read now by the chains);
+        - `floating_rock` in `PROP_KINDS`;
+        - `random_stream()` and `place_art()`, moved there from `ShrinePlatform` since both builders use them.
+      - **Tests:**
+        - the ledge on the ground layer, reaching past every lantern, pillar and tree;
+        - the crag, roots and chains on the below-deck layer only, the crag under the ledge and inside its rim, and the cameras' limit inside the ledge;
+        - the follow and Watch cameras (at the spawns, and backed against opposite walls) and the menu orbit leave the rock out; cameras beyond the edge, below the floor or high above draw it;
+        - each camera decided on its own, and the arena deciding for its viewport's camera every frame;
+        - the floating rocks bobbing over their spots;
+        - bought floating rocks;
+        - outlines per preset on the roots and chains, and none on the rock.
+      - **Shots reviewed:** establishing and top-down, plus gameplay, Watch and menu at High and establishing at Low. The establishing view is dark until the sky (17.6).
+      - **For 17.7:** the backdrop's cliffs used the worktree's `rock_material()`. It is `ShrineUnderside._rock_material()` now; make it public then.
   - [ ] **17.6 Night sky and blood moon.** The sky shader, the shrine environment, and the moon direction synced from the layout.
     - Check: the moon rises ahead of player one; fog and height fog are set; gameplay and Watch shots reviewed.
     - Owner: the red moon.
     - Blocked by: 17.3 · Stories: 46, 47
   - [ ] **17.7 Sea of clouds, mountains, cliff pagodas, waterfalls and the lake.** The backdrop builder and its shaders, with scenery detail per preset.
+    - Note from 17.5: `ShrineLayout.cloud_sea_height` is already there (the chains end in the clouds). `ShrineUnderside._rock_material()` is the rock for the cliffs, and the floating rocks could carry the temple hall.
     - Check: the far clip reaches the farthest ring and the camera takes it; detail follows each preset; gameplay, Watch, menu and establishing shots at the three presets reviewed.
     - Blocked by: 17.4, 17.6 · Stories: 46, 47, 57
   - [ ] **17.8 Drifting embers and ash.** Embers from each lantern and up past the edge, and ash across the courtyard, following each preset's particle ratio. The petals are left out unless the owner wants them.
@@ -1360,6 +1392,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Blocked by: 22.5, 24.3 · Stories: 54
   - [ ] **23.6 Versus split screen.** Two side-by-side views on one world, each with its own CameraRig. Shake and kicks reach both, the preset and the ink pass apply to both, the shrine's underside is hidden per camera, and only one listener hears 3D sound. The other modes keep one view.
     - Check: Versus builds two cameras and other modes one; no stray viewports after rematches; the underside rule holds in both views, with a Versus shot of a fighter at the wall; frame time at 1080p on each preset measured.
+    - Note from 17.5: the shrine decides only for its own viewport's camera each frame. Call `MoonlitShrine.cull_below_deck(camera)` for the other view's camera every frame, after it moves.
     - Blocked by: 16.5, 17.5, 19.3 · Stories: 55
   - [ ] **23.7 Versus HUD.** Player 1 and Player 2 plates; prompts per half with each player's own device names; a dropped-weapon marker per half; the demo's Versus toasts and calls.
     - Check: each player's prompts use their own device's labels; markers project through the right camera; toasts name the player; shots reviewed.

@@ -2,12 +2,15 @@ extends GutTest
 ## The game's flow in main.tscn, headless and without the clock: title over
 ## the duel behind the menus -> main menu -> Duel against the computer -> the
 ## results -> Rematch or Main menu, and pause during play, with the music each
-## screen and match asks GameServices for.
+## screen and match asks GameServices for, and the menus' sounds.
 
 const MainScript := preload("res://scenes/main.gd")
 
 var main: Node
 var host: MatchHost
+## Every menu sound GameServices plays during a test: {cue, bus}.
+var ui_log: Array[Dictionary] = []
+var _record_ui: Callable
 
 
 func before_each() -> void:
@@ -17,6 +20,34 @@ func before_each() -> void:
 	add_child_autofree(main)
 	host = main.get_node("MatchHost")
 	host.auto_run = false
+	ui_log.clear()
+	_record_ui = func(cue: StringName, voice: Node) -> void: ui_log.append({"cue": cue, "bus": voice.get("bus")})
+	_ui_sounds().played.connect(_record_ui)
+
+
+func after_each() -> void:
+	_ui_sounds().played.disconnect(_record_ui)
+
+
+func _ui_sounds() -> SoundPlayer:
+	return get_tree().root.get_node("GameServices").get("ui_sounds")
+
+
+func _ui_cues() -> Array[StringName]:
+	var cues: Array[StringName] = []
+	for entry: Dictionary in ui_log:
+		cues.append(entry["cue"])
+		assert_eq(entry["bus"], &"UI", "%s on the UI bus" % entry["cue"])
+	return cues
+
+
+func _press_key(key: Key) -> void:
+	for pressed: bool in [true, false]:
+		var e := InputEventKey.new()
+		e.keycode = key
+		e.physical_keycode = key
+		e.pressed = pressed
+		get_viewport().push_input(e)
 
 
 func _screen() -> int:
@@ -188,6 +219,90 @@ func test_the_music_stops_when_the_screens_go() -> void:
 	var track: StringName = _music().current_track()
 	add_child(main)
 	assert_eq(track, &"", "the game's screens are gone")
+
+
+# ------------------------------------------------------------------ menu sounds
+
+## Opens the main menu and lets its first button take the focus.
+func _main_menu_open() -> MenuScreen:
+	main.call("show_main_menu")
+	await get_tree().process_frame
+	var menu: MenuScreen = main.get("main_menu")
+	assert_eq(menu.focused_button(), menu.buttons[0])
+	return menu
+
+
+func test_opening_a_menu_is_silent_and_moving_its_focus_plays_ui_move() -> void:
+	var menu: MenuScreen = await _main_menu_open()
+	assert_eq(_ui_cues(), [] as Array[StringName], "opening the menu")
+	_press_key(KEY_DOWN)
+	assert_eq(menu.focused_button(), menu.buttons[1])
+	_press_key(KEY_S)
+	assert_eq(menu.focused_button(), menu.buttons[2])
+	menu.buttons[0].grab_focus()
+	assert_eq(_ui_cues(), [&"ui_move", &"ui_move", &"ui_move"] as Array[StringName], "arrows, W/S and the mouse")
+
+
+func test_pressing_a_button_plays_ui_select() -> void:
+	await _main_menu_open()
+	_press_key(KEY_ENTER)
+	assert_eq(_screen(), MainScript.Screen.PLAYING, "Enter chose Duel")
+	host.pause()
+	_focus_first("pause_menu")
+	_press_pad(JOY_BUTTON_A)
+	assert_eq(_screen(), MainScript.Screen.PLAYING, "A chose Resume")
+	assert_eq(_ui_cues(), [&"ui_select", &"ui_select"] as Array[StringName])
+
+
+func test_back_plays_ui_back_and_the_menu_reopens_silently() -> void:
+	await _main_menu_open()
+	_press_key(KEY_DOWN)
+	_press_pad(JOY_BUTTON_B)
+	assert_eq(_screen(), MainScript.Screen.TITLE)
+	_press_pad(JOY_BUTTON_A)
+	assert_eq(_screen(), MainScript.Screen.MENU)
+	await get_tree().process_frame
+	assert_eq(_ui_cues(), [&"ui_move", &"ui_back", &"ui_confirm"] as Array[StringName],
+		"reopened on its first button, from the second, without a move")
+
+
+func test_going_on_from_the_title_plays_ui_confirm() -> void:
+	_press_key(KEY_SPACE)
+	assert_eq(_screen(), MainScript.Screen.MENU)
+	await get_tree().process_frame
+	assert_eq(_ui_cues(), [&"ui_confirm"] as Array[StringName], "and the menu it opens is silent")
+
+
+func test_clicking_the_title_plays_ui_confirm() -> void:
+	# Headless runs never route a click to a Control (no mouse is over the
+	# window), so the click is handed to the title as the GUI would hand it.
+	var e := InputEventMouseButton.new()
+	e.button_index = MOUSE_BUTTON_LEFT
+	e.pressed = true
+	(main.get("title") as TitleScreen)._gui_input(e)
+	assert_eq(_screen(), MainScript.Screen.MENU)
+	assert_eq(_ui_cues(), [&"ui_confirm"] as Array[StringName])
+
+
+func test_the_results_screen_s_buttons_sound_too() -> void:
+	main.call("start_duel")
+	host.step(Match.INTRO_FRAMES + 10)
+	host.match_finished.emit(host.results())
+	await get_tree().process_frame
+	_press_key(KEY_DOWN)
+	_press_pad(JOY_BUTTON_B)
+	assert_eq(_screen(), MainScript.Screen.MENU)
+	assert_eq(_ui_cues(), [&"ui_move", &"ui_back"] as Array[StringName])
+
+
+func test_the_duel_behind_the_menus_makes_no_sound() -> void:
+	var match_log: Array[StringName] = []
+	(host.get_node("Audio") as MatchAudio).player.played.connect(func(cue: StringName, _v: Node) -> void: match_log.append(cue))
+	host.step(60 * 20)
+	main.call("show_main_menu")
+	host.step(60 * 20)
+	assert_eq(match_log, [] as Array[StringName], "no match sound")
+	assert_eq(_ui_cues(), [] as Array[StringName], "and no menu sound")
 
 
 # ------------------------------------------------------------------ seeds

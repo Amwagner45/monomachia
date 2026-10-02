@@ -16,7 +16,9 @@ extends Node
 ## - the music: one MusicDirector and the MusicPlayer that follows it, so a
 ##   track plays on from screen to screen. It plays only when the screens ask
 ##   (play_menu_music, play_match_music), so tests that load this autoload
-##   stay silent.
+##   stay silent;
+## - the menu sounds (play_ui), from a flat SoundPlayer of its own, so a press
+##   that changes screens still sounds.
 ##
 ## A match host registers itself with begin_match() while a match is played
 ## and calls end_match() when it stops. No class_name: the autoload's name is
@@ -28,6 +30,7 @@ var input: InputDevices
 var feed: InputFeed
 var music_director: MusicDirector
 var music: MusicPlayer
+var ui_sounds: SoundPlayer
 
 ## The host of the match being played, or null. Anything with
 ## `is_playing() -> bool` and `pause()`.
@@ -45,11 +48,17 @@ func _init() -> void:
 	music = MusicPlayer.new()
 	music.name = "Music"
 	music.bind(music_director)
+	ui_sounds = SoundPlayer.new()
+	ui_sounds.name = "UiSounds"
+	ui_sounds.flat_voices = 4
+	ui_sounds.spatial_voices = 0
 
 
 func _ready() -> void:
 	add_child(feed)
 	add_child(music)
+	add_child(ui_sounds)
+	ui_sounds.preload_cues([&"ui_move", &"ui_select", &"ui_confirm", &"ui_back"])
 	feed.focus_lost.connect(_on_focus_lost)
 	GraphicsApplier.apply(graphics_preset(), null, get_viewport())
 	settings.apply_volumes()
@@ -99,6 +108,12 @@ func music_event(event: Dictionary) -> void:
 ## Fades the music out.
 func stop_music() -> void:
 	music.stop()
+
+
+## A menu sound, on the UI bus: ui_move (the focus moves), ui_select (a button
+## is pressed), ui_confirm (the title goes on) or ui_back.
+func play_ui(event: StringName) -> void:
+	ui_sounds.play_event({"t": event})
 
 
 func _on_focus_lost() -> void:

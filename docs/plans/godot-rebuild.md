@@ -1499,7 +1499,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **20.3 Master, effects and music volumes, saved.** Volumes in `GameSettings` (0–100 in steps of 5), applied on top of the layout's levels, muting at 0.
     - Check: defaults, save and load, clamping and snapping, the levels at 100 and 0, without touching the real settings file.
     - Blocked by: 16.5 · Stories: 52
-  - [ ] **19.7 Menu sounds.** `GameServices.play_ui` for move, select, confirm and back, called from the menus.
+  - [x] **19.7 Menu sounds.** `GameServices.play_ui` for move, select, confirm and back, called from the menus.
     - Check: focus moves, presses and Back play their cues on the UI bus; the attract duel stays silent.
     - Blocked by: 19.1 · Stories: 3
   - [ ] **19.8 Headless check that every sound plays.** Seeded computer-vs-computer matches per weapon pairing with the audio attached, failing on a missing file, an event that played nothing, a logged error, or a music track that doesn't load.

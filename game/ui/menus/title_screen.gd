@@ -3,7 +3,8 @@ extends Control
 ## The title over the live duel behind it: the name, a line, and "press any
 ## key or button". Any key, mouse button or controller button goes on.
 ## Keys and buttons are taken in _unhandled_input() (never in _input(), so the
-## InputFeed sees them too); a click lands on the screen itself.
+## InputFeed sees them too); a click lands on the screen itself. Going on
+## plays ui_confirm.
 
 signal proceed
 
@@ -52,14 +53,19 @@ func _unhandled_input(event: InputEvent) -> void:
 		return
 	if _goes_on(event):
 		get_viewport().set_input_as_handled()
-		proceed.emit()
+		_go_on()
 
 
 ## A click on the title (it stops the mouse, so clicks end here).
 func _gui_input(event: InputEvent) -> void:
 	if visible and event is InputEventMouseButton and _goes_on(event):
 		accept_event()
-		proceed.emit()
+		_go_on()
+
+
+func _go_on() -> void:
+	GameServices.play_ui(&"ui_confirm")
+	proceed.emit()
 
 
 static func _goes_on(event: InputEvent) -> bool:

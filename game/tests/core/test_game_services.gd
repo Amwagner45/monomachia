@@ -137,3 +137,22 @@ func test_asking_again_after_a_stop_plays_the_track_again() -> void:
 	services.call("stop_music")
 	services.call("play_menu_music")
 	assert_eq(music.current_track(), MusicDirector.MENU)
+
+
+func test_it_plays_the_menu_sounds_on_the_ui_bus() -> void:
+	var services: Node = _services()
+	var sounds: SoundPlayer = services.get("ui_sounds")
+	assert_not_null(sounds)
+	assert_eq(sounds.get_parent(), services, "they live as long as the game, so a press that changes screens still sounds")
+	var log: Array[Dictionary] = []
+	var record := func(cue: StringName, voice: Node) -> void: log.append({"cue": cue, "voice": voice})
+	sounds.played.connect(record)
+	for event: StringName in [&"ui_move", &"ui_select", &"ui_confirm", &"ui_back"]:
+		services.call("play_ui", event)
+	sounds.played.disconnect(record)
+	assert_eq(log.map(func(e: Dictionary) -> StringName: return e["cue"]), [&"ui_move", &"ui_select", &"ui_confirm", &"ui_back"])
+	for entry: Dictionary in log:
+		assert_true(entry["voice"] is AudioStreamPlayer, "%s plays flat" % entry["cue"])
+		assert_eq((entry["voice"] as AudioStreamPlayer).bus, &"UI")
+		assert_true((entry["voice"] as AudioStreamPlayer).playing)
+	assert_eq(sounds.missing, PackedStringArray(), "every menu sound loads")

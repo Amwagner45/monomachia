@@ -179,6 +179,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
   - stage 5, checked at its merge with everything above (9.1 included): 757 Godot tests and 85 web tests pass, the typecheck loads 179 scripts, `--smoke` plays a Watch match to the results with its sound in a window, the sound check plays through in a window with no errors, and the committed audio is 30.4 MB of its 40 MB budget.
+  - 9.1's review fixes, rebased on stage 5's merge: 759 Godot tests (73 s) and 85 web tests pass, and the typecheck loads 179 scripts.
 - **The look-and-arena worktree, fully salvaged:**
   - Task 17 stopped mid-build there (`look-and-arena`, all uncommitted in `.claude/worktrees/wf_c7f99fe5-f9a-1`, based on the old commit 67265af).
   - Tasks 16.1–17.9 salvaged it piece by piece, reviewed (16.1–16.5, 17.1, 17.3–17.9): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, the shrine's courtyard, props, underside, sky, backdrop, embers and ash, and the bench. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work.

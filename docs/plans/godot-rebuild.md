@@ -106,6 +106,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - Volumes run 0–100 in steps of 5 (master 80, effects 90, music 100 to start) on top of the bus layout's levels. Effects drives the SFX, UI and Ambience buses.
 - Music and ambience duck under combat through sidechain compressors.
 - The arena's room is a reverb on the bus chain: Combat and Foley feed the Arena bus (reverb dry 1.0, wet 0.25), which feeds SFX, so every combat and foley sound gets the room, the calls included. There is no reverb `Area3D`: in Godot 4.7 a 3D sound inside one goes only to the reverb bus and leaves its own (measured in 19.3), so every hit would have lost its dry sound. Owner's choice, Oct 2, 2026.
+- The music's fades are the mixer's own. Godot ramps a sound's volume across one mix of 512 samples (10.7 ms at 48 kHz, 11.6 ms at 44.1 kHz) and fades a stopped sound out the same way, but it plays a new sound's first mix at full volume. So `FadedLoop` starts every loop silent and raises it after its first mix, and a switch stops the old track in the mix where the new one rises. A fade timed by the game couldn't be shorter than a frame (16.7 ms). On an output running at 96 kHz the fade would be 5.3 ms. Measured in 20.1.
 - One `GameSettings` (`user://settings.cfg`), owned by `GameServices`, holds the graphics preset, the volumes, reduce flashes and button hints.
 
 **Screens and modes (22–24)**
@@ -1447,7 +1448,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.4 Footsteps.** `FootstepCadence` counts ground distance per fighter (not in the air, a dodge, a knockdown or hit-stop) and plays the footstep cue at the feet every stride, behind an interface the real foot contacts can drive later.
     - Check: distance over stride gives the count; standing, jumping and dodging give none; hit-stop gives none.
     - Blocked by: 19.3 · Stories: 50
-  - [ ] **20.1 Music player with 10–20 ms fades.** `FadedLoop` and `MusicPlayer` with crossfades, following the director's track changes.
+  - [x] **20.1 Music player with 10–20 ms fades.** `FadedLoop` and `MusicPlayer` with crossfades, following the director's track changes. The fades are the mixer's own volume ramp (see Decisions).
     - Check: the gain reaches full and silence within 10–20 ms; switches overlap with no gap; streams stop only after their fade; one windowed capture of a start, a stop and a switch shows no click in the captured samples.
     - Blocked by: none · Stories: 51
   - [ ] **20.2 Music driven by the menus and the match.** `GameServices` owns the director and player. The title, menus and results play the menu track and a played match plays battle; a round call with a fighter on two wins switches to match point. The attract duel never changes the track.

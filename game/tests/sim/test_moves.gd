@@ -76,8 +76,9 @@ const MOVED: Dictionary[StringName, StringName] = {
 	&"k_l4": &"k_l3", # 9.1: Crown Cut, now the fourth light
 }
 
-## Fields the demo didn't have: the strings and continuity tests check them.
-const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
+## Fields the demo didn't have: the strings and continuity tests check them,
+## and the swing tests the swings.
+const REBUILD_FIELDS: Array[String] = ["side_start", "side_end", "swing"]
 
 var _fx: Dictionary
 

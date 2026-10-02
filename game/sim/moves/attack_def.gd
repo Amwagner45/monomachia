@@ -47,6 +47,9 @@ extends RefCounted
 ##     side_start, side_end: left right centre
 ## - side_start and side_end are the rebuild's (the demo had no sides): &"" on
 ##   moves outside a string.
+## - swing is the rebuild's too: SwingFile puts each move's swing on it when
+##   its weapon is built (WeaponDef.from_dict). A record may also carry a Swing,
+##   as test moves do.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -123,6 +126,9 @@ var hop: float = 0.0
 ## can start where the move before it ends (string continuity)
 var side_start: StringName = &""
 var side_end: StringName = &""
+## the path the weapon travels through the move (task 7), read from the
+## weapon's swing file; null until the move has one
+var swing: Swing = null
 
 ## Every key a move record may have: the fields above, in order.
 const KEYS: Array[String] = [
@@ -131,7 +137,7 @@ const KEYS: Array[String] = [
 	"track_startup", "track_active", "hitstun", "blockstun", "hitstop", "unblockable", "counter",
 	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
 	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
-	"trail", "invuln", "hop", "side_start", "side_end",
+	"trail", "invuln", "hop", "side_start", "side_end", "swing",
 ]
 
 
@@ -185,6 +191,7 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.hop = float(d.get("hop", 0.0))
 	m.side_start = StringName(d.get("side_start", &""))
 	m.side_end = StringName(d.get("side_end", &""))
+	m.swing = d.get("swing", null)
 	return m
 
 

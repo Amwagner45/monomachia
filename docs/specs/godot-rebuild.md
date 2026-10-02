@@ -192,11 +192,12 @@ Chains stay as they are: each move names at most one light follow-up and one hea
 
 **Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. Built so far (task 9.1): Right Cut, Kesa Cut and Rising Heaven run right to left, Return Cut left to right, and Crown Cut and Heaven Splitter centre to centre; Kesa Giri, the heavy until the Iai replaces it, runs right to left.
 
-**Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
+**Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. It has a track of keys for each part it moves: the weapon hand (each hand, for the Daggers), a foot for a kick, and the body. A hand's keys hold:
 - the grip position;
-- the hand frame, from which the blade direction follows, within the wrist limits;
-- the edge direction;
-- the torso and pelvis coil.
+- the blade and edge directions, which set the hand's frame, since the grip is rigid, and so must stay within the wrist limits;
+- an optional tweak of the elbow's pole.
+
+The body's keys hold the torso and pelvis coil and the pelvis shift, so the hips can be keyed to lead the hands, and a swing with two hands still has one coil.
 
 Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own.
 
@@ -208,7 +209,7 @@ The early spike (see the plan) proved this works on the Quaternius fighters and 
 - each move's end pose is a natural start for its follow-up;
 - slash, overhead, thrust and sweep are told apart from the gameplay camera in the first third of the wind-up.
 
-Swings are stored as sampled data, so a move can later take its path from an authored clip instead of hand keys, with the rules unchanged. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks. Each weapon supplies its grip-to-tip length and blade thickness.
+Swings are stored as sampled data, so a move can later take its path from an authored clip instead of hand keys, with the rules unchanged. The keys live in one JSON file per weapon, `game/sim/moves/swings/<weapon>.json`, read when the weapon is built, and the rules expand them to per-tick samples. Positions and directions are (right, up, forward) from the fighter's feet, and every key has an ease (0 holds still there, as in the cocked hold). A file with any mistake (an unknown field, keys out of order, a frame past the move) is refused whole, with an error, so a weapon never plays on half-read swings. The swing editor writes the files back with a stable key order and fixed decimals. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks. Each weapon supplies its grip-to-tip length and blade thickness.
 
 - The rules layer takes the blade segment at consecutive ticks and tests the swept quad between them against the defender's hurt capsule. The capsule is part of each fighter's rules data: 0.35 m in radius from the feet to 1.75 m for the first two fighters, raised with the fighter when they jump. The hit lands on the first tick the sweep touches the capsule inside the active frames, in the same outcome order as the demo (counters, jumped, flash, evade, parry, block, hit). Hit, block and parry events carry the contact point, where the sparks and the parry rebound start.
 - Reach comes from arm extension and lunge (0.7–0.8 m on lights, with the front foot landing on the contact frame), so that the last 15–20 cm of the blade enters a defender standing 2.5 m away, the demo's duelling distance.

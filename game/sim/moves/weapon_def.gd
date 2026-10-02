@@ -11,6 +11,8 @@ extends RefCounted
 ## - Move ids (moves keys, the slot ids, abilities) are StringNames.
 ## - Weapon files write the weapon as a Dictionary literal with the TS keys in
 ##   snake_case and build it with from_dict().
+## - from_dict() also puts the weapon's swings (task 7) on its moves, from its
+##   swing file (SwingFile.path_for(id)) when it has one.
 
 const WEAPON_IDS: Array[StringName] = [&"katana", &"greatsword", &"daggers", &"fists"]
 const ULTIMATE_IDS: Array[StringName] = [&"moonsplitter", &"impaler", &"tempest", &"disarmed"]
@@ -58,7 +60,8 @@ const KEYS: Array[String] = [
 
 
 ## Builds a WeaponDef from a weapon record (snake_case keys). "moves" must
-## already be finalized: the result of AttackDef.finalize_moves().
+## already be finalized: the result of AttackDef.finalize_moves(). The swings
+## in the weapon's swing file, if it has one, go on its moves.
 static func from_dict(d: Dictionary) -> WeaponDef:
 	for key: Variant in d:
 		if not KEYS.has(String(key)):
@@ -75,6 +78,7 @@ static func from_dict(d: Dictionary) -> WeaponDef:
 	w.parry_window = int(d["parry_window"])
 	w.block_mitigation = float(d["block_mitigation"])
 	w.moves = d["moves"]
+	SwingFile.attach(SwingFile.path_for(w.id), w.moves)
 	w.light_start = StringName(d["light_start"])
 	w.heavy_start = StringName(d["heavy_start"])
 	w.sprint_light = StringName(d["sprint_light"])

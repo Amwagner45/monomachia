@@ -15,9 +15,10 @@ const SIDES: Array[StringName] = [&"left", &"right", &"centre"]
 
 
 ## Every way the follow-ups among moves break continuity, one message each
-## ([] when none): a follow-up that isn't among the moves, a follow-up
-## starting on the wrong side, a move in a string without both its sides, and
-## a move in no string with a side.
+## ([] when none): a follow-up or a release variant that isn't among the
+## moves, a follow-up starting on the wrong side, a move in a string without
+## both its sides, and a move in no string with a side. A release variant (the
+## horizontal Iai) stands in for its move, so it is in its move's string.
 static func _breaks(moves: Dictionary[StringName, AttackDef]) -> Array[String]:
 	var out: Array[String] = []
 	var in_a_string: Dictionary[StringName, bool] = {}
@@ -37,6 +38,14 @@ static func _breaks(moves: Dictionary[StringName, AttackDef]) -> Array[String]:
 				out.append(
 					"%s starts on the %s but follows %s, which ends on the %s" % [next_id, next.side_start, id, m.side_end]
 				)
+	for id: StringName in moves:
+		var variant: StringName = moves[id].release_variant
+		if variant == &"":
+			continue
+		if not moves.has(variant):
+			out.append("%s is %s's release variant but isn't one of its weapon's moves" % [variant, id])
+		elif in_a_string.has(id):
+			in_a_string[variant] = true
 	for id: StringName in moves:
 		var m: AttackDef = moves[id]
 		var sides: Array = [id, m.side_start, m.side_end]
@@ -90,6 +99,23 @@ func test_the_check_reports_a_missing_follow_up_and_a_missing_side() -> void:
 			"b is in a string but its sides are 'left' to ''",
 		] as Array[String],
 		"a move outside any string (c) needs no sides",
+	)
+
+
+func test_the_check_reports_a_missing_release_variant_and_puts_a_variant_in_its_moves_string() -> void:
+	var moves: Dictionary[StringName, AttackDef] = _moves({
+		&"a": {"side_start": &"left", "side_end": &"right", "chain_heavy": &"b", "release_variant": &"a_h"},
+		&"b": {"side_start": &"right", "side_end": &"left"},
+		&"a_h": {},
+		&"c": {"release_variant": &"gone"},
+	})
+	assert_eq(
+		_breaks(moves),
+		[
+			"gone is c's release variant but isn't one of its weapon's moves",
+			"a_h is in a string but its sides are '' to ''",
+		] as Array[String],
+		"a's variant stands in for a, so it needs sides; c is in no string, so it needs none",
 	)
 
 

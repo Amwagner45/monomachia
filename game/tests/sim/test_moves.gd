@@ -4,7 +4,9 @@ extends GutTest
 ## scripts/sim-fixtures.ts), apart from the rebuild's deliberate changes (the
 ## changes table, the moves the new strings added or moved, and the fields the
 ## demo didn't have). The fixture has the TS camelCase keys; a missing key was
-## undefined in the TS and must hold the port's sentinel.
+## undefined in the TS and must hold the port's sentinel. It also checks the
+## values the fields may hold, and that a release variant keeps its move's
+## frames.
 
 ## The sentinel each optional field holds when the TS leaves it undefined
 ## (see attack_def.gd).
@@ -31,6 +33,7 @@ const UNSET: Dictionary = {
 	"invuln": [],
 	"hop": 0.0,
 	"charge_move": false, # the rebuild's, not the TS's (9.3): only the Iai, an added move, has it
+	"release_variant": &"", # the rebuild's, not the TS's (9.4): only the Iai has one
 }
 
 ## The demo's data that the rebuild changed on purpose, one row per rule: a
@@ -71,6 +74,7 @@ const MOVE_CHANGES: Array[Dictionary] = [
 const ADDED: Array[StringName] = [
 	&"k_l3", # 9.1: Kesa Cut, the third light
 	&"k_iai", # 9.2: the Iai Slash (vertical), the heavy
+	&"k_iai_h", # 9.4: the Iai Slash (horizontal), its release variant
 ]
 
 ## Demo moves the new strings removed.
@@ -90,8 +94,8 @@ const WEAPON_CHANGES: Array[Dictionary] = [
 ]
 
 ## Fields the demo didn't have that its moves now hold: the strings and
-## continuity tests check them. (charge_move, which no demo move holds, is in
-## UNSET instead, so a demo move given it fails here.)
+## continuity tests check them. (charge_move and release_variant, which no
+## demo move holds, are in UNSET instead, so a demo move given one fails here.)
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
 var _fx: Dictionary
@@ -275,6 +279,29 @@ func test_every_weapon_change_starts_from_the_demos_value() -> void:
 		var field: String = row["field"]
 		var demo: Variant = ts_weapons.get(row["weapon"], {}).get(field.to_camel_case(), "no demo field")
 		assert_true(_same(demo, row["was"]), "%s.%s: the row says the demo had %s; it had %s" % [row["weapon"], field, row["was"], demo])
+
+
+func test_every_release_variant_has_its_moves_frames() -> void:
+	# a variant swaps in mid-move, on the same attack state, so it must keep
+	# its move's frames and lunge
+	var variants: int = 0
+	for wid: StringName in Moves.WEAPONS:
+		var moves: Dictionary[StringName, AttackDef] = Moves.WEAPONS[wid].moves
+		for id: StringName in moves:
+			var m: AttackDef = moves[id]
+			if m.release_variant == &"":
+				continue
+			variants += 1
+			var v: AttackDef = moves.get(m.release_variant, null)
+			assert_not_null(v, "%s.%s's release variant %s is one of its moves" % [wid, id, m.release_variant])
+			if v == null:
+				continue
+			assert_eq(
+				[v.startup, v.active, v.recovery, v.lunge, v.lunge_start, v.lunge_end],
+				[m.startup, m.active, m.recovery, m.lunge, m.lunge_start, m.lunge_end],
+				"%s.%s and its variant %s: frames and lunge" % [wid, id, v.id],
+			)
+	assert_gt(variants, 0, "the Iai has a variant")
 
 
 func test_every_ultimate_hit_matches_the_typescript() -> void:

@@ -7,7 +7,7 @@ const H := preload("res://tests/sim/sim_helpers.gd")
 const CLOSE: float = 0.005
 
 ## The spec's Katana table, the rows of the light string, its heavy endings
-## and the vertical Iai: name, frames (startup, active, recovery), damage, posture, the
+## and both Iai Slashes: name, frames (startup, active, recovery), damage, posture, the
 ## light and heavy follow-ups (&"" for none), and the sides the spec's move
 ## data gives the weapon (start, end).
 const ROWS: Dictionary[StringName, Dictionary] = {
@@ -31,6 +31,11 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 	&"k_iai": {
 		"name": "Iai Slash (vertical)", "frames": [23, 4, 24], "damage": 13, "posture": 16,
 		"light": &"", "heavy": &"k_h1f", "sides": [&"left", &"right"],
+	},
+	# its follow-ups, Return Cut (light) and Returning Draw (heavy), come in 9.5
+	&"k_iai_h": {
+		"name": "Iai Slash (horizontal)", "frames": [23, 4, 24], "damage": 13, "posture": 16,
+		"light": &"", "heavy": &"", "sides": [&"right", &"left"],
 	},
 	&"k_h1f": {
 		"name": "Rising Heaven", "frames": [16, 4, 24], "damage": 12, "posture": 15,
@@ -408,7 +413,8 @@ func test_a_dodge_pressed_late_in_the_sheathe_comes_as_the_stance_begins() -> vo
 			return H.idle()
 		return H.move(1.0, 0.0, Btn.DODGE) if i == 5 else H.move(1.0, 0.0)
 	var t: PlayedString = _run(tapped, 2.2, 120)
-	assert_eq(t.ids(&"hit"), [&"k_iai"] as Array[StringName], "tapped: the Iai draws and hits")
+	# (the stick, held right as the sheathe ends, picks the horizontal)
+	assert_eq(t.ids(&"hit"), [&"k_iai_h"] as Array[StringName], "tapped: the Iai draws and hits")
 	assert_false(t.state.has(&"dodge") or t.state.has(&"backstep"), "and no dodge comes")
 
 
@@ -448,6 +454,87 @@ func test_other_charged_heavies_still_stand_still() -> void:
 		assert_eq(r.walked(charged_from, 80), 0.0, "%s stands still while it charges" % weapon.id)
 
 
+# ------------------------------------------------------------------ the horizontal Iai
+# The stick as the Iai is drawn picks the draw: left or right, past the dead
+# zone and more sideways than forward or back, gives the horizontal Iai.
+
+## How long heavy is held for each way the Iai is drawn: a tap (drawn as the
+## sheathe ends), a release on step 40, and an auto-release 2.5 s in.
+const HOLDS: Dictionary[String, int] = {"a tap": 1, "a release": 40, "an auto-release": 220}
+
+
+## Fighter 0 holds heavy for hold steps (1 is a tap), with the stick at (mx,
+## my) from step 0 to the end, against an idle Katana 2.2 m away.
+static func _iai_with_stick(hold: int, mx: float, my: float) -> PlayedString:
+	return _run(func(i: int) -> RawInput: return H.move(mx, my, Btn.HEAVY) if i < hold else H.move(mx, my))
+
+
+func test_left_or_right_as_the_iai_is_drawn_gives_the_horizontal() -> void:
+	for side: Dictionary in [{"way": "left", "mx": -1.0}, {"way": "right", "mx": 1.0}]:
+		for hold: String in HOLDS:
+			var r: PlayedString = _iai_with_stick(HOLDS[hold], side["mx"], 0.0)
+			assert_eq(r.ids(&"swing"), [&"k_iai_h"] as Array[StringName], "%s with the stick %s" % [hold, side["way"]])
+
+
+func test_neutral_forward_or_back_draws_the_vertical_iai() -> void:
+	var sticks: Array[Dictionary] = [
+		{"way": "neutral", "my": 0.0}, {"way": "forward", "my": 1.0}, {"way": "back", "my": -1.0},
+	]
+	for stick: Dictionary in sticks:
+		for hold: String in HOLDS:
+			var r: PlayedString = _iai_with_stick(HOLDS[hold], 0.0, stick["my"])
+			assert_eq(r.ids(&"swing"), [&"k_iai"] as Array[StringName], "%s with the stick %s" % [hold, stick["way"]])
+
+
+func test_only_a_stick_past_the_dead_zone_and_more_sideways_than_not_picks_the_horizontal() -> void:
+	# tapped; the dead zone is 0.4
+	var cases: Array[Dictionary] = [
+		{"mx": 0.8, "my": 0.6, "draw": &"k_iai_h", "why": "more sideways than forward"},
+		{"mx": -0.8, "my": -0.6, "draw": &"k_iai_h", "why": "more sideways than back"},
+		{"mx": 0.6, "my": 0.8, "draw": &"k_iai", "why": "more forward than sideways"},
+		{"mx": 0.6, "my": -0.6, "draw": &"k_iai", "why": "as far back as sideways"},
+		{"mx": 0.35, "my": 0.0, "draw": &"k_iai", "why": "sideways but inside the dead zone"},
+	]
+	for c: Dictionary in cases:
+		var r: PlayedString = _iai_with_stick(1, c["mx"], c["my"])
+		assert_eq(r.ids(&"swing"), [c["draw"]] as Array[StringName], "the stick at (%s, %s): %s" % [c["mx"], c["my"], c["why"]])
+
+
+func test_only_the_stick_as_the_iai_is_drawn_counts() -> void:
+	# held to step 40: it is drawn on the release step
+	var release: int = HOLDS["a release"]
+	var let_go: PlayedString = _run(func(i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY) if i < release else H.idle())
+	assert_eq(let_go.ids(&"swing"), [&"k_iai"] as Array[StringName], "right in the stance, let go as heavy is: vertical")
+	var pushed: PlayedString = _run(func(i: int) -> RawInput: return H.btn(Btn.HEAVY) if i < release else H.move(1.0, 0.0))
+	assert_eq(pushed.ids(&"swing"), [&"k_iai_h"] as Array[StringName], "neutral in the stance, right as heavy is let go: horizontal")
+	# tapped: it is drawn on step 10, as the sheathe's 9 frames end
+	var ends: int = IAI_SHEATHE + 1
+	var right_in_sheathe: Callable = func(i: int) -> RawInput:
+		if i >= ends:
+			return H.idle()
+		return H.move(1.0, 0.0, Btn.HEAVY) if i == 0 else H.move(1.0, 0.0)
+	var early: PlayedString = _run(right_in_sheathe)
+	assert_eq(early.ids(&"swing"), [&"k_iai"] as Array[StringName], "tapped, right in the sheathe but let go as it ends: vertical")
+	var right_as_it_ends: Callable = func(i: int) -> RawInput:
+		if i == 0:
+			return H.btn(Btn.HEAVY)
+		return H.move(1.0, 0.0) if i >= ends else H.idle()
+	var late: PlayedString = _run(right_as_it_ends)
+	assert_eq(late.ids(&"swing"), [&"k_iai_h"] as Array[StringName], "tapped, right only as the sheathe ends: horizontal")
+
+
+func test_the_horizontal_iai_keeps_the_iais_timing_and_charge() -> void:
+	var tapped: PlayedString = _iai_with_stick(1, 1.0, 0.0)
+	var draw: int = tapped.step_of(&"swing")
+	assert_eq(tapped.frame[draw] if draw >= 0 else -1, IAI_SHEATHE + IAI_DRAW, "tapped, it draws on frame 23")
+	var held: PlayedString = _iai_with_stick(HOLDS["a release"], 1.0, 0.0)
+	assert_eq(held.ids(&"hit"), [&"k_iai_h"] as Array[StringName], "held, it hits")
+	assert_eq(held.step_of(&"hit") - HOLDS["a release"], IAI_DRAW, "14 frames after the release")
+	var full: PlayedString = _iai_with_stick(HOLDS["an auto-release"], 1.0, 0.0)
+	assert_eq(full.ids(&"hit"), [&"k_iai_h"] as Array[StringName], "held for 2.5 s, it releases by itself and hits")
+	assert_almost_eq(float(full.find(&"hit").get("damage", NAN)), 13.0 * 1.8, CLOSE, "as a full charge's power attack")
+
+
 # ------------------------------------------------------------------ the spec's table
 
 func test_the_rows_built_so_far_match_the_spec_table() -> void:
@@ -462,6 +549,17 @@ func test_the_rows_built_so_far_match_the_spec_table() -> void:
 		assert_eq([m.damage, m.posture], [float(row["damage"]), float(row["posture"])], "%s damage and posture" % row["name"])
 		assert_eq([m.chain_light, m.chain_heavy], [row["light"], row["heavy"]], "%s follow-ups" % row["name"])
 		assert_eq([m.side_start, m.side_end], row["sides"], "%s sides" % row["name"])
+
+
+func test_the_horizontal_iai_hits_with_the_specs_interim_cone() -> void:
+	# until weapon paths decide hits (task 7): a right-to-left slash (the
+	# stand-in's slashRL), as far as the vertical Iai and as wide as Right Cut
+	var m: AttackDef = Moves.KATANA.moves.get(&"k_iai_h", null)
+	assert_not_null(m, "the horizontal Iai exists")
+	if m == null:
+		return
+	assert_eq([m.type, m.anim], [&"slash", &"slashRL"], "a right-to-left slash")
+	assert_eq([m.range, m.arc, m.lunge, m.knockback], [3.6, 110.0, 0.4, 1.0], "range, arc, lunge and knockback")
 
 
 func test_kesa_cut_hits_with_the_specs_interim_cone() -> void:

@@ -638,10 +638,14 @@ func _update_attack() -> void:
 			start_ult()
 			return
 
-	# Charging a heavy.
+	# Charging a heavy. A tapped heavy is drawn here, as its sheathe ends, and a
+	# held one as its stance ends, on release or at CHARGE_MAX; the stick then
+	# picks the draw.
 	if def.chargeable and not a.charging and a.charge_frames == 0 and a.frame == CHARGE_CHECK_FRAME:
 		if inp.is_held(Btn.HEAVY):
 			a.charging = true
+		else:
+			def = _pick_draw()
 	if a.charging:
 		if def.charge_move:
 			# a charge the fighter walks in (the Iai stance): a dodge cancels it
@@ -662,6 +666,7 @@ func _update_attack() -> void:
 			else:
 				a.charge_frac = 0.0
 			a.extra_recovery += SimMath.js_round(16.0 * a.charge_frac)
+			def = _pick_draw()
 		else:
 			return
 
@@ -737,6 +742,17 @@ func _update_attack() -> void:
 			backstab_until = W.frame + 30
 		atk = null
 		to_free()
+
+
+## As a chargeable heavy is drawn, the stick held sideways (as Moonsplitter
+## picks its wave) swaps its release variant in on the same attack state, so
+## the frames, lunge and charge carry on: the horizontal Iai. Otherwise the
+## move stays. Returns the attack's move.
+func _pick_draw() -> AttackDef:
+	var variant: AttackDef = moveset().moves.get(atk.def.release_variant, null)
+	if variant != null and input.sideways():
+		atk.def = variant
+	return atk.def
 
 
 ## Whether def slides on into its recovery: a colossal weapon's grounded
@@ -1168,7 +1184,7 @@ func _ult_moonsplitter(u: UltState) -> void:
 	var inp: InputTracker = input
 	if u.phase == &"windup":
 		if inp.dir != -1:
-			u.variant = &"horizontal" if absf(inp.mx) > absf(inp.my) else &"vertical"
+			u.variant = &"horizontal" if inp.sideways() else &"vertical"
 		if u.pf >= 36:
 			_set_ult_phase(&"release")
 			W.spawn_wave(self, u.variant)

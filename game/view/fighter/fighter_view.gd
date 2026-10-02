@@ -22,9 +22,10 @@ extends Node3D
 ##   while the chest keeps facing the opponent, and the body leans into the
 ##   acceleration and braces when braking, the weapons riding with it;
 ## - with a weapon whose hold has a guard stance (the Katana's), the fighter
-##   stands in it (GuardStance) as far as its legs stand, over the relaxed
-##   idle instead of the hold's clip: the feet planted on leg IK, the pelvis
-##   lowered and swaying, the weapon riding the pelvis;
+##   stands in it (GuardStance) over the relaxed idle instead of the hold's
+##   clip, unless it runs with its guard down: the feet planted on leg IK and
+##   stepping in the guard shuffle (GuardShuffle) as it walks, the pelvis
+##   lowered, swaying and bobbing, the weapon riding the pelvis;
 ## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
 ##   timed on the rules' frames from the KO;
 ## - a disarmed fighter holds nothing, its arms on the clip.
@@ -69,10 +70,12 @@ var model: FighterModel
 var locomotion: Locomotion
 ## The last pose applied, for tests and debugging.
 var last_pose: StickPose.Pose
-## How far the guard stance showed in the last pose (0 to 1), and how far its
-## weight had shifted toward the front foot (m), for tests and tools.
+## How far the guard stance showed in the last pose (0 to 1), how far its
+## weight had shifted toward the front foot (m), and how far its pelvis sank
+## for the legs to reach the feet (m), for tests and tools.
 var stance: float = 0.0
 var sway: float = 0.0
+var sink: float = 0.0
 
 var _floor: Node3D
 var _ring_mat: StandardMaterial3D
@@ -146,7 +149,7 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 		_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
 		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
-		locomotion.update(f, GuardStance.CLIP if _in_guard() else model.idle_clip(), seconds, alpha)
+		locomotion.update(f, GuardStance.CLIP if _in_guard() else model.idle_clip(), seconds, alpha, _in_guard())
 		_pose(f, p, seconds)
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
@@ -192,20 +195,24 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float) -> void:
 	rig.body.spine_pitch = p.lean
 	rig.body.hips_offset = Vector3(0.0, -p.crouch, 0.0)
 	locomotion.pose_body(rig.body)
-	# the stance as far as the legs stand; the clips' feet as they walk
+	# the stance as far as the legs are the guard's; the clips' feet as they
+	# run with the guard down
 	stance = locomotion.shown[0] if _in_guard() else 0.0
 	sway = GuardStance.sway(seconds) * stance
+	sink = 0.0
 	rig.clip_feet = 1.0
-	if stance > 0.0:
-		GuardStance.pose(rig, stance, seconds)
 	model.rotation = Vector3(0.0, p.spin, 0.0)
+	if stance > 0.0:
+		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, p.spin)
 	if model.weapons.is_empty():
 		return
 	var sweeps: Array[Vector3] = _strike_sweeps(f)
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
-	# the weapons ride the stance's pelvis, the lean and the brace with the
-	# upper body
-	var carry: Transform3D = Transform3D(Basis.IDENTITY, GuardStance.offset(seconds) * stance) * locomotion.carry(model.skeleton)
+	# the weapons ride the stance's pelvis, sunk, and the shuffle's bob (on
+	# its spring), the lean and the brace with the upper body
+	var rides: Vector3 = (GuardStance.offset(seconds) + Vector3(0.0, locomotion.shuffle.shown_weapon_bob, 0.0)) * stance
+	rides.y -= sink
+	var carry: Transform3D = Transform3D(Basis.IDENTITY, rides) * locomotion.carry(model.skeleton)
 	for i: int in model.weapons.size():
 		var hand: StickPose.Hand = hands[i]
 		var xf: Transform3D = carry * FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
@@ -266,6 +273,7 @@ func _fall(frames: float) -> void:
 	model.rotation = Vector3.ZERO
 	stance = 0.0
 	sway = 0.0
+	sink = 0.0
 	_play(DEATH_CLIP, frames / float(SimConst.FPS))
 
 

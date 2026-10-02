@@ -6,20 +6,23 @@ extends RefCounted
 ## the relaxed idle clip (CLIP) it puts:
 ## - the legs on IK, the right foot in front pointing at the opponent and
 ##   the left behind, turned out (FEET, FOOT_YAW), a stance's width apart so
-##   the feet never cross. FighterRig bends each knee over its toes;
+##   the feet never cross. GuardShuffle plants them there and steps them as
+##   the fighter walks; FighterRig bends each knee over its toes;
 ## - the pelvis lowered (CROUCH) and set over the middle of the stance
 ##   (FORWARD), its weight shifting slowly between the feet (shift()), on the
-##   rules' clock so it holds still in hit-stop and pause;
+##   rules' clock so it holds still in hit-stop and pause, and bobbing with
+##   the shuffle;
 ## - the hips turned toward the rear foot's side, the spine turned back so
 ##   the chest faces the opponent and bent a little forward over the hips,
 ##   and the head raised to watch the opponent.
 ## The weapon's guard is StickPose's until swings bring their own (plan task
-## 14.10), riding the pelvis's drop and sway (offset()).
+## 14.10), riding the pelvis's drop and sway (offset()) and the shuffle's bob
+## on its spring.
 ##
-## The stance shows as far as the legs stand (Locomotion's idle weight): as
-## they walk, the feet go back to the clips', until the guard shuffle (plan
-## task 14.9). Skeleton space is the fighter's own frame: +Z forward, +X to
-## the fighter's left, +Y up.
+## The stance shows as far as the legs are the guard's (Locomotion's idle
+## weight, which its guard weight holds at 1 unless the fighter runs with its
+## guard down): running, the feet are the clips'. Skeleton space is the
+## fighter's own frame: +Z forward, +X to the fighter's left, +Y up.
 
 ## The clip the stance stands over: the relaxed idle, shoulders square.
 const CLIP: StringName = &"Idle"
@@ -49,6 +52,10 @@ const PELVIS_YAW: float = 15.0
 const SPINE_YAW: float = -15.0
 const SPINE_PITCH: float = 6.0
 const HEAD_PITCH: float = -14.0
+## The most of its length a leg stretches to its planted foot: past it the
+## pelvis sinks (sink()), as when the shuffle sets off and the rear foot
+## waits for the front one to land.
+const REACH_MOST: float = 0.97
 
 
 ## How far the weight has shifted toward the front foot `seconds` into the
@@ -71,15 +78,16 @@ static func offset(seconds: float) -> Vector3:
 
 
 ## Lays the stance on `rig` and its body layer, shown `weight` of the way
-## (0 to 1), `seconds` into the rules' clock: the foot targets, how far the
-## feet follow them rather than the clip, and the body's turns and offset,
-## on top of what the body layer already has. Call it between updates, while
-## the skeleton holds the clip's pose.
-static func pose(rig: FighterRig, weight: float, seconds: float) -> void:
-	for side: String in FighterRig.SIDES:
-		var rest: Vector3 = rig.rest_foot(side)
-		rig.foot_position[side] = Vector3(FEET[side].x, rest.y, FEET[side].z)
-		rig.foot_yaw[side] = deg_to_rad(FOOT_YAW[side])
+## (0 to 1), `seconds` into the rules' clock: the foot targets where
+## `shuffle` has the feet (for a skeleton turned `spin` from the way the
+## fighter faces), how far the feet follow them rather than the clip, and
+## the body's turns and offset with the shuffle's bob, on top of what the
+## body layer already has, then the pelvis sunk as far as the legs need to
+## reach the feet.
+## Returns how far it sank (m), for the weapon to ride. Call it between
+## updates, while the skeleton holds the clip's pose.
+static func pose(rig: FighterRig, weight: float, seconds: float, shuffle: GuardShuffle, spin: float = 0.0) -> float:
+	shuffle.place(rig, spin)
 	rig.clip_feet = 1.0 - weight
 	var body: BodyLayer = rig.body
 	# The hips turned from straight ahead, whatever way the clip turns them
@@ -94,4 +102,24 @@ static func pose(rig: FighterRig, weight: float, seconds: float) -> void:
 	body.spine_yaw += deg_to_rad(SPINE_YAW) * weight
 	body.spine_pitch += deg_to_rad(SPINE_PITCH) * weight
 	body.head_pitch += deg_to_rad(HEAD_PITCH) * weight
-	body.hips_offset += offset(seconds) * weight
+	body.hips_offset += (offset(seconds) + Vector3(0.0, shuffle.shown_bob, 0.0)) * weight
+	var down: float = sink(rig) * weight
+	body.hips_offset.y -= down
+	return down
+
+
+## How far the pelvis must sink, from where the body layer has it, for each
+## leg to reach its foot target within REACH_MOST of its length (m). Call it
+## between updates, while the skeleton holds the clip's pose.
+static func sink(rig: FighterRig) -> float:
+	var sk: Skeleton3D = rig.skeleton
+	var hips: Transform3D = rig.body.hips_moved(sk)
+	var most: float = 0.0
+	for side: String in FighterRig.SIDES:
+		var hip: Vector3 = hips * sk.get_bone_global_pose(sk.find_bone(side + "UpperLeg")).origin
+		var foot: Vector3 = rig.foot_position[side]
+		var reach: float = REACH_MOST * rig.leg_length(side)
+		var across: float = Vector2(hip.x - foot.x, hip.z - foot.z).length()
+		if across < reach:
+			most = maxf(most, hip.y - foot.y - sqrt(reach * reach - across * across))
+	return most

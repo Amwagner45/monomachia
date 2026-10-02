@@ -162,6 +162,31 @@ func test_the_close_views_keep_the_attacker_in_their_crops() -> void:
 		MoveBench.free_all()
 
 
+## The feet view looks down on the fighter's feet from in front on its
+## left, square to the line between them so neither hides the other, both
+## feet and their toes in the crop.
+func test_the_feet_view_sees_both_feet_side_by_side() -> void:
+	for id: StringName in FighterLook.IDS:
+		var sheet: MoveSheet = _sheet(PackedStringArray(["--fighter=" + id, "--drive=guard_forward"]))
+		var frame: PoseCheck.Frame = await sheet.bench.frame()
+		var sk: Skeleton3D = sheet.bench.view.model.skeleton
+		var size: Vector2 = sheet.get_viewport().get_visible_rect().size
+		sheet.aim(&"feet")
+		var crop: Rect2 = MoveSheet.crop_rect(&"feet", size)
+		var ankles: Dictionary[String, Vector3] = {}
+		for side: String in ["Right", "Left"]:
+			ankles[side] = sk.global_transform * frame.bones[sk.find_bone(side + "Foot")].origin
+			for bone: String in ["Foot", "Toes"]:
+				var p: Vector3 = sk.global_transform * frame.bones[sk.find_bone(side + bone)].origin
+				assert_true(crop.has_point(sheet.camera.unproject_position(p)), "%s: the %s %s inside the crop" % [id, side, bone])
+		var line: Vector3 = (ankles["Right"] - ankles["Left"]) * Vector3(1.0, 0.0, 1.0)
+		var look: Vector3 = -sheet.camera.global_basis.z * Vector3(1.0, 0.0, 1.0)
+		assert_gt(rad_to_deg(line.angle_to(look)), 60.0, "%s: looking across the line between the feet" % id)
+		assert_lt(rad_to_deg(line.angle_to(look)), 120.0, "%s: not along it" % id)
+		assert_gt(sheet.camera.global_position.y, ankles["Right"].y + 0.5, "%s: from above them" % id)
+		MoveBench.free_all()
+
+
 func test_a_move_sheet_has_a_row_per_chosen_frame_and_a_cell_per_view() -> void:
 	var sheet: MoveSheet = _sheet(PackedStringArray(["--at=windup,contact,end", "--views=defender,hands"]))
 	var def: AttackDef = Moves.KATANA.moves[&"k_l1"]
@@ -294,6 +319,55 @@ func test_the_strafe_and_backpedal_drives_move_the_way_they_say() -> void:
 		assert_true(MoveSheet.VIEW_NAMES.has(MoveSheet.DRIVES[id]["views"][0]), "%s: its own view" % id)
 
 
+## The guard drives walk the same ways blocking, in the guard shuffle, seen
+## from above too, every other frame.
+func test_the_guard_drives_walk_blocking() -> void:
+	var moving: Dictionary[StringName, Vector2] = {
+		&"guard_forward": Vector2(0.0, 1.0),
+		&"guard_backpedal": Vector2(0.0, -1.0),
+		&"guard_strafe_left": Vector2(-1.0, 0.0),
+		&"guard_strafe_right": Vector2(1.0, 0.0),
+		&"guard_back_left": Vector2(-0.7071, -0.7071),
+	}
+	for id: StringName in moving:
+		var inputs: Array[RawInput] = MoveSheet.drive_inputs(id)
+		assert_eq(Vector2(inputs[0].mx, inputs[0].my), Vector2.ZERO, "%s from rest" % id)
+		assert_almost_eq(Vector2(inputs[inputs.size() / 2].mx, inputs[inputs.size() / 2].my), moving[id], Vector2.ONE * 1e-4, "%s moves" % id)
+		assert_eq(Vector2(inputs[-1].mx, inputs[-1].my), Vector2.ZERO, "%s stops at the end" % id)
+		for r: RawInput in inputs:
+			assert_eq(r.buttons, 1 << Btn.BLOCK, "%s: blocking throughout" % id)
+		assert_has(MoveSheet.DRIVES[id]["views"], &"feet", "%s: the feet close" % id)
+		assert_eq(_sheet(PackedStringArray(["--drive=" + id])).every, 2, "%s: every other frame, unless --every= says" % id)
+	assert_eq(_sheet(PackedStringArray(["--drive=guard_forward", "--every=5"])).every, 5, "--every= says")
+	assert_eq(_sheet(PackedStringArray(["--drive=run_brake"])).every, 4, "a drive with no every of its own")
+
+
+## The tap steps drive taps the stick each way for a tap step's 8 frames;
+## the Iai walk holds heavy throughout, sheathed, and walks after the
+## sheathe.
+func test_the_tap_step_and_iai_walk_drives() -> void:
+	var taps: Array[RawInput] = MoveSheet.drive_inputs(&"tap_steps")
+	var held: Array[Vector2] = []
+	var run: int = 0
+	for i: int in taps.size():
+		var stick: Vector2 = Vector2(taps[i].mx, taps[i].my)
+		assert_eq(taps[i].buttons, 0, "nothing pressed")
+		if stick != Vector2.ZERO:
+			run += 1
+			if run == 1:
+				held.append(stick)
+		else:
+			if run > 0:
+				assert_eq(run, SimConst.MOVE_STEP_FRAMES, "each tap held a step's frames")
+			run = 0
+	assert_eq(held, [Vector2(0.0, 1.0), Vector2(1.0, 0.0), Vector2(0.0, -1.0), Vector2(-1.0, 0.0)] as Array[Vector2], "forward, right, back, left")
+	var iai: Array[RawInput] = MoveSheet.drive_inputs(&"iai_walk")
+	assert_lt(iai.size(), 150, "let go before the Iai draws by itself (2.5 s)")
+	for r: RawInput in iai:
+		assert_eq(r.buttons, 1 << Btn.HEAVY, "heavy held throughout")
+	assert_eq(Vector2(iai[0].mx, iai[0].my), Vector2.ZERO, "sheathing from rest")
+
+
 func test_the_side_view_sees_the_whole_fighter_from_its_right() -> void:
 	for id: StringName in FighterLook.IDS:
 		var sheet: MoveSheet = _sheet(PackedStringArray(["--fighter=" + id]))
@@ -337,7 +411,7 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 	assert_gt(sheet.bench.spacing, 20.0, "the opponent far off, out of the way")
 	var first: PackedStringArray = sheet.strip[0]
 	assert_true(first[0].begins_with("frame 1 · 0.00 m/s"), first[0])
-	assert_eq(first[1], "idle 1.00 · phase 0.00")
+	assert_eq(first[1], "guard · feet down", "the Katana standing in its guard")
 	assert_eq(first[2], "upright")
 	var last: PackedStringArray = sheet.strip[-1]
 	assert_true(last[0].begins_with("frame %d · 7.20 m/s" % inputs.size()), last[0])
@@ -378,7 +452,7 @@ func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> 
 		mini(MoveSheet.STRIP_COLUMNS, frames.size()) * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
 		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 	assert_eq(sheet.title[1].get_slice(" · ", 0), "views: front, side")
-	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards; weight: the guard stance's shift, + toward the front foot")
+	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards; guard: shuffling; weight: the stance's shift, + to the front foot")
 
 
 func test_the_brake_drives_run_then_let_go() -> void:
@@ -417,11 +491,19 @@ func test_a_strip_caption_gives_the_lean_and_the_brace() -> void:
 		loco.lean.shown_drop = c[1]
 		assert_eq(MoveSheet.drive_caption(1, loco)[2], c[2])
 	assert_gte(MoveSheet.STRIP_CAPTION_HEIGHT, 2 * MoveSheet.TEXT_MARGIN + 3 * MoveSheet.CAPTION_FONT * 5 / 4, "room for three lines")
-	# the guard stance's weight shift, toward the front foot or the rear,
-	# after the blend
-	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "idle 1.00 · phase 0.00 · weight +2 cm")
-	assert_eq(MoveSheet.drive_caption(1, loco, -0.03)[1], "idle 1.00 · phase 0.00 · weight -3 cm")
-	assert_eq(MoveSheet.drive_caption(1, loco, 0.004)[1], "idle 1.00 · phase 0.00", "under half a centimetre")
+	# standing in the guard: the guard's legs, which foot is up, and the
+	# stance's weight shift, toward the front foot or the rear
+	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "guard · feet down · weight +2 cm")
+	assert_eq(MoveSheet.drive_caption(1, loco, -0.03)[1], "guard · feet down · weight -3 cm")
+	assert_eq(MoveSheet.drive_caption(1, loco, 0.004)[1], "guard · feet down", "under half a centimetre")
+	loco.shuffle.feet["Left"].swinging = true
+	assert_eq(MoveSheet.drive_caption(1, loco)[1], "guard · left foot up")
+	loco.shuffle.feet["Left"].swinging = false
+	# going over to the clips or back: the blend, and the guard's weight
+	loco.shown_guard = 0.5
+	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "guard 0.50 · idle 1.00", "no room for the weight shift")
+	loco.shown_guard = 0.0
+	assert_eq(MoveSheet.drive_caption(1, loco)[1], "idle 1.00 · phase 0.00", "the clips' legs")
 
 
 ## The stand drive holds still through a whole weight shift of the guard

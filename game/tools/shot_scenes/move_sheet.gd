@@ -32,11 +32,13 @@ extends Node3D
 ## input from rest (rest_to_sprint: still, then running at the opponent, then
 ## sprinting; run_brake and sprint_brake: running or sprinting at it, then
 ## letting go; strafe_left and strafe_right round the opponent, backpedal and
-## back_left away from it, each then stopping), with the opponent out of the
-## way, and lays out a strip of the chosen frames: the first, every
-## --every=th (default 4) and the last, each captioned with the speed, the
-## legs' turn, Locomotion's blend and the step phase, and the lean and the
-## brace, a block of rows per view.
+## back_left away from it, each then stopping; the guard_ drives the same
+## while blocking, in the guard shuffle; tap_steps: a tap step each way;
+## iai_walk: walking in the Iai stance), with the opponent out of the way,
+## and lays out a strip of the chosen frames: the first, every --every=th
+## (default the drive's own, else 4) and the last, each captioned with the
+## speed, the legs' turn, Locomotion's blend and the step phase or the
+## guard's feet, and the lean and the brace, a block of rows per view.
 ##
 ## The defender holds the Katana and takes no input, so a move that reaches it
 ## lands as the rules say. The stage is the preview's studio, and the chosen
@@ -50,8 +52,9 @@ extends Node3D
 ## closer; and its hands on the grip.
 const VIEWS: Array[StringName] = [&"defender", &"attacker", &"three_quarter", &"close", &"hands"]
 ## Besides these, for the drives and the guard: the whole fighter side on
-## from its right, from in front, a little to its right, and from
-## three-quarters in front on its left.
+## from its right, from in front, a little to its right, from
+## three-quarters in front on its left, and its feet from in front on its
+## left, square to the line between them, so neither hides the other.
 const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"defender": "gameplay camera behind the defender",
 	&"attacker": "gameplay camera behind the attacker",
@@ -61,7 +64,11 @@ const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"hands": "hands",
 	&"side": "side",
 	&"front": "front",
+	&"feet": "feet",
 }
+## The held buttons the guard drives and the Iai walk use.
+const BLOCK: int = 1 << Btn.BLOCK
+const HEAVY: int = 1 << Btn.HEAVY
 ## Scripted input from rest, by name:
 ## - input: segments of [frames, strafe axis (+ to the right), forward axis,
 ##   held buttons];
@@ -69,7 +76,9 @@ const VIEW_NAMES: Dictionary[StringName, String] = {
 ## - views: the strip's views when --views= doesn't say;
 ## - spacing: how far off the opponent stands (m): out of the way, and for a
 ##   strafe near enough (under 9 m) that the rules keep the distance, so the
-##   fighter circles it.
+##   fighter circles it;
+## - every (optional): every how many frames the strip shows one, when
+##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames.
 const DRIVES: Dictionary[StringName, Dictionary] = {
 	&"rest_to_sprint": {
 		"input": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
@@ -118,6 +127,56 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"notes": "standing still for 330 frames, a whole weight shift of the guard stance",
 		"views": [&"front", &"side"],
 		"spacing": PoseCheck.SPACING,
+	},
+	&"guard_forward": {
+		"input": [[12, 0.0, 0.0, BLOCK], [48, 0.0, 1.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
+		"notes": "blocking: still for 12 frames, shuffling at the opponent for 48, then stopping",
+		"views": [&"side", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"guard_backpedal": {
+		"input": [[12, 0.0, 0.0, BLOCK], [48, 0.0, -1.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
+		"notes": "blocking: still for 12 frames, shuffling back from the opponent for 48, then stopping",
+		"views": [&"side", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"guard_strafe_left": {
+		"input": [[12, 0.0, 0.0, BLOCK], [48, -1.0, 0.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
+		"notes": "blocking: still for 12 frames, shuffling left round the opponent for 48, then stopping",
+		"views": [&"front", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"guard_strafe_right": {
+		"input": [[12, 0.0, 0.0, BLOCK], [48, 1.0, 0.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
+		"notes": "blocking: still for 12 frames, shuffling right round the opponent for 48, then stopping",
+		"views": [&"front", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"guard_back_left": {
+		"input": [[12, 0.0, 0.0, BLOCK], [48, -0.7071, -0.7071, BLOCK], [24, 0.0, 0.0, BLOCK]],
+		"notes": "blocking: still for 12 frames, shuffling back and to the left for 48, then stopping",
+		"views": [&"front", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"tap_steps": {
+		"input": [[12, 0.0, 0.0, 0], [8, 0.0, 1.0, 0], [24, 0.0, 0.0, 0], [8, 1.0, 0.0, 0], [24, 0.0, 0.0, 0],
+			[8, 0.0, -1.0, 0], [24, 0.0, 0.0, 0], [8, -1.0, 0.0, 0], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then a tap step forward, right, back and left, each held 8 frames and let go for 24",
+		"views": [&"front", &"feet"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"iai_walk": {
+		"input": [[12, 0.0, 0.0, HEAVY], [48, 0.0, 1.0, HEAVY], [36, -1.0, 0.0, HEAVY], [24, 0.0, 0.0, HEAVY]],
+		"notes": "holding heavy: sheathing into the Iai stance, walking at the opponent for 48 frames, left round it for 36, then stopping",
+		"views": [&"side", &"feet"],
+		"spacing": 8.0,
+		"every": 3,
 	},
 }
 ## Cells per row of a drive's strip.
@@ -194,6 +253,7 @@ var rows: Array[Row] = []
 var strip: Array[PackedStringArray] = []
 
 var _views_given: bool = false
+var _every_given: bool = false
 var _spacing_given: bool = false
 var _overlay: CanvasLayer
 var _sheet: Image
@@ -284,12 +344,15 @@ func apply_args(args: PackedStringArray) -> void:
 			"every":
 				if value.is_valid_int() and int(value) >= 1:
 					every = int(value)
+					_every_given = true
 				else:
 					push_error("move_sheet.gd: --every= takes a whole number of frames, not '%s'" % value)
 	if drive != &"" and not _views_given:
 		var own: Array[StringName] = []
 		own.assign(DRIVES[drive]["views"])
 		views = own
+	if drive != &"" and not _every_given:
+		every = int(DRIVES[drive].get("every", every))
 	for id: StringName in [fighter_id, defender_id]:
 		if id != &"" and not FighterLook.IDS.has(id):
 			push_error("move_sheet.gd: no fighter '%s' (%s)" % [id, ", ".join(PackedStringArray(FighterLook.IDS))])
@@ -404,6 +467,9 @@ func aim(view: StringName) -> void:
 			# from in front, a little to its right, the whole body: legs
 			# turned under a chest that faces the camera
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-20.0)) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
+		&"feet":
+			# down on the feet from its left, square to the line between them
+			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(60.0)) * 2.0 + Vector3(0.0, 1.3, 0.0), a + Vector3(0.0, 0.2, 0.0), 38.0)
 		&"close":
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-30.0)) * 2.1 + Vector3(0.0, 1.6, 0.0),
 				a + forward * 0.3 + Vector3(0.0, 1.4, 0.0), 44.0)
@@ -675,7 +741,7 @@ func render_drive(drive_id: StringName) -> Image:
 		view_names.append(VIEW_NAMES[view])
 	title = PackedStringArray([
 		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"]],
-		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards; weight: the guard stance's shift, + toward the front foot" % [
+		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards; guard: shuffling; weight: the stance's shift, + to the front foot" % [
 			", ".join(view_names), every, bench.spacing],
 		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [
 			Locomotion.WALK_SPEED, loco.run_speed, loco.sprint_speed, loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride],
@@ -689,9 +755,11 @@ func render_drive(drive_id: StringName) -> Image:
 
 ## A strip frame's caption: the frame and speed, and the legs' turn when they
 ## turn or run backwards; then the blend's weights (those over 0) and the
-## step phase, and the guard stance's weight shift `sway` (m, + toward the
-## front foot); then the lean, its angle and the way the body tips, and the
-## brace's drop of the hips.
+## step phase, or with the guard's legs which foot is up (while the legs go
+## over to the guard or back, its weight and the blend), and otherwise the
+## guard stance's weight shift `sway` (m, + toward the front foot); then the
+## lean, its angle and the way the body tips, and the brace's drop of the
+## hips.
 static func drive_caption(frame: int, loco: Locomotion, sway: float = 0.0) -> PackedStringArray:
 	var weights: PackedStringArray = []
 	for i: int in 4:
@@ -701,11 +769,23 @@ static func drive_caption(frame: int, loco: Locomotion, sway: float = 0.0) -> Pa
 	var turn: float = rad_to_deg(loco.shown_leg_yaw)
 	if absf(turn) >= 0.5 or loco.backwards:
 		first += " · legs %s%s" % ["%+.0f°" % turn if absf(turn) >= 0.5 else "0°", " back" if loco.backwards else ""]
-	return PackedStringArray([
-		first,
-		"%s · phase %.2f%s" % [" ".join(weights), loco.shown_phase, _sway_text(sway)],
-		_lean_text(loco.lean),
-	])
+	var second: String = "%s · phase %.2f" % [" ".join(weights), loco.shown_phase]
+	if loco.shown_guard >= 0.995:
+		second = "guard · " + _feet_text(loco.shuffle)
+	elif loco.shown_guard >= 0.005:
+		second = "guard %.2f · %s" % [loco.shown_guard, " ".join(weights)]
+	# the weight shift has no room beside the blend while the legs go over
+	if loco.shown_guard < 0.005 or loco.shown_guard >= 0.995:
+		second += _sway_text(sway)
+	return PackedStringArray([first, second, _lean_text(loco.lean)])
+
+
+## "right foot up", "left foot up" or "feet down": the guard shuffle's feet.
+static func _feet_text(shuffle: GuardShuffle) -> String:
+	for side: String in GuardShuffle.SIDES:
+		if shuffle.feet[side].swinging:
+			return "%s foot up" % side.to_lower()
+	return "feet down"
 
 
 ## "upright", or "lean 11° back", with " · hips down 5 cm" while braced.

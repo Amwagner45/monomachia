@@ -7,10 +7,11 @@ extends RefCounted
 ## (BodyLayer.hips_offset), while the leg IK keeps the feet planted.
 ##
 ## - The acceleration counts only while the fighter walks or runs on the
-##   ground (Locomotion.MOVING_STATES) on both frames, so an attack's own
-##   change of speed, a dodge or a jump adds nothing. It is the change of the
-##   rules' velocity over the ground, turns included (circling the opponent
-##   pulls toward it), in the fighter's frame, eased by ACCEL_EASE.
+##   ground (Locomotion.walks(), the Iai stance included) on both frames, so
+##   an attack's own change of speed, a dodge or a jump adds nothing. It is
+##   the change of the rules' velocity over the ground, turns included
+##   (circling the opponent pulls toward it), in the fighter's frame, eased
+##   by ACCEL_EASE.
 ## - The body tilts toward it, PER_ACCEL a m/s², at most MOST: forward
 ##   setting off, back when braking, into a turn.
 ## - Braking, the acceleration against the way the fighter last travelled,
@@ -142,7 +143,7 @@ func carry(root: Vector3) -> Transform3D:
 
 
 static func _counts(f: Fighter) -> bool:
-	return Locomotion.MOVING_STATES.has(f.state) and not f.airborne()
+	return Locomotion.walks(f)
 
 
 static func _ground_velocity(f: Fighter) -> Vector3:

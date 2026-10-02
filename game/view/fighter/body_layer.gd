@@ -106,14 +106,9 @@ func moved(sk: Skeleton3D, point: Vector3) -> Vector3:
 func upper_body(sk: Skeleton3D) -> Transform3D:
 	var twists: Dictionary[StringName, float] = _twists(sk)
 	var clip: Dictionary[StringName, Transform3D] = {}
-	for bone_name: StringName in [&"Root", &"Hips", &"Spine", &"Chest", &"UpperChest"]:
+	for bone_name: StringName in SPINE_SHARE:
 		clip[bone_name] = sk.get_bone_global_pose(_id(sk, bone_name))
-	var m: Transform3D = Transform3D.IDENTITY
-	if absf(pelvis_yaw) > 1e-5:
-		m = about(clip[&"Hips"].origin, Quaternion(Vector3.UP, pelvis_yaw)) * m
-	if lean.length() > 1e-5:
-		m = about(clip[&"Root"].origin, Quaternion(lean.normalized(), lean.length())) * m
-	m = Transform3D(Basis.IDENTITY, hips_offset) * m
+	var m: Transform3D = hips_moved(sk)
 	for bone_name: StringName in SPINE_SHARE:
 		var share: float = SPINE_SHARE[bone_name]
 		var at: Vector3 = (m * clip[bone_name]).origin
@@ -126,6 +121,18 @@ func upper_body(sk: Skeleton3D) -> Transform3D:
 		if absf(spine_roll) > 1e-5:
 			m = about(at, Quaternion(b.z, spine_roll * share)) * m
 	return m
+
+
+## How this layer will move the hips, and the legs' joints on them, from the
+## clip's pose: turned, leaned and moved, before the spine bends (see
+## upper_body()).
+func hips_moved(sk: Skeleton3D) -> Transform3D:
+	var m: Transform3D = Transform3D.IDENTITY
+	if absf(pelvis_yaw) > 1e-5:
+		m = about(sk.get_bone_global_pose(_id(sk, &"Hips")).origin, Quaternion(Vector3.UP, pelvis_yaw)) * m
+	if lean.length() > 1e-5:
+		m = about(sk.get_bone_global_pose(_id(sk, &"Root")).origin, Quaternion(lean.normalized(), lean.length())) * m
+	return Transform3D(Basis.IDENTITY, hips_offset) * m
 
 
 func _process_modification_with_delta(_delta: float) -> void:

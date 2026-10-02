@@ -1206,9 +1206,99 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
           - the upper body's move, the caption's sign and threshold, the stand drive's length, the left view on the right.
           - The survivor leaves the chest unturned in the reach pull's wrist estimate. The stand-in poses keep the chest square, so the pull comes out the same.
       - **Raised:** since 9.3 the Iai stance walks, but it is an attack state, which the legs don't count as walking (`Locomotion.MOVING_STATES`). The stance walk is a guard walk, so 14.9 is where it fits.
-  - [ ] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.
+  - [x] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.
     - Check: the step planner never crosses the mid-line and leads with the right foot; planted feet slide under 1 cm; guard strafe and backpedal strips reviewed.
     - Blocked by: 14.5, 14.8 · Stories: 12, 14
+    - Done:
+      - **`GuardShuffle`** (`game/view/fighter/guard_shuffle.gd`), a step planner for the guard stance's feet, stepped by Locomotion on the rules' frames.
+        - **Planted feet stay put.** A planted foot keeps its place on the ground and its turn while the fighter moves and turns over it. Its offset from its stance spot is what grows. The feet are shown from the planner's own copy of where the match draws the fighter, so they stand still on screen between rules frames too.
+        - **One foot at a time, the lead first.** Moving, the feet take turns. The first to step is the foot on the side the fighter travels to, with across counted twice over along, since the stance is narrower than it is long:
+
+          | Way | Leads | Way | Leads |
+          |---|---|---|---|
+          | forward | right | back | left |
+          | forward-right | right | back-left | left |
+          | right | right | left | left |
+          | back-right | right | forward-left | left |
+
+        - **When a foot steps:**
+          - it has fallen behind its spot by as far as its steps land ahead (2 cm for the first step from rest);
+          - or it stands 6 cm to the side of its spot's way;
+          - or it is turned 12° from the stance;
+          - or it is about to come within 5 cm of the mid-line;
+          - at rest, it stands 2 cm off its spot.
+        - **Where it lands:** ahead of its spot by half the way the spot moves while the foot stands, so each foot stands about its spot, at most 13 cm off it (the front leg's reach) and at the stance's angle. The landing keeps 5 cm from the mid-line, both when it lands and after the drift to come. A swinging foot's offset moves in the fighter's frame from where it lifted to where it lands, so the swing can't cross the mid-line either. It lifts at most 4 cm, halfway through, less for a short step.
+        - **The cadence follows the speed.** The fighter travels 0.2 m + 0.12 m per m/s a cycle of both feet, and a swing takes half the cycle (5–12 frames):
+
+          | Speed | Steps a second | Swing | Each foot's step |
+          |---|---|---|---|
+          | 0.5 m/s | 4 | 12 frames | 25 cm |
+          | 1.0 m/s | 6 | 9 frames | 33 cm |
+          | 1.6 m/s | 7.5 | 8 frames | 43 cm |
+          | 2.34 m/s (the guard's forward walk) | 9 | 7 frames | 52 cm |
+
+          A slow walk pauses between steps; a fast one doesn't. Moving across, swings are shorter and a foot stands no longer than the fighter takes to travel 16 cm across, so the lead foot never drifts to the mid-line.
+        - **Setting off,** a swing is paced for the speed the fighter is speeding up to, 50 ms ahead, and re-paced every frame. The rules reach the guard's walk in 4 frames, so the waiting foot falls up to 22 cm behind its spot, where a step paced for its first frame's speed left it 26 cm behind.
+        - **Riding.** Where the feet can't stand planted (in the air, an attack, a dodge, a stun, over 6 m/s), they ride with the fighter at their offsets and still step back to their spots. While the clips have the legs, they ride, so a hand-over always starts from the stance.
+        - **The bob and the arms' spring.** The pelvis bobs with the stance's spread, lower as the feet open and higher as they close (−1.5 to +1.2 cm at the guard's backpedal). The weapon follows the bob on a critically damped spring (−1.0 to +0.9 cm, 1–4 frames behind).
+      - **The sink** (`GuardStance.sink()`): the pelvis sinks as far as a leg needs to reach its planted foot within 97% of its length, and the weapon goes down with it. Setting off from rest, the rear foot waits while the front one steps, about 9 frames in which the rules carry the body 26–30 cm. Without the sink, the leg ran out of reach (106%) and the IK dragged the foot 3 cm. With it, the hips dip up to 9–10 cm for about 4 frames as the shuffle sets off forward or back, on top of the stance's 9 cm crouch and a 9° lean into the start. It reads as a push-off.
+      - **The guard's legs** (`Locomotion.guard`, 0 to 1). With a guard stance's weapon (the Katana), the legs are the guard's unless the fighter has run with its guard down for 3 rules frames (free, the stick held, not blocking).
+        - That covers standing, walking while blocking or in the Iai stance, tap-stepping, braking and attacking.
+        - The guard's legs show the stance over the relaxed idle (the clips' blend leans to idle by the guard's weight), don't turn toward travel, and stand on the shuffle's feet.
+        - The hand-over to the clips and back takes 8 frames. The 3-frame wait keeps a tap step with the stick held to its end in the guard: it ran one frame, and its legs flicked toward the clips.
+        - A foot moves at most 12 cm in half a frame through the hand-overs, which is the jog's own swing.
+        - The other weapons keep the clips until task 15.
+      - **The Iai stance walks** (raised at 14.8): `Locomotion.walks()` counts it, so its legs shuffle, its feet plant, and the lean follows its walk.
+      - **The tap step** is now a shuffle step, so the stance no longer pops into a stride on its first frame:
+        - forward and back take two steps (right then left, and left then right);
+        - the side steps take a small third step to settle, since the lead lands wide and the brake leaves it about 3 cm off its spot;
+        - at the forward tap's widest, the rear foot is still waiting for the front one to land, which reads as a short lunge;
+        - a foot swings about 10 cm in half a frame at most, where the pop moved the feet half a metre in a frame.
+      - **The brake** hands back from the clips over 8 frames and settles in a few shuffle steps, in place of the 2-frame pop.
+      - **Sheets and strips:**
+        - guard drives, all blocking: `guard_forward`, `guard_backpedal`, `guard_strafe_left`, `guard_strafe_right` and `guard_back_left`;
+        - `tap_steps` (a tap each way) and `iai_walk` (sheathed, walking at the opponent, then round it);
+        - a feet view from in front on the left, square to the line between the feet so neither hides the other (a straight-down view was tried: the hood hides the feet);
+        - a drive can set its own frame interval (the guard drives show every other frame);
+        - captions give the guard's legs and which foot is up ("guard · right foot up"), or the guard's weight during a hand-over.
+      - **Tests:**
+        - `test_guard_shuffle.gd` (22, new). On the planner:
+          - standing still on the stance;
+          - the lead first and the feet taking turns in eight directions, back on the stance's spots and angles after;
+          - the feet never crossing the mid-line (at least 2 cm clear) or passing each other, every way at 0.5, 1.2 and the guard's speed, and at a tap step's 4.1 m/s;
+          - planted feet exactly still while circling an opponent 2.5 m off, and between frames;
+          - turning on the spot, the feet turning as they swing;
+          - the cadence;
+          - the feet standing about their spots on average while walking (within 3 cm; 0.6–2.2 cm measured);
+          - setting off, the waiting foot at most 23 cm behind its spot;
+          - the landings' angles and reach;
+          - the low lift;
+          - riding;
+          - the bob and the weapon's spring.
+
+          On the fighter:
+          - the guard walk on both fighters, six ways including circling at 3 m: planted feet sliding 0.00 cm on the posed skeleton at alpha 0.5 and 1, the feet and toes at least 5 cm clear of the mid-line, the legs never turning;
+          - tap steps each way;
+          - the hand-overs and the ramp;
+          - the Iai stance's walk;
+          - the same feet shown every other frame;
+          - hit-stop;
+          - the other weapons on the clips;
+          - the hips bobbing and the grip riding the weapon's bob;
+          - the pelvis sinking for a foot out of reach, the leg reaching it at 97% and the weapon going down with the hips.
+        - `test_move_sheet.gd` (3 new, 3 changed): the guard drives, the tap and Iai drives, the feet view; the legend and the captions.
+        - Changed:
+          - three locomotion tests of the clips (the backpedal, the legs' turn in hit-stop, the planted foot on a diagonal) now use the Greatsword, whose legs run on the clips from the first frame;
+          - the brace's hips add the shuffle's bob and the sink;
+          - the first strip caption now reads the guard.
+        - Mutation-tested: 50 mutations, 48 failing a test:
+          - in the planner: planted feet keeping the last swing spot or riding along, the lead counted along only or never changing, both feet at once, no turns, landings out of the lane, past the reach or on the spot, no lift ahead of the mid-line, one step length, swings paced for the speed now or the slowest pace, no lane cap, a stand of only the other's swing, the first step waiting a whole lead, steps keeping their turn, turned feet never stepping, no lift or lifted while planted, never riding or riding on the ground, no bob, the weapon without its spring, the feet and the body not shown between frames, the feet shown from the world's frame;
+          - in the legs: never or always the guard's legs, the clips over at once, the clips under the guard, the ramp at once, the legs turning in the guard, the feet planted under the clips, frames missed in one jump, the Iai stance not walking or riding, the lean leaving it out;
+          - in the body: no sink, the sink from the clip's hips, the hips not bobbing, the weapon not riding the bob or the sink, the stance's fixed feet;
+          - in the sheet: the feet view along the feet, the caption without the guard or naming the wrong foot, a drive's interval ignored, the guard drives not blocking.
+          - The first run left four survivors, each a missing check, and four checks were added for them: the feet standing about their spots, the waiting foot setting off, the feet turning as they swing, and the sink with the weapon.
+          - Two mutations can't change anything: setting a planted foot's place from its own offset, and zeroing the turn a finished swing already ended on. A planted foot riding along in their place fails 12 tests.
+      - **Raised (rules, not changed):** a tap step toward or away from the opponent stops dead when the stick is let go before its 8 frames end. The strafe's keep-the-distance check in `Fighter._integrate()` counts a neutral stick as sideways, so it holds the spacing. Side taps go their full 0.55 m.
   - [ ] **14.10 Swing playback: weapon and arms (`SwingPlayer`).** Samples the swing at the fractional attack frame and places the weapon from the grip, hand frame and edge, with the arms on IK. The root stays the rules' position. Moves without a swing fall back to StickPose.
     - Check: at every frame of a synthetic swing move, the displayed grip and blade equal the sample (1 mm, 0.5°); its contact sheet is reviewed.
     - Blocked by: 7.15, 14.4, 14.8 · Stories: 16, 21

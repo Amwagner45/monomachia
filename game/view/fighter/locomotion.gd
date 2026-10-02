@@ -10,8 +10,8 @@ extends RefCounted
 ##   WALK_SPEED (the walk clip's own pace), the jog at the fighter's running
 ##   speed and the sprint at its sprinting speed (both scaled by its weapon,
 ##   and when disarmed), each blending linearly into the next (weights()).
-##   Walking while blocking (60% of the run) shows between the walk and the
-##   jog until the guard shuffle (plan 14.9) takes it over.
+##   A weapon with a guard stance hands the legs to the guard shuffle instead
+##   whenever the fighter isn't running with its guard down (see below).
 ## - Every clip plays from one shared step phase, so the feet stay in step
 ##   whatever the blend: at phase 0 the left foot is at mid-stance in every
 ##   clip, and at about 0.5 the right. The phase moves the blended stride per
@@ -20,10 +20,10 @@ extends RefCounted
 ##   FootPhase, once per fighter.
 ## - The phase moves once per rules frame, by the speed after that frame
 ##   (ground_speed(): walking and running on the ground only, so a dodge, an
-##   attack's lunge or a jump keeps the legs on the hold clip). In between, the
-##   shown phase blends from the frame before by the host's alpha, as the
-##   position does. The world's frame stands still in hit-stop and while
-##   paused, and so do the legs.
+##   attack's lunge or a jump keeps the legs on the hold clip; the Iai stance
+##   walks). In between, the shown phase blends from the frame before by the
+##   host's alpha, as the position does. The world's frame stands still in
+##   hit-stop and while paused, and so do the legs.
 ## - The hold clip runs on the rules' clock, as before (the time is passed in).
 ## - The legs turn toward the way the fighter travels, relative to the way
 ##   it faces (the opponent), by at most LEG_TURN_MAX: the clips only run
@@ -38,6 +38,14 @@ extends RefCounted
 ## - The body leans into the acceleration and braces when braking (Lean),
 ##   stepped with the phase, and a weapon held in a guard rides with it
 ##   (carry()).
+## - With a weapon whose hold has a guard stance (update()'s `stance`), the
+##   legs are the guard's (guard 1) unless the fighter runs with its guard
+##   down (runs_unguarded()) for RUN_AFTER_FRAMES: standing, walking while
+##   blocking or in the Iai stance, tap-stepping, braking, attacking. The guard's legs show the idle
+##   (the stance's clip, with GuardStance over it), don't turn toward travel,
+##   and their feet are GuardShuffle's, stepped on the same rules frames and
+##   planted where the fighter can stand (plants()). The hand-over to the
+##   clips and back takes GUARD_RAMP_FRAMES.
 ##
 ## A KO's fall plays on the model's AnimationPlayer instead: the view stops
 ## updating the tree, and the player's pose stands.
@@ -49,8 +57,19 @@ const NODES: Array[StringName] = [&"idle", &"walk", &"jog", &"sprint"]
 ## The speed (m/s) the walk is anchored at: the walk clip's own pace (FootPhase
 ## measures 0.93-0.97 m/s on the fighters; the spike's 0.98).
 const WALK_SPEED: float = 0.98
-## The fighter states in which the legs walk and run with the speed.
+## The fighter states in which the legs walk and run with the speed (and
+## the Iai stance: walks()).
 const MOVING_STATES: Array[StringName] = [&"free", &"step"]
+## The states in which a guard's feet stand planted on the ground (and the
+## Iai stance: plants()); in the others they ride with the fighter.
+const PLANTING_STATES: Array[StringName] = [&"free", &"step", &"land", &"parryAnim"]
+## How many rules frames the legs take to go over from the clips to the
+## guard's, or back.
+const GUARD_RAMP_FRAMES: int = 8
+## How many rules frames in a row the fighter runs with its guard down
+## before its legs go over to the clips: a tap step with the stick held to
+## its end runs one, and stays in the guard.
+const RUN_AFTER_FRAMES: int = 3
 ## The furthest the legs turn from straight ahead, either way (radians).
 const LEG_TURN_MAX: float = 80.0 * PI / 180.0
 ## Travelling further than this from straight ahead (radians, either way),
@@ -102,10 +121,19 @@ var shown: PackedFloat32Array = PackedFloat32Array([1.0, 0.0, 0.0, 0.0])
 var shown_leg_yaw: float = 0.0
 ## The lean into acceleration and the brace.
 var lean: Lean = Lean.new()
+## How far the legs are the guard's (1) rather than the clips' (0), after the
+## last rules frame and the one before, and as last shown (eased).
+var guard: float = 0.0
+var prev_guard: float = 0.0
+var shown_guard: float = 0.0
+## The guard's feet.
+var shuffle: GuardShuffle = GuardShuffle.new()
 
 var _root: AnimationNodeBlendTree
 ## The rules frame the phase is at; -1 before the first update.
 var _frame: int = -1
+## How many rules frames in a row the fighter has run with its guard down.
+var _unguarded: int = 0
 var _idle_clip: StringName = &""
 
 
@@ -157,11 +185,35 @@ func stride(p_speed: float) -> float:
 
 
 ## The speed the legs walk and run at: the rules' ground speed while the
-## fighter walks or runs on the ground (MOVING_STATES), else 0.
+## fighter walks or runs on the ground (walks()), else 0.
 static func ground_speed(f: Fighter) -> float:
-	if not MOVING_STATES.has(f.state) or f.airborne():
+	if not walks(f):
 		return 0.0
 	return Vector2(f.vel.x, f.vel.z).length()
+
+
+## Whether fighter `f` walks or runs on the ground at will: free, stepping
+## or in the Iai stance (MOVING_STATES, in_stance()).
+static func walks(f: Fighter) -> bool:
+	return (MOVING_STATES.has(f.state) or in_stance(f)) and not f.airborne()
+
+
+## Whether fighter `f` holds its sheathed charge, walking at the blocking
+## walk's speed: the Iai stance (the rules' Fighter._in_stance()).
+static func in_stance(f: Fighter) -> bool:
+	return f.state == &"attack" and f.atk != null and f.atk.charging and f.atk.def.charge_move
+
+
+## Whether fighter `f` runs with its guard down: moving at will in the free
+## state and not blocking. A guard's legs take the clips then.
+static func runs_unguarded(f: Fighter) -> bool:
+	return f.state == &"free" and f.moving and not f.blocking
+
+
+## Whether fighter `f`'s feet can stand planted: on the ground, standing,
+## walking, stepping or landing (PLANTING_STATES, in_stance()).
+static func plants(f: Fighter) -> bool:
+	return (PLANTING_STATES.has(f.state) or in_stance(f)) and not f.airborne()
 
 
 ## The way fighter `f` travels over the ground from the way it faces
@@ -208,12 +260,21 @@ func clip_time(index: int, p: float) -> float:
 
 ## Moves the phase on for each rules frame `f` has stepped since the last
 ## call, then shows the blend at `alpha` between the last two frames, with the
-## hold clip `idle_clip` at `idle_seconds`.
-func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float) -> void:
+## hold clip `idle_clip` at `idle_seconds`. `stance`: the held weapon's hold
+## has a guard stance, whose legs are the guard's unless the fighter runs
+## unguarded.
+func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float, stance: bool = false) -> void:
 	var mult: float = f.speed_mult()
 	run_speed = SimConst.MOVE_RUN_FORWARD * mult
 	sprint_speed = SimConst.MOVE_SPRINT * mult
 	var frame: int = f.world.frame if f.world != null else _frame
+	var pos: Vector3 = Vector3(f.pos.x, f.pos.y, f.pos.z)
+	var running: bool = runs_unguarded(f)
+	if _frame < 0 or frame < _frame:
+		_unguarded = RUN_AFTER_FRAMES if running else 0
+	elif frame > _frame:
+		_unguarded = _unguarded + frame - _frame if running else 0
+	var guarded: float = 1.0 if stance and _unguarded < RUN_AFTER_FRAMES else 0.0
 	if _frame < 0 or frame < _frame:
 		# the first update, or a new world: start from where the legs are
 		_frame = frame
@@ -222,11 +283,16 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 		prev_phase = phase
 		prev_leg_yaw = leg_yaw
 		lean.reset(f)
+		guard = guarded
+		prev_guard = guard
+		shuffle.reset(pos, f.yaw)
 	elif frame > _frame:
+		var from: Vector3 = shuffle.body
+		var from_yaw: float = shuffle.body_yaw
 		lean.step(f, frame - _frame)
 		var s: float = ground_speed(f)
 		var target: float = 0.0
-		if s > TURN_MIN_SPEED:
+		if s > TURN_MIN_SPEED and guarded < 1.0:
 			var way: float = travel(f)
 			backwards = runs_backwards(way, backwards)
 			target = leg_target(way, backwards)
@@ -243,14 +309,25 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 			var turned: Vector2 = spring(leg_yaw, leg_yaw_rate, target, LEG_SPRING, 1.0 / float(SimConst.FPS))
 			leg_yaw = turned.x
 			leg_yaw_rate = turned.y
+			prev_guard = guard
+			guard = move_toward(guard, guarded, 1.0 / float(GUARD_RAMP_FRAMES))
+			# the guard's feet stand where they can while the guard's legs
+			# show, and ride with the fighter while the clips have them; over
+			# frames missed, the fighter moved evenly
+			var k: float = float(i + 1) / float(frame - _frame)
+			shuffle.step(from.lerp(pos, k), lerp_angle(from_yaw, f.yaw, k), stance and plants(f) and guard > 0.0)
 		prev_speed = speed if frame - _frame == 1 else s
 		speed = s
 		_frame = frame
 	# the short way round: forwards or, running backwards, back
 	shown_phase = fposmod(prev_phase + wrapf(phase - prev_phase, -0.5, 0.5) * alpha, 1.0)
+	shown_guard = smoothstep(0.0, 1.0, lerpf(prev_guard, guard, alpha))
 	shown = weights(lerpf(prev_speed, speed, alpha), run_speed, sprint_speed)
+	for i: int in 4:
+		shown[i] = lerpf(shown[i], 1.0 if i == 0 else 0.0, shown_guard)
 	shown_leg_yaw = lerpf(prev_leg_yaw, leg_yaw, alpha)
 	lean.show(alpha)
+	shuffle.show(alpha)
 	_show(idle_clip, idle_seconds)
 
 

@@ -437,10 +437,12 @@ func test_strafing_turns_the_legs_toward_travel_and_keeps_the_chest_on_the_oppon
 
 
 func test_backpedalling_runs_the_cycle_backwards_with_the_legs_straight() -> void:
-	# near enough the middle that it doesn't back into the wall
-	var W: World = _world(8.0)
+	# near enough the middle that it doesn't back into the wall; with the
+	# Greatsword, whose legs walk on the clips from the first frame (the
+	# Katana's tap step from rest is its guard's shuffle)
+	var W: World = _world(8.0, Moves.GREATSWORD)
 	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view()
+	var v: FighterView = _view(&"rogue", Moves.GREATSWORD)
 	var loco: Locomotion = v.locomotion
 	_show(v, f)
 	for i: int in 50:
@@ -449,7 +451,7 @@ func test_backpedalling_runs_the_cycle_backwards_with_the_legs_straight() -> voi
 		var s: float = _speed(f)
 		assert_true(loco.backwards, "frame %d" % W.frame)
 		assert_almost_eq(wrapf(loco.phase - before, -0.5, 0.5), -s / loco.stride(s) / 60.0, 1e-5, "back a stride per cycle at %.2f m/s" % s)
-	assert_almost_eq(_speed(f), SimConst.MOVE_RUN_BACK, 1e-3, "at the backpedal's speed")
+	assert_almost_eq(_speed(f), SimConst.MOVE_RUN_BACK * Moves.GREATSWORD.speed_mult, 1e-3, "at the backpedal's speed")
 	assert_almost_eq(rad_to_deg(loco.leg_yaw), 0.0, 0.5, "the legs straight")
 	for i: int in 20:
 		_step(W, v, SimHelpers.idle())
@@ -472,9 +474,10 @@ func test_moving_back_left_runs_backwards_with_the_legs_turned_right() -> void:
 
 
 func test_the_legs_turn_holds_in_hit_stop_and_shows_between_frames_by_alpha() -> void:
-	var W: World = _world(3.0)
+	# the Greatsword turns its legs from the first frame of a strafe
+	var W: World = _world(3.0, Moves.GREATSWORD)
 	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view()
+	var v: FighterView = _view(&"rogue", Moves.GREATSWORD)
 	var loco: Locomotion = v.locomotion
 	var body: BodyLayer = v.model.rig.body
 	_show(v, f)
@@ -498,9 +501,10 @@ func test_the_legs_turn_holds_in_hit_stop_and_shows_between_frames_by_alpha() ->
 
 
 func test_the_planted_foot_stays_put_running_on_a_diagonal() -> void:
-	var W: World = _world()
+	# the Greatsword's legs run on the clips from the first frame
+	var W: World = _world(24.0, Moves.GREATSWORD)
 	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view()
+	var v: FighterView = _view(&"rogue", Moves.GREATSWORD)
 	var loco: Locomotion = v.locomotion
 	_show(v, f)
 	for i: int in 40:
@@ -618,8 +622,10 @@ func test_braking_leans_back_and_drops_the_hips_then_settles() -> void:
 			back_at = i
 		drop = maxf(drop, lean.shown_drop)
 		assert_almost_eq(body.lean, Lean.rotation(t), Vector3.ONE * 1e-6, "on the body")
-		# the brace on top of the guard stance's crouch, as far as the legs stand
-		assert_almost_eq(body.hips_offset.y, -lean.shown_drop - GuardStance.CROUCH * v.locomotion.shown[0], 1e-6, "on the hips")
+		# the brace on top of the guard stance's crouch and its shuffle's bob,
+		# as far as the legs are the guard's, and its sink
+		var stance: float = v.locomotion.shown[0]
+		assert_almost_eq(body.hips_offset.y, -lean.shown_drop + (v.locomotion.shuffle.shown_bob - GuardStance.CROUCH) * stance - v.sink, 1e-6, "on the hips")
 		if stopped < 0 and _speed(f) == 0.0:
 			stopped = i
 		var still: bool = rad_to_deg(t.length()) < 0.5 and lean.shown_drop < 0.005

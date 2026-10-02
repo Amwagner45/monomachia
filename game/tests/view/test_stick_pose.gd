@@ -2,7 +2,7 @@ extends GutTest
 ## The stick poses FighterView poses the fighters from, read from the rules'
 ## state: guard, block, an attack sweeping wind-up -> strike ->
 ## follow-through -> guard, a reel when hit, the fall on KO, bare hands when
-## disarmed.
+## disarmed, and the Iai's sheathe.
 
 
 func after_each() -> void:
@@ -152,4 +152,110 @@ func test_daggers_left_hand_moves_mirror_the_right() -> void:
 	var l: StickPose.Hand = keys[1]["left"]
 	var r: StickPose.Hand = right_keys[1]["right"]
 	assert_almost_eq(l.pos, StickPose.mirrored(r.pos), Vector3.ONE * 1e-6)
+
+
+func test_every_move_names_a_pose_the_stand_in_has() -> void:
+	# the weapons' moves by their anim; bare hands' by their type, as the
+	# stand-in has no hand-to-hand poses; the ultimates' hits are posed from
+	# the ultimate state, not as attacks
+	for wid: StringName in Moves.PLAYABLE_WEAPONS:
+		for id: StringName in Moves.WEAPONS[wid].moves:
+			var anim: StringName = Moves.WEAPONS[wid].moves[id].anim
+			assert_true(
+				StickPose.ARCH.has(anim) or StickPose.SHEATHED_DRAWS.has(anim),
+				"%s.%s's anim %s is one of the stand-in's poses" % [wid, id, anim],
+			)
+	for id: StringName in Moves.FISTS.moves:
+		var type: StringName = Moves.FISTS.moves[id].type
+		assert_true(
+			StickPose.ARCH.has(StickPose.TYPE_ARCH.get(type, &"")), "bare hands' %s, a %s, has its type's pose" % [id, type]
+		)
+	for anim: StringName in StickPose.SHEATHED_DRAWS:
+		assert_true(StickPose.ARCH.has(StickPose.SHEATHED_DRAWS[anim]), "%s draws into one of the poses" % anim)
+
+
+# ------------------------------------------------------------------ the Iai's sheathe
+
+## Fighter 0 (Katana) holds heavy, with the stick at mx, for hold steps, then
+## lets go, for n steps; returns its pose after each step (alpha 1, so the
+## pose of the step just taken) and its attack's frame then (-1 outside one).
+func _iai_poses(hold: int, mx: float, n: int) -> Array[Dictionary]:
+	var W: World = _world()
+	var a: Fighter = W.fighters[0]
+	var out: Array[Dictionary] = []
+	for i: int in n:
+		var p0: RawInput = SimHelpers.move(mx, 0.0, Btn.HEAVY) if i < hold else SimHelpers.move(mx, 0.0)
+		W.step([p0, SimHelpers.idle()])
+		var attacking: bool = a.state == &"attack" and a.atk != null
+		out.append({"pose": StickPose.compute(a, 1.0), "frame": a.atk.frame if attacking else -1})
+	return out
+
+
+## The pose in poses when the attack's frame was frame (null if never).
+static func _pose_at(poses: Array[Dictionary], frame: int) -> StickPose.Pose:
+	for step: Dictionary in poses:
+		if step["frame"] == frame:
+			return step["pose"]
+	return null
+
+
+## The phases a run of poses goes through, each once, in order.
+static func _phases(poses: Array[Dictionary]) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for step: Dictionary in poses:
+		var phase: StringName = (step["pose"] as StickPose.Pose).phase
+		if out.is_empty() or out[-1] != phase:
+			out.append(phase)
+	return out
+
+
+func test_the_iai_sheathes_then_draws() -> void:
+	assert_eq(
+		_phases(_iai_poses(1, 0.0, 60)),
+		[&"sheathe", &"draw", &"strike", &"follow", &"recover", &"guard"] as Array[StringName],
+		"tapped: sheathed and drawn at once",
+	)
+	assert_eq(
+		_phases(_iai_poses(40, 0.0, 100)),
+		[&"sheathe", &"sheathed", &"draw", &"strike", &"follow", &"recover", &"guard"] as Array[StringName],
+		"held: the sheathed stance until heavy is let go",
+	)
+
+
+func test_the_sheathed_hand_sits_by_the_left_hip() -> void:
+	# in the stance, 20 steps in; the fighter's left is +x in its own frame
+	var p: StickPose.Pose = _iai_poses(40, 0.0, 20)[-1]["pose"]
+	assert_eq(p.phase, &"sheathed")
+	assert_gt(p.right.pos.x, 0.05, "the hand on the hilt is left of the centre line")
+	assert_between(p.right.pos.y, 0.85, 1.15, "at the hip's height")
+	assert_between(p.right.pos.z, 0.0, 0.35, "just in front of the hip")
+	assert_lt(p.right.dir.z, -0.7, "the blade lies back along the hip")
+	assert_eq(p.glow, &"charge", "glowing as the charge builds")
+
+
+## The Iai's wind-up ends on frame 16: 70% of its 23-frame startup, as every
+## attack's wind-up does.
+const IAI_WINDUP_END: int = 16
+
+
+func test_both_draws_start_from_the_sheathe() -> void:
+	# held to step 40, so the draw starts on step 40, on frame 10, and goes out
+	# in front before it rises into the cut's wind-up
+	var draws: Array[Dictionary] = [
+		{"way": "the vertical", "mx": 0.0, "draws_into": &"overhead"},
+		{"way": "the horizontal", "mx": 1.0, "draws_into": &"slashRL"},
+	]
+	for d: Dictionary in draws:
+		var poses: Array[Dictionary] = _iai_poses(40, d["mx"], 60)
+		var sheathed: StickPose.Pose = poses[39]["pose"]
+		var drawing: StickPose.Pose = poses[40]["pose"]
+		assert_eq([sheathed.phase, drawing.phase], [&"sheathed", &"draw"], "%s: sheathed, then drawn" % d["way"])
+		assert_lt(sheathed.right.pos.distance_to(drawing.right.pos), 0.15, "%s starts from the sheathe" % d["way"])
+		var midway: StickPose.Pose = _pose_at(poses, 12)
+		assert_gt(midway.right.dir.z, 0.7, "%s: halfway, the blade points forward, out of the sheathe" % d["way"])
+		assert_gt(midway.right.pos.z, 0.3, "%s: and the hands are out in front, clear of the body" % d["way"])
+		var windup: Vector3 = StickPose.local(StickPose.ARCH[d["draws_into"]][0]["rh"])
+		var at_windup_end: StickPose.Pose = _pose_at(poses, IAI_WINDUP_END)
+		assert_lt(at_windup_end.right.pos.distance_to(windup), 0.1, "%s draws into the %s wind-up" % [d["way"], d["draws_into"]])
+
 

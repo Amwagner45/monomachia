@@ -12,12 +12,24 @@ extends Node
 ## "mirror" is a Rogue against a Rogue in her two palettes. "spacing" sets the
 ## fighters --spacing= metres apart (2.5 by default), to check that the
 ## player never hides the opponent from the gameplay camera.
+##
+## "iai_stance", "iai_vertical" and "iai_horizontal" show the player's Rogue
+## with the Katana's Iai Slash against an idle training dummy: sheathed in the
+## stance, from her front left so the left hip shows, and each draw on frame
+## --frame= (16 by default, the end of its wind-up, just before the cut; 12 is
+## halfway through the draw), the horizontal from her front right so its
+## wind-up at the right shoulder shows.
 
 const SEED: int = 7
 
-@export_enum("round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "mirror", "spacing") var shot: String = "round_start"
+@export_enum(
+	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "mirror", "spacing",
+	"iai_stance", "iai_vertical", "iai_horizontal",
+) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
+## The Iai draw shots' attack frame.
+@export var iai_frame: int = 16
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
 
@@ -40,6 +52,8 @@ func _ready() -> void:
 	for a: String in OS.get_cmdline_user_args():
 		if a.begins_with("--spacing="):
 			spacing = float(a.trim_prefix("--spacing="))
+		elif a.begins_with("--frame="):
+			iai_frame = int(a.trim_prefix("--frame="))
 	match shot:
 		"round_start":
 			_gameplay(MatchConfig.DUEL)
@@ -85,10 +99,14 @@ func _ready() -> void:
 			_gameplay(MatchConfig.DUEL)
 			host.step(Match.INTRO_FRAMES + 20)
 			_place_apart(spacing)
+		"iai_stance", "iai_vertical", "iai_horizontal":
+			_iai(shot)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
 	if shot == "dropped":
 		_frame_dropped(view.camera)
+	elif shot.begins_with("iai_"):
+		_frame_front(view.camera, 0, shot == "iai_horizontal")
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
 	view.set_process(false)
@@ -105,9 +123,15 @@ func _config(mode: StringName) -> MatchConfig:
 	)
 
 
-func _gameplay(mode: StringName, cfg: MatchConfig = null) -> void:
+## Starts a match on a stepped host: cfg, or the duel of _config(mode). With
+## devices set, the host reads the players' input from it, on the default
+## controls profiles.
+func _gameplay(mode: StringName, cfg: MatchConfig = null, devices: InputDevices = null) -> void:
 	host = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()
 	host.auto_run = false
+	if devices != null:
+		host.input = devices
+		host.profiles = ControlProfiles.new()
 	add_child(host)
 	host.start(cfg if cfg != null else _config(mode))
 
@@ -126,6 +150,30 @@ func _place_apart(metres: float) -> void:
 		f.pos = V3.make(at.x, 0.0, at.z)
 		f.vel = V3.make()
 	host.step(2)
+
+
+## The player's Rogue (side 0, on the default keyboard profile through a
+## fake device) 2.6 m from an idle training dummy holds heavy (K): the
+## Iai's sheathe, then 40 steps into the stance, where "iai_stance" stops.
+## For a draw, heavy is let go, with the stick right (D) for the horizontal,
+## and the shot steps on to the attack's frame iai_frame.
+func _iai(which: String) -> void:
+	var keys: FakeDeviceState = FakeDeviceState.new()
+	var dummy: MatchSide = MatchSide.computer(&"hunter", &"greatsword", 1)
+	dummy.controller = MatchSide.DUMMY
+	var cfg: MatchConfig = MatchConfig.make(MatchConfig.TRAINING, MatchSide.human(&"rogue", &"katana"), dummy, SEED)
+	_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(keys))
+	host.step(Match.INTRO_FRAMES + 20)
+	_place_apart(2.6)
+	keys.press_key(KEY_K)
+	host.step(Fighter.CHARGE_CHECK_FRAME + 40)
+	if which == "iai_stance":
+		return
+	if which == "iai_horizontal":
+		keys.press_key(KEY_D)
+	keys.release_key(KEY_K)
+	var a: Fighter = host.fighter(0)
+	_step_until(func() -> bool: return a.state == &"attack" and a.atk.frame >= iai_frame, 60, 0)
 
 
 func _main() -> void:
@@ -172,6 +220,17 @@ func _frame_dropped(camera: Camera3D) -> void:
 		camera.global_position = at + away * 3.5 + Vector3(0.0, 1.7, 0.0)
 		camera.look_at(at.lerp(mid, 0.35) + Vector3(0.0, 0.5, 0.0))
 		return
+
+
+## Puts the camera 2.6 m off fighter i's front left (or front right), at
+## chest height, looking at its waist.
+func _frame_front(camera: Camera3D, i: int, right: bool) -> void:
+	var at: Vector3 = host.display_position(i)
+	var yaw: float = host.display_yaw(i)
+	var forward := Vector3(sin(yaw), 0.0, cos(yaw))
+	var side: Vector3 = Vector3.UP.cross(forward) * (-1.0 if right else 1.0)
+	camera.global_position = at + (side * 0.8 + forward * 0.6).normalized() * 2.6 + Vector3(0.0, 1.4, 0.0)
+	camera.look_at(at + Vector3(0.0, 1.05, 0.0))
 
 
 func _weapon_down() -> bool:

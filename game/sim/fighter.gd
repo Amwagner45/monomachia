@@ -227,6 +227,12 @@ func attack_phase() -> StringName:
 	return &"recovery"
 
 
+## Whether the fighter holds a charge it can walk in (charge_move): the Iai
+## stance, sheathed.
+func in_stance() -> bool:
+	return state == &"attack" and atk != null and atk.charging and atk.def.charge_move
+
+
 ## Whether the attack takes a follow-up press on attack frame f: past its
 ## startup, with no follow-up queued yet.
 func takes_follow_up_at(f: int) -> bool:
@@ -914,7 +920,7 @@ func _integrate() -> void:
 
 	# strafing orbits the opponent: keep distance when moving sideways only
 	var keep: float = -1.0
-	if (state == &"free" or state == &"step" or _in_stance()) and moving and absf(input.my) < 0.25:
+	if (state == &"free" or state == &"step" or in_stance()) and moving and absf(input.my) < 0.25:
 		keep = SimMath.dist2(pos, opp.pos)
 
 	pos.x += vel.x * SimConst.DT
@@ -947,12 +953,6 @@ func _integrate() -> void:
 			vel.y = 0.0
 			if falling:
 				_on_land()
-
-
-## Whether the fighter holds a charge it can walk in (charge_move): the Iai
-## stance.
-func _in_stance() -> bool:
-	return state == &"attack" and atk != null and atk.charging and atk.def.charge_move
 
 
 func _on_land() -> void:

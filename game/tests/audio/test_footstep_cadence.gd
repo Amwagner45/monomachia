@@ -1,7 +1,8 @@
 extends GutTest
 ## FootstepCadence: a footfall every stride of ground covered on foot, with a
-## stride per pace (guard walk, run, sprint), and none in the air, in a dodge,
-## while knocked back, in hit-stop or across a jump in position.
+## stride per pace (guard walk, run, sprint), the Iai stance's sheathed walk
+## included, and none in the air, in a dodge, while knocked back, in hit-stop
+## or across a jump in position.
 
 const DT: float = SimConst.DT
 
@@ -78,6 +79,23 @@ func test_both_fighters_count_on_their_own() -> void:
 		per_side[foot["fighter"]] += 1
 	assert_eq(per_side[0], int(SimConst.MOVE_RUN_FORWARD * 110 * DT / cadence.run_stride))
 	assert_eq(per_side[1], int(SimConst.MOVE_SPRINT * 110 * DT / cadence.sprint_stride))
+
+
+func test_a_sheathed_walk_steps_at_the_walking_stride() -> void:
+	# fighter 0 holds heavy (the Katana's Iai) with the stick right: sheathed
+	# after 9 frames, it strafes round the opponent at the blocking walk
+	var f: Fighter = world.fighters[0]
+	var feet: Array[Dictionary] = []
+	var walked: float = 0.0
+	for k: int in 130:
+		var x: float = f.pos.x
+		var z: float = f.pos.z
+		world.step([SimHelpers.move(1.0, 0.0, Btn.HEAVY), SimHelpers.idle()])
+		feet.append_array(cadence.update(world.fighters, world.frame))
+		walked += Vector2(f.pos.x - x, f.pos.z - z).length()
+	assert_true(f.in_stance(), "still sheathed")
+	assert_gt(walked, 3.0 * cadence.walk_stride, "it walked")
+	assert_eq(feet.size(), int(walked / cadence.walk_stride), "a footfall every walking stride")
 
 
 func test_standing_gives_none() -> void:

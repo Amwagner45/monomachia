@@ -103,3 +103,184 @@ func test_the_chosen_preset_reaches_the_arena() -> void:
 func test_without_a_preset_it_shoots_the_saved_one() -> void:
 	var rig: ArenaShot = _rig(ArenaShot.View.GAMEPLAY)
 	assert_eq(rig.preset.id, (_services.call("graphics_preset") as GraphicsPreset).id)
+
+
+# ------------------------------------------------------------------ bench
+
+func _bench_rig(entries: Array[String], passes: int = 1, frames: int = 3) -> ArenaShot:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.arena_id = ArenaScenes.STANDIN
+	rig.bench = PackedStringArray(entries)
+	rig.bench_passes = passes
+	rig.bench_settle = 1
+	rig.bench_frames = frames
+	add_child_autofree(rig)
+	return rig
+
+
+func _positions(host: MatchHost) -> Array[Vector3]:
+	return [host.display_position(0), host.display_position(1)]
+
+
+func test_the_command_line_sets_up_a_bench() -> void:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.apply_args(PackedStringArray([
+		"--preset=low", "--bench=low;high:outline_props=false", "--bench-passes=2",
+		"--bench-frames=120", "--bench-res=1600x900",
+	]))
+	assert_eq(rig.preset_id, &"low")
+	assert_eq(rig.bench, PackedStringArray(["low", "high:outline_props=false"]))
+	assert_eq(rig.bench_passes, 2)
+	assert_eq(rig.bench_frames, 120)
+	assert_eq(rig.bench_resolution, Vector2i(1600, 900))
+	rig.free()
+
+
+func test_bad_bench_counts_and_sizes_on_the_command_line_are_reported() -> void:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.apply_args(PackedStringArray(["--bench-passes=0", "--bench-frames=lots", "--bench-res=1080p"]))
+	assert_push_error("--bench-passes=0 takes a whole number")
+	assert_push_error("--bench-frames=lots takes a whole number")
+	assert_push_error("--bench-res= takes <width>x<height>")
+	assert_eq(rig.bench_passes, 3, "left as it was")
+	assert_eq(rig.bench_frames, 300)
+	assert_eq(rig.bench_resolution, Vector2i(1920, 1080))
+	rig.free()
+
+
+func test_a_bench_entry_is_a_preset_with_overrides() -> void:
+	var entry: Dictionary = ArenaShot.bench_entry("high:outline_props=false,particle_ratio=0.5,shadow_atlas_size=2048")
+	assert_eq(entry["error"], "")
+	var p: GraphicsPreset = entry["preset"]
+	assert_eq(p.id, &"high")
+	assert_false(p.outline_props)
+	assert_almost_eq(p.particle_ratio, 0.5, 1e-6)
+	assert_eq(p.shadow_atlas_size, 2048)
+	assert_true(GraphicsPreset.load_id(&"high").outline_props, "the saved preset is left as it is")
+	assert_eq(entry["label"], "High: outline_props=false, particle_ratio=0.5, shadow_atlas_size=2048")
+	assert_eq(ArenaShot.bench_entry("medium")["label"], "Medium")
+
+
+func test_a_bench_entry_can_hide_parts_of_the_match() -> void:
+	var entry: Dictionary = ArenaShot.bench_entry("low:hide=Arena/World,hide=Fighter1")
+	assert_eq(entry["error"], "")
+	assert_eq(entry["hide"], [^"Arena/World", ^"Fighter1"])
+
+
+func test_a_bad_bench_entry_says_what_is_wrong() -> void:
+	assert_string_contains(ArenaShot.bench_entry("ultra")["error"], "no preset 'ultra'")
+	assert_string_contains(ArenaShot.bench_entry("high:bloom=true")["error"], "no preset setting 'bloom'")
+	assert_string_contains(ArenaShot.bench_entry("high:outline_props=maybe")["error"], "outline_props")
+	assert_string_contains(ArenaShot.bench_entry("high:shadow_atlas_size")["error"], "shadow_atlas_size")
+
+
+func test_the_bench_interleaves_its_passes() -> void:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.bench = PackedStringArray(["low", "high"])
+	rig.bench_passes = 3
+	assert_eq(rig.bench_queue(), PackedStringArray(["low", "high", "low", "high", "low", "high"]))
+	rig.free()
+
+
+func test_frame_times_average_and_95th_percentile() -> void:
+	var times := PackedFloat64Array()
+	for i: int in range(100, 0, -1):
+		times.append(float(i))
+	assert_almost_eq(ArenaShot.average(times), 50.5, 1e-9)
+	assert_almost_eq(ArenaShot.percentile_95(times), 95.0, 1e-9, "the nearest rank: 95 of 100 frames take this long or less")
+	assert_almost_eq(ArenaShot.percentile_95(PackedFloat64Array([4.0, 2.0])), 4.0, 1e-9)
+
+
+func test_each_bench_entry_replays_the_fight_from_the_same_moment() -> void:
+	var rig: ArenaShot = _bench_rig(["low", "high"])
+	var host: MatchHost = rig.host
+	assert_eq(host.sim_match.phase, &"fight", "past the round's intro")
+	assert_eq(host.step_count, Match.INTRO_FRAMES)
+	var start: Array[Vector3] = _positions(host)
+	assert_eq(rig.preset.id, &"low")
+	host.step(40)
+	assert_ne(_positions(host), start, "the fighters moved")
+	rig.start_bench_entry("high")
+	assert_eq(host.step_count, Match.INTRO_FRAMES)
+	assert_eq(_positions(host), start, "back where the last entry started")
+	assert_eq(rig.preset.id, &"high")
+	var camera: CameraRig = _match_view(rig).camera
+	assert_eq(camera.mode, CameraRig.Mode.FOLLOW, "still the view's camera")
+	var ink: InkWashPass = _match_view(rig).arena.find_children("*", "InkWashPass", true, false)[0]
+	assert_eq(ink.quality, GraphicsPreset.load_id(&"high").post_quality, "the entry's preset reaches the arena")
+
+
+func test_an_entry_hides_what_it_names_and_the_next_shows_it_again() -> void:
+	var rig: ArenaShot = _bench_rig(["low:hide=Fighter1", "low"])
+	var fighter: Node3D = _match_view(rig).get_node("Fighter1")
+	assert_false(fighter.visible)
+	rig.start_bench_entry("low")
+	assert_true(fighter.visible)
+	rig.start_bench_entry("low:hide=Arena/Nothing")
+	assert_push_error("no node 'Arena/Nothing'")
+
+
+func test_entries_that_cannot_run_are_reported_and_dropped_before_timing() -> void:
+	var rig: ArenaShot = _bench_rig(["ultra", "low", "low:hide=Nothing", "low"], 2)
+	assert_push_error("no preset 'ultra'")
+	assert_push_error("no node 'Nothing'")
+	assert_push_error("'low': it is listed twice")
+	assert_eq(rig.bench, PackedStringArray(["low"]))
+	assert_eq(rig.bench_queue(), PackedStringArray(["low", "low"]))
+
+
+func test_the_bench_plays_the_match_with_its_hud_and_names_the_entry() -> void:
+	var rig: ArenaShot = _bench_rig(["medium"], 1, 30)
+	var hud: CanvasLayer = rig.host.get_node("Hud")
+	assert_true(hud.visible, "the HUD, as a match draws it")
+	assert_true(_match_view(rig).is_processing(), "the camera follows the fight")
+	assert_eq((rig.get_node("Bench/Entry") as Label).text, "Medium")
+	await wait_process_frames(1)
+	var steps: int = rig.host.step_count
+	var frames: int = Engine.get_process_frames()
+	assert_gt(steps, Match.INTRO_FRAMES, "the fight plays")
+	await wait_process_frames(3)
+	assert_eq(rig.host.step_count - steps, Engine.get_process_frames() - frames, "one rules step a frame")
+
+
+func test_the_bench_times_every_entry_in_every_pass_and_reports_them() -> void:
+	var rig: ArenaShot = _bench_rig(["low", "high"], 2)
+	assert_false(rig.shot_ready(), "busy timing")
+	var guard: int = 0
+	while not rig.shot_ready() and guard < 100:
+		await wait_process_frames(1)
+		guard += 1
+	assert_true(rig.shot_ready(), "done")
+	for key: String in ["low", "high"]:
+		var passes: Array = rig.bench_results[key]
+		assert_eq(passes.size(), 2, "%s timed in both passes" % key)
+		for r: Dictionary in passes:
+			assert_has(r, "frame_ms")
+			assert_has(r, "p95_ms")
+			assert_has(r, "gpu_ms")
+			assert_has(r, "cpu_ms")
+	var lines: PackedStringArray = rig.bench_report()
+	assert_eq(lines.size(), 3, "a header and one line per entry")
+	assert_string_contains(lines[1], "low")
+	assert_string_contains(lines[2], "high")
+	assert_string_contains(lines[2], "fps")
+
+
+func test_without_a_bench_the_shot_is_the_screen() -> void:
+	var rig: ArenaShot = _rig(ArenaShot.View.GAMEPLAY)
+	assert_null(rig.shot_image())
+	assert_null(rig.get_node_or_null("Bench"))
+	assert_false(rig.host.get_node("Hud").visible)
+
+
+func test_the_sheet_puts_the_entries_side_by_side_in_order() -> void:
+	var colors: Array[Color] = [Color.RED, Color.GREEN, Color.BLUE]
+	var panels: Array[Image] = []
+	for c: Color in colors:
+		var img: Image = Image.create(40, 20, false, Image.FORMAT_RGBA8)
+		img.fill(c)
+		panels.append(img)
+	var sheet: Image = ArenaShot.sheet(panels, 0.5)
+	assert_eq(sheet.get_size(), Vector2i(60, 10))
+	for i: int in 3:
+		assert_eq(sheet.get_pixel(i * 20 + 10, 5), colors[i], "panel %d" % i)

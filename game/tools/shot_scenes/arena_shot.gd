@@ -26,6 +26,30 @@ extends Node3D
 ##   when it differs from the rules' wall (orange) and its wall's inner face
 ##   (yellow) from the arena's ArenaDef, and the arena's Spawn and Gate
 ##   markers with their facing (cyan), plus a close-up of the wall at +X.
+##
+## Bench: with entries in bench, the rig times frames instead of taking one
+## shot (arena_bench.tscn times Low, Medium and High from the gameplay view):
+##   node scripts/godot.mjs shots res://tools/shot_scenes/arena_bench.tscn <sheet.png>
+## The window goes to bench_resolution with vsync off, and the match plays
+## from the view's camera with its HUD, one rules step a frame. Each entry is
+## timed bench_passes times, interleaved, so heat and clock changes hit every
+## entry alike. For each, the match restarts at the start of the fight,
+## bench_settle frames settle, then bench_frames frames are timed. The run
+## prints one line per entry (fps and average frame time, the 95th
+## percentile, the GPU's and the CPU's render times), and the shot it saves
+## is a sheet of the entries side by side, each at the same moment of the
+## fight (the camera's shake can differ a little: its random offsets don't
+## restart with the match).
+##
+## An entry is a preset id, optionally followed by ":" and comma-separated
+## overrides: <setting>=<value> sets any GraphicsPreset setting
+## (outline_props=false, shadow_atlas_size=2048), and hide=<path> hides a
+## node under the match view (hide=Arena/World, hide=Fighter1), to find what
+## costs what. An entry that can't run is reported, so the run fails, and
+## left out. On the command line, --bench= takes the entries
+## separated by ";" (quoted: "--bench=high;high:hide=Arena/Particles"), and
+## --bench-passes=, --bench-frames= and --bench-res=1600x900 override the
+## exports.
 
 enum View { GAMEPLAY, WATCH, MENU, ESTABLISHING, TOP_DOWN }
 
@@ -81,25 +105,73 @@ const GATE_MARK_LIFT: float = 8.0
 ## The overlay rings' width (m): two pixels or so at 46 m tall.
 @export var ring_width: float = 0.1
 
+@export_group("Bench")
+## The entries to time, in order; empty takes one shot instead.
+@export var bench: PackedStringArray = PackedStringArray()
+## How many times each entry is timed, interleaved with the others.
+@export var bench_passes: int = 3
+## Frames after each entry starts before the timing does.
+@export var bench_settle: int = 45
+## Frames timed per entry and pass.
+@export var bench_frames: int = 300
+## The window's size while timing (the 3D renders at the window's pixels).
+@export var bench_resolution: Vector2i = Vector2i(1920, 1080)
+
+## Each entry's size in the bench's sheet, as a fraction of the screen.
+const SHEET_SCALE: float = 0.5
+
 var host: MatchHost
-## The preset the shot is taken at.
+## The preset the shot is taken at (during a bench, the entry's).
 var preset: GraphicsPreset
 ## The rig's own camera, for the establishing and top-down views; null for
 ## the match camera's views.
 var shot_camera: Camera3D
+## Entry -> one Dictionary per pass: frame_ms (the average frame time),
+## p95_ms (the 95th percentile), gpu_ms and cpu_ms (the average render times).
+var bench_results: Dictionary[String, Array] = {}
 var _ready_flag: bool = false
+## The entries in the order they are timed, every pass.
+var _queue: PackedStringArray = PackedStringArray()
+var _entry_index: int = -1
+var _frame_in_entry: int = 0
+var _last_usec: int = 0
+var _frame_ms: PackedFloat64Array = PackedFloat64Array()
+var _gpu_ms: PackedFloat64Array = PackedFloat64Array()
+var _cpu_ms: PackedFloat64Array = PackedFloat64Array()
+var _bench_done: bool = false
+## What the current entry hid, shown again when the next one starts.
+var _hidden: Array[Node] = []
+## Entry -> the screen at the end of its first pass, for the sheet.
+var _panels: Dictionary[String, Image] = {}
+var _label: Label
+var _saved_vsync: DisplayServer.VSyncMode = DisplayServer.VSYNC_ENABLED
+var _saved_window_size: Vector2i = Vector2i.ZERO
 
 
 func shot_frames() -> int:
-	return settle_frames
+	if _queue.is_empty():
+		return settle_frames
+	return _queue.size() * (bench_settle + bench_frames)
 
 
 func shot_ready() -> bool:
-	return _ready_flag
+	return _ready_flag and (_queue.is_empty() or _bench_done)
+
+
+## The bench's sheet once it is done; null for a plain shot, so shot.gd
+## saves the screen.
+func shot_image() -> Image:
+	if not _bench_done:
+		return null
+	var panels: Array[Image] = []
+	for key: String in bench:
+		if _panels.has(key):
+			panels.append(_panels[key])
+	return sheet(panels, SHEET_SCALE)
 
 
 func _ready() -> void:
-	_read_args()
+	apply_args(OS.get_cmdline_user_args())
 	preset = _chosen_preset()
 	host = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()
 	host.auto_run = false
@@ -126,19 +198,52 @@ func _ready() -> void:
 	GraphicsApplier.apply(preset, self, get_viewport())
 	if view == View.TOP_DOWN:
 		_setup_top_down(match_view.arena)
+	if not bench.is_empty():
+		_start_bench()
 	_ready_flag = true
 
 
-## --preset= and --arena= on the command line override the exports. An
-## unknown arena is an error, so the shot run fails.
-func _read_args() -> void:
-	for a: String in OS.get_cmdline_user_args():
+func _exit_tree() -> void:
+	if _queue.is_empty():
+		return
+	DisplayServer.window_set_vsync_mode(_saved_vsync)
+	get_window().size = _saved_window_size
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), false)
+
+
+## The command line's --preset=, --arena=, --bench=, --bench-passes=,
+## --bench-frames= and --bench-res= override the exports. An unknown arena, a
+## count below 1 or a bad resolution is an error, so the shot run fails.
+func apply_args(args: PackedStringArray) -> void:
+	for a: String in args:
 		if a.begins_with("--preset="):
 			preset_id = StringName(a.trim_prefix("--preset="))
 		elif a.begins_with("--arena="):
 			arena_id = StringName(a.trim_prefix("--arena="))
+		elif a.begins_with("--bench="):
+			bench = a.trim_prefix("--bench=").split(";", false)
+		elif a.begins_with("--bench-passes="):
+			bench_passes = _count_arg(a, bench_passes)
+		elif a.begins_with("--bench-frames="):
+			bench_frames = _count_arg(a, bench_frames)
+		elif a.begins_with("--bench-res="):
+			var size: PackedStringArray = a.trim_prefix("--bench-res=").split("x")
+			if size.size() != 2 or int(size[0]) <= 0 or int(size[1]) <= 0:
+				push_error("arena_shot.gd: --bench-res= takes <width>x<height>, not '%s'" % a)
+			else:
+				bench_resolution = Vector2i(int(size[0]), int(size[1]))
 	if not ArenaScenes.has(arena_id):
 		push_error("arena_shot.gd: no arena '%s'" % arena_id)
+
+
+## The whole number after an arg's "=", or fallback (reported) when it isn't
+## 1 or more.
+static func _count_arg(arg: String, fallback: int) -> int:
+	var text: String = arg.get_slice("=", 1)
+	if not text.is_valid_int() or int(text) < 1:
+		push_error("arena_shot.gd: %s takes a whole number of 1 or more" % arg)
+		return fallback
+	return int(text)
 
 
 ## The preset named by preset_id, or the saved one when it is empty. An
@@ -330,3 +435,263 @@ func _add_close_up(layer: CanvasLayer, wall_x: float) -> void:
 	caption.add_theme_font_size_override(&"font_size", 18)
 	caption.position = frame.position + Vector2(8, 4)
 	layer.add_child(caption)
+
+
+# ------------------------------------------------------------------ bench
+
+## An entry's preset (a copy, with its overrides set), the nodes it hides
+## (paths under the match view), its label and what is wrong with it ("" when
+## nothing is).
+static func bench_entry(entry: String) -> Dictionary:
+	var out: Dictionary = {"preset": null, "hide": [] as Array[NodePath], "label": entry, "error": ""}
+	var parts: PackedStringArray = entry.split(":", true, 1)
+	var base: GraphicsPreset = GraphicsPreset.load_id(StringName(parts[0]))
+	if base == null:
+		out["error"] = "no preset '%s' (%s)" % [parts[0], ", ".join(PackedStringArray(GraphicsPreset.IDS))]
+		return out
+	var p: GraphicsPreset = base.duplicate() as GraphicsPreset
+	var hide: Array[NodePath] = []
+	var overrides: PackedStringArray = parts[1].split(",", false) if parts.size() > 1 else PackedStringArray()
+	for o: String in overrides:
+		var kv: PackedStringArray = o.split("=", true, 1)
+		if kv.size() < 2:
+			out["error"] = "'%s' is neither <setting>=<value> nor hide=<path>" % o
+			return out
+		if kv[0] == "hide":
+			hide.append(NodePath(kv[1]))
+			continue
+		var problem: String = _set_preset_value(p, kv[0], kv[1])
+		if problem != "":
+			out["error"] = problem
+			return out
+	out["preset"] = p
+	out["hide"] = hide
+	out["label"] = p.display_name if overrides.is_empty() else "%s: %s" % [p.display_name, ", ".join(overrides)]
+	return out
+
+
+## Sets one of the preset's settings from text (true, 2048, 0.5); returns what
+## is wrong, or "".
+static func _set_preset_value(p: GraphicsPreset, key: String, text: String) -> String:
+	var known: bool = false
+	for prop: Dictionary in p.get_property_list():
+		if prop["name"] == key and int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+			known = true
+	if not known or key == "id" or key == "display_name":
+		return "no preset setting '%s'" % key
+	var current: Variant = p.get(key)
+	var value: Variant = str_to_var(text)
+	if typeof(value) == TYPE_INT and typeof(current) == TYPE_FLOAT:
+		value = float(value)
+	if typeof(value) != typeof(current):
+		return "%s=%s: %s takes a %s" % [key, text, key, type_string(typeof(current))]
+	p.set(key, value)
+	return ""
+
+
+## The entries in the order they are timed: every entry once a pass.
+func bench_queue() -> PackedStringArray:
+	var queue := PackedStringArray()
+	for r: int in bench_passes:
+		queue.append_array(bench)
+	return queue
+
+
+static func average(values: PackedFloat64Array) -> float:
+	var total: float = 0.0
+	for v: float in values:
+		total += v
+	return total / maxf(values.size(), 1)
+
+
+## The nearest-rank 95th percentile: 95% of the values are at most this.
+static func percentile_95(values: PackedFloat64Array) -> float:
+	if values.is_empty():
+		return 0.0
+	var sorted: PackedFloat64Array = values.duplicate()
+	sorted.sort()
+	return sorted[ceili(0.95 * sorted.size()) - 1]
+
+
+## The entries' shots side by side, in order, each scaled by scale; null
+## without shots.
+static func sheet(panels: Array[Image], scale: float) -> Image:
+	if panels.is_empty():
+		return null
+	var w: int = roundi(panels[0].get_width() * scale)
+	var h: int = roundi(panels[0].get_height() * scale)
+	var out: Image = Image.create(w * panels.size(), h, false, Image.FORMAT_RGBA8)
+	for i: int in panels.size():
+		var panel: Image = panels[i].duplicate() as Image
+		panel.convert(Image.FORMAT_RGBA8)
+		panel.resize(w, h, Image.INTERPOLATE_LANCZOS)
+		out.blit_rect(panel, Rect2i(Vector2i.ZERO, Vector2i(w, h)), Vector2i(i * w, 0))
+	return out
+
+
+## Drops the entries that can't run and the repeats (reported, so the run
+## fails), then sets the window and the match up for timing and starts the
+## first entry.
+func _start_bench() -> void:
+	var good := PackedStringArray()
+	for e: String in bench:
+		var problem: String = "it is listed twice" if good.has(e) else _bench_problem(e)
+		if problem != "":
+			push_error("arena_shot.gd: bench entry '%s': %s" % [e, problem])
+		else:
+			good.append(e)
+	bench = good
+	_queue = bench_queue()
+	if _queue.is_empty():
+		return
+	_saved_vsync = DisplayServer.window_get_vsync_mode()
+	_saved_window_size = get_window().size
+	DisplayServer.window_set_vsync_mode(DisplayServer.VSYNC_DISABLED)
+	get_window().size = bench_resolution
+	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	var hud: CanvasLayer = host.get_node("Hud")
+	hud.visible = true
+	hud.set_process(true)
+	(host.get_node("View") as MatchView).set_process(true)
+	_add_bench_label()
+	_next_entry()
+
+
+## What is wrong with an entry, its hide paths included, or "".
+func _bench_problem(entry: String) -> String:
+	var parsed: Dictionary = bench_entry(entry)
+	if parsed["error"] != "":
+		return parsed["error"]
+	var match_view: MatchView = host.get_node("View")
+	for path: NodePath in parsed["hide"]:
+		var node: Node = match_view.get_node_or_null(path)
+		if node == null or not "visible" in node:
+			return "no node '%s' under the match view to hide" % path
+	return ""
+
+
+## The entry's name in the bottom-left corner, so each panel of the sheet
+## says what it shows.
+func _add_bench_label() -> void:
+	var layer := CanvasLayer.new()
+	layer.name = "Bench"
+	add_child(layer)
+	_label = Label.new()
+	_label.name = "Entry"
+	_label.add_theme_font_size_override(&"font_size", 30)
+	_label.add_theme_constant_override(&"outline_size", 8)
+	_label.add_theme_color_override(&"font_outline_color", Color.BLACK)
+	layer.add_child(_label)
+	_label.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_LEFT, Control.PRESET_MODE_MINSIZE, 24)
+	_label.grow_vertical = Control.GROW_DIRECTION_BEGIN
+
+
+## Starts timing an entry: the match restarts at the start of the fight, so
+## every entry times the same frames, then the entry's preset is applied and
+## what it names is hidden.
+func start_bench_entry(entry: String) -> void:
+	var problem: String = _bench_problem(entry)
+	if problem != "":
+		push_error("arena_shot.gd: bench entry '%s': %s" % [entry, problem])
+		return
+	var parsed: Dictionary = bench_entry(entry)
+	for node: Node in _hidden:
+		if is_instance_valid(node):
+			node.set("visible", true)
+	_hidden.clear()
+	host.start(host.config)
+	host.step(Match.INTRO_FRAMES)
+	var match_view: MatchView = host.get_node("View")
+	_aim_match_camera(match_view)
+	if shot_camera != null:
+		shot_camera.make_current()
+	preset = parsed["preset"]
+	GraphicsApplier.apply(preset, self, get_viewport())
+	for path: NodePath in parsed["hide"]:
+		var node: Node = match_view.get_node(path)
+		node.set("visible", false)
+		_hidden.append(node)
+	if _label != null:
+		_label.text = parsed["label"]
+
+
+func _next_entry() -> void:
+	_entry_index += 1
+	_frame_in_entry = 0
+	_last_usec = 0
+	_frame_ms.clear()
+	_gpu_ms.clear()
+	_cpu_ms.clear()
+	if _entry_index >= _queue.size():
+		_bench_done = true
+		for line: String in bench_report():
+			print(line)
+		return
+	start_bench_entry(_queue[_entry_index])
+
+
+## Times the frame that just ended (from the last call to this one), then
+## steps the match once.
+func _process(_delta: float) -> void:
+	if _queue.is_empty() or _bench_done:
+		return
+	var now: int = Time.get_ticks_usec()
+	_frame_in_entry += 1
+	if _frame_in_entry > bench_settle and _last_usec != 0:
+		var rid: RID = get_viewport().get_viewport_rid()
+		_frame_ms.append((now - _last_usec) / 1000.0)
+		_gpu_ms.append(RenderingServer.viewport_get_measured_render_time_gpu(rid))
+		_cpu_ms.append(RenderingServer.viewport_get_measured_render_time_cpu(rid) + RenderingServer.get_frame_setup_time_cpu())
+	_last_usec = now
+	if _frame_ms.size() >= bench_frames:
+		_end_entry()
+		_next_entry()
+		return
+	host.step(1)
+
+
+## Keeps the pass's numbers, and in the first pass the screen for the sheet
+## (headless runs draw nothing, so they keep none).
+func _end_entry() -> void:
+	var key: String = _queue[_entry_index]
+	if not bench_results.has(key):
+		bench_results[key] = []
+		if DisplayServer.get_name() != "headless":
+			_panels[key] = get_viewport().get_texture().get_image()
+	bench_results[key].append({
+		"frame_ms": average(_frame_ms),
+		"p95_ms": percentile_95(_frame_ms),
+		"gpu_ms": average(_gpu_ms),
+		"cpu_ms": average(_cpu_ms),
+	})
+
+
+## A header, then one line per entry, averaged over the passes (each pass's
+## frame time listed too, to show drift).
+func bench_report() -> PackedStringArray:
+	# The window's pixels: the viewport texture's own size is scaled by the
+	# canvas_items stretch.
+	var size: Vector2i = get_window().size
+	var lines := PackedStringArray()
+	lines.append("bench: %s at %dx%d, %d passes of %d frames (after %d to settle), %s" % [
+		arena_id, size.x, size.y, bench_passes, bench_frames, bench_settle, RenderingServer.get_video_adapter_name()])
+	var width: int = 0
+	for key: String in bench:
+		width = maxi(width, key.length())
+	for key: String in bench:
+		var frame := PackedFloat64Array()
+		var p95 := PackedFloat64Array()
+		var gpu := PackedFloat64Array()
+		var cpu := PackedFloat64Array()
+		for r: Dictionary in bench_results.get(key, []):
+			frame.append(r["frame_ms"])
+			p95.append(r["p95_ms"])
+			gpu.append(r["gpu_ms"])
+			cpu.append(r["cpu_ms"])
+		var passes := PackedStringArray()
+		for pass_ms: float in frame:
+			passes.append("%.2f" % pass_ms)
+		var ms: float = average(frame)
+		lines.append("bench: %s %6.1f fps  frame %6.2f ms (passes %s)  p95 %6.2f ms  gpu %6.2f ms  render cpu %5.2f ms" % [
+			key.rpad(width), 1000.0 / ms if ms > 0.0 else 0.0, ms, " / ".join(passes), average(p95), average(gpu), average(cpu)])
+	return lines

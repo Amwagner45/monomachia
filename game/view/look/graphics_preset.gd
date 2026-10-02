@@ -6,8 +6,10 @@ extends Resource
 ## is the default.
 ##
 ## The costs quoted below were measured at 1080p on the target laptop (Ryzen 7
-## 4700U with Radeon Vega graphics), where High holds about 62 fps in the
-## arena.
+## 4700U with Radeon Vega graphics) while the arena was first built, with
+## capsule stand-ins. Benchmarked there since with the real fighters fighting
+## on the Moonlit Shrine (tools/shot_scenes/arena_bench.tscn), High runs
+## about 69 fps, Medium 79 and Low 102.
 
 const IDS: Array[StringName] = [&"low", &"medium", &"high"]
 const DEFAULT_ID: StringName = &"high"

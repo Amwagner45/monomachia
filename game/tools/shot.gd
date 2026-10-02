@@ -6,7 +6,8 @@ extends SceneTree
 ##
 ## A scene can take control of the capture by defining `func shot_frames() -> int`
 ## (how many frames to wait) and `func shot_ready() -> bool` (true once it has
-## posed itself).
+## posed itself), and hand over the picture to save with
+## `func shot_image() -> Image` (null saves the screen).
 
 
 func _initialize() -> void:
@@ -42,7 +43,9 @@ func _run() -> void:
 			await process_frame
 			guard += 1
 	await RenderingServer.frame_post_draw
-	var img: Image = root.get_viewport().get_texture().get_image()
+	var img: Image = node.call("shot_image") if node.has_method("shot_image") else null
+	if img == null:
+		img = root.get_viewport().get_texture().get_image()
 	var err: Error = img.save_png(out)
 	if err != OK:
 		printerr("shot: failed to save %s (%s)" % [out, error_string(err)])

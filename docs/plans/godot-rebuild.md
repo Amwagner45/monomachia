@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.8, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.9.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). The owner now approves each task before the next starts. Next: 8.1, the first task of stage 4 (fluid rules).
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -154,25 +154,28 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's night sky (17.6): an ink sky with stars, ink clouds and a blood-red moon with a red haze, in the shrine's own environment with its depth and height fog. The moon hangs ahead of player one, where the layout puts it.
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
-- **Checks after 17.8** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 603 Godot tests (47 s; the machine is back to its old speed): rules 138, input 118, audio 31, core 22, view 239, content 52, and 3 project-wide smoke tests;
+  - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
+- **Checks after 17.9** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 617 Godot tests (48 s): rules 138, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
   - the typecheck loads 160 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
+  - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
+  - High averages 69 fps at 1080p on the target laptop (`arena_bench.tscn`), 66 fps from the Watch camera;
   - CI passed on every push from 14.1 to 17.8 (5b7f9ce);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
-- **Waiting on its own worktree:**
-  - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
-    - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.8): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside, sky, backdrop, embers and ash. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's benchmark (17.9).
+- **The look-and-arena worktree, fully salvaged:**
+  - Task 17 stopped mid-build there (`look-and-arena`, all uncommitted in `.claude/worktrees/wf_c7f99fe5-f9a-1`, based on the old commit 67265af).
+  - Tasks 16.1–17.9 salvaged it piece by piece, reviewed (16.1–16.5, 17.1, 17.3–17.9): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, the shrine's courtyard, props, underside, sky, backdrop, embers and ash, and the bench. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work.
+  - Left behind on purpose: `game/_probe`, the bench's hard-coded overrides, the floating rocks' temple hall (no rock in the data was big enough) and the petals, which wait on the owner. The worktree can go once the owner agrees (see the Waiting list).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
+- Removing the look-and-arena worktree (`.claude/worktrees/wf_c7f99fe5-f9a-1`), now that 17.9 salvaged its last piece. Only the petals (17.8) would still need it.
 - Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8: left out, as the plan says; the worktree's 28 pale petals on the wind would be cheap to bring back), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
@@ -1277,11 +1280,33 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - the clouds' drift and every emitter's drift follow the layout's wind, at its speed, with no turbulence;
         - the near-camera fade, no shadows, and each preset's ratio.
       - **Shots reviewed:** gameplay, Watch, menu and establishing at High and Low, and the top-down view. The ash shows as pale flecks against the dark and is lost against the pale floor; embers rise past the rim in the establishing view; Low draws 30%.
-  - [ ] **17.9 Preset benchmark of the shrine.** The worktree's bench mode in `arena_shot.gd` (interleaved rounds, average and 95th-percentile frame time), run at 1080p on the target laptop with the real fighters. Presets are tuned if High drops below 60 fps, and the numbers go in the spec.
+  - [x] **17.9 Preset benchmark of the shrine.** The worktree's bench mode in `arena_shot.gd` (interleaved rounds, average and 95th-percentile frame time), run at 1080p on the target laptop with the real fighters. Presets are tuned if High drops below 60 fps, and the numbers go in the spec.
     - Check: High averages at least 60 fps at 1080p; side-by-side preset shots reviewed.
     - Note from 17.7: Low draws the full domain-warped sea of clouds, and Medium two layers of it; a cloud shader without the warp for Low is the first saving if one is needed.
     - Note from 17.8: the embers and ash are 10 GPU emitters, 474 small unshaded quads on High.
     - Blocked by: 17.5, 17.7, 17.8 · Stories: 57
+    - Done:
+      - **The bench mode in `tools/shot_scenes/arena_shot.gd`**, rebuilt from the worktree's on the stepped `MatchHost`:
+        - it plays a real computer duel (the Rogue with the katana against the Hunter with the greatsword) from the view's camera, with the HUD, one rules step a frame, where the worktree timed capsules standing still;
+        - every entry restarts the match at the start of the fight, so each one times the same frames of the same fight;
+        - the window goes to 1080p (`bench_resolution`) with vsync off, and each entry is timed `bench_passes` times (3), interleaved: 45 frames to settle, then 300 timed. The task's "rounds" are called passes in the code, since a Round is the match's;
+        - it prints one line per entry: fps and the average frame time (each round's listed, to show drift), the 95th percentile, and the GPU's and the CPU's render times;
+        - the shot it saves is a sheet of the entries side by side at the same moment of the fight, each labelled. `shot.gd` takes a scene's own picture through `shot_image()`.
+      - **`tools/shot_scenes/arena_bench.tscn`** times Low, Medium and High from the gameplay view. `--bench=` turns any arena shot into a bench (`"--bench=low;medium;high"` on `arena_watch.tscn`, say), and `--bench-passes=`, `--bench-frames=` and `--bench-res=` override the rest (a count below 1 or a bad size is reported).
+      - **Overrides, to find what costs what:** an entry is a preset id, optionally with `:` and comma-separated overrides. `<setting>=<value>` sets any `GraphicsPreset` setting, and `hide=<path>` hides a node under the match view (`high:hide=Arena/World`). They replace the worktree's thirty hard-coded overrides, several of which needed its `_probe` shaders. An entry that can't run is reported, so the run fails, and left out.
+      - **The numbers** (1080p, on the target laptop plugged in; three passes, which agree within 0.4 ms):
+
+        | Preset | Gameplay view | 95th percentile | GPU | Watch view | Menu view |
+        |---|---|---|---|---|---|
+        | Low | 102 fps (9.8 ms) | 10.3 ms | 7.2 ms | 98 fps | 103 fps |
+        | Medium | 79 fps (12.6 ms) | 13.2 ms | 9.8 ms | 75 fps | 79 fps |
+        | High | 69 fps (14.6 ms) | 15.3 ms | 11.7 ms | 66 fps (p95 16.4 ms) | 68 fps |
+
+        High holds 60 fps in every view, so no preset is tuned. A short run on battery gave the same numbers. The worktree's High ran 61–63 fps with capsules standing still, so the salvaged shrine is cheaper than it was even with the real fighters (about 0.9 ms for both); where the saving came from wasn't traced (the backdrop's shaders fetching the noise texture in 17.7 is one candidate).
+      - **What High's parts cost** (gameplay view, two passes of 200 frames, by turning each off): the lantern lights 1.1 ms, the moon's shadows 1.1 ms, the fighters 0.9 ms, the backdrop 0.5 ms, the prop outlines 0.4 ms, the embers and ash 0.1 ms.
+      - **Tests** (`test_arena_shot`): the command line, and bad counts and sizes on it reported; entries with overrides and hidden nodes, and bad or repeated ones reported and left out; the passes interleaved; the average and the 95th percentile; each entry replaying the fight from the same moment at its preset; the match played with its HUD, one step a frame; every entry timed in every pass and reported; the sheet in order.
+      - **Shots reviewed:** the sheets from the gameplay, Watch and menu views. Low leaves out the cliffs, pagodas and waterfalls and the ink-wash pass, Medium brings back the cliffs, and High adds the mist and the prop outlines. The camera's shake can differ a little between entries, since its random offsets don't restart with the match.
+      - **For later:** for task 18's effects, High leaves about 2 ms a frame from the gameplay camera (1.4 ms at the 95th percentile), but only about 1.5 ms from the Watch camera (0.3 ms at the 95th percentile); see the notes on 18.1 and 18.12.
   - [ ] **17.10 Radius check on the shrine as every match's arena; task 17 ticked.** With the rules at 15 m, a headless computer-vs-computer match on the shrine keeps fighters inside the parapet and dropped weapons bouncing inside. The camera at the wall doesn't pass through lanterns, pillars or trees.
     - Check: the shrine tests pass with the radius from `SimConst`; wall and top-down shots reviewed; the bench is still within budget.
     - Blocked by: 8.3, 17.9 · Stories: 11, 15
@@ -1299,6 +1324,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - Task 6 already does hit-stop, slow motion, shake and field-of-view kicks.
   - [ ] **18.1 The effects layer on the match clock.** `CombatEffects` with pooled flashes and rings and a MultiMesh particle pool, timed on the world frame plus the host's alpha, cleared at round start, and scaled by the preset. An effect table maps events to effects, starting with today's contact flashes.
     - Check: effects hold through hit-stop and pause, run at 0.3× in the KO slow motion, clear at round start and leave no stray nodes; particle counts follow the preset; exchange and parry shots are deterministic.
+    - Note from 17.9: on the target laptop at 1080p, High takes 14.6 ms a frame from the gameplay camera (15.3 ms at the 95th percentile), which leaves about 2 ms, and 15.2 ms from the Watch camera (16.4 ms at the 95th percentile), which leaves about 1.5 ms on average and almost nothing in the slow frames. `tools/shot_scenes/arena_bench.tscn` times a real fight on the shrine, hits included, so run it as effects land; `high:hide=<path>` entries time a part on its own.
     - Blocked by: 14.2, 16.5 · Stories: 19, 48, 49
   - [ ] **18.2 Trail rules.** `TrailState` per fighter and hand: on in the active frames plus about two frames of fade, off while charging or for Flash, red for unblockables, gold for ultimates, white otherwise, and both hands for the Daggers.
     - Check: tests drive a world through a Katana light, a Greatsword unblockable, a charged heavy and an ultimate.
@@ -1332,6 +1358,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Blocked by: 18.5 · Stories: 57
   - [ ] **18.12 Effects parity check, re-shoot and re-benchmark on the finished fighters; task 18 ticked.** A test that every rules event has an effect or is on an explicit no-visual list, including shake and kick amounts; the effects shot series at High and Low; the shrine bench rerun with the finished fighters and effects.
     - Check: the parity test passes; the shot series is reviewed; High still averages at least 60 fps at 1080p on the target laptop, or the presets are tuned until it does.
+    - Note from 17.9: the bench is `arena_bench.tscn` (gameplay view), plus `"--bench=low;medium;high"` on `arena_watch.tscn`, the heaviest view. Tuning candidates on High, by what they cost in 17.9: the lantern lights 1.1 ms, the moon's shadows 1.1 ms, the prop outlines 0.4 ms.
     - Blocked by: 15.16, 18.4–18.11 · Stories: 40, 48, 49, 57, 65
 
 ### Phase F: sound and music
@@ -1478,6 +1505,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **23.6 Versus split screen.** Two side-by-side views on one world, each with its own CameraRig. Shake and kicks reach both, the preset and the ink pass apply to both, the shrine's underside is hidden per camera, and only one listener hears 3D sound. The other modes keep one view.
     - Check: Versus builds two cameras and other modes one; no stray viewports after rematches; the underside rule holds in both views, with a Versus shot of a fighter at the wall; frame time at 1080p on each preset measured.
     - Note from 17.5: the shrine decides only for its own viewport's camera each frame. Call `MoonlitShrine.cull_below_deck(camera)` for the other view's camera every frame, after it moves.
+    - Note from 17.9: the bench in `tools/shot_scenes/arena_shot.gd` times the root viewport with one camera. Measuring split screen needs the rig to build the two views, or a Versus mode on the bench.
     - Blocked by: 16.5, 17.5, 19.3 · Stories: 55
   - [ ] **23.7 Versus HUD.** Player 1 and Player 2 plates; prompts per half with each player's own device names; a dropped-weapon marker per half; the demo's Versus toasts and calls.
     - Check: each player's prompts use their own device's labels; markers project through the right camera; toasts name the player; shots reviewed.

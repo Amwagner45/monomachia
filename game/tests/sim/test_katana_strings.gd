@@ -1,14 +1,8 @@
-extends GutTest
+extends WeaponStringsTest
 ## The Katana's new strings (plan task 9): the spec's Katana table, played
 ## through the rules. Expected numbers come from the spec, not the code.
 
-const H := preload("res://tests/sim/sim_helpers.gd")
-## toBeCloseTo's default precision (2 digits), as the neighbouring tests use
-const CLOSE: float = 0.005
-
-## The spec's Katana table, all nine rows: name, frames (startup, active,
-## recovery), damage, posture, the light and heavy follow-ups (&"" for none),
-## and the sides the spec's move data gives the weapon (start, end).
+## The spec's Katana table, all nine rows (see WeaponStringsTest.rows).
 const ROWS: Dictionary[StringName, Dictionary] = {
 	&"k_l1": {
 		"name": "Right Cut", "frames": [11, 3, 16], "damage": 6, "posture": 7,
@@ -68,127 +62,10 @@ const BLOCK_STRAFE: float = 3.5 * 0.6
 const BLOCK_FORWARD: float = 3.9 * 0.6
 const BLOCK_BACK: float = 3.0 * 0.6
 
-## The spec's length of move id in frames: startup + active + recovery.
-static func _length(id: StringName) -> int:
-	var frames: Array = ROWS[id]["frames"]
-	return frames[0] + frames[1] + frames[2]
 
-
-func after_each() -> void:
-	H.dispose_all()
-
-
-# ------------------------------------------------------------------ helpers
-
-## A string played by fighter 0: its events, each with "step", the step it
-## came on, and after each step fighter 0's state, the attack it was in (&""
-## outside one), that attack's frame (-1), whether it was holding a charge
-## (for the Iai, sheathed), how far it moved over the ground in the step and
-## how far apart the two fighters' centres stood.
-class PlayedString:
-	extends SimHelpers.Rec
-	var state: Array[StringName] = []
-	var attack: Array[StringName] = []
-	var frame: PackedInt32Array = []
-	var charging: Array[bool] = []
-	var moved: PackedFloat64Array = []
-	var apart: PackedFloat64Array = []
-
-	## Steps W with fighter 0's input p0 and fighter 1's p1 (null for idle),
-	## records the step, and returns its events.
-	func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
-		var i: int = state.size()
-		var a: Fighter = W.fighters[0]
-		var x: float = a.pos.x
-		var z: float = a.pos.z
-		W.step([p0, SimHelpers.idle() if p1 == null else p1])
-		var new_events: Array[Dictionary] = W.drain_events()
-		for e: Dictionary in new_events:
-			e["step"] = i
-		events.append_array(new_events)
-		var attacking: bool = a.state == &"attack" and a.atk != null
-		state.append(a.state)
-		attack.append(a.atk.def.id if attacking else &"")
-		frame.append(a.atk.frame if attacking else -1)
-		charging.append(attacking and a.atk.charging)
-		moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
-		apart.append(SimMath.dist2(a.pos, W.fighters[1].pos))
-		return new_events
-
-	## How far fighter 0 moved from step from to step to (not included),
-	## adding up each step, so an orbit counts in full.
-	func walked(from: int, to: int) -> float:
-		var total: float = 0.0
-		for d: float in moved.slice(from, to):
-			total += d
-		return total
-
-	## The step of fighter 0's first event of type t (-1 if none).
-	func step_of(t: StringName) -> int:
-		for e: Dictionary in all(t):
-			if _by_fighter_0(e):
-				return e["step"]
-		return -1
-
-	## Whether fighter 0 made event e (a swing or whiff names its fighter as
-	## "f", a hit or block as "attacker").
-	static func _by_fighter_0(e: Dictionary) -> bool:
-		return e.get("f", e.get("attacker")) == 0
-
-	## The frame fighter 0's last attack id ended on, one past the last frame a
-	## step left it in (-1 if it never started): an attack is over on the step
-	## its frame reaches startup + active + recovery.
-	func ended_on(id: StringName) -> int:
-		var i: int = attack.rfind(id)
-		return -1 if i < 0 else frame[i] + 1
-
-	## Fighter 0's state on the step its last attack id ended (&"?" if it
-	## never started or the run ended first): &"attack" when a follow-up took
-	## over.
-	func state_after(id: StringName) -> StringName:
-		var i: int = attack.rfind(id)
-		return &"?" if i < 0 or i + 1 >= state.size() else state[i + 1]
-
-	## The ids of fighter 0's attacks that made events of type t, in order.
-	func ids(t: StringName) -> Array[StringName]:
-		var out: Array[StringName] = []
-		for e: Dictionary in all(t):
-			if _by_fighter_0(e):
-				out.append(e["attack"])
-		return out
-
-
-## Fighter 0 plays a string of presses (Btn.LIGHT or Btn.HEAVY) for 240 steps
-## against an idle Katana gap m away: the first on step 0, each next one on the
-## step after the attack before it swings, the first step that attack takes a
-## follow-up. mx is the stick's sideways push throughout (1.0 draws the
-## horizontal Iai). With dodge_in set, it also presses dodge so that the press
-## first counts on that attack's frame dodge_on, holding the stick to the side
-## from then on (a buffered dodge with the stick let go is a backstep).
-static func _play(
-	presses: Array[int], gap: float = 2.2, mx: float = 0.0, dodge_in: StringName = &"", dodge_on: int = -1
-) -> PlayedString:
-	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, gap)
-	var a: Fighter = W.fighters[0]
-	var r := PlayedString.new()
-	var next: int = 0
-	var due: bool = true
-	var dodged: bool = false
-	for i: int in 240:
-		var p0: RawInput = H.move(mx, 0.0)
-		if due and next < presses.size():
-			p0 = H.move(mx, 0.0, presses[next])
-			next += 1
-			due = false
-		elif dodged:
-			p0 = H.move(1.0, 0.0)
-		elif a.state == &"attack" and a.atk.def.id == dodge_in and a.atk.frame == dodge_on - 1:
-			p0 = H.move(1.0, 0.0, Btn.DODGE)
-			dodged = true
-		for e: Dictionary in r.step(W, p0):
-			if e["t"] == &"swing" and e["f"] == 0:
-				due = true
-	return r
+func _init() -> void:
+	weapon = Moves.KATANA
+	rows = ROWS
 
 
 # ------------------------------------------------------------------ the light string
@@ -214,40 +91,9 @@ func test_a_heavy_ends_the_string_on_heaven_splitter_or_after_two_lights_on_risi
 	)
 
 
-## Plays presses (the stick at mx), then a light or a heavy as the last of
-## swings swings, and checks that it starts nothing: the swings stay swings,
-## and the last of them ends on startup + active + recovery, leaving the
-## fighter free.
-func _assert_ends_the_string(presses: Array[int], swings: Array[StringName], mx: float = 0.0) -> void:
-	var id: StringName = swings.back()
-	for press: int in [Btn.LIGHT, Btn.HEAVY]:
-		var played: Array[int] = presses.duplicate()
-		played.append(press)
-		var r: PlayedString = _play(played, 2.2, mx)
-		var what: String = "a %s pressed in %s" % ["light" if press == Btn.LIGHT else "heavy", ROWS[id]["name"]]
-		assert_eq(r.ids(&"swing"), swings, "%s starts nothing" % what)
-		assert_eq(r.ended_on(id), _length(id), "%s: it ends on startup + active + recovery" % what)
-		assert_eq(r.state_after(id), &"free", "%s: then the fighter is free" % what)
-
-
-## Plays presses (the stick at mx) and checks each one hits, and that the
-## string then stops: its last move ends on startup + active + recovery,
-## leaving the fighter free.
-func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
-	var r: PlayedString = _play(presses, 2.2, mx)
-	var what: String = "%s%s" % [presses, " sideways" if mx != 0.0 else ""]
-	var hits: Array[StringName] = r.ids(&"hit")
-	assert_eq(hits.size(), presses.size(), "every press of %s hits" % what)
-	if hits.size() != presses.size():
-		return
-	var last: StringName = hits.back()
-	assert_eq(r.ended_on(last), _length(last), "%s: %s ends on startup + active + recovery" % [what, last])
-	assert_eq(r.state_after(last), &"free", "%s: and the fighter is free after %s" % [what, last])
-
-
 func test_crown_cut_ends_the_string() -> void:
 	var light: int = Btn.LIGHT
-	_assert_ends_the_string([light, light, light, light], [&"k_l1", &"k_l2", &"k_l3", &"k_l4"])
+	_assert_starts_nothing_in([light, light, light, light], [&"k_l1", &"k_l2", &"k_l3", &"k_l4"], LIGHT_OR_HEAVY)
 
 
 func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
@@ -297,19 +143,9 @@ func test_a_tapped_heavy_draws_the_iai_on_frame_23() -> void:
 	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName], "and it hits")
 
 
-## Fighter 0, holding weapon, plays the input p0 gives each step (step index
-## -> RawInput) for n steps against an idle Katana gap m away.
-static func _run(p0: Callable, gap: float = 2.2, n: int = 240, weapon: WeaponDef = Moves.KATANA) -> PlayedString:
-	var W: World = H.make_world(weapon, Moves.KATANA, gap)
-	var r := PlayedString.new()
-	for i: int in n:
-		r.step(W, p0.call(i))
-	return r
-
-
 ## Fighter 0 holds heavy for hold steps against an idle Katana 2.2 m away, for
 ## 240 steps.
-static func _hold_heavy(hold: int) -> PlayedString:
+func _hold_heavy(hold: int) -> PlayedString:
 	return _run(func(i: int) -> RawInput: return H.btn(Btn.HEAVY) if i < hold else H.idle())
 
 
@@ -468,11 +304,11 @@ func test_a_dodge_during_the_draw_does_not_cancel_it() -> void:
 
 func test_other_charged_heavies_still_stand_still() -> void:
 	# their heavies held with the stick to the side, 8 m apart
-	for weapon: WeaponDef in [Moves.GREATSWORD, Moves.DAGGERS]:
-		var r: PlayedString = _run(func(_i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY), 8.0, 80, weapon)
+	for other: WeaponDef in [Moves.GREATSWORD, Moves.DAGGERS]:
+		var r: PlayedString = PlayedString.run(other, func(_i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY), 8.0, 80)
 		var charged_from: int = r.charging.find(true)
-		assert_gt(charged_from, 0, "%s charges" % weapon.id)
-		assert_eq(r.walked(charged_from, 80), 0.0, "%s stands still while it charges" % weapon.id)
+		assert_gt(charged_from, 0, "%s charges" % other.id)
+		assert_eq(r.walked(charged_from, 80), 0.0, "%s stands still while it charges" % other.id)
 
 
 # ------------------------------------------------------------------ the horizontal Iai
@@ -486,7 +322,7 @@ const HOLDS: Dictionary[String, int] = {"a tap": 1, "a release": 40, "an auto-re
 
 ## Fighter 0 holds heavy for hold steps (1 is a tap), with the stick at (mx,
 ## my) from step 0 to the end, against an idle Katana 2.2 m away.
-static func _iai_with_stick(hold: int, mx: float, my: float) -> PlayedString:
+func _iai_with_stick(hold: int, mx: float, my: float) -> PlayedString:
 	return _run(func(i: int) -> RawInput: return H.move(mx, my, Btn.HEAVY) if i < hold else H.move(mx, my))
 
 
@@ -560,7 +396,7 @@ func test_the_horizontal_iai_keeps_the_iais_timing_and_charge() -> void:
 
 ## As _play, with the stick held right throughout, so the Iai draws the
 ## horizontal.
-static func _play_sideways(presses: Array[int]) -> PlayedString:
+func _play_sideways(presses: Array[int]) -> PlayedString:
 	return _play(presses, 2.2, 1.0)
 
 
@@ -602,7 +438,7 @@ func test_a_held_horizontal_iai_goes_on_to_returning_draw_too() -> void:
 
 
 func test_returning_draw_ends_the_string() -> void:
-	_assert_ends_the_string([Btn.HEAVY, Btn.HEAVY], [&"k_iai_h", &"k_rdraw"], 1.0)
+	_assert_starts_nothing_in([Btn.HEAVY, Btn.HEAVY], [&"k_iai_h", &"k_rdraw"], LIGHT_OR_HEAVY, 1.0)
 
 
 func test_stopping_after_any_hit_in_the_iais_strings_ends_the_string_when_that_move_ends() -> void:
@@ -627,17 +463,7 @@ func test_stopping_after_any_hit_in_the_iais_strings_ends_the_string_when_that_m
 # ------------------------------------------------------------------ the spec's table
 
 func test_all_nine_rows_match_the_spec_table() -> void:
-	for id: StringName in ROWS:
-		var row: Dictionary = ROWS[id]
-		var m: AttackDef = Moves.KATANA.moves.get(id, null)
-		assert_not_null(m, "%s exists" % id)
-		if m == null:
-			continue
-		assert_eq(m.name, row["name"], "%s name" % id)
-		assert_eq([m.startup, m.active, m.recovery], row["frames"], "%s frames" % row["name"])
-		assert_eq([m.damage, m.posture], [float(row["damage"]), float(row["posture"])], "%s damage and posture" % row["name"])
-		assert_eq([m.chain_light, m.chain_heavy], [row["light"], row["heavy"]], "%s follow-ups" % row["name"])
-		assert_eq([m.side_start, m.side_end], row["sides"], "%s sides" % row["name"])
+	_assert_rows_match_the_spec()
 
 
 func test_the_horizontal_iai_hits_with_the_specs_interim_cone() -> void:

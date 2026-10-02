@@ -55,6 +55,16 @@ func test_it_owns_the_settings_and_applied_their_preset_at_start() -> void:
 	assert_almost_eq(root.scaling_3d_scale, preset.render_scale, 0.001)
 
 
+func test_it_applied_the_settings_volumes_at_start() -> void:
+	var settings: GameSettings = _services().get("settings")
+	var master := AudioServer.get_bus_index(&"Master")
+	assert_almost_eq(AudioServer.get_bus_volume_db(master),
+		GameSettings.layout_volume_db(&"Master") + linear_to_db(settings.master_volume / 100.0), 1e-4)
+	var music := AudioServer.get_bus_index(&"Music")
+	assert_almost_eq(AudioServer.get_bus_volume_db(music),
+		GameSettings.layout_volume_db(&"Music") + linear_to_db(settings.music_volume / 100.0), 1e-4)
+
+
 func test_a_host_without_its_own_input_takes_the_shared_one() -> void:
 	var host: MatchHost = MatchHost.new()
 	host.auto_run = false

@@ -5,8 +5,8 @@ extends Node
 ## - one GameSettings (the player's settings, user://settings.cfg, or the
 ##   defaults when the run sets GameSettings.DEFAULTS_ENV). At start it
 ##   applies their graphics preset to the renderer (the shadow atlas and
-##   filtering, which are global) and the root viewport; scenes apply
-##   graphics_preset() to themselves when they load;
+##   filtering, which are global) and the root viewport, and their volumes to
+##   the buses; scenes apply graphics_preset() to themselves when they load;
 ## - one ControlProfiles (the saved controls profiles, user://controls.cfg);
 ## - one InputDevices, which every match samples, with its InputFeed in the
 ##   tree so labels follow the last device used, even in menus (the shared
@@ -52,6 +52,7 @@ func _ready() -> void:
 	add_child(music)
 	feed.focus_lost.connect(_on_focus_lost)
 	GraphicsApplier.apply(graphics_preset(), null, get_viewport())
+	settings.apply_volumes()
 
 
 ## The graphics preset the player chose.

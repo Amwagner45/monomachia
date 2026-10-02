@@ -1466,7 +1466,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **20.1 Music player with 10–20 ms fades.** `FadedLoop` and `MusicPlayer` with crossfades, following the director's track changes. The fades are the mixer's own volume ramp (see Decisions).
     - Check: the gain reaches full and silence within 10–20 ms; switches overlap with no gap; streams stop only after their fade; one windowed capture of a start, a stop and a switch shows no click in the captured samples.
     - Blocked by: none · Stories: 51
-  - [ ] **20.2 Music driven by the menus and the match.** `GameServices` owns the director and player. The title, menus and results play the menu track and a played match plays battle; a round call with a fighter on two wins switches to match point. The attract duel never changes the track.
+  - [x] **20.2 Music driven by the menus and the match.** `GameServices` owns the director and player. The title, menus and results play the menu track and a played match plays battle; a round call with a fighter on two wins switches to match point. The attract duel never changes the track.
     - Check: the flow tests cover each switch, including match point at the next round start and none from the attract duel.
     - Blocked by: 19.2, 20.1 · Stories: 6, 51
   - [ ] **19.5 Arena ambience.** The arena's ambience loop (from its data, `ambience_shrine` by default) fades in with a played match, carries through pauses and fades out on quit.

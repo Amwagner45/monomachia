@@ -1,11 +1,16 @@
 extends GutTest
 ## The GameServices autoload: the settings (their graphics preset applied at
 ## start), one ControlProfiles, one InputDevices with its InputFeed in the tree
-## for the whole game, and a pause when the window loses focus during a match.
+## for the whole game, a pause when the window loses focus during a match, and
+## the music: one MusicDirector and the MusicPlayer that follows it.
 
 
 func _services() -> Node:
 	return get_tree().root.get_node_or_null("GameServices")
+
+
+func after_each() -> void:
+	_services().call("stop_music")
 
 
 func _host() -> MatchHost:
@@ -83,3 +88,42 @@ func test_a_stopped_match_is_forgotten() -> void:
 	assert_null(_services().call("current_match"))
 	(_services().get("feed") as InputFeed).focus_lost.emit()
 	assert_false(host.is_paused())
+
+
+func test_it_owns_the_music_and_starts_none_by_itself() -> void:
+	var services: Node = _services()
+	var music: MusicPlayer = services.get("music")
+	assert_not_null(services.get("music_director"))
+	assert_not_null(music)
+	assert_eq(music.get_parent(), services, "the music lives as long as the game")
+	assert_eq(music.current_track(), &"", "silent until a screen asks for music")
+
+
+func test_the_screens_and_the_match_choose_the_track() -> void:
+	var services: Node = _services()
+	var music: MusicPlayer = services.get("music")
+	services.call("play_menu_music")
+	assert_eq(music.current_track(), MusicDirector.MENU)
+	services.call("play_match_music")
+	assert_eq(music.current_track(), MusicDirector.BATTLE)
+	services.call("music_event", {"t": "roundOver", "winner": 0, "wins": [2, 1], "perfect": false})
+	assert_eq(music.current_track(), MusicDirector.BATTLE, "not at the round's end")
+	services.call("music_event", {"t": "roundStart", "round": 4})
+	assert_eq(music.current_track(), MusicDirector.MATCH_POINT, "at the next round call")
+	services.call("play_menu_music")
+	assert_eq(music.current_track(), MusicDirector.MENU)
+	services.call("stop_music")
+	assert_eq(music.current_track(), &"")
+
+
+func test_asking_again_after_a_stop_plays_the_track_again() -> void:
+	var services: Node = _services()
+	var music: MusicPlayer = services.get("music")
+	services.call("play_match_music")
+	services.call("stop_music")
+	services.call("play_match_music")
+	assert_eq(music.current_track(), MusicDirector.BATTLE, "the director was already on battle")
+	services.call("play_menu_music")
+	services.call("stop_music")
+	services.call("play_menu_music")
+	assert_eq(music.current_track(), MusicDirector.MENU)

@@ -1,7 +1,8 @@
 extends GutTest
 ## The game's flow in main.tscn, headless and without the clock: title over
 ## the duel behind the menus -> main menu -> Duel against the computer -> the
-## results -> Rematch or Main menu, and pause during play.
+## results -> Rematch or Main menu, and pause during play, with the music each
+## screen and match asks GameServices for.
 
 const MainScript := preload("res://scenes/main.gd")
 
@@ -116,6 +117,77 @@ func test_resume_from_the_host_closes_the_pause_menu() -> void:
 	host.resume()
 	assert_eq(_screen(), MainScript.Screen.PLAYING)
 	assert_false((main.get("pause_menu") as MenuScreen).visible)
+
+
+# ------------------------------------------------------------------ music
+
+func _music() -> MusicPlayer:
+	return get_tree().root.get_node("GameServices").get("music")
+
+
+func test_the_title_and_the_menus_play_the_menu_track() -> void:
+	assert_eq(_music().current_track(), MusicDirector.MENU, "the title")
+	main.call("show_main_menu")
+	assert_eq(_music().current_track(), MusicDirector.MENU, "the main menu")
+
+
+func test_the_music_follows_a_duel_to_match_point_and_back_to_the_menu() -> void:
+	main.call("start_duel")
+	assert_eq(_music().current_track(), MusicDirector.BATTLE, "a played match")
+	# The track after each round's end and each round call.
+	var log: Array[Dictionary] = []
+	host.sim_event.connect(func(e: Dictionary) -> void:
+		if str(e["t"]) in ["roundOver", "roundStart"]:
+			log.append({"t": str(e["t"]), "wins": e.get("wins", []), "track": _music().current_track()}))
+	var steps: int = 0
+	while _screen() != MainScript.Screen.RESULTS and steps < 60 * 60 * 12:
+		host.step(1)
+		steps += 1
+		if steps == 600:
+			host.pause()
+			assert_eq(_music().current_track(), MusicDirector.BATTLE, "a pause keeps the music")
+			host.resume()
+	assert_eq(_screen(), MainScript.Screen.RESULTS)
+	var most: int = 0
+	var track: StringName = MusicDirector.BATTLE
+	for entry: Dictionary in log:
+		if entry["t"] == "roundOver":
+			most = (entry["wins"] as Array).max()
+			assert_eq(entry["track"], track, "a round's end changes nothing: %s" % entry)
+		else:
+			track = MusicDirector.MATCH_POINT if most >= MusicDirector.MATCH_POINT_WINS else MusicDirector.BATTLE
+			assert_eq(entry["track"], track, "the round call: %s" % entry)
+	assert_eq(track, MusicDirector.MATCH_POINT, "the match reached match point")
+	assert_eq(_music().current_track(), MusicDirector.MENU, "the results")
+	main.call("rematch")
+	assert_eq(_music().current_track(), MusicDirector.BATTLE, "a rematch starts on the battle track")
+	main.call("quit_to_menu")
+	assert_eq(_music().current_track(), MusicDirector.MENU, "quit to the main menu")
+
+
+func test_the_duel_behind_the_menus_never_changes_the_track() -> void:
+	host.step(600)
+	# even when one of its fighters reaches two wins
+	host.sim_event.emit({"t": "roundOver", "winner": 0, "wins": [2, 0], "perfect": false})
+	host.sim_event.emit({"t": "roundStart", "round": 3})
+	assert_eq(_music().current_track(), MusicDirector.MENU, "behind the title")
+	main.call("show_main_menu")
+	host.sim_event.emit({"t": "roundOver", "winner": 1, "wins": [2, 2], "perfect": false})
+	host.sim_event.emit({"t": "roundStart", "round": 5})
+	assert_eq(_music().current_track(), MusicDirector.MENU, "behind the main menu")
+
+
+func test_watch_plays_the_battle_track() -> void:
+	main.call("start_watch")
+	assert_eq(_music().current_track(), MusicDirector.BATTLE)
+
+
+func test_the_music_stops_when_the_screens_go() -> void:
+	assert_eq(_music().current_track(), MusicDirector.MENU)
+	remove_child(main)
+	var track: StringName = _music().current_track()
+	add_child(main)
+	assert_eq(track, &"", "the game's screens are gone")
 
 
 # ------------------------------------------------------------------ seeds

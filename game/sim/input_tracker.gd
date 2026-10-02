@@ -10,7 +10,8 @@ extends RefCounted
 ## Port notes: dirIndex, dirVector and sameSector are static funcs here.
 ## Math.hypot, Math.atan2, Math.sin and Math.cos are JsMath's (V8's results).
 ## dir_vector returns a RawInput with only mx and my set (TS: { mx, my }).
-## The getters sprinting and moving are functions.
+## The getters sprinting and moving are functions. sideways() is the
+## rebuild's.
 
 
 ## 8-way direction index: 0 = forward, 1 = forward-right, 2 = right ... 7 = forward-left. -1 = neutral.
@@ -128,6 +129,13 @@ func sprinting() -> bool:
 
 func moving() -> bool:
 	return dir != -1
+
+
+## Whether the stick is held left or right: past the dead zone, and more
+## sideways than forward or back. It picks Moonsplitter's horizontal wave and
+## the horizontal Iai.
+func sideways() -> bool:
+	return dir != -1 and absf(mx) > absf(my)
 
 
 static func _filled_ints(v: int) -> PackedInt64Array:

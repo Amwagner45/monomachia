@@ -45,12 +45,10 @@ extends RefCounted
 ##     special: flash shadowStep counterLunge breakerPalm
 ##     trail: normal danger ult
 ##     side_start, side_end: left right centre
-## - side_start, side_end and charge_move are the rebuild's (the demo had
-##   none of them): the sides are &"" on moves outside a string, and
-##   charge_move is false on every move but the Iai Slash.
-## - swing is the rebuild's too: SwingFile puts each move's swing on it when
-##   its weapon is built (WeaponDef.from_dict). A record may also carry a Swing,
-##   as test moves do.
+## - side_start, side_end, charge_move and release_variant are the
+##   rebuild's (the demo had none of them): the sides are &"" on moves
+##   outside a string, charge_move is false and release_variant &"" on every
+##   move but the Iai Slash.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -130,8 +128,15 @@ var side_end: StringName = &""
 ## a charge the fighter can walk during, at the blocking walk's speed, and
 ## that a dodge cancels (the Iai stance)
 var charge_move: bool = false
-## the path the weapon travels through the move (task 7), read from the
-## weapon's swing file; null until the move has one
+## the move a chargeable heavy turns into, on the same attack state, when it
+## is drawn (a tap as its sheathe ends, a held one as its stance ends) with the
+## stick held left or right (the horizontal Iai); it must keep this move's
+## frames and lunge
+var release_variant: StringName = &""
+## the path the weapon travels through the move (task 7, the rebuild's), put
+## on it from the weapon's swing file when the weapon is built
+## (WeaponDef.from_dict); null until the move has one. A record may also
+## carry a Swing, as test moves do.
 var swing: Swing = null
 
 ## Every key a move record may have: the fields above, in order.
@@ -141,7 +146,8 @@ const KEYS: Array[String] = [
 	"track_startup", "track_active", "hitstun", "blockstun", "hitstop", "unblockable", "counter",
 	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
 	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
-	"trail", "invuln", "hop", "side_start", "side_end", "charge_move", "swing",
+	"trail", "invuln", "hop", "side_start", "side_end", "charge_move",
+	"release_variant", "swing",
 ]
 
 
@@ -196,6 +202,7 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.side_start = StringName(d.get("side_start", &""))
 	m.side_end = StringName(d.get("side_end", &""))
 	m.charge_move = bool(d.get("charge_move", false))
+	m.release_variant = StringName(d.get("release_variant", &""))
 	m.swing = d.get("swing", null)
 	return m
 

@@ -340,6 +340,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
     - the bus layout;
     - the music director switches at match point;
     - the tracks have the design tempos and loop for exactly their bars.
+- **Poses (GUT, headless):** `PoseCheck` measures the posed skeleton against the swing rules above: the wrists, the elbows on contact and never locked, the knees over the toes, the blade 5 cm clear of capsules measured from each fighter's own meshes, and how much blade enters a defender 2.5 m away. `MoveBench` plays any move frame by frame on the rules' clock for it.
 - **Host and camera (GUT, headless):** the fixed step, hit-stop and slow motion, pause and focus loss, the camera's distances, the HUD's timing, and the flow from title to results, all driven through `step()` without a window.
 - **Soak:** 40 computer-vs-computer matches must finish without errors or impossible values (NaN, a fighter outside the arena, posture out of range). They report round length, parries, counters, disarms and ultimates per round, and each weapon's win rate. Target after tuning: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55% of its matches.
 - **Presentation:** scripted screenshot scenes, rendered in a window from the command line:

@@ -825,15 +825,32 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - The hands are on the grips but the stick keys look stiff on real bodies: short reaches, and a body that only leans. Swings (7.16 on, 14.10) replace them.
         - A disarmed fighter's arms stay on the clip; fists come with 15.x.
         - The flash tints the whole body flat, as the stand-in's did; task 18's effects can refine it.
-  - [ ] **14.3 Pose checks on the posed skeleton (`PoseCheck`).** It measures:
+  - [x] **14.3 Pose checks on the posed skeleton (`PoseCheck`).** It measures:
     - wrist bend and deviation;
     - the elbow angle, at 150–160° on the first active frame and never locked;
     - the knees over the toes;
     - the displayed blade's distance from bone capsules (head with a hat margin, torso, arms, thighs);
     - reach depth into a defender's capsule.
     A GUT helper plays a move frame by frame.
-    - Check: made-up poses fail as expected (a 70° wrist, a blade 3 cm from the head, a locked elbow or 140° elbow at contact, a knee inside the foot line); the Katana guard passes; a report over the StickPose Katana attacks prints.
+    - Check: made-up poses fail as expected (a 70° wrist, a blade 3 cm from the head, a locked elbow or 140° elbow at contact, a knee inside the foot line); the Katana guard passes (moved to 14.8 with the owner's OK: today's guard fails, see below); a report over the StickPose Katana attacks prints.
     - Blocked by: 14.2 · Stories: 21
+    - Done:
+      - **`PoseCheck`** (`game/view/fighter/pose_check.gd`) measures a `Frame`: every bone at the end of the modifier stack in skeleton space, the arms on IK and the held blades. `frame_of()` steps a fighter's skeleton by hand and reads the bones as the last modifier finishes. The caller resumes on the tree's next frame: resuming inside the skeleton's own update and stepping it again never finished. Tests make up poses by editing a real frame.
+        - **Wrists:** the forearm's line (elbow to wrist) as the hand bone sees it. The deviation is its angle out of the hand's bending plane (at most 90° either way) and the bend its angle within it, so a hand folded far back isn't counted twice. Limits ±60° and ±25°. At rest the hands are within 2° of the forearms' line.
+        - **Elbows** on IK: never past 170°, and 150–160° when the frame is a move's first active frame.
+        - **Knees:** the knee's distance outside the plane through the hip that holds the line to the ankle and the toes' direction, so a turned-out foot takes the plane with it; it fails 1 cm inside.
+        - **The blade** (BladeBase to BladeTip) at least 5 cm from the body's capsules, naming the nearest.
+        - **Reach:** how much blade is inside a defender's capsule (0.35 m round, from the feet to 1.75 m). A measure, not a pass or fail.
+      - **The body's capsules** are measured from each fighter's own meshes when a check is made, each skinned vertex going with its heaviest bone: head, torso, upper arms, forearms and thighs.
+        - Each axis moves off its joints by its part's mean offset (the torso's 9–10 cm forward, since the spine runs down the back), its radius takes in 90% of the part's vertices, and its ends are drawn in so the caps stop where the part does (the forearm's at the bracer, not over the hand).
+        - The head counts only what is above its joint (the Rogue's long hair hangs down her back), and then grows to take in the whole hat: the hat margin.
+        - Radii: the Rogue's head 13.9 cm, torso 18.5, upper arms 6.1, forearms 6.3, thighs 13.7–13.8; the Hunter's head 20.6 (his tricorn), torso 18.0, upper arms 6.9 and 10.2 (the pauldron on his left), forearms 5.7, thighs 13.5–14.0. Task 7's reference bodies can start from these.
+        - A capsule is coarse where a part is wide but shallow: the torso's radius is set by the shoulders, and the hood's collar takes its cap up to the chin.
+      - **`MoveBench`** (`game/tools/move_bench.gd`) is the helper: a rules World with the fighter facing a defender 2.5 m away, and the fighter's FighterView stepped by hand. `play(move)` starts the move from the guard in a fresh world, steps the rules with no input, and measures once per attack frame (hit-stop steps are skipped), with the phase and the contact frame from the frame data and reach against the defender where it stood. `summary()` prints a move on one line. The contact sheets (14.4) will play through it.
+      - **What it found:**
+        - The match's Katana guard (the StickPose guard pulled into reach) fails on both fighters. The right wrist turns 40–44° toward the little finger. The left bends back 91–98°: its elbow sits out at the side, so the forearm runs across the belly, while the rig's fixed 25° grip roll points that hand forward-left. The 14.1 review guard fails the same way, and a search of 162 grips, blade angles and edges found no guard that passes with today's grip. The Rogue's Katana hold clip also caves her left knee 1.2 cm inside its foot line. The owner moved the guard's pass to 14.8.
+        - Every StickPose Katana attack fails its wrists on most frames, and at 2.5 m only Leaping Cleave (38 cm) and Lunging Cut (11–19 cm) reach into the defender. The stand-in poses were made for a stick figure; swings replace them.
+      - **Tests:** `test_pose_check.gd` (14): the capsules per fighter, with the Hunter's hat inside his head's; the guard measured on both fighters; the same pose measuring the same; made-up wrists (55° passes, 70° fails, 20° sideways passes, 30° fails, on both hands), a blade over the crown at 3 cm (fails) and 6 cm (passes), elbows (180° and 172° fail, 165° fails only on contact, 155° passes on contact, 140° fails only on contact), knees on the toes' plane (exact, with the foot turned 40°) and a knee pushed inside the guard's; a held blade clearing its own wrist; caps stopping where their parts do; reach through the front, short of it, right through and over the round top; MoveBench's frames, phases and contact on Right Cut, and the same reports twice; and the StickPose report. Each check was mutation-tested (the lock, the contact band, the knee's side, the left hand's deviation, the hat margin, the drawn-in caps, hit-stop steps): each mutation fails a test.
   - [ ] **14.4 Contact-sheet tool.** Plays one move on a real fighter against a defender at the duelling distance and captures chosen frames: from the gameplay camera behind the defender and behind the attacker, three-quarter, close up and at the hands. Each frame is labelled with its phase and PoseCheck numbers, driven by `npm run shots` arguments. A batch mode renders every move of a weapon, so a re-key can rerun the whole set.
     - Check: sheets render for the guard and a Katana light and are reviewed; the batch mode renders a weapon's set; two runs give the same images.
     - Blocked by: 14.3 · Stories: 42, 65
@@ -846,7 +863,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
     - Check: the lean follows acceleration within its cap and holds in hit-stop; braking leans back and settles; a run-brake-stop strip is reviewed.
     - Blocked by: 14.5 · Stories: 13
-  - [ ] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle.
+  - [ ] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle. Moved here from 14.3 with the owner's OK: the guard must pass PoseCheck, which today's fails (wrists about 42° sideways and 95° back, the Rogue's clip knee caved), so each hand also turns round the handle toward its forearm in place of the rig's fixed 25° grip roll, and the legs go on the stance's IK.
     - Check: on both fighters, the knees on or outside the hip-to-foot line, the rear foot at 30–45°, no crossed feet, the width in band; guard shots reviewed against the critique's fixes 8 and 9; PoseCheck passes on the guard.
     - Blocked by: 14.3 · Stories: 43
   - [ ] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.

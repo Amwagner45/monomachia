@@ -131,7 +131,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 60. [x] As the developer, I want the rule tests to run from the command line and in CI, so that every change is checked.
 61. [x] As the developer, I want the ported rules checked frame by frame against the original TypeScript rules on recorded inputs, so that I know the port is faithful before changing anything.
 62. [x] As the developer, I want a soak run of computer-vs-computer matches that prints balance numbers, so that tuning rests on data.
-63. [ ] As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry.
+63. [x] As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry. Note: the rules never load a model, so they keep their own copy of each weapon's blade and of the bare fist and foot (task 7.5). Replacing a weapon model or a fighter therefore also means updating those numbers in the weapon files; `tests/content/test_strike_segments.gd` fails and names each mismatch until they match.
 64. [ ] As the developer, I want a Windows build produced by CI and attached to GitHub releases, so that the game is easy to share.
 65. [x] As the developer, I want to capture screenshots of any scene from the command line, so that visual changes can be reviewed without clicking through the game.
 

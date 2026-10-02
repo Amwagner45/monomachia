@@ -1485,7 +1485,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.5 Arena ambience.** The arena's ambience loop (from its data, `ambience_shrine` by default) fades in with a played match, carries through pauses and fades out on quit.
     - Check: a Duel starts the loop on the Ambience bus; the attract duel has none; quit fades it; a fake arena's cue plays.
     - Blocked by: 19.2, 20.1 · Stories: 47, 50
-  - [ ] **19.6 Ducking.** Compressors on the Music and Ambience buses, sidechained to Combat.
+  - [x] **19.6 Ducking.** Compressors on the Music and Ambience buses, sidechained to Combat (threshold −10 dB, ratio 1.3, release 300 ms: a combat sound at −3 dB ducks them 3.4 dB, and they come back within 1 dB in about 0.36 s; in a Watch match the music dips up to about 3 dB, usually under 1.5).
     - Check: the bus layout test asserts both, with their sidechain.
     - Blocked by: 19.2, 20.2 · Stories: 50, 51
   - [ ] **20.3 Master, effects and music volumes, saved.** Volumes in `GameSettings` (0–100 in steps of 5), applied on top of the layout's levels, muting at 0.

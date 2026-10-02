@@ -16,12 +16,13 @@ var _bus_index: int = -1
 var _effect: AudioEffectCapture
 
 
-## Puts a capture effect first on [param bus].
-func attach(bus: StringName) -> BusCapture:
+## Puts a capture effect first on [param bus], or last when
+## [param after_effects], to hear what the bus's own effects made of it.
+func attach(bus: StringName, after_effects := false) -> BusCapture:
 	_bus_index = AudioServer.get_bus_index(bus)
 	_effect = AudioEffectCapture.new()
 	_effect.buffer_length = 4.0
-	AudioServer.add_bus_effect(_bus_index, _effect, 0)
+	AudioServer.add_bus_effect(_bus_index, _effect, -1 if after_effects else 0)
 	return self
 
 

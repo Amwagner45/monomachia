@@ -3,7 +3,8 @@ extends GutTest
 ## Foley, and UI; a compressor on Master, and on the Arena bus a reverb that
 ## keeps the dry sound and adds the arena's room to every combat and foley
 ## sound. (Godot 4.7's Area3D reverb takes a 3D sound off its own bus, so the
-## reverb sits on the bus chain instead.)
+## reverb sits on the bus chain instead.) Music and Ambience each duck under
+## Combat through a compressor keyed by it (test_ducking.gd hears them work).
 
 const SENDS: Dictionary = {
 	&"Music": &"Master",
@@ -60,6 +61,26 @@ func test_the_arena_reverb_keeps_the_dry_sound_and_adds_a_little_room() -> void:
 func test_master_has_a_compressor_and_the_arena_a_reverb() -> void:
 	assert_true(_has_effect(&"Master", "AudioEffectCompressor"))
 	assert_true(_has_effect(&"Arena", "AudioEffectReverb"))
+
+
+func test_music_and_ambience_each_have_a_compressor_keyed_by_combat() -> void:
+	for bus: StringName in [&"Music", &"Ambience"]:
+		var index := AudioServer.get_bus_index(bus)
+		var keyed: Array[AudioEffectCompressor] = []
+		for i in AudioServer.get_bus_effect_count(index):
+			var effect := AudioServer.get_bus_effect(index, i)
+			if effect is AudioEffectCompressor and (effect as AudioEffectCompressor).sidechain == &"Combat":
+				keyed.append(effect)
+				assert_true(AudioServer.is_bus_effect_enabled(index, i), "%s's compressor is on" % bus)
+		assert_eq(keyed.size(), 1, "%s has one compressor keyed by Combat" % bus)
+
+
+func test_combat_is_mixed_before_the_buses_it_ducks() -> void:
+	# Godot mixes the buses from the last to the first, so the compressors read
+	# Combat's finished mix of the same step.
+	var combat := AudioServer.get_bus_index(&"Combat")
+	assert_gt(combat, AudioServer.get_bus_index(&"Music"))
+	assert_gt(combat, AudioServer.get_bus_index(&"Ambience"))
 
 
 func test_sound_bank_buses_exist() -> void:

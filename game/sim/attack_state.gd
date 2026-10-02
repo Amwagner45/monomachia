@@ -12,6 +12,7 @@ extends RefCounted
 ## - Keep it an object (not a Dictionary): the AI compares attacks by identity.
 ## - chained_from is the rebuild's (task 7.4): the move this one follows, so
 ##   its swing enters from that move's hand-off key; null on a fresh start.
+## - blades is the rebuild's (task 7.9): see Fighter.place_blades().
 
 
 ## A point of the Shadow Step path: { ang, r } around the opponent.
@@ -45,3 +46,6 @@ var whiff_emitted: bool = false
 # shadow step path
 var path_from: PathPoint = null
 var path_to: PathPoint = null
+## each striking track of the move's swing in the world, at this tick and the
+## last; empty for a move without a swing
+var blades: Array[BladeSegment] = []

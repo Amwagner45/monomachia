@@ -69,6 +69,26 @@ class Sample:
 	var pelvis: float = 0.0
 	var pelvis_shift: V3 = V3.make()
 
+	## The point `p`, given in the frame of the part the track moves (a
+	## weapon's, a fist's or a foot's: +X the edge, +Y the blade, +Z out of the
+	## flat; see StrikeSegment), in the fighter's space (task 7.9). The flat,
+	## X cross Y in Godot's axes, is blade cross edge in (right, up, forward).
+	func place(p: V3) -> V3:
+		var flat: V3 = V3.cross(blade, edge)
+		return V3.add(grip, V3.add(V3.add(V3.scale(edge, p.x), V3.scale(blade, p.y)), V3.scale(flat, p.z)))
+
+
+## What the track for `part` strikes with on `weapon` (task 7.9): a hand the
+## weapon's blade (bare hands' fist), a foot bare hands' foot; null for the
+## body, which doesn't strike, or a foot on a weapon with no kicks.
+static func strike_segment(part: StringName, weapon: WeaponDef) -> StrikeSegment:
+	match part:
+		&"right_hand", &"left_hand":
+			return weapon.blade
+		&"right_foot", &"left_foot":
+			return weapon.foot
+	return null
+
 
 ## The move's last frame (its total frames): the tables run from 0 to it.
 var last_frame: int = 0

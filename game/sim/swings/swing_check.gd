@@ -133,10 +133,7 @@ static func moment(swing: Swing, weapon: WeaponDef, body: ReferenceBody, t: floa
 		m.blades.append(_blade(&"right", right, weapon.blade))
 	if weapon.off_hand_grip != null:
 		if right != null:
-			var flat: V3 = V3.cross(right.blade, right.edge)
-			var o: V3 = weapon.off_hand_grip
-			var at: V3 = V3.add(right.grip, V3.add(V3.add(V3.scale(right.edge, o.x), V3.scale(right.blade, o.y)), V3.scale(flat, o.z)))
-			m.arms[&"left"] = _arm(&"left", at, right.blade, right.edge, V3.make(), m.body, chest)
+			m.arms[&"left"] = _arm(&"left", right.place(weapon.off_hand_grip), right.blade, right.edge, V3.make(), m.body, chest)
 	else:
 		var left: Swing.Sample = swing.sample(&"left_hand", t, chained_from)
 		if left != null:
@@ -202,15 +199,10 @@ static func _arm(side: StringName, grip: V3, blade: V3, edge: V3, pole: V3, body
 static func _blade(side: StringName, sample: Swing.Sample, segment: StrikeSegment) -> Blade:
 	var b: Blade = Blade.new()
 	b.side = side
-	var flat: V3 = V3.cross(sample.blade, sample.edge)
-	b.base = _place(sample, flat, segment.base)
-	b.tip = _place(sample, flat, segment.tip)
+	b.base = sample.place(segment.base)
+	b.tip = sample.place(segment.tip)
 	b.half = segment.thickness / 2.0
 	return b
-
-
-static func _place(sample: Swing.Sample, flat: V3, p: V3) -> V3:
-	return V3.add(sample.grip, V3.add(V3.add(V3.scale(sample.edge, p.x), V3.scale(sample.blade, p.y)), V3.scale(flat, p.z)))
 
 
 ## Notes each problem of the moment `m` in `found`, by part and kind.

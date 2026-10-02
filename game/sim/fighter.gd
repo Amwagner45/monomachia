@@ -19,7 +19,8 @@ extends RefCounted
 ##   and .atan2 (V8's exact results, see js_math.gd); Math.round is
 ##   SimMath.js_round; every TS division of two ints is written as a float
 ##   division.
-## - body and hurt_capsule() are the rebuild's (task 7.5).
+## - body and hurt_capsule() are the rebuild's (task 7.5), as are
+##   place_blades() and blade_segments() (task 7.9).
 
 ## FState
 const STATES: Array[StringName] = [
@@ -143,6 +144,55 @@ func airborne() -> bool:
 ## now (risen with them in the air).
 func hurt_capsule() -> Capsule:
 	return body.hurt_capsule(pos)
+
+
+## Each striking track of the attack's swing in the world, at this tick and
+## the last (see place_blades()), in the order of the swing's tracks: empty
+## outside an attack and for a move without a swing. Shared: don't change
+## them.
+func blade_segments() -> Array[BladeSegment]:
+	if state != &"attack" or atk == null:
+		return [] as Array[BladeSegment]
+	return atk.blades
+
+
+## Places each striking track of the attack's swing in the world for this
+## tick, keeping the last tick's beside it: the track's pose at the attack's
+## frame (entered from the move this one follows, if any) at the fighter's
+## position and facing. World calls it once the fighters have moved, just
+## before hits are decided, so each sweep runs between the places hits are
+## decided from. A charge holds the frame, so the pose holds, and frames past
+## the swing's end (a charge's extra recovery) hold its last pose. Hit-stop
+## skips the whole step, so the segments hold through it. On the attack's
+## first tick the last tick's segment is this one's.
+func place_blades() -> void:
+	if state != &"attack" or atk == null:
+		return
+	var def: AttackDef = atk.def
+	var last: Array[BladeSegment] = atk.blades
+	atk.blades = []
+	if def.swing == null:
+		return
+	# a fist move can be started while armed (start_attack)
+	var w: WeaponDef = moveset() if moveset().moves.get(def.id) == def else Moves.FISTS
+	var from: Swing = atk.chained_from.swing if atk.chained_from != null else null
+	for part: StringName in def.swing.parts():
+		var segment: StrikeSegment = Swing.strike_segment(part, w)
+		if segment == null:
+			continue
+		var pose: Swing.Sample = def.swing.tick(part, atk.frame, from)
+		var b: BladeSegment = BladeSegment.new()
+		b.part = part
+		b.base = SimMath.local_to_world(pos, yaw, pose.place(segment.base))
+		b.tip = SimMath.local_to_world(pos, yaw, pose.place(segment.tip))
+		b.prev_base = b.base
+		b.prev_tip = b.tip
+		b.half_thickness = segment.thickness / 2.0
+		for before: BladeSegment in last:
+			if before.part == part:
+				b.prev_base = before.base
+				b.prev_tip = before.tip
+		atk.blades.append(b)
 
 
 func hp_frac() -> float:

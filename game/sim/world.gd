@@ -18,6 +18,9 @@ extends RefCounted
 ## - dispose() is new: it breaks the reference cycles (Fighter.opp,
 ##   Fighter.world, Fighter.impaled_by, SlashWave.owner) so the world can be
 ##   freed. Call it when a world is no longer needed.
+## - step() places each attacking fighter's blades in the world after
+##   separating the fighters and before resolving combat (Fighter.place_blades,
+##   the rebuild's task 7.9).
 
 
 ## { chargeF, backstab }: the context an attack carries into apply().
@@ -131,6 +134,8 @@ func step(inputs: Array[RawInput]) -> void:
 		f.update()
 	_flush_scripted_hits()
 	_separate()
+	for f: Fighter in fighters:
+		f.place_blades()
 	_resolve_combat()
 	_update_waves()
 	_update_weapons()

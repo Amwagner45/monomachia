@@ -1530,7 +1530,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 
 ### Phase F: sound and music
 
-- [ ] **19. Sound effects.** The Sonniss extraction and processing script with its sources list; generated gap-fill sounds; the event-to-sound table with variations; buses; 3D impacts; footsteps; arena ambience.
+- [x] **19. Sound effects.** The Sonniss extraction and processing script with its sources list; generated gap-fill sounds; the event-to-sound table with variations; buses; 3D impacts; footsteps; arena ambience.
   - Check: every event in the demo's audio table has a sound; a headless run logs no missing sound files; the committed audio is under 40 MB.
   - The assets, the sound bank and the bus layout were built early and merged; what remains is playback.
   - [x] **19.1 Pooled sound player.** `SoundPlayer` with cached streams, flat and 3D voice pools that steal their oldest voice, variations that never repeat back to back, pitch ranges, delayed cues, hold and stop, and a list of anything missing.
@@ -1566,11 +1566,20 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.8 Headless check that every sound plays.** Seeded computer-vs-computer matches per weapon pairing with the audio attached, failing on a missing file, an event that played nothing, a logged error, or a music track that doesn't load.
     - Check: it passes, and a scratch edit pointing a cue at a missing file makes it fail.
     - Blocked by: 19.3, 19.4, 19.5, 20.2 · Stories: 50, 60, 63
-  - [ ] **19.9 Sound check scene; tasks 19 and 20 ticked.** A tool scene steps through every event's cues, the footsteps, the ambience and the three tracks with their switches, so the owner can hear what a Duel rarely triggers.
+  - [x] **19.9 Sound check scene; tasks 19 and 20 ticked.** A tool scene steps through every event's cues, the footsteps, the ambience and the three tracks with their switches, so the owner can hear what a Duel rarely triggers.
     - Check: the scene runs through every cue without errors; the Node audio tests still pass.
     - Owner: a listening pass over a Duel, a Watch match and the sound check. Its fixes (levels, delays, attenuation, ducking, default volumes) come back as their own small tasks.
     - Blocked by: 19.6, 19.7, 19.8, 20.3 · Stories: 50, 51, 52
-- [ ] **20. Placeholder music.** Generated menu (110 BPM), battle (140 BPM) and match-point (160 BPM) tracks; a music director that switches at the round call; volume settings.
+    - Done:
+      - `tools/sound_check.tscn` (`SoundCheck`), played with `node scripts/godot.mjs run res://tools/sound_check.tscn`: 58 steps, about 2.6 minutes, each starting from silence and moving on when its last sound has played out:
+        - every rules event that has sound, in each form the sound bank tells apart (swings by weapon and weight, hits by sound and weight, light and heavy blocks, the three parries, the three counters, slow and fast bounces), with the stagger, the ultimates, the recall and the pickup that a Duel rarely reaches, and the KO and the round call with their delayed cues;
+        - the four menu sounds, a heavy hit at 1.5, 3, 6, 12 and 24 m, footsteps at the guard walk, the run and the sprint and the opponent's run, and the shrine's ambience fading in and out;
+        - the music through the director: the menu track from silence, a match starting, the round call with a fighter on two wins (match point), the results, and the fade out; then Greatsword and light hits over the battle music and the ambience, to hear the ducking.
+        - The camera stands where the gameplay camera follows your fighter, and each event plays where a match puts it. The screen lists each cue's file, level, pitch, bus and distance. Right and Left step, Down and Up jump between sections, Enter plays a step again, Space stays on a step, Esc quits.
+      - `test_sound_check.gd` (13 tests) runs it to the end on its own clock: each step plays exactly its events' cues, delayed ones included, and every sound ends before the next step starts; every cue in the bank and every form the bank tells apart plays; the music and the ambience play only in their steps, with the switches above; and the keys. Twenty deliberate breaks each failed it.
+      - Played through in a window (WASAPI, 48 kHz) in 157 s with no errors. Each step's peak on the Master bus (after its compressor, before the master volume), for the listening pass: swings −20 to −15 dB; hits −13 to −8; blocks −12 and −10; parries and counters −11 to −5; the disarm −4; the stagger −14; dodges, jumps, landings and tap steps −19 to −16; the KO −6; the round call −9 and the fight call −5; the ultimates −12 to −5; the recall −13 and the pickup −17; bounces −26 (slow) and −16 (fast); the menu sounds −16 to −7; the music −10 to −8; the ambience −22; and the footsteps −30 (the opponent's −34), well under everything else.
+      - Tasks 19 and 20 are done (the committed audio is 30.4 MB, under 40). Stories 50 and 51 wait for the owner's listening pass, and story 52 (volume settings) for the Settings screen (22.9): the volumes can't be changed in the game yet.
+- [x] **20. Placeholder music.** Generated menu (110 BPM), battle (140 BPM) and match-point (160 BPM) tracks; a music director that switches at the round call; volume settings.
   - Check: tempos measured from the files; switching happens when a fighter reaches two wins.
   - The tracks and the director are built and merged. 20.1–20.3 are listed with task 19 above, in build order.
 

@@ -44,6 +44,9 @@ extends RefCounted
 ##     HitSound: blade colossal dagger fist
 ##     special: flash shadowStep counterLunge breakerPalm
 ##     trail: normal danger ult
+##     side_start, side_end: left right centre
+## - side_start and side_end are the rebuild's (the demo had no sides): &"" on
+##   moves outside a string.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -54,6 +57,7 @@ const ATTACK_KINDS: Array[StringName] = [&"light", &"heavy", &"ability", &"speci
 const HIT_SOUNDS: Array[StringName] = [&"blade", &"colossal", &"dagger", &"fist"]
 const SPECIALS: Array[StringName] = [&"flash", &"shadowStep", &"counterLunge", &"breakerPalm"]
 const TRAILS: Array[StringName] = [&"normal", &"danger", &"ult"]
+const SIDES: Array[StringName] = [&"left", &"right", &"centre"]
 
 ## An int field the TS leaves undefined (no move can hold it). Unset floats are NAN.
 const UNSET: int = -0x7FFFFFFFFFFFFFFF - 1
@@ -115,6 +119,10 @@ var trail: StringName = &""
 var invuln: PackedInt32Array = PackedInt32Array()
 ## vertical hop applied at lungeStart (m/s), for leaping attacks
 var hop: float = 0.0
+## the side the weapon starts and ends the move on (SIDES), so a follow-up
+## can start where the move before it ends (string continuity)
+var side_start: StringName = &""
+var side_end: StringName = &""
 
 ## Every key a move record may have: the fields above, in order.
 const KEYS: Array[String] = [
@@ -123,7 +131,7 @@ const KEYS: Array[String] = [
 	"track_startup", "track_active", "hitstun", "blockstun", "hitstop", "unblockable", "counter",
 	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
 	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
-	"trail", "invuln", "hop",
+	"trail", "invuln", "hop", "side_start", "side_end",
 ]
 
 
@@ -175,6 +183,8 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.trail = StringName(d.get("trail", &""))
 	m.invuln = PackedInt32Array(d.get("invuln", []))
 	m.hop = float(d.get("hop", 0.0))
+	m.side_start = StringName(d.get("side_start", &""))
+	m.side_end = StringName(d.get("side_end", &""))
 	return m
 
 

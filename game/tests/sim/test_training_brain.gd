@@ -30,7 +30,7 @@ const UNBLOCKABLE_KINDS: Dictionary[StringName, Array] = {
 
 ## Each weapon's whole light string, from its light starter.
 const LIGHT_STRINGS: Dictionary[StringName, Array] = {
-	&"katana": [&"k_l1", &"k_l2", &"k_l3"],
+	&"katana": [&"k_l1", &"k_l2", &"k_l3", &"k_l4"],
 	&"greatsword": [&"g_l1", &"g_l2"],
 	&"daggers": [&"d_l1", &"d_l2", &"d_l3", &"d_l4"],
 }

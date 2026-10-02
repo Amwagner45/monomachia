@@ -8,7 +8,7 @@ Oct 2, 2026 · status: in build, one task at a time. Stages 1–4 of the build o
 - the fluid combat rules (8.1–8.10): a 15 m arena, a 60% blocking walk, half the momentum kept, eased lunges, light hitstun 14, heavy dodge cancels and the Greatsword's recovery slide;
 - a soak that reports the balance targets (12.1).
 
-Stage 5 (sound and music, draft PR #3) and 14.3–14.9 (animation, draft PR #4) go on in their own lanes. Next in this lane is 9.1, the first task of stage 6, the new strings (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Stage 5 (sound and music, draft PR #3) and 14.3–14.9 (animation, draft PR #4) go on in their own lanes. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check. Next in this lane is 9.2, the Iai Slash (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -71,7 +71,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 ### Katana
 
-25. [ ] As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
+25. [x] As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
 26. [ ] As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
 27. [ ] As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
 28. [ ] As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
@@ -189,6 +189,8 @@ The goldens guarded the faithful port only. Commit 4222167 is the last one prove
 
 Chains stay as they are: each move names at most one light follow-up and one heavy follow-up, and pressing nothing ends the string.
 
+**Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. Built so far (task 9.1): Right Cut, Kesa Cut and Rising Heaven run right to left, Return Cut left to right, and Crown Cut and Heaven Splitter centre to centre; Kesa Giri, the heavy until the Iai replaces it, runs right to left.
+
 **Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
 - the grip position;
 - the hand frame, from which the blade direction follows, within the wrist limits;
@@ -304,6 +306,8 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
 
+Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with a cone like Right Cut's: 2.2 m and 100°, with a 0.35 m lunge.
+
 **Greatsword**
 
 | Move | Input | Shape | Frames | Damage / posture | Notes |
@@ -341,7 +345,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
   - new tests for each rule change (`test_fluid_combat.gd`): arena radius and wall; block walk speed; momentum carry; eased lunges; heavy dodge-cancel; light hitstun letting a defender parry the second hit; the colossal slide;
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;
   - every new move and chain: Katana four-light string, Iai vertical and horizontal by stick, Iai follow-ups, strafing while sheathed, sheathed auto-release, dodge cancelling the stance; Greatsword L-L-H, Low Sweep unblockable and jumpable, dodge thrusts; Daggers alternating string, dodge-cancel timing, no light loop from Twin Fang, Passing Cut direction;
-  - string continuity: every chain's `side_end` matches the next move's `side_start`;
+  - string continuity (`test_string_continuity.gd`): every follow-up starts on the side the move before it ends on, or at centre, and every move in a string has both sides;
   - every move's data still matches the demo's (`test_moves.gd` against `moves.json`), apart from a table of deliberate differences that each data change adds to.
 - **Content (GUT, headless):** every fighter scene assembles on the retargeted skeleton and the shared clips drive it; the body is cut down to the head and the headwear is in place; the two palettes differ from the front, the back and the side (rendered in software); every weapon has its markers and length; no held blade runs into its fighter's body; the art stays under 60 MB with no file over 10 MB and textures scaled down.
 - **Input (GUT, headless):** a fake device stands in for the keyboard, mouse and controllers. Tests cover the bindings, profiles and saving, rebinding capture, button names, per-player seats and pause, and the feed into the rules.

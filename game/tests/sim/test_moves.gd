@@ -67,6 +67,18 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "k_h1f", "field": "lunge_end", "was": 20, "now": 18},
 	{"move": "k_h2", "field": "startup", "was": 24, "now": 22},
 	{"move": "k_h2", "field": "lunge_end", "was": 26, "now": 24},
+	# 10.1: the Greatsword's L-L-H; Backswing starts sooner (its lunge and
+	# dodge cancel keeping pace), both lights end on Overhead Strike, which
+	# Crushing Blow becomes, with no light follow-up
+	{"move": "g_l1", "field": "chain_heavy", "was": "g_h2", "now": "g_h1"},
+	{"move": "g_l2", "field": "startup", "was": 13, "now": 11},
+	{"move": "g_l2", "field": "lunge_end", "was": 14, "now": 12},
+	{"move": "g_l2", "field": "dodge_cancel_from", "was": 25, "now": 23},
+	{"move": "g_l2", "field": "chain_heavy", "was": "g_h2", "now": "g_h1"},
+	{"move": "g_h1", "field": "name", "was": "Crushing Blow", "now": "Overhead Strike"},
+	{"move": "g_h1", "field": "type", "was": "slash", "now": "overhead"},
+	{"move": "g_h1", "field": "anim", "was": "diagDown", "now": "overhead"},
+	{"move": "g_h1", "field": "chain_light", "was": "g_l2", "now": ""},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

@@ -5,9 +5,9 @@ extends GutTest
 ## overhead, a thrust, a stab, a spin, the crossing cut) may follow any end; a
 ## left or right start must match the end before it.
 
-## The weapons whose strings the rebuild has redone (tasks 10 and 11 add the
-## Greatsword and the Daggers).
-const WEAPONS: Array[StringName] = [&"katana"]
+## The weapons whose strings the rebuild has redone (task 11 adds the
+## Daggers).
+const WEAPONS: Array[StringName] = [&"katana", &"greatsword"]
 
 ## The spec's sides (written out here rather than read from AttackDef.SIDES,
 ## so the check holds the data to the spec).

@@ -33,7 +33,7 @@ const MOVES: Dictionary = {
 	# CHARGE_CHECK_FRAME: held, the stance is the charge, walked in at the
 	# blocking walk's speed), then draw in 14, lunging only once the sheathe ends
 	&"k_iai": {
-		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
+		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"iaiVertical",
 		"side_start": &"left", "side_end": &"right",
 		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
 		"range": 3.6, "arc": 60, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25, "chargeable": true,
@@ -43,7 +43,7 @@ const MOVES: Dictionary = {
 	# right as the Iai is drawn; it swaps in on the Iai's attack, so it keeps
 	# the Iai's frames and lunge, and is never started on its own
 	&"k_iai_h": {
-		"id": &"k_iai_h", "name": "Iai Slash (horizontal)", "kind": &"heavy", "type": &"slash", "anim": &"slashRL",
+		"id": &"k_iai_h", "name": "Iai Slash (horizontal)", "kind": &"heavy", "type": &"slash", "anim": &"iaiHorizontal",
 		"side_start": &"right", "side_end": &"left",
 		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
 		"range": 3.6, "arc": 110, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25,

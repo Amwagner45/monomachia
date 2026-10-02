@@ -1,7 +1,8 @@
 extends GutTest
 ## The match's sound (match_host.tscn's Audio): every rules event's cues in a
 ## played match and on the results screen, silence from the duel behind the
-## menus, sound held through a pause, and nothing left playing after a quit.
+## menus, sound held through a pause, and nothing left playing after a quit;
+## the arena's ambience bed under played matches.
 ## Headless runs use the dummy audio driver, so these tests follow what the
 ## sound player is asked to play.
 
@@ -122,8 +123,10 @@ func test_quitting_leaves_nothing_playing() -> void:
 	host.step(Match.INTRO_FRAMES + 60 * 5)
 	assert_false(audio.player.is_quiet())
 	var played := log.size()
+	assert_true(audio.ambience.is_playing())
 	host.stop()
 	assert_true(audio.player.is_quiet(), "no voice playing, nothing waiting")
+	assert_false(audio.ambience.is_playing(), "the ambience fades out")
 	audio.player.advance(3.0)
 	assert_eq(log.size(), played)
 
@@ -144,6 +147,7 @@ func test_the_results_screen_still_plays() -> void:
 	while not host.is_finished() and host.step_count < 60 * 60 * 12:
 		host.step(10)
 	assert_true(host.is_finished())
+	assert_true(audio.ambience.is_playing(), "the arena's ambience plays on")
 	var played := log.size()
 	host.sim_event.emit({"t": &"weaponBounce", "owner": 0, "speed": 9.0, "pos": {"x": 1.0, "y": 0.0, "z": 0.0}})
 	assert_eq(_cues(log).slice(played), [&"weapon_bounce", &"weapon_clatter"] as Array[StringName])
@@ -163,6 +167,75 @@ func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
 			host.start(_cpu(MatchConfig.DUEL, 7 + k))
 		await get_tree().process_frame
 		assert_eq(_descendants(audio), baseline, "match %d: nothing left behind" % k)
+
+
+# ------------------------------------------------------------------ the arena's ambience
+
+## An arena's data naming [param cue] as its ambience, read by name.
+func _fake_def(cue: StringName) -> Resource:
+	var script := GDScript.new()
+	script.source_code = "extends Resource
+var ambience_id: StringName = &\"%s\"
+" % cue
+	script.reload()
+	return script.new()
+
+
+func test_a_played_duel_fades_the_arena_s_ambience_in_on_the_ambience_bus() -> void:
+	host.start(_cpu())
+	var bed := audio.ambience
+	assert_true(bed.is_playing())
+	assert_eq(bed.player.stream.resource_path, SoundBank.paths_for(MatchAudio.DEFAULT_AMBIENCE)[0],
+		"the stand-in names none: the shrine's bed")
+	assert_eq(bed.player.bus, &"Ambience")
+	assert_eq(bed.volume_db, float(SoundBank.CUES[MatchAudio.DEFAULT_AMBIENCE]["volume_db"]))
+	assert_true(await wait_until(bed.is_audible, 2.0), "it rises once mixed")
+
+
+func test_the_duel_behind_the_menus_has_no_ambience() -> void:
+	var cfg := MatchConfig.attract(5)
+	cfg.arena_id = ArenaScenes.STANDIN
+	host.start(cfg, true)
+	assert_false(audio.ambience.is_playing())
+	host.start(_cpu())
+	host.start(cfg, true)
+	assert_false(audio.ambience.is_playing(), "the played match's bed fades out")
+
+
+func test_the_ambience_plays_on_through_a_pause() -> void:
+	host.start(_cpu())
+	host.pause()
+	assert_true(audio.ambience.is_playing())
+	assert_false(audio.ambience.player.stream_paused)
+	host.resume()
+	assert_true(audio.ambience.is_playing())
+
+
+func test_a_rematch_keeps_the_ambience_going() -> void:
+	host.start(_cpu())
+	assert_true(await wait_until(audio.ambience.is_audible, 2.0))
+	var position := audio.ambience.player.get_playback_position()
+	host.start(_cpu(MatchConfig.DUEL, 8))
+	assert_true(audio.ambience.is_audible(), "not restarted from silence")
+	assert_gte(audio.ambience.player.get_playback_position(), position)
+
+
+func test_an_arena_plays_the_ambience_its_data_names() -> void:
+	assert_eq(MatchAudio.ambience_cue(ArenaScenes.def(ArenaScenes.MOONLIT_SHRINE)), &"ambience_shrine", "the shrine's")
+	assert_eq(MatchAudio.ambience_cue(_fake_def(&"gong")), &"gong")
+	assert_eq(MatchAudio.ambience_cue(_fake_def(&"")), MatchAudio.DEFAULT_AMBIENCE, "an arena that names none")
+	assert_eq(MatchAudio.ambience_cue(null), MatchAudio.DEFAULT_AMBIENCE, "no data (the stand-in)")
+	host.start(_cpu())
+	audio.start_ambience(MatchAudio.ambience_cue(_fake_def(&"gong")))
+	assert_has(SoundBank.paths_for(&"gong"), audio.ambience.player.stream.resource_path, "a fake arena's cue plays")
+	assert_eq(audio.ambience.player.bus, SoundBank.CUES[&"gong"]["bus"], "on its cue's bus")
+
+
+func test_an_ambience_the_bank_lacks_is_an_error() -> void:
+	host.start(_cpu())
+	audio.start_ambience(&"no_such_bed")
+	assert_push_error("no_such_bed")
+	assert_true(audio.ambience.is_playing(), "the bed playing carries on")
 
 
 # ------------------------------------------------------------------ in 3D

@@ -20,7 +20,8 @@ var walk_stride: float = 0.8
 var run_stride: float = 1.3
 var sprint_stride: float = 2.0
 ## Speeds (m/s) that separate the paces. The guard walk is the run slowed by
-## blocking (1.75 m/s forward); the sprint is 7.2 m/s, the run at most 4.7.
+## blocking (at most 2.34 m/s, forward); the sprint is 7.2 m/s, the run at
+## most 4.7.
 var walk_below: float = 2.5
 var sprint_from: float = 5.0
 ## The most a fighter can cover in one step on foot (m); a longer move is a

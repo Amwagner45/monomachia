@@ -1476,7 +1476,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **20.2 Music driven by the menus and the match.** `GameServices` owns the director and player. The title, menus and results play the menu track and a played match plays battle; a round call with a fighter on two wins switches to match point. The attract duel never changes the track.
     - Check: the flow tests cover each switch, including match point at the next round start and none from the attract duel.
     - Blocked by: 19.2, 20.1 · Stories: 6, 51
-  - [ ] **19.5 Arena ambience.** The arena's ambience loop (from its data, `ambience_shrine` by default) fades in with a played match, carries through pauses and fades out on quit.
+  - [x] **19.5 Arena ambience.** The arena's ambience loop (from its data, `ambience_shrine` by default) fades in with a played match, carries through pauses and fades out on quit.
     - Check: a Duel starts the loop on the Ambience bus; the attract duel has none; quit fades it; a fake arena's cue plays.
     - Blocked by: 19.2, 20.1 · Stories: 47, 50
   - [ ] **19.6 Ducking.** Compressors on the Music and Ambience buses, sidechained to Combat.

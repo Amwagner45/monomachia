@@ -18,10 +18,17 @@ extends Node3D
 ## Footsteps: a FootstepCadence turns each rules step's movement into
 ## footfalls, and [method foot_down] plays the footstep cue at the feet. The
 ## locomotion clips' foot contacts can call foot_down() in its place later.
+##
+## The arena's ambience: a played match fades in the loop its arena's data
+## names ([method ambience_cue]) on a [FadedLoop]. It plays on through pauses,
+## the results and a rematch in the same arena, and fades out on a quit or
+## under the duel behind the menus.
 
 ## The fields that name the fighter an event happened to, in the order they
 ## are looked for (see SimEvents).
 const FIGHTER_KEYS: Array[String] = ["f", "attacker", "parrier", "victim", "loser", "owner", "by"]
+## The ambience when an arena names none (the stand-in).
+const DEFAULT_AMBIENCE := &"ambience_shrine"
 
 ## The host to follow. The default is the parent (match_host.tscn).
 @export var host_path: NodePath = ^".."
@@ -35,6 +42,7 @@ var player: SoundPlayer
 var listener: AudioListener3D
 var camera: Camera3D
 var footsteps := FootstepCadence.new()
+var ambience: FadedLoop
 
 
 func _ready() -> void:
@@ -47,6 +55,9 @@ func _ready() -> void:
 		if not SoundBank.CUES[cue_name].get("loop", false):
 			cues.append(cue_name)
 	player.preload_cues(cues)
+	ambience = FadedLoop.new()
+	ambience.name = "Ambience"
+	add_child(ambience)
 	listener = AudioListener3D.new()
 	listener.name = "Listener"
 	add_child(listener)
@@ -90,6 +101,30 @@ func foot_down(at: Vector3) -> void:
 	player.play_cue(&"footstep", at)
 
 
+## The ambience an arena's data names: its `ambience_id` (read by name, as
+## MatchView reads the camera data), else [constant DEFAULT_AMBIENCE].
+static func ambience_cue(arena_def: Object) -> StringName:
+	if arena_def != null:
+		var cue: Variant = arena_def.get("ambience_id")
+		if (cue is StringName or cue is String) and not String(cue).is_empty():
+			return StringName(cue)
+	return DEFAULT_AMBIENCE
+
+
+## Fades in [param cue]'s loop on its bus at its level, unless it is playing
+## already. A cue the bank lacks is an error, and the loop playing carries on.
+func start_ambience(cue: StringName) -> void:
+	if not SoundBank.CUES.has(cue):
+		push_error("MatchAudio: no ambience %s in the sound bank" % cue)
+		return
+	var stream := player.stream_for(SoundBank.paths_for(cue)[0])
+	if stream == null or (ambience.is_playing() and ambience.player.stream == stream):
+		return
+	ambience.bus = SoundBank.CUES[cue]["bus"]
+	ambience.volume_db = SoundBank.CUES[cue]["volume_db"]
+	ambience.play(stream)
+
+
 ## Where a rules event happened, for its spatial cues: its contact point
 ## (pos), where lightning strikes (to), else the chest of the fighter it
 ## names; null when it names nowhere.
@@ -109,9 +144,13 @@ func event_position(e: Dictionary) -> Variant:
 	return null
 
 
-func _on_match_started(_config: MatchConfig) -> void:
+func _on_match_started(config: MatchConfig) -> void:
 	player.stop_all()
 	footsteps.reset()
+	if host.attract:
+		ambience.stop()
+	else:
+		start_ambience(ambience_cue(ArenaScenes.def(config.arena_id)))
 
 
 func _on_sim_event(e: Dictionary) -> void:
@@ -133,6 +172,7 @@ func _on_pause_changed(paused: bool) -> void:
 
 func _on_stopped() -> void:
 	player.stop_all()
+	ambience.stop()
 
 
 static func _vector(d: Dictionary) -> Vector3:

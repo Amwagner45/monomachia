@@ -575,7 +575,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - the old tests pass or are updated, with a reason in the commit;
     - the soak run is clean;
     - debug screenshots show sweeps matching hits.
-  - [ ] **7.1 64-bit vector and rotation helpers for the rules.** Vector operations on `V3`, a 64-bit `Quat64` with trig through `JsMath`, and `SimMath.local_to_world`. No behaviour changes.
+  - [x] **7.1 64-bit vector and rotation helpers for the rules.** Vector operations on `V3`, a 64-bit `Quat64` with trig through `JsMath`, and `SimMath.local_to_world`. No behaviour changes.
     - Check: `test_v3_math.gd` covers identities, cross-product handedness, slerp, round trips and local-to-world at two yaws; every existing test passes.
     - Blocked by: none (built after 11.3 in the build order) · Stories: 59
   - [ ] **7.2 Swing data: keys, tracks and the JSON files.** A swing holds tracks (right hand, left hand, right foot, left foot, body), and each track holds keys. A key has a frame, a grip point in the fighter's space, the weapon's orientation, torso and pelvis coil, a pelvis shift, an optional elbow-pole tweak and an ease. Per-weapon JSON files load into `AttackDef.swing`. Glossary entries for Swing, Hurt capsule, Sweep and Contact point.

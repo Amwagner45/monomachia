@@ -52,6 +52,21 @@ static func right(yaw: float) -> V2:
 	return V2.make(-JsMath.cos(yaw), JsMath.sin(yaw))
 
 
+## A point given in a fighter's own space, `local` = (right, up, forward) in
+## metres from their feet, placed in the world for a fighter at `pos` facing
+## `yaw`. Not in math.ts; the swings (task 7) use it.
+##
+## Facing +Z, a fighter's right is -X, so (right, up, forward) is a mirror image
+## of Godot's axes: a cross product taken on (right, up, forward) vectors comes
+## out reversed in the world. Take cross products after converting.
+static func local_to_world(pos: V3, yaw: float, local: V3) -> V3:
+	var f: V2 = fwd(yaw)
+	var r: V2 = right(yaw)
+	return V3.make(pos.x + r.x * local.x + f.x * local.z,
+			pos.y + local.y,
+			pos.z + r.z * local.x + f.z * local.z)
+
+
 static func yaw_to(from: V3, to: V3) -> float:
 	return JsMath.atan2(to.x - from.x, to.z - from.z)
 

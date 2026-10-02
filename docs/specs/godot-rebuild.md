@@ -1,14 +1,15 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 2, 2026 · status: in build, one task at a time. Stages 1–4 of the build order are done, and with them tasks 1–6, 8, 13, 16, 17 and 21:
+Oct 2, 2026 · status: in build, one task at a time. Stages 1–5 of the build order are done, and with them tasks 1–6, 8, 13, 16, 17, 19, 20 and 21:
 - the rules port, bit for bit with the TypeScript up to its last checked commit (4222167);
 - the fighter models merged, and the safety nets: a file-size guard, the Windows export with a smoke run, and CI (13.1, 25.1–25.3, 16.1);
 - the real fighters and weapons in the match, in the toon and ink-wash look (16.1–16.7, 14.1, 14.2);
 - the Moonlit Shrine as every match's arena (17.1–17.10; High 67 fps at 1080p on the target laptop);
 - the fluid combat rules (8.1–8.10): a 15 m arena, a 60% blocking walk, half the momentum kept, eased lunges, light hitstun 14, heavy dodge cancels and the Greatsword's recovery slide;
-- a soak that reports the balance targets (12.1).
+- a soak that reports the balance targets (12.1);
+- sound and music in the game (19.1–19.9, 20.1–20.3): every rules event's sounds, placed in 3D and through the arena's reverb, footsteps, the arena's ambience, the three music tracks switched by the menus and the round call, ducking, menu sounds and saved volumes, with a sound check scene for listening. Stories 50 and 51 wait for the owner's listening pass, and story 52 for the Settings screen (22.9).
 
-Stage 5 (sound and music, draft PR #3) and 14.3–14.9 (animation, draft PR #4) go on in their own lanes. Next in this lane is 9.1, the first task of stage 6, the new strings (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+14.3–14.9 (animation, draft PR #4) goes on in its own lane. Next in this lane is 9.1, the first task of stage 6, the new strings (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 

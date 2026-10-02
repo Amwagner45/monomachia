@@ -43,7 +43,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 ### Camera and movement
 
-11. [x] As a player, I want the camera over my fighter's shoulder, slightly more zoomed out than For Honor, and always locked on to my opponent, so that I see my fighter, my opponent and the space between us.
+11. [ ] As a player, I want the camera over my fighter's shoulder, slightly more zoomed out than For Honor, and always locked on to my opponent, so that I see my fighter, my opponent and the space between us.
 12. [x] As a player, I want to move in eight directions around my opponent, step with a tap, sprint with a double-tap and hold, dodge with a direction, backstep with no direction, and jump, as in the demo, so that the controls I learned still work.
 13. [ ] As a player, I want my fighter to lean into runs and turns, and to dash evasively when dodging, so that movement looks real.
 14. [ ] As a player, I want to walk noticeably faster while blocking than in the demo, so that I can reposition while guarding.

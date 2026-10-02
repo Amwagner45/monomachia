@@ -1,13 +1,19 @@
 extends GutTest
 ## The Moonlit Shrine as every match's arena (plan task 17.10): with the
 ## rules' wall at the shrine's 15 m, fighters and dropped weapons stay inside
-## its parapet, and the match cameras, with a fighter backed against the
-## wall, never pass through its props.
+## its parapet, and no match camera can reach its props.
 
 const SHRINE_SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
-## The camera's clearance: no prop within this of the camera (its near
-## plane is 0.1 m away, and a little more keeps a pillar from filling the view).
+const WeaponTests := preload("res://tests/content/test_weapons.gd")
+## How near a prop may come to a camera: the near plane's corners reach about
+## 0.16 m (NEAR_REACH), and a little more keeps a pillar from filling the view.
 const CLEARANCE: float = 0.3
+## How far the camera's near plane reaches: its corners, at a 0.1 m near clip,
+## a 60 degree field of view and 16:9.
+const NEAR_REACH: float = 0.16
+## A generous bound on how high a fighter's feet go (jumps, leaps, being held
+## up on the Impaler's blade); the computer matches below check it.
+const FEET_CEILING: float = 2.5
 
 var def: ArenaDef
 
@@ -26,10 +32,9 @@ func test_a_default_match_is_fought_on_the_shrine() -> void:
 	assert_eq(ArenaScenes.scene_path(MatchConfig.DEFAULT_ARENA), SHRINE_SCENE)
 
 
-func test_computer_matches_keep_fighters_and_dropped_weapons_inside_the_parapet() -> void:
+func test_computer_matches_back_fighters_against_the_wall_but_never_through_it() -> void:
 	var furthest_body: float = 0.0
-	var furthest_weapon: float = 0.0
-	var dropped: int = 0
+	var highest_feet: float = 0.0
 	for seed_value: int in [11, 12, 13]:
 		var W: World = SimHelpers.track(World.new(FighterConfig.make(Moves.KATANA), FighterConfig.make(Moves.GREATSWORD), seed_value))
 		var M: Match = Match.new(W)
@@ -37,119 +42,156 @@ func test_computer_matches_keep_fighters_and_dropped_weapons_inside_the_parapet(
 			AIBrain.new(W.fighters[0], AIBrain.DIFFICULTY[&"hard"], seed_value),
 			AIBrain.new(W.fighters[1], AIBrain.DIFFICULTY[&"hard"], seed_value + 100),
 		]
-		for _i: int in 60 * 60 * 6:
+		for _i: int in 60 * 60 * 12:
 			M.step([brains[0].think(), brains[1].think()])
-			for e: Dictionary in W.drain_events():
-				if e["t"] == &"disarm":
-					dropped += 1
+			W.drain_events()
 			for f: Fighter in W.fighters:
 				furthest_body = maxf(furthest_body, JsMath.hypot(f.pos.x, f.pos.z) + SimConst.FIGHTER_RADIUS)
-			for w: DroppedWeapon in W.weapons:
-				furthest_weapon = maxf(furthest_weapon, JsMath.hypot(w.pos.x, w.pos.z))
-			if M.phase == &"matchOver":
+				highest_feet = maxf(highest_feet, f.pos.y)
+			if M.phase == &"matchEnd":
 				break
+		assert_eq(M.phase, &"matchEnd", "seed %d: the match finished" % seed_value)
 		for b: AIBrain in brains:
 			b.dispose()
-	assert_lte(furthest_body, def.wall_inner_radius(), "no fighter's body passes the parapet's inner face")
-	assert_gt(furthest_body, 10.0, "the fighters used the room")
-	assert_gt(dropped, 0, "weapons were dropped")
-	assert_lt(furthest_weapon, def.wall_inner_radius(), "dropped weapons stay inside the parapet")
+	assert_gt(furthest_body, SimConst.ARENA_RADIUS - 0.01, "a fighter was backed against the wall")
+	assert_lte(furthest_body, def.wall_inner_radius(), "and no fighter's body passed the parapet's inner face")
+	assert_lt(highest_feet, FEET_CEILING, "no fighter's feet went higher than FEET_CEILING")
 
 
-## A physics space holding the shrine's props and the gates' rope barriers,
-## one static body per mesh, named after it.
-func _prop_space() -> PhysicsDirectSpaceState3D:
+func test_a_weapon_dropped_at_the_wall_lies_wholly_inside_the_parapet() -> void:
+	# A dropped weapon is drawn centred on its rules position along its length
+	# (MatchView), so the worst case is lying straight out at its furthest.
+	for id: StringName in Moves.PLAYABLE_WEAPONS:
+		var model: Node3D = WeaponLook.load_id(id).instantiate()
+		add_child_autofree(model)
+		var half: float = WeaponTests._bounds(model).size.y * 0.5
+		var W: World = SimHelpers.make_world(Moves.WEAPONS[id])
+		var victim: Fighter = W.fighters[0]
+		victim.pos = V3.make(0.0, 0.0, 14.5)
+		W.fighters[1].pos = V3.make()
+		W.spawn_dropped_weapon(victim, W.fighters[1])
+		var furthest: float = 0.0
+		for _i: int in 300:
+			W.step([RawInput.empty(), RawInput.empty()])
+			furthest = maxf(furthest, JsMath.hypot(W.weapons[0].pos.x, W.weapons[0].pos.z))
+		assert_true(W.weapons[0].grounded, "%s comes to rest" % id)
+		assert_gt(furthest, SimConst.ARENA_RADIUS - 1.0, "%s reached the wall" % id)
+		assert_lte(furthest + half, def.wall_inner_radius(), "%s, %.2f m long, never pokes into the parapet" % [id, half * 2.0])
+
+
+## A physics space holding the shrine's props (bought art included) and the
+## gates' rope barriers, one static body per mesh, named after it, leaving
+## out the meshes named in leave_out.
+func _prop_space(leave_out: Array[StringName]) -> PhysicsDirectSpaceState3D:
 	var shrine: Node3D = (load(SHRINE_SCENE) as PackedScene).instantiate()
 	add_child_autofree(shrine)
-	var meshes: Array[Node] = shrine.find_children("*", "MeshInstance3D", true, false).filter(
-		func(n: Node) -> bool: return n.get_parent().name == &"Props" or String(n.get_parent().name).begins_with("GateRope"))
+	var props: Node3D = shrine.find_child("Props", true, false)
+	var meshes: Array[Node] = props.find_children("*", "MeshInstance3D", true, false)
+	for rope: Node in shrine.find_children("GateRope*", "Node3D", true, false):
+		meshes.append_array(rope.find_children("*", "MeshInstance3D", true, false))
 	assert_gt(meshes.size(), 10, "the shrine has its props")
-	for mi: Node in meshes:
-		var body := StaticBody3D.new()
-		body.name = mi.name
+	for mi: MeshInstance3D in meshes:
+		if leave_out.has(mi.name):
+			continue
 		var shape := ConcavePolygonShape3D.new()
 		shape.backface_collision = true
-		shape.set_faces((mi as MeshInstance3D).mesh.get_faces())
+		shape.set_faces(mi.mesh.get_faces())
 		var cs := CollisionShape3D.new()
 		cs.shape = shape
-		cs.transform = (mi as MeshInstance3D).global_transform
+		cs.transform = mi.global_transform
+		var body := StaticBody3D.new()
+		body.name = mi.name
 		body.add_child(cs)
 		add_child_autofree(body)
 	await wait_physics_frames(2)
 	return get_viewport().world_3d.direct_space_state
 
 
-## Each camera position the sweep takes: the player backed against the wall
-## at every degree, the opponent 2.5, 6 or 12 m away at bearings from straight
-## in to 60 degrees either side. One path per (bearing, distance), in order
-## round the wall.
-func _paths(rig: CameraRig, watch: bool) -> Dictionary:
-	var paths: Dictionary = {}
-	var r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
-	for bearing: float in [-60.0, -30.0, 0.0, 30.0, 60.0]:
-		for d: float in [2.5, 6.0, 12.0]:
-			for sway: float in ([-1.0, 0.0, 1.0] if watch else [0.0]):
-				var path: PackedVector3Array = PackedVector3Array()
-				for deg: int in 360:
-					var player: Vector3 = ShrineLayout.polar(deg, r)
-					var inward: Vector3 = (-player).normalized().rotated(Vector3.UP, deg_to_rad(bearing))
-					var opponent: Vector3 = player + inward * d
-					var direction: Vector3 = Vector3(opponent.x - player.x, 0.0, opponent.z - player.z).normalized()
-					var target: Dictionary
-					if watch:
-						var t: float = asin(sway) / rig.watch_sway_speed
-						target = rig.watch_target(player, opponent, direction, t)
-					else:
-						target = rig.follow_target(player, opponent, direction)
-					path.append(rig.clamp_to_arena(target["pos"]))
-				paths["%s bearing %d, %s m%s" % ["watch" if watch else "follow", bearing, d, ", sway %d" % sway if watch else ""]] = path
-	return paths
+## The lowest and highest a match camera goes (x, y): the rig's own targets
+## with the fighters closest and furthest apart, standing and as high as their
+## feet go, plus the shake. (The KO orbit and Versus use the same targets.)
+static func _camera_heights(rig: CameraRig) -> Vector2:
+	var heights: Array[float] = []
+	for apart: float in [0.5, 2.0 * (SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS)]:
+		for feet: float in [0.0, FEET_CEILING]:
+			var player := Vector3(0.0, feet, 0.0)
+			var opponent := Vector3(0.0, feet, apart)
+			heights.append((rig.follow_target(player, opponent, Vector3.BACK)["pos"] as Vector3).y)
+			heights.append((rig.watch_target(player, opponent, Vector3.BACK, 0.0)["pos"] as Vector3).y)
+	var shake: float = rig.shake_max * rig.shake_amplitude * 0.5
+	return Vector2(heights.min() - shake, heights.max() + shake)
 
 
-## The props each path's camera comes within CLEARANCE of or passes
-## through, one line per path and prop: "path: prop at degrees".
-func _hits(space: PhysicsDirectSpaceState3D, paths: Dictionary) -> Array[String]:
+func test_no_prop_reaches_into_the_room_the_match_cameras_move_in() -> void:
+	# Every match camera but the menu's orbit is clamped within arena_limit()
+	# of the centre, between the heights _camera_heights finds: the room. The
+	# cameras pass over the parapet, which is checked on its own.
+	var space: PhysicsDirectSpaceState3D = await _prop_space([&"Parapet"])
+	var rig: CameraRig = autofree(CameraRig.new())
+	rig.apply_arena(def.camera_max_radius, def.camera_far)
+	var band: Vector2 = _camera_heights(rig)
+	var room := CylinderShape3D.new()
+	room.radius = rig.arena_limit() + CLEARANCE
+	room.height = band.y - band.x + 2.0 * CLEARANCE
+	var query := PhysicsShapeQueryParameters3D.new()
+	query.shape = room
+	query.transform = Transform3D(Basis(), Vector3(0.0, (band.x + band.y) * 0.5, 0.0))
+	var inside: Array[String] = []
+	for hit: Dictionary in space.intersect_shape(query, 32):
+		var n: String = String((hit["collider"] as Node).name)
+		if not inside.has(n):
+			inside.append(n)
+	assert_eq(inside, [] as Array[String], "props within %.2f m of the centre, %.2f to %.2f m up" % [room.radius, band.x - CLEARANCE, band.y + CLEARANCE])
+
+
+func test_the_cameras_pass_over_the_parapet_clear_of_their_near_plane() -> void:
+	var shrine: Node3D = (load(SHRINE_SCENE) as PackedScene).instantiate()
+	add_child_autofree(shrine)
+	var parapet: MeshInstance3D = shrine.find_child("Parapet", true, false)
+	var top: float = (parapet.global_transform * parapet.get_aabb()).end.y
+	var rig: CameraRig = autofree(CameraRig.new())
+	assert_lt(top, _camera_heights(rig).x - NEAR_REACH, "the parapet's top (%.2f m) stays under the lowest camera" % top)
+
+
+## The sweep that found the cameras in the props at the old 19.5 m limit, kept
+## as a scenario: the player backed against the wall at every degree, the
+## opponent 2.5, 6 or 12 m away at bearings up to 60 degrees either side, and
+## the follow camera never within CLEARANCE of a prop nor passing through one
+## between degrees.
+func test_the_follow_camera_round_the_wall_never_meets_a_prop() -> void:
+	var space: PhysicsDirectSpaceState3D = await _prop_space([])
+	var rig: CameraRig = autofree(CameraRig.new())
+	rig.apply_arena(def.camera_max_radius, def.camera_far)
 	var ball := SphereShape3D.new()
 	ball.radius = CLEARANCE
 	var query := PhysicsShapeQueryParameters3D.new()
 	query.shape = ball
-	var at: Dictionary[String, PackedInt32Array] = {}
-	for key: String in paths:
-		var path: PackedVector3Array = paths[key]
-		for i: int in path.size():
-			var names: Array[String] = []
-			query.transform = Transform3D(Basis(), path[i])
-			for hit: Dictionary in space.intersect_shape(query, 4):
-				names.append(String((hit["collider"] as Node).name))
-			var ray := PhysicsRayQueryParameters3D.create(path[i], path[(i + 1) % path.size()])
-			ray.hit_back_faces = true
-			var through: Dictionary = space.intersect_ray(ray)
-			if not through.is_empty():
-				names.append(String((through["collider"] as Node).name))
-			for n: String in names:
-				var k: String = "%s: %s" % [key, n]
-				if not at.has(k):
-					at[k] = PackedInt32Array()
-				if not at[k].has(i):
-					at[k].append(i)
-	var out: Array[String] = []
-	for k: String in at:
-		out.append("%s at %s deg" % [k, at[k]])
-	return out
-
-
-func test_the_follow_camera_at_the_wall_never_passes_through_a_prop() -> void:
-	var space: PhysicsDirectSpaceState3D = await _prop_space()
-	var rig: CameraRig = autofree(CameraRig.new())
-	rig.apply_arena(def.camera_max_radius, def.camera_far)
-	var hits: Array[String] = _hits(space, _paths(rig, false))
-	assert_eq(hits.size(), 0, "camera inside a prop:\n%s" % "\n".join(hits.slice(0, 40)))
-
-
-func test_the_watch_camera_at_the_wall_never_passes_through_a_prop() -> void:
-	var space: PhysicsDirectSpaceState3D = await _prop_space()
-	var rig: CameraRig = autofree(CameraRig.new())
-	rig.mode = CameraRig.Mode.WATCH
-	rig.apply_arena(def.camera_max_radius, def.camera_far)
-	var hits: Array[String] = _hits(space, _paths(rig, true))
-	assert_eq(hits.size(), 0, "camera inside a prop:\n%s" % "\n".join(hits.slice(0, 40)))
+	var met: Dictionary[String, PackedInt32Array] = {}
+	var r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
+	for bearing: float in [-60.0, -30.0, 0.0, 30.0, 60.0]:
+		for d: float in [2.5, 6.0, 12.0]:
+			var path := PackedVector3Array()
+			for deg: int in 360:
+				var player: Vector3 = ShrineLayout.polar(deg, r)
+				var opponent: Vector3 = player + (-player).normalized().rotated(Vector3.UP, deg_to_rad(bearing)) * d
+				var direction: Vector3 = (opponent - player).normalized()
+				path.append(rig.clamp_to_arena(rig.follow_target(player, opponent, direction)["pos"]))
+			for i: int in path.size():
+				var names: Array[String] = []
+				query.transform = Transform3D(Basis(), path[i])
+				for hit: Dictionary in space.intersect_shape(query, 4):
+					names.append(String((hit["collider"] as Node).name))
+				var ray := PhysicsRayQueryParameters3D.create(path[i], path[(i + 1) % path.size()])
+				ray.hit_back_faces = true
+				var through: Dictionary = space.intersect_ray(ray)
+				if not through.is_empty():
+					names.append(String((through["collider"] as Node).name))
+				for n: String in names:
+					var key: String = "bearing %d, %s m: %s" % [bearing, d, n]
+					if not met.has(key):
+						met[key] = PackedInt32Array()
+					met[key].append(i)
+	var lines: Array[String] = []
+	for key: String in met:
+		lines.append("%s at %s deg" % [key, met[key]])
+	assert_eq(lines, [] as Array[String], "the follow camera meets a prop (one mesh per material):\n%s" % "\n".join(lines))

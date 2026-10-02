@@ -6,7 +6,7 @@ extends Node3D
 ## stand on their spawns; MatchView.set_arena puts the arena in; the chosen
 ## graphics preset is applied to the renderer, the window and the whole rig.
 ## Each .tscn next to this script picks a view; render one with
-##   node scripts/godot.mjs shots res://tools/shot_scenes/arena_<view>.tscn <out.png> 30 [--preset=<id>] [--arena=<id>]
+##   node scripts/godot.mjs shots res://tools/shot_scenes/arena_<view>.tscn <out.png> 30 [--preset=<id>] [--arena=<id>] [--wall=<degrees>]
 ##
 ## The arena is its ArenaDef's own scene whenever that scene exists, even
 ## while ArenaScenes' radius guard keeps it out of matches, so an arena can be
@@ -29,7 +29,7 @@ extends Node3D
 ##
 ## At the wall: with wall_angle_deg set (or --wall=<degrees>), side 0 stands
 ## backed against the rules' wall at that angle (from +Z toward +X), facing
-## side 1 wall_gap metres further in, so the gameplay and Watch views show
+## side 1 wall_separation metres further in, so the gameplay and Watch views show
 ## where the camera goes when a fighter is cornered (arena_wall.tscn).
 ##
 ## Bench: with entries in bench, the rig times frames instead of taking one
@@ -114,8 +114,8 @@ const GATE_MARK_LIFT: float = 8.0
 ## Back side 0 against the wall at this angle (degrees, from +Z toward +X);
 ## NAN leaves both fighters on their spawns.
 @export var wall_angle_deg: float = NAN
-## How far in from side 0 side 1 stands (m).
-@export var wall_gap: float = 3.0
+## How far apart the fighters stand, side 1 further in (m).
+@export var wall_separation: float = 3.0
 
 @export_group("Bench")
 ## The entries to time, in order; empty takes one shot instead.
@@ -226,8 +226,9 @@ func _exit_tree() -> void:
 
 
 ## The command line's --preset=, --arena=, --wall=, --bench=,
-## --bench-passes=, --bench-frames= and --bench-res= override the exports. An unknown arena, a
-## count below 1 or a bad resolution is an error, so the shot run fails.
+## --bench-passes=, --bench-frames= and --bench-res= override the exports.
+## An unknown arena, a wall angle that isn't a number, a count below 1 or a
+## bad resolution is an error, so the shot run fails.
 func apply_args(args: PackedStringArray) -> void:
 	for a: String in args:
 		if a.begins_with("--preset="):
@@ -257,14 +258,15 @@ func apply_args(args: PackedStringArray) -> void:
 
 
 ## Backs side 0 against the rules' wall at wall_angle_deg, facing side 1
-## wall_gap metres further in, and steps twice so the view shows them there.
+## wall_separation metres further in, and steps twice so the view shows them
+## there.
 func _back_to_wall() -> void:
 	var a: float = deg_to_rad(wall_angle_deg)
 	var r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
 	var f0: Fighter = host.fighter(0)
 	var f1: Fighter = host.fighter(1)
 	f0.pos = V3.make(sin(a) * r, 0.0, cos(a) * r)
-	f1.pos = V3.make(sin(a) * (r - wall_gap), 0.0, cos(a) * (r - wall_gap))
+	f1.pos = V3.make(sin(a) * (r - wall_separation), 0.0, cos(a) * (r - wall_separation))
 	for f: Fighter in [f0, f1]:
 		f.vel = V3.make()
 		f.yaw = SimMath.yaw_to(f.pos, f.opp.pos)

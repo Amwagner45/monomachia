@@ -18,7 +18,11 @@ const POSTURE_MAX: float = 100.0
 const ULT_HP_THRESHOLD: float = 25.0 # % HP at or below which the ultimate unlocks
 const ROUNDS_TO_WIN: int = 3
 
-const ARENA_RADIUS: float = 11.5 # inner wall radius (m)
+const ARENA_RADIUS: float = 15.0 # inner wall radius (m); the demo's was 11.5
+## The Impaler's dash ends this far inside the wall (the demo's 10.8 m stop).
+const IMPALER_WALL_MARGIN: float = 0.7
+## Dropped weapons bounce off a ring this far inside the wall.
+const WEAPON_BOUNCE_MARGIN: float = 0.8
 const FIGHTER_RADIUS: float = 0.42
 const GRAVITY: float = 30.0 # m/s^2 (snappy, game-like)
 const JUMP_CLEAR: float = 0.3 # feet height above which low attacks miss

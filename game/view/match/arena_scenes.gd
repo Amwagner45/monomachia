@@ -15,8 +15,8 @@ extends RefCounted
 ## The radius guard: an arena's own scene is used only when it exists and its
 ## walkable radius is the rules' ARENA_RADIUS. Otherwise the rules' wall would
 ## stand somewhere other than the arena's visible one, so the stand-in, whose
-## wall follows the rules' radius, is drawn instead. Until task 8 sets the
-## rules' radius to the shrine's 15 m, the shrine draws as the stand-in.
+## wall follows the rules' radius, is drawn instead. Since task 8.3 set the
+## rules' radius to the shrine's 15 m, the shrine draws as itself.
 
 const STANDIN: StringName = &"standin"
 const MOONLIT_SHRINE: StringName = &"moonlit_shrine"

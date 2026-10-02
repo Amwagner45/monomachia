@@ -1173,7 +1173,7 @@ func _ult_impaler(u: UltState) -> void:
 					_set_ult_phase(&"recover")
 			W.queue_scripted_hit(self, o, Moves.ULT_HITS[&"u_impale"], cb)
 		var r: float = JsMath.hypot(pos.x, pos.z)
-		if u.pf >= 40 or r > 10.8 or (gap < 0.6 and along < -0.5):
+		if u.pf >= 40 or r > SimConst.ARENA_RADIUS - SimConst.IMPALER_WALL_MARGIN or (gap < 0.6 and along < -0.5):
 			_set_ult_phase(&"recover")
 	elif u.phase == &"impale":
 		# hold the victim on the blade

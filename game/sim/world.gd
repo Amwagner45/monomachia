@@ -41,7 +41,9 @@ class ScriptedHit:
 
 
 const WAVE_SPEED: float = 30.0
-const WAVE_RANGE: float = 26.0
+## Far enough to cross the whole arena: the widest gap between two fighters
+## and 3 m more, as the demo's 26 m did at its 11.5 m radius.
+const WAVE_RANGE: float = 2.0 * SimConst.ARENA_RADIUS + 3.0
 
 var frame: int = 0
 ## [Fighter, Fighter]
@@ -566,7 +568,7 @@ func remove_dropped_weapon(owner: int) -> void:
 
 
 func _update_weapons() -> void:
-	var max_r: float = SimConst.ARENA_RADIUS - 0.8
+	var max_r: float = SimConst.ARENA_RADIUS - SimConst.WEAPON_BOUNCE_MARGIN
 	for w: DroppedWeapon in weapons:
 		if w.grounded:
 			continue

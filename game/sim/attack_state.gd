@@ -10,6 +10,8 @@ extends RefCounted
 ## - pathFrom and pathTo ({ ang, r } | undefined) are PathPoint objects, null
 ##   when undefined.
 ## - Keep it an object (not a Dictionary): the AI compares attacks by identity.
+## - chained_from is the rebuild's (task 7.4): the move this one follows, so
+##   its swing enters from that move's hand-off key; null on a fresh start.
 
 
 ## A point of the Shadow Step path: { ang, r } around the opponent.
@@ -25,6 +27,8 @@ class PathPoint:
 
 
 var def: AttackDef
+## the move this one follows as its follow-up, or null on a fresh start
+var chained_from: AttackDef = null
 var frame: int = 0
 var hit_done: bool = false
 var hits_done: int = 0

@@ -17,9 +17,18 @@ extends RefCounted
 ## as SimMath.local_to_world takes them. A key's ease scales the speed through
 ## it: 0 stops there (a cocked hold, a settle), 1 is the even default.
 ##
+## A track's keys are the move's main path, ending on its hand-off key. Around
+## them (task 7.4):
+## - the entry runs from frame 0 to the first key: from the weapon's guard on
+##   a fresh start, or from the hand-off key of the move this one follows;
+## - the exit runs from the hand-off key back to the guard on the last frame.
+## The main path's splines use its own keys only, so it is the same whatever
+## the entry, and SwingFile has each striking track key every frame that can
+## hit. A swing built without a guard (tests) holds its first and last keys.
+##
 ## SwingSampler gives a track's pose between keys. Each track's poses at the
-## whole frames 0 to last_frame are worked out once, when it is added, and
-## tick() reads them.
+## whole frames 0 to last_frame, entered from the guard, are worked out once,
+## when it is added, and tick() reads them.
 
 const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"body"]
 
@@ -59,21 +68,25 @@ class Sample:
 
 ## The move's last frame (its total frames): the tables run from 0 to it.
 var last_frame: int = 0
+## The weapon's guard: a pose (frame and ease unused) for each part its swings
+## move, shared by all of them.
+var guard: Dictionary[StringName, KeyPose] = {}
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
 
 
-func _init(p_last_frame: int = 0) -> void:
+func _init(p_last_frame: int = 0, p_guard: Dictionary[StringName, KeyPose] = {}) -> void:
 	last_frame = p_last_frame
+	guard = p_guard
 
 
 ## Adds the track for `part` (one of PARTS), its keys sorted by frame, and
-## works out its poses at every whole frame.
+## works out its poses at every whole frame, entered from the guard.
 func add_track(part: StringName, keys: Array[KeyPose]) -> void:
 	_tracks[part] = keys
 	var ticks: Array[Sample] = []
 	for f: int in last_frame + 1:
-		ticks.append(SwingSampler.sample(keys, part, float(f)))
+		ticks.append(SwingSampler.sample(keys, part, float(f), guard.get(part), guard.get(part), last_frame))
 	_ticks[part] = ticks
 
 
@@ -91,18 +104,41 @@ func track(part: StringName) -> Array[KeyPose]:
 	return _tracks[part]
 
 
-## The pose of `part` at the whole frame `frame`, from the table: frames
-## past the last hold its pose, as do frames before 0. Null when the swing has
-## no such track. Shared: don't change it.
-func tick(part: StringName, frame: int) -> Sample:
+## The hand-off key of `part`: the last key of its track, where a move that
+## follows this one enters from. Null when the swing has no such track.
+func hand_off(part: StringName) -> KeyPose:
+	if not _tracks.has(part):
+		return null
+	return _tracks[part][-1]
+
+
+## Where `part` enters from: the hand-off key of `chained_from` (the swing
+## of the move this one follows) when it has that part, else the guard's pose.
+func entry(part: StringName, chained_from: Swing = null) -> KeyPose:
+	if chained_from != null and chained_from.hand_off(part) != null:
+		return chained_from.hand_off(part)
+	return guard.get(part)
+
+
+## The pose of `part` at the whole frame `frame`, entered from the guard or,
+## following another move, from `chained_from`: from the table, apart from a
+## chained entry's frames, which are sampled. Frames past the last hold its
+## pose, as do frames before 0. Null when the swing has no such track.
+## Shared: don't change it.
+func tick(part: StringName, frame: int, chained_from: Swing = null) -> Sample:
 	if not _ticks.has(part):
 		return null
-	return _ticks[part][clampi(frame, 0, last_frame)]
+	var f: int = clampi(frame, 0, last_frame)
+	var from: KeyPose = entry(part, chained_from)
+	if from != guard.get(part) and f < track(part)[0].frame:
+		return SwingSampler.sample(track(part), part, float(f), from, guard.get(part), last_frame)
+	return _ticks[part][f]
 
 
 ## The pose of `part` at frame `t`, which may fall between frames (for
-## drawing between steps). Null when the swing has no such track.
-func sample(part: StringName, t: float) -> Sample:
+## drawing between steps), entered as tick() says. Null when the swing has no
+## such track.
+func sample(part: StringName, t: float, chained_from: Swing = null) -> Sample:
 	if not _tracks.has(part):
 		return null
-	return SwingSampler.sample(track(part), part, t)
+	return SwingSampler.sample(track(part), part, t, entry(part, chained_from), guard.get(part), last_frame)

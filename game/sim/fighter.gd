@@ -556,8 +556,9 @@ func _context_attack(kind: StringName) -> StringName:
 	return w.light_start if L else w.heavy_start
 
 
-## started_by: the Btn that started the move, or -1 (TS null).
-func start_attack(p_id: StringName, started_by: int = -1) -> bool:
+## started_by: the Btn that started the move, or -1 (TS null). chained_from:
+## the move this one follows, for a follow-up (its swing's entry).
+func start_attack(p_id: StringName, started_by: int = -1, chained_from: AttackDef = null) -> bool:
 	var W: World = world
 	var def: AttackDef = moveset().moves.get(p_id, null)
 	if def == null and String(p_id).begins_with("f_"):
@@ -580,6 +581,7 @@ func start_attack(p_id: StringName, started_by: int = -1) -> bool:
 	)
 	atk = AttackState.new()
 	atk.def = def
+	atk.chained_from = chained_from
 	atk.frame = 0
 	atk.hit_done = false
 	atk.hits_done = 0
@@ -706,7 +708,7 @@ func _update_attack() -> void:
 			inp.consume(Btn.HEAVY)
 			a.queued = def.chain_heavy
 	if a.queued != &"" and f >= S + A + 2:
-		start_attack(a.queued, -1)
+		start_attack(a.queued, -1, def)
 		return
 
 	# Dodge-cancel the recovery from the move's cancel frame, later by half any

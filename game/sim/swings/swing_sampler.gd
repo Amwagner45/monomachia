@@ -43,25 +43,35 @@ static func pivot(part: StringName) -> V3:
 
 
 ## The pose of the track `keys` (for `part`) at frame `t`, which may fall
-## between frames.
-static func sample(keys: Array[Swing.KeyPose], part: StringName, t: float) -> Swing.Sample:
+## between frames. The track enters from `entry`, a pose at frame 0, and
+## exits to `exit`, a pose on `last_frame`; without them it holds its first
+## and last keys. Both stretches start or end at rest, and the keys' own
+## stretches use only the keys, so they are the same whatever the entry.
+static func sample(keys: Array[Swing.KeyPose], part: StringName, t: float,
+		entry: Swing.KeyPose = null, exit: Swing.KeyPose = null, last_frame: int = 0) -> Swing.Sample:
 	if keys.is_empty():
 		return Swing.Sample.new()
 	var last: int = keys.size() - 1
-	if t <= float(keys[0].frame):
-		return _held(keys[0])
-	if t >= float(keys[last].frame):
-		return _held(keys[last])
+	var first_frame: float = float(keys[0].frame)
+	var end_frame: float = float(keys[last].frame)
+	if t <= first_frame:
+		if entry == null or keys[0].frame <= 0 or t == first_frame:
+			return _held(keys[0])
+		if t <= 0.0:
+			return _held(entry)
+		return _span(keys, part, entry, -1, 0.0, keys[0], 0, first_frame, t)
+	if t >= end_frame:
+		if exit == null or last_frame <= keys[last].frame or t == end_frame:
+			return _held(keys[last])
+		if t >= float(last_frame):
+			return _held(exit)
+		return _span(keys, part, keys[last], last, end_frame, exit, -1, float(last_frame), t)
 	var i: int = 0
 	while float(keys[i + 1].frame) <= t:
 		i += 1
 	if t == float(keys[i].frame):
 		return _held(keys[i])
-	var h: float = float(keys[i + 1].frame - keys[i].frame)
-	var s: float = (t - float(keys[i].frame)) / h
-	if part == &"body":
-		return _body(keys, i, s, h)
-	return _limb(keys, part, i, s, h)
+	return _span(keys, part, keys[i], i, float(keys[i].frame), keys[i + 1], i + 1, float(keys[i + 1].frame), t)
 
 
 ## A key's own pose.
@@ -77,10 +87,21 @@ static func _held(k: Swing.KeyPose) -> Swing.Sample:
 	return out
 
 
-static func _limb(keys: Array[Swing.KeyPose], part: StringName, i: int, s: float, h: float) -> Swing.Sample:
+## The stretch from pose `a` on frame `fa` to pose `b` on frame `fb`, at
+## frame t. `ja` and `jb` are their places in `keys`, whose tangents they
+## take, or -1 for the entry or exit pose, which is at rest.
+static func _span(keys: Array[Swing.KeyPose], part: StringName, a: Swing.KeyPose, ja: int, fa: float,
+		b: Swing.KeyPose, jb: int, fb: float, t: float) -> Swing.Sample:
+	var h: float = fb - fa
+	var s: float = (t - fa) / h
+	if part == &"body":
+		return _body(keys, a, ja, b, jb, s, h)
+	return _limb(keys, part, a, ja, b, jb, s, h)
+
+
+static func _limb(keys: Array[Swing.KeyPose], part: StringName, a: Swing.KeyPose, ja: int,
+		b: Swing.KeyPose, jb: int, s: float, h: float) -> Swing.Sample:
 	var out: Swing.Sample = Swing.Sample.new()
-	var a: Swing.KeyPose = keys[i]
-	var b: Swing.KeyPose = keys[i + 1]
 	var piv: V3 = pivot(part)
 	var offsets: Array[V3] = []
 	var radii: PackedFloat64Array = PackedFloat64Array()
@@ -88,40 +109,45 @@ static func _limb(keys: Array[Swing.KeyPose], part: StringName, i: int, s: float
 		var v: V3 = V3.sub(k.grip, piv)
 		offsets.append(v)
 		radii.append(V3.length(v))
+	var va: V3 = V3.sub(a.grip, piv)
+	var vb: V3 = V3.sub(b.grip, piv)
 	# The grip: direction and distance from the pivot, splined apart.
-	var along: V3 = _hermite_v3(offsets[i], offsets[i + 1], _tangent_v3(keys, offsets, i), _tangent_v3(keys, offsets, i + 1), s, h)
-	var dir: V3 = V3.normalized(along)
+	var ma: V3 = _tangent_v3(keys, offsets, ja) if ja >= 0 else V3.make()
+	var mb: V3 = _tangent_v3(keys, offsets, jb) if jb >= 0 else V3.make()
+	var dir: V3 = V3.normalized(_hermite_v3(va, vb, ma, mb, s, h))
 	if V3.length(dir) == 0.0:
-		dir = V3.normalized(offsets[i])
-	var r: float = _hermite(radii[i], radii[i + 1], _capped(keys, radii, i), _capped(keys, radii, i + 1), s, h)
+		dir = V3.normalized(va)
+	var r: float = _hermite_capped(V3.length(va), V3.length(vb), _tan(keys, radii, ja), _tan(keys, radii, jb), s, h)
 	out.grip = V3.add(piv, V3.scale(dir, r))
-	# The blade: each key's frame carried along the arc to here, then blended.
-	var qa: Quat64 = Quat64.mul(Quat64.from_to(offsets[i], dir), Quat64.from_axes(a.blade, a.edge))
-	var qb: Quat64 = Quat64.mul(Quat64.from_to(offsets[i + 1], dir), Quat64.from_axes(b.blade, b.edge))
-	var blend: float = _hermite(0.0, 1.0, minf(a.ease, MAX_SLOPE), minf(b.ease, MAX_SLOPE), s, 1.0)
-	var q: Quat64 = Quat64.slerp(qa, qb, blend)
+	# The blade: each end's frame carried along the arc to here, then blended.
+	var qa: Quat64 = Quat64.mul(Quat64.from_to(va, dir), Quat64.from_axes(a.blade, a.edge))
+	var qb: Quat64 = Quat64.mul(Quat64.from_to(vb, dir), Quat64.from_axes(b.blade, b.edge))
+	var ea: float = minf(a.ease, MAX_SLOPE) if ja >= 0 else 0.0
+	var eb: float = minf(b.ease, MAX_SLOPE) if jb >= 0 else 0.0
+	var q: Quat64 = Quat64.slerp(qa, qb, _hermite(0.0, 1.0, ea, eb, s, 1.0))
 	out.blade = Quat64.rotate(q, V3.make(0.0, 1.0, 0.0))
 	out.edge = Quat64.rotate(q, V3.make(1.0, 0.0, 0.0))
-	out.pole = _capped_v3(keys, i, s, h, func(k: Swing.KeyPose) -> V3: return k.pole)
+	out.pole = _capped_v3(keys, a, ja, b, jb, s, h, func(k: Swing.KeyPose) -> V3: return k.pole)
 	return out
 
 
-static func _body(keys: Array[Swing.KeyPose], i: int, s: float, h: float) -> Swing.Sample:
+static func _body(keys: Array[Swing.KeyPose], a: Swing.KeyPose, ja: int, b: Swing.KeyPose, jb: int, s: float, h: float) -> Swing.Sample:
 	var out: Swing.Sample = Swing.Sample.new()
 	var torso: PackedFloat64Array = PackedFloat64Array()
 	var pelvis: PackedFloat64Array = PackedFloat64Array()
 	for k: Swing.KeyPose in keys:
 		torso.append(k.torso)
 		pelvis.append(k.pelvis)
-	out.torso = _hermite(torso[i], torso[i + 1], _capped(keys, torso, i), _capped(keys, torso, i + 1), s, h)
-	out.pelvis = _hermite(pelvis[i], pelvis[i + 1], _capped(keys, pelvis, i), _capped(keys, pelvis, i + 1), s, h)
-	out.pelvis_shift = _capped_v3(keys, i, s, h, func(k: Swing.KeyPose) -> V3: return k.pelvis_shift)
+	out.torso = _hermite_capped(a.torso, b.torso, _tan(keys, torso, ja), _tan(keys, torso, jb), s, h)
+	out.pelvis = _hermite_capped(a.pelvis, b.pelvis, _tan(keys, pelvis, ja), _tan(keys, pelvis, jb), s, h)
+	out.pelvis_shift = _capped_v3(keys, a, ja, b, jb, s, h, func(k: Swing.KeyPose) -> V3: return k.pelvis_shift)
 	return out
 
 
-## A vector field of the keys (picked by `field`), splined per component with
-## capped tangents.
-static func _capped_v3(keys: Array[Swing.KeyPose], i: int, s: float, h: float, field: Callable) -> V3:
+## A vector field (picked by `field`) from `a` to `b`, splined per component
+## with capped tangents.
+static func _capped_v3(keys: Array[Swing.KeyPose], a: Swing.KeyPose, ja: int, b: Swing.KeyPose, jb: int,
+		s: float, h: float, field: Callable) -> V3:
 	var xs: PackedFloat64Array = PackedFloat64Array()
 	var ys: PackedFloat64Array = PackedFloat64Array()
 	var zs: PackedFloat64Array = PackedFloat64Array()
@@ -130,14 +156,24 @@ static func _capped_v3(keys: Array[Swing.KeyPose], i: int, s: float, h: float, f
 		xs.append(v.x)
 		ys.append(v.y)
 		zs.append(v.z)
+	var pa: V3 = field.call(a)
+	var pb: V3 = field.call(b)
 	return V3.make(
-			_hermite(xs[i], xs[i + 1], _capped(keys, xs, i), _capped(keys, xs, i + 1), s, h),
-			_hermite(ys[i], ys[i + 1], _capped(keys, ys, i), _capped(keys, ys, i + 1), s, h),
-			_hermite(zs[i], zs[i + 1], _capped(keys, zs, i), _capped(keys, zs, i + 1), s, h))
+			_hermite_capped(pa.x, pb.x, _tan(keys, xs, ja), _tan(keys, xs, jb), s, h),
+			_hermite_capped(pa.y, pb.y, _tan(keys, ys, ja), _tan(keys, ys, jb), s, h),
+			_hermite_capped(pa.z, pb.z, _tan(keys, zs, ja), _tan(keys, zs, jb), s, h))
+
+
+## The capped tangent of `values` at key j, or 0 (at rest) for an entry or
+## exit pose (j = -1).
+static func _tan(keys: Array[Swing.KeyPose], values: PackedFloat64Array, j: int) -> float:
+	return _capped(keys, values, j) if j >= 0 else 0.0
 
 
 ## The Catmull-Rom tangent (per frame) of `values` at key j, scaled by its ease.
 static func _tangent_v3(keys: Array[Swing.KeyPose], values: Array[V3], j: int) -> V3:
+	if keys.size() < 2:
+		return V3.make()
 	var j0: int = maxi(j - 1, 0)
 	var j1: int = mini(j + 1, keys.size() - 1)
 	var slope: V3 = V3.scale(V3.sub(values[j1], values[j0]), 1.0 / float(keys[j1].frame - keys[j0].frame))
@@ -149,6 +185,8 @@ static func _tangent_v3(keys: Array[Swing.KeyPose], values: Array[V3], j: int) -
 ## to either neighbour, so no stretch between two keys leaves their range.
 static func _capped(keys: Array[Swing.KeyPose], values: PackedFloat64Array, j: int) -> float:
 	var last: int = keys.size() - 1
+	if last == 0:
+		return 0.0
 	var left: float = (values[j] - values[j - 1]) / float(keys[j].frame - keys[j - 1].frame) if j > 0 else NAN
 	var right: float = (values[j + 1] - values[j]) / float(keys[j + 1].frame - keys[j].frame) if j < last else NAN
 	var m: float
@@ -167,6 +205,17 @@ static func _capped(keys: Array[Swing.KeyPose], values: PackedFloat64Array, j: i
 	if j < last:
 		cap = minf(cap, MAX_SLOPE * absf(right))
 	return clampf(m, -cap, cap)
+
+
+## _hermite with each tangent held between 0 and MAX_SLOPE times the stretch's
+## own slope, so it never leaves the range of its ends. A no-op for the keys'
+## own stretches, whose tangents are capped already; it caps where an entry
+## or exit pose meets the keys.
+static func _hermite_capped(y0: float, y1: float, m0: float, m1: float, s: float, h: float) -> float:
+	var slope: float = (y1 - y0) / h
+	var lo: float = minf(0.0, MAX_SLOPE * slope)
+	var hi: float = maxf(0.0, MAX_SLOPE * slope)
+	return _hermite(y0, y1, clampf(m0, lo, hi), clampf(m1, lo, hi), s, h)
 
 
 ## The cubic Hermite from y0 to y1 over a stretch of h frames, at s in [0, 1],

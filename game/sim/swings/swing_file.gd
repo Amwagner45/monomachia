@@ -1,30 +1,39 @@
 class_name SwingFile
 extends RefCounted
-## Reads a weapon's swing file (task 7.2): one JSON file per weapon under DIR,
-## an object of move ids, each holding {"tracks": {part: [key, ...]}}. Keys are
-## objects of the fields below; vectors are [right, up, forward] (see Swing).
+## Reads a weapon's swing file (tasks 7.2 and 7.4): one JSON file per weapon
+## under DIR. It holds the weapon's guard, a pose for each part its swings
+## move, and the swings, by move id, each {"tracks": {part: [key, ...]}}. Keys
+## are objects of the fields below; vectors are [right, up, forward] (see Swing).
 ##
-##   {"k_l1": {"tracks": {
-##     "right_hand": [{"frame": 0, "grip": [0.07, 1.07, 0.36], "blade": [-0.12, 0.45, 0.88], "edge": [0, -1, 0], "ease": 0}, ...],
-##     "body": [{"frame": 0, "torso": 0, "pelvis": 0}, ...]}}}
+##   {"guard": {"right_hand": {"grip": [0.05, 1.1, 0.3], "blade": [0.1, 0.5, 0.86], "edge": [0, -1, 0]},
+##              "body": {"torso": 0, "pelvis": 0}},
+##    "swings": {"k_l1": {"tracks": {
+##      "right_hand": [{"frame": 0, "grip": [0.07, 1.07, 0.36], "blade": [-0.12, 0.45, 0.88], "edge": [0, -1, 0], "ease": 0}, ...],
+##      "body": [{"frame": 0, "torso": 0, "pelvis": 0}, ...]}}}}
+##
+## Each swing enters from the guard (or from the previous move's last key, when
+## it follows one) and exits back to it, so the guard must have every part the
+## swings move. A track that strikes (a hand or a foot) is keyed from the last
+## frame of the startup through the last active frame, so the frames that sweep
+## for hits are the same however the move was entered.
 ##
 ## A file with any mistake is refused whole, with an error per mistake, so a
-## weapon never plays some moves on half-read data: an unknown move, swing
-## field, part or key field; a missing field; a frame that isn't whole, is
-## negative or is past the move's last frame; keys out of order; a vector that
-## isn't three numbers; a blade with no direction or an edge along the blade;
-## a negative ease. The swing editor (task 14b) writes these files back with a
-## stable key order and fixed decimals.
+## weapon never plays some moves on half-read data: an unknown move, field or
+## part; a missing field; a frame that isn't whole, is negative or is past the
+## move's last frame; keys out of order; a striking track that doesn't key the
+## frames that can hit; a part the guard lacks; a vector that isn't three
+## numbers; a blade with no direction or an edge along the blade; a negative
+## ease. The swing editor (task 14b) writes these files back with a stable key
+## order and fixed decimals.
 
 const DIR: String = "res://sim/moves/swings/"
 
-## The fields a key of each kind of track may hold: true when required.
-const LIMB_FIELDS: Dictionary[String, bool] = {
-	"frame": true, "grip": true, "blade": true, "edge": true, "pole": false, "ease": false,
-}
-const BODY_FIELDS: Dictionary[String, bool] = {
-	"frame": true, "torso": true, "pelvis": true, "pelvis_shift": false, "ease": false,
-}
+## The fields of a guard pose for each kind of part: true when required. A
+## key of a swing's track has these, a frame (required) and an ease.
+const LIMB_FIELDS: Dictionary[String, bool] = {"grip": true, "blade": true, "edge": true, "pole": false}
+const BODY_FIELDS: Dictionary[String, bool] = {"torso": true, "pelvis": true, "pelvis_shift": false}
+const KEY_FIELDS: Dictionary[String, bool] = {"frame": true, "ease": false}
+const FILE_FIELDS: Array[String] = ["guard", "swings"]
 const SWING_FIELDS: Array[String] = ["tracks"]
 
 
@@ -61,17 +70,32 @@ static func parse(text: String, moves: Dictionary[StringName, AttackDef], source
 	if json.parse(text) != OK:
 		errors.append("line %d: %s" % [json.get_error_line(), json.get_error_message()])
 	elif not json.data is Dictionary:
-		errors.append("the file must hold an object of moves")
+		errors.append("the file must be an object holding guard and swings")
 	else:
 		var data: Dictionary = json.data
-		for move_id: Variant in data:
-			var id := StringName(str(move_id))
-			if not moves.has(id):
-				errors.append("%s: not a move of this weapon" % id)
-				continue
-			var swing: Swing = _swing(data[move_id], moves[id], String(id), errors)
-			if swing != null:
-				out[id] = swing
+		for field: Variant in data:
+			if not FILE_FIELDS.has(str(field)):
+				errors.append("unknown field %s" % field)
+		var guard: Dictionary[StringName, Swing.KeyPose] = {}
+		var guard_read: bool = false
+		if not data.get("guard") is Dictionary or (data["guard"] as Dictionary).is_empty():
+			errors.append("needs a guard, an object of parts")
+		else:
+			var before: int = errors.size()
+			guard = _guard(data["guard"], errors)
+			guard_read = errors.size() == before
+		if not data.get("swings") is Dictionary:
+			errors.append("needs swings, an object of moves")
+		else:
+			var swings: Dictionary = data["swings"]
+			for move_id: Variant in swings:
+				var id := StringName(str(move_id))
+				if not moves.has(id):
+					errors.append("%s: not a move of this weapon" % id)
+					continue
+				var swing: Swing = _swing(swings[move_id], moves[id], String(id), guard, guard_read, errors)
+				if swing != null:
+					out[id] = swing
 	if not errors.is_empty():
 		for e: String in errors:
 			push_error("%s: %s (swing file refused)" % [source, e])
@@ -79,7 +103,31 @@ static func parse(text: String, moves: Dictionary[StringName, AttackDef], source
 	return out
 
 
-static func _swing(record: Variant, move: AttackDef, where: String, errors: Array[String]) -> Swing:
+static func _guard(record: Dictionary, errors: Array[String]) -> Dictionary[StringName, Swing.KeyPose]:
+	var out: Dictionary[StringName, Swing.KeyPose] = {}
+	for part_name: Variant in record:
+		var part := StringName(str(part_name))
+		var at: String = "guard.%s" % part
+		if not Swing.PARTS.has(part):
+			errors.append("%s: unknown part (the parts are %s)" % [at, ", ".join(Swing.PARTS)])
+			continue
+		var d: Variant = record[part_name]
+		if not d is Dictionary:
+			errors.append("%s: a guard pose must be an object" % at)
+			continue
+		var fields: Dictionary[String, bool] = BODY_FIELDS if part == &"body" else LIMB_FIELDS
+		if not _has_fields(d, fields, at, errors):
+			continue
+		var k: Swing.KeyPose = Swing.KeyPose.new()
+		if _pose(d, part == &"body", k, at, errors):
+			out[part] = k
+	return out
+
+
+## `guard_read`: the guard was read without a mistake, so a part it lacks is
+## the swing's mistake.
+static func _swing(record: Variant, move: AttackDef, where: String, guard: Dictionary[StringName, Swing.KeyPose],
+		guard_read: bool, errors: Array[String]) -> Swing:
 	if not record is Dictionary:
 		errors.append("%s: a swing must be an object" % where)
 		return null
@@ -90,7 +138,7 @@ static func _swing(record: Variant, move: AttackDef, where: String, errors: Arra
 	if not tracks is Dictionary or (tracks as Dictionary).is_empty():
 		errors.append("%s: needs tracks, an object of parts" % where)
 		return null
-	var swing: Swing = Swing.new(move.total_frames())
+	var swing: Swing = Swing.new(move.total_frames(), guard)
 	for part_name: Variant in tracks:
 		var part := StringName(str(part_name))
 		var at: String = "%s.%s" % [where, part]
@@ -99,6 +147,20 @@ static func _swing(record: Variant, move: AttackDef, where: String, errors: Arra
 			continue
 		var before: int = errors.size()
 		var keys: Array[Swing.KeyPose] = _keys(tracks[part_name], part == &"body", move.total_frames(), at, errors)
+		if errors.size() != before:
+			continue
+		if part != &"body":
+			# a striking track keys the frames whose sweeps can hit: from the
+			# last startup frame (the first active frame sweeps from it) through
+			# the last active frame
+			if keys[0].frame > move.startup:
+				errors.append("%s: the first key is at frame %d; it must be at frame %d or before, so hits don't depend on the entry"
+						% [at, keys[0].frame, move.startup])
+			if keys[-1].frame < move.startup + move.active:
+				errors.append("%s: the last key is at frame %d; it must be at frame %d or after, so hits don't depend on the exit"
+						% [at, keys[-1].frame, move.startup + move.active])
+		if guard_read and not guard.has(part):
+			errors.append("%s: the guard has no %s for the entry and exit" % [at, part])
 		if errors.size() == before:
 			swing.add_track(part, keys)
 	return swing
@@ -109,7 +171,8 @@ static func _keys(list: Variant, body: bool, last_frame: int, where: String, err
 	if not list is Array or (list as Array).is_empty():
 		errors.append("%s: a track must be a list of keys" % where)
 		return out
-	var fields: Dictionary[String, bool] = BODY_FIELDS if body else LIMB_FIELDS
+	var fields: Dictionary[String, bool] = (BODY_FIELDS if body else LIMB_FIELDS).duplicate()
+	fields.merge(KEY_FIELDS)
 	var previous: int = -1
 	for i: int in (list as Array).size():
 		var record: Variant = list[i]
@@ -118,16 +181,7 @@ static func _keys(list: Variant, body: bool, last_frame: int, where: String, err
 			errors.append("%s: a key must be an object" % at)
 			continue
 		var d: Dictionary = record
-		var ok: bool = true
-		for field: Variant in d:
-			if not fields.has(str(field)):
-				errors.append("%s: unknown field %s" % [at, field])
-				ok = false
-		for field: String in fields:
-			if fields[field] and not d.has(field):
-				errors.append("%s: missing %s" % [at, field])
-				ok = false
-		if not ok:
+		if not _has_fields(d, fields, at, errors):
 			continue
 		var k: Swing.KeyPose = Swing.KeyPose.new()
 		var frame: Variant = d["frame"]
@@ -146,26 +200,48 @@ static func _keys(list: Variant, body: bool, last_frame: int, where: String, err
 		k.ease = _number(d, "ease", 1.0, at, errors)
 		if k.ease < 0.0:
 			errors.append("%s: ease must not be negative" % at)
-		if body:
-			k.torso = _number(d, "torso", 0.0, at, errors)
-			k.pelvis = _number(d, "pelvis", 0.0, at, errors)
-			k.pelvis_shift = _vector(d, "pelvis_shift", at, errors)
-		else:
-			k.grip = _vector(d, "grip", at, errors)
-			k.pole = _vector(d, "pole", at, errors)
-			var blade: V3 = _vector(d, "blade", at, errors)
-			var edge: V3 = _vector(d, "edge", at, errors)
-			if V3.length(blade) < 1e-9:
-				errors.append("%s: blade has no direction" % at)
-				continue
-			k.blade = V3.normalized(blade)
-			var square: V3 = V3.sub(edge, V3.scale(k.blade, V3.dot(edge, k.blade)))
-			if V3.length(square) < 1e-6:
-				errors.append("%s: edge runs along the blade" % at)
-				continue
-			k.edge = V3.normalized(square)
-		out.append(k)
+		if _pose(d, body, k, at, errors):
+			out.append(k)
 	return out
+
+
+## Whether `d` holds only `fields` and all the required ones; errors if not.
+static func _has_fields(d: Dictionary, fields: Dictionary[String, bool], where: String, errors: Array[String]) -> bool:
+	var ok: bool = true
+	for field: Variant in d:
+		if not fields.has(str(field)):
+			errors.append("%s: unknown field %s" % [where, field])
+			ok = false
+	for field: String in fields:
+		if fields[field] and not d.has(field):
+			errors.append("%s: missing %s" % [where, field])
+			ok = false
+	return ok
+
+
+## Reads the pose fields of `d` into `k`: the grip, blade, edge and pole of a
+## hand or foot, or the coil and pelvis shift of the body. False, with an
+## error, for a blade with no direction or an edge along the blade.
+static func _pose(d: Dictionary, body: bool, k: Swing.KeyPose, where: String, errors: Array[String]) -> bool:
+	if body:
+		k.torso = _number(d, "torso", 0.0, where, errors)
+		k.pelvis = _number(d, "pelvis", 0.0, where, errors)
+		k.pelvis_shift = _vector(d, "pelvis_shift", where, errors)
+		return true
+	k.grip = _vector(d, "grip", where, errors)
+	k.pole = _vector(d, "pole", where, errors)
+	var blade: V3 = _vector(d, "blade", where, errors)
+	var edge: V3 = _vector(d, "edge", where, errors)
+	if V3.length(blade) < 1e-9:
+		errors.append("%s: blade has no direction" % where)
+		return false
+	k.blade = V3.normalized(blade)
+	var square: V3 = V3.sub(edge, V3.scale(k.blade, V3.dot(edge, k.blade)))
+	if V3.length(square) < 1e-6:
+		errors.append("%s: edge runs along the blade" % where)
+		return false
+	k.edge = V3.normalized(square)
+	return true
 
 
 static func _is_number(v: Variant) -> bool:

@@ -29,12 +29,14 @@ const MOVES: Dictionary = {
 		"startup": 14, "active": 4, "recovery": 22, "damage": 8, "posture": 10, "knockback": 0.6,
 		"range": 2.3, "arc": 60, "lunge": 0.5, "lunge_end": 16, "dodge_cancel_from": 26,
 	},
-	&"k_h1": {
-		"id": &"k_h1", "name": "Kesa Giri", "kind": &"heavy", "type": &"slash", "anim": &"diagDown",
-		"side_start": &"right", "side_end": &"left",
-		"startup": 22, "active": 4, "recovery": 26, "damage": 13, "posture": 16, "knockback": 1.0,
-		"range": 2.4, "arc": 90, "lunge": 0.6, "lunge_start": 8, "lunge_end": 24, "chargeable": true,
-		"chain_light": &"k_l2", "chain_heavy": &"k_h2",
+	# the heavy: sheathe for 9 frames (held, the stance is the charge), then
+	# draw in 14, lunging only once drawn
+	&"k_iai": {
+		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
+		"side_start": &"left", "side_end": &"right",
+		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
+		"range": 3.6, "arc": 60, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25, "chargeable": true,
+		"chain_heavy": &"k_h1f",
 	},
 	&"k_h1f": {
 		"id": &"k_h1f", "name": "Rising Heaven", "kind": &"heavy", "type": &"slash", "anim": &"diagUp",
@@ -126,7 +128,7 @@ static func build() -> WeaponDef:
 		"block_mitigation": 0.7,
 		"moves": AttackDef.finalize_moves(MOVES),
 		"light_start": &"k_l1",
-		"heavy_start": &"k_h1",
+		"heavy_start": &"k_iai",
 		"sprint_light": &"k_sl",
 		"sprint_heavy": &"k_sh",
 		"dodge_light": &"k_dl",

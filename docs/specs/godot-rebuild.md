@@ -9,7 +9,7 @@ Oct 2, 2026 · status: in build, one task at a time. Stages 1–5 of the build o
 - a soak that reports the balance targets (12.1);
 - sound and music in the game (19.1–19.9, 20.1–20.3): every rules event's sounds, placed in 3D and through the arena's reverb, footsteps, the arena's ambience, the three music tracks switched by the menus and the round call, ducking, menu sounds and saved volumes, with a sound check scene for listening. Stories 50 and 51 wait for the owner's listening pass, and story 52 for the Settings screen (22.9).
 
-14.3–14.9 (animation, draft PR #4) goes on in its own lane. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check. Next in this lane is 9.2, the Iai Slash (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+14.3–14.9 (animation, draft PR #4) goes on in its own lane. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check, and 9.2 made the Iai Slash the Katana's heavy. Next in this lane is 9.3, walking while sheathed (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -76,7 +76,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 26. [ ] As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
 27. [ ] As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
 28. [ ] As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
-29. [ ] As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
+29. [x] As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
 30. [ ] As a Katana player, I want Flash, Piercing Thrust and Swallow Sweep as block abilities and Moonsplitter as the ultimate, as in the demo, so that the Katana keeps its identity.
 
 ### Greatsword
@@ -190,7 +190,7 @@ The goldens guarded the faithful port only. Commit 4222167 is the last one prove
 
 Chains stay as they are: each move names at most one light follow-up and one heavy follow-up, and pressing nothing ends the string.
 
-**Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. Built so far (task 9.1): Right Cut, Kesa Cut and Rising Heaven run right to left, Return Cut left to right, and Crown Cut and Heaven Splitter centre to centre; Kesa Giri, the heavy until the Iai replaces it, runs right to left.
+**Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. Built so far (tasks 9.1 and 9.2): Right Cut, Kesa Cut and Rising Heaven run right to left; Return Cut, and the vertical Iai Slash drawn from the left hip, left to right; Crown Cut and Heaven Splitter centre to centre.
 
 **Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
 - the grip position;
@@ -306,6 +306,8 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 | Heaven Splitter | heavy follow-up | overhead | 22 / 4 / 28 | 15 / 18 | end of string |
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
+
+The Iai's frames count its sheathe in the startup: 23 frames are the 9-frame sheathe, which a held heavy stretches into the stance as a charge, and the 14-frame draw. A tapped heavy draws on frame 23, and a held one 14 frames after release; it lunges only once drawn. Until weapon paths decide hits (task 7), the vertical Iai hits with an interim cone of 3.6 m and 60° after a 0.4 m lunge, which reaches a fighter 3.8 m away where Right Cut misses. Until task 9.3 the sheathed fighter stands still.
 
 Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). Rising Heaven's and Heaven Splitter's lunges still end two frames after their cuts start.
 

@@ -35,6 +35,9 @@ The two attack buttons' moves: quick pressure, or slow and powerful.
 **Charged heavy**:
 A heavy attack held before release. At 2.5 seconds it releases by itself as a **power attack**.
 
+**Iai Slash**:
+The Katana's heavy attack, a quick-draw. Pressing heavy sheathes the blade; holding heavy keeps it sheathed, in the **stance**, which is the Katana's charged heavy; letting go draws one long-reaching cut, vertical, or horizontal if the stick is held left or right.
+
 **String**:
 A sequence of attacks that flow into one another when the player keeps pressing.
 _Avoid_: Combo (outside the phrase "combo breaker"), chain

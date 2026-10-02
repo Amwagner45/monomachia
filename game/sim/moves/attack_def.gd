@@ -45,8 +45,9 @@ extends RefCounted
 ##     special: flash shadowStep counterLunge breakerPalm
 ##     trail: normal danger ult
 ##     side_start, side_end: left right centre
-## - side_start and side_end are the rebuild's (the demo had no sides): &"" on
-##   moves outside a string.
+## - side_start, side_end and charge_move are the rebuild's (the demo had
+##   none of them): the sides are &"" on moves outside a string, and
+##   charge_move is false on every move but the Iai Slash.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -123,6 +124,9 @@ var hop: float = 0.0
 ## can start where the move before it ends (string continuity)
 var side_start: StringName = &""
 var side_end: StringName = &""
+## a charge the fighter can walk during, at the blocking walk's speed, and
+## that a dodge cancels (the Iai stance)
+var charge_move: bool = false
 
 ## Every key a move record may have: the fields above, in order.
 const KEYS: Array[String] = [
@@ -131,7 +135,7 @@ const KEYS: Array[String] = [
 	"track_startup", "track_active", "hitstun", "blockstun", "hitstop", "unblockable", "counter",
 	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
 	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
-	"trail", "invuln", "hop", "side_start", "side_end",
+	"trail", "invuln", "hop", "side_start", "side_end", "charge_move",
 ]
 
 
@@ -185,6 +189,7 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.hop = float(d.get("hop", 0.0))
 	m.side_start = StringName(d.get("side_start", &""))
 	m.side_end = StringName(d.get("side_end", &""))
+	m.charge_move = bool(d.get("charge_move", false))
 	return m
 
 

@@ -6,6 +6,12 @@ extends Node
 ## and the menus, seen from the orbiting menu camera; its restarts and the
 ## matches draw their seeds from one sequence (_next_seed).
 ##
+## The music (GameServices): the title, the menus and the results play the
+## menu track, a played match the battle track, and the played match's rules
+## events reach the music director, so a round call with a fighter on two wins
+## switches to match point. The duel behind the menus never changes the track.
+## The music stops when these screens go.
+##
 ## Duel is the Rogue with the katana (you) against the Hunter with the
 ## greatsword (Normal); Watch is katana against daggers, both Normal.
 ##
@@ -66,6 +72,7 @@ func _ready() -> void:
 
 	host.match_finished.connect(_on_match_finished)
 	host.pause_changed.connect(_on_pause_changed)
+	host.sim_event.connect(_on_sim_event)
 	# the attract restarts draw from the same seed sequence as the matches
 	host.seed_source = _next_seed
 	start_attract()
@@ -76,6 +83,10 @@ func _ready() -> void:
 		_smoke = SmokeRun.new(self)
 		_smoke.start()
 		set_process(true)
+
+
+func _exit_tree() -> void:
+	GameServices.stop_music()
 
 
 func _process(_delta: float) -> void:
@@ -109,12 +120,14 @@ func show_title() -> void:
 	_close_all()
 	screen = Screen.TITLE
 	title.open()
+	GameServices.play_menu_music()
 
 
 func show_main_menu() -> void:
 	_close_all()
 	screen = Screen.MENU
 	main_menu.open()
+	GameServices.play_menu_music()
 
 
 func start_duel() -> void:
@@ -139,6 +152,7 @@ func start_match(cfg: MatchConfig) -> bool:
 	_close_all()
 	last_config = cfg
 	screen = Screen.PLAYING
+	GameServices.play_match_music()
 	return true
 
 
@@ -178,3 +192,9 @@ func _on_match_finished(results: MatchResults) -> void:
 	_close_all()
 	screen = Screen.RESULTS
 	results_screen.show_results(results)
+	GameServices.play_menu_music()
+
+
+func _on_sim_event(e: Dictionary) -> void:
+	if not host.attract:
+		GameServices.music_event(e)

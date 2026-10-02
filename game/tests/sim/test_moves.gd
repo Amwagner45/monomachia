@@ -32,12 +32,12 @@ const UNSET: Dictionary = {
 	"hop": 0.0,
 }
 
-## The demo's data that the rebuild changed on purpose. A rule's row covers
-## every move of a kind, a move's row one move (by its id now): its field,
-## which held "was" in the TS (the port's sentinel where the TS left it unset),
-## now holds "now", a value or a function of the move's TS record with the
-## move rows applied. Every move and field no row covers still matches the
-## demo. (A static var, as a const can't hold a function.)
+## The demo's data that the rebuild changed on purpose, one row per rule: a
+## move of this kind whose field held "was" in the TS (the port's sentinel
+## where the TS left it unset) now holds "now", a value or a function of the
+## move's TS record (with its MOVE_CHANGES applied). Every move and field no
+## row here or in MOVE_CHANGES covers still matches the demo. (A static var,
+## as a const can't hold a function.)
 static var changes: Array[Dictionary] = [
 	# 8.7: the lights' default hitstun (bare hands keep their own 16)
 	{"field": "hitstun", "kind": "light", "was": 18, "now": 14},
@@ -47,27 +47,46 @@ static var changes: Array[Dictionary] = [
 		"field": "dodge_cancel_from", "kind": "heavy", "was": AttackDef.UNSET,
 		"now": func(ts: Dictionary) -> int: return int(ts["startup"]) + int(ts["active"]) + ceili(float(ts["recovery"]) / 2.0),
 	},
+]
+
+## The demo's moves the new strings changed, one row per field: the move (by
+## its id now) whose field held "was" in the TS now holds "now". They apply
+## before the rules' rows, so a rule computed from the move (the heavies'
+## dodge cancel) uses its new numbers.
+const MOVE_CHANGES: Array[Dictionary] = [
 	# 9.1: the Katana's four-light string; Right Cut ends on Heaven Splitter,
 	# Crown Cut ends the string, and the two heavy follow-ups start sooner
 	# (their lunges end two frames after their cuts start, as before)
-	{"field": "chain_heavy", "move": "k_l1", "was": "k_h1f", "now": "k_h2"},
-	{"field": "chain_heavy", "move": "k_l4", "was": "k_h2", "now": ""},
-	{"field": "startup", "move": "k_h1f", "was": 18, "now": 16},
-	{"field": "lunge_end", "move": "k_h1f", "was": 20, "now": 18},
-	{"field": "startup", "move": "k_h2", "was": 24, "now": 22},
-	{"field": "lunge_end", "move": "k_h2", "was": 26, "now": 24},
+	{"move": "k_l1", "field": "chain_heavy", "was": "k_h1f", "now": "k_h2"},
+	{"move": "k_l4", "field": "chain_heavy", "was": "k_h2", "now": ""},
+	{"move": "k_h1f", "field": "startup", "was": 18, "now": 16},
+	{"move": "k_h1f", "field": "lunge_end", "was": 20, "now": 18},
+	{"move": "k_h2", "field": "startup", "was": 24, "now": 22},
+	{"move": "k_h2", "field": "lunge_end", "was": 26, "now": 24},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each
 ## weapon's strings test checks them against the spec's table.
 const ADDED: Array[StringName] = [
 	&"k_l3", # 9.1: Kesa Cut, the third light
+	&"k_iai", # 9.2: the Iai Slash (vertical), the heavy
+]
+
+## Demo moves the new strings removed.
+const REMOVED: Array[StringName] = [
+	&"k_h1", # 9.2: Kesa Giri, the heavy before the Iai Slash
 ]
 
 ## Demo moves the new strings gave a new id: their id now -> the demo's.
 const MOVED: Dictionary[StringName, StringName] = {
 	&"k_l4": &"k_l3", # 9.1: Crown Cut, now the fourth light
 }
+
+## Weapon fields the new strings changed, one row per field: the weapon's
+## field held "was" in the TS and now holds "now".
+const WEAPON_CHANGES: Array[Dictionary] = [
+	{"weapon": "katana", "field": "heavy_start", "was": "k_h1", "now": "k_iai"}, # 9.2: the Iai Slash
+]
 
 ## Fields the demo didn't have: the strings and continuity tests check them.
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
@@ -104,29 +123,23 @@ static func _same(a: Variant, b: Variant) -> bool:
 
 
 ## The value a move's field should hold: its TS value (or sentinel), or a
-## rule's changes row's.
+## changes row's.
 static func _wanted(ts: Dictionary, field: String, ts_value: Variant) -> Variant:
 	for row: Dictionary in changes:
-		if row.has("kind") and row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
+		if row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
 			var now: Variant = row["now"]
 			return (now as Callable).call(ts) if now is Callable else now
 	return ts_value
 
 
-## The TS record of the demo move now called id, with its id now and its move
-## rows applied. Adds to stale each row whose "was" isn't the demo's value.
-static func _rebuilt(ts: Dictionary, id: StringName, stale: Array[String]) -> Dictionary:
+## The TS record of the demo move now called id, with its id now and its
+## MOVE_CHANGES applied.
+static func _rebuilt(ts: Dictionary, id: StringName) -> Dictionary:
 	var out: Dictionary = ts.duplicate()
 	out["id"] = String(id)
-	for row: Dictionary in changes:
-		if row.get("move") != String(id):
-			continue
-		var field: String = row["field"]
-		var key: String = field.to_camel_case()
-		var demo: Variant = ts.get(key, UNSET.get(field))
-		if not _same(demo, row["was"]):
-			stale.append("%s.%s: its changes row says the demo had %s, but it had %s" % [id, field, row["was"], demo])
-		out[key] = row["now"]
+	for row: Dictionary in MOVE_CHANGES:
+		if row["move"] == String(id):
+			out[String(row["field"]).to_camel_case()] = row["now"]
 	return out
 
 
@@ -197,8 +210,15 @@ func test_every_weapon_field_matches_the_typescript() -> void:
 			var snake: String = key.to_snake_case()
 			if not WeaponDef.KEYS.has(snake):
 				diffs.append("%s: TS field %s has no WeaponDef field" % [wid, key])
-			elif snake != "moves" and not _same(w.get(snake), ts[key]):
-				diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), ts[key]])
+			elif snake != "moves":
+				var want: Variant = ts[key]
+				for row: Dictionary in WEAPON_CHANGES:
+					if row["weapon"] == wid and row["field"] == snake:
+						if not _same(want, row["was"]):
+							diffs.append("%s.%s: its row says the demo had %s; it had %s" % [wid, snake, row["was"], want])
+						want = row["now"]
+				if not _same(w.get(snake), want):
+					diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), want])
 		for snake: String in WeaponDef.KEYS:
 			if not ts.has(snake.to_camel_case()):
 				diffs.append("%s.%s: not in the TS weapon" % [wid, snake])
@@ -215,28 +235,31 @@ func test_every_move_of_every_weapon_matches_the_typescript() -> void:
 		for id: StringName in w.moves:
 			if not ADDED.has(id):
 				demo_ids.append(String(MOVED.get(id, id)))
-		assert_eq(demo_ids, ts_moves.keys(), "%s: the demo's moves, in order, besides the added ones" % wid)
+		var kept: Array = ts_moves.keys().filter(func(id: String) -> bool: return not REMOVED.has(StringName(id)))
+		assert_eq(demo_ids, kept, "%s: the demo's moves, in order, besides the added and removed ones" % wid)
 		var diffs: Array[String] = []
 		for id: StringName in w.moves:
 			var demo_id: String = String(MOVED.get(id, id))
 			if ADDED.has(id) or not ts_moves.has(demo_id):
 				continue
-			var ts: Dictionary = _rebuilt(ts_moves[demo_id], id, diffs)
-			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], ts))
+			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], _rebuilt(ts_moves[demo_id], id)))
 			compared += 1
 		assert_eq(diffs, [] as Array[String], wid)
-	# 18 katana + 16 greatsword + 18 daggers + 15 fists
-	assert_eq(compared, 67)
+	# the demo's 18 katana + 16 greatsword + 18 daggers + 15 fists, less the removed
+	assert_eq(compared, 67 - REMOVED.size())
 
 
-func test_every_changes_row_names_a_move_compared_with_the_demo() -> void:
-	for row: Dictionary in changes:
-		if row.has("move"):
-			var id := StringName(row["move"])
-			var known: bool = false
-			for w: WeaponDef in Moves.WEAPONS.values():
-				known = known or w.moves.has(id)
-			assert_true(known and not ADDED.has(id), "%s.%s's row names a move compared with the demo" % [row["move"], row["field"]])
+func test_every_move_change_starts_from_the_demos_value() -> void:
+	var ts_weapons: Dictionary = _fx["WEAPONS"]
+	for row: Dictionary in MOVE_CHANGES:
+		var id := StringName(row["move"])
+		var field: String = row["field"]
+		var demo: Variant = "no demo move"
+		for wid: String in ts_weapons:
+			var demo_id: String = String(MOVED.get(id, id))
+			if Moves.WEAPONS[StringName(wid)].moves.has(id) and not ADDED.has(id) and ts_weapons[wid]["moves"].has(demo_id):
+				demo = ts_weapons[wid]["moves"][demo_id].get(field.to_camel_case(), UNSET.get(field))
+		assert_true(_same(demo, row["was"]), "%s.%s: the row says the demo had %s; it had %s" % [id, field, row["was"], demo])
 
 
 func test_every_ultimate_hit_matches_the_typescript() -> void:

@@ -9,39 +9,41 @@ extends GutTest
 ## Greatsword and the Daggers).
 const WEAPONS: Array[StringName] = [&"katana"]
 
+## The spec's sides (written out here rather than read from AttackDef.SIDES,
+## so the check holds the data to the spec).
 const SIDES: Array[StringName] = [&"left", &"right", &"centre"]
 
 
 ## Every way the follow-ups among moves break continuity, one message each
-## ([] when none): a follow-up that isn't among the moves, a move in a string
-## without both its sides, and a follow-up starting on the wrong side.
+## ([] when none): a follow-up that isn't among the moves, a follow-up
+## starting on the wrong side, a move in a string without both its sides, and
+## a move in no string with a side.
 static func _breaks(moves: Dictionary[StringName, AttackDef]) -> Array[String]:
 	var out: Array[String] = []
-	var in_a_string: Array[StringName] = []
-	for id: StringName in moves:
-		for next_id: StringName in [moves[id].chain_light, moves[id].chain_heavy]:
-			if next_id == &"":
-				continue
-			if not moves.has(next_id):
-				out.append("%s follows %s but isn't one of its weapon's moves" % [next_id, id])
-				continue
-			for m: StringName in [id, next_id]:
-				if not in_a_string.has(m):
-					in_a_string.append(m)
-	for id: StringName in in_a_string:
-		var m: AttackDef = moves[id]
-		if not SIDES.has(m.side_start) or not SIDES.has(m.side_end):
-			out.append("%s is in a string but its sides are '%s' to '%s'" % [id, m.side_start, m.side_end])
+	var in_a_string: Dictionary[StringName, bool] = {}
 	for id: StringName in moves:
 		var m: AttackDef = moves[id]
 		for next_id: StringName in [m.chain_light, m.chain_heavy]:
-			var next: AttackDef = moves.get(next_id, null)
-			if next == null or not SIDES.has(m.side_end) or not SIDES.has(next.side_start):
+			if next_id == &"":
 				continue
-			if next.side_start != &"centre" and next.side_start != m.side_end:
+			in_a_string[id] = true
+			var next: AttackDef = moves.get(next_id, null)
+			if next == null:
+				out.append("%s follows %s but isn't one of its weapon's moves" % [next_id, id])
+				continue
+			in_a_string[next_id] = true
+			var both_sided: bool = SIDES.has(m.side_end) and SIDES.has(next.side_start)
+			if both_sided and next.side_start != &"centre" and next.side_start != m.side_end:
 				out.append(
 					"%s starts on the %s but follows %s, which ends on the %s" % [next_id, next.side_start, id, m.side_end]
 				)
+	for id: StringName in moves:
+		var m: AttackDef = moves[id]
+		var sides: Array = [id, m.side_start, m.side_end]
+		if in_a_string.has(id) and not (SIDES.has(m.side_start) and SIDES.has(m.side_end)):
+			out.append("%s is in a string but its sides are '%s' to '%s'" % sides)
+		elif not in_a_string.has(id) and (m.side_start != &"" or m.side_end != &""):
+			out.append("%s is in no string but its sides are '%s' to '%s'" % sides)
 	return out
 
 
@@ -88,4 +90,17 @@ func test_the_check_reports_a_missing_follow_up_and_a_missing_side() -> void:
 			"b is in a string but its sides are 'left' to ''",
 		] as Array[String],
 		"a move outside any string (c) needs no sides",
+	)
+
+
+func test_the_check_reports_sides_on_a_move_outside_any_string() -> void:
+	var moves: Dictionary[StringName, AttackDef] = _moves({
+		&"a": {"side_start": &"right", "side_end": &"left", "chain_light": &"b"},
+		&"b": {"side_start": &"left", "side_end": &"right"},
+		&"c": {"side_end": &"left"},
+	})
+	assert_eq(
+		_breaks(moves),
+		["c is in no string but its sides are '' to 'left'"] as Array[String],
+		"only moves in a string have sides",
 	)

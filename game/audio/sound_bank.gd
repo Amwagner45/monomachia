@@ -3,10 +3,10 @@ extends RefCounted
 ## The event-to-sound table: which sounds each rules event plays, how loud,
 ## how much the pitch varies, on which bus and whether in 3D.
 ##
-## Data and pure functions only. The audio player (a later task) calls
-## [method cues_for] with each event the rules emit and plays the returned
-## cues, each described by [constant CUES]. Replacing a sound means replacing
-## its file and, if the name changes, its entry here.
+## Data and pure functions only. [SoundPlayer] calls [method cues_for] with
+## each event the rules emit and plays the returned cues, each described by
+## [constant CUES]. Replacing a sound means replacing its file and, if the
+## name changes, its entry here.
 ##
 ## Events are dictionaries shaped like the web demo's (src/sim/events.ts):
 ## [code]{"t": "hit", "heavy": true, "sound": "colossal", ...}[/code].

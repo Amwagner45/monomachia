@@ -6,38 +6,47 @@ extends RefCounted
 
 const MOVES: Dictionary = {
 	&"k_l1": {
-		"id": &"k_l1", "name": "Right Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL", "side_start": &"right", "side_end": &"left",
+		"id": &"k_l1", "name": "Right Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL",
+		"side_start": &"right", "side_end": &"left",
 		"startup": 11, "active": 3, "recovery": 16, "damage": 6, "posture": 7, "knockback": 0.35,
 		"range": 2.2, "arc": 110, "lunge": 0.35, "lunge_end": 12, "chain_light": &"k_l2", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
 	},
 	&"k_l2": {
-		"id": &"k_l2", "name": "Return Cut", "kind": &"light", "type": &"slash", "anim": &"slashLR", "side_start": &"left", "side_end": &"right",
+		"id": &"k_l2", "name": "Return Cut", "kind": &"light", "type": &"slash", "anim": &"slashLR",
+		"side_start": &"left", "side_end": &"right",
 		"startup": 10, "active": 3, "recovery": 16, "damage": 6, "posture": 7, "knockback": 0.35,
 		"range": 2.2, "arc": 110, "lunge": 0.35, "lunge_end": 11, "chain_light": &"k_l3", "chain_heavy": &"k_h1f", "dodge_cancel_from": 19,
 	},
 	&"k_l3": {
-		"id": &"k_l3", "name": "Kesa Cut", "kind": &"light", "type": &"slash", "anim": &"diagDown", "side_start": &"right", "side_end": &"left",
+		"id": &"k_l3", "name": "Kesa Cut", "kind": &"light", "type": &"slash", "anim": &"diagDown",
+		"side_start": &"right", "side_end": &"left",
 		"startup": 11, "active": 3, "recovery": 17, "damage": 7, "posture": 8, "knockback": 0.4,
 		"range": 2.2, "arc": 100, "lunge": 0.35, "lunge_end": 12, "chain_light": &"k_l4", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
 	},
 	&"k_l4": {
-		"id": &"k_l4", "name": "Crown Cut", "kind": &"light", "type": &"overhead", "anim": &"overhead", "side_start": &"centre", "side_end": &"centre",
+		"id": &"k_l4", "name": "Crown Cut", "kind": &"light", "type": &"overhead", "anim": &"overhead",
+		"side_start": &"centre", "side_end": &"centre",
 		"startup": 14, "active": 4, "recovery": 22, "damage": 8, "posture": 10, "knockback": 0.6,
 		"range": 2.3, "arc": 60, "lunge": 0.5, "lunge_end": 16, "dodge_cancel_from": 26,
 	},
-	&"k_h1": {
-		"id": &"k_h1", "name": "Kesa Giri", "kind": &"heavy", "type": &"slash", "anim": &"diagDown", "side_start": &"right", "side_end": &"left",
-		"startup": 22, "active": 4, "recovery": 26, "damage": 13, "posture": 16, "knockback": 1.0,
-		"range": 2.4, "arc": 90, "lunge": 0.6, "lunge_start": 8, "lunge_end": 24, "chargeable": true,
-		"chain_light": &"k_l2", "chain_heavy": &"k_h2",
+	# the heavy: sheathe for 9 frames (held, the stance is the charge), then
+	# draw in 14, lunging only once drawn
+	&"k_iai": {
+		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
+		"side_start": &"left", "side_end": &"right",
+		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
+		"range": 3.6, "arc": 60, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25, "chargeable": true,
+		"chain_heavy": &"k_h1f",
 	},
 	&"k_h1f": {
-		"id": &"k_h1f", "name": "Rising Heaven", "kind": &"heavy", "type": &"slash", "anim": &"diagUp", "side_start": &"right", "side_end": &"left",
+		"id": &"k_h1f", "name": "Rising Heaven", "kind": &"heavy", "type": &"slash", "anim": &"diagUp",
+		"side_start": &"right", "side_end": &"left",
 		"startup": 16, "active": 4, "recovery": 24, "damage": 12, "posture": 15, "knockback": 0.9,
 		"range": 2.3, "arc": 90, "lunge": 0.5, "lunge_end": 18, "chain_heavy": &"k_h2",
 	},
 	&"k_h2": {
-		"id": &"k_h2", "name": "Heaven Splitter", "kind": &"heavy", "type": &"overhead", "anim": &"overhead", "side_start": &"centre", "side_end": &"centre",
+		"id": &"k_h2", "name": "Heaven Splitter", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
+		"side_start": &"centre", "side_end": &"centre",
 		"startup": 22, "active": 4, "recovery": 28, "damage": 15, "posture": 18, "knockback": 1.2,
 		"range": 2.4, "arc": 60, "lunge": 0.7, "lunge_start": 8, "lunge_end": 24,
 	},
@@ -119,7 +128,7 @@ static func build() -> WeaponDef:
 		"block_mitigation": 0.7,
 		"moves": AttackDef.finalize_moves(MOVES),
 		"light_start": &"k_l1",
-		"heavy_start": &"k_h1",
+		"heavy_start": &"k_iai",
 		"sprint_light": &"k_sl",
 		"sprint_heavy": &"k_sh",
 		"dodge_light": &"k_dl",

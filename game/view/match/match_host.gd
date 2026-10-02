@@ -18,8 +18,8 @@ extends Node
 ##    InputDevices.sample(player), as the demo and the soak run do;
 ## 2. calls Match.step();
 ## 3. drains the world's events and emits sim_event once per event, in the
-##    world's order, then stepped. The view, the HUD and (later) the audio
-##    listen to these signals; they read the rules' state and never change it.
+##    world's order, then stepped. The view, the HUD and the audio listen to
+##    these signals; they read the rules' state and never change it.
 ##
 ## For drawing between steps the host keeps each fighter's position and yaw
 ## from before and after the last step; display_position() and display_yaw()
@@ -54,6 +54,8 @@ signal stepped(step: int)
 ## The match is over: show the results.
 signal match_finished(results: MatchResults)
 signal pause_changed(paused: bool)
+## stop() threw the match away (quit to menu).
+signal stopped
 
 const DT: float = SimConst.DT
 const MAX_STEPS_PER_FRAME: int = 6
@@ -173,6 +175,7 @@ func stop() -> void:
 		services.call("end_match", self)
 	if input != null:
 		input.unbind_seats()
+	stopped.emit()
 
 
 func is_started() -> bool:

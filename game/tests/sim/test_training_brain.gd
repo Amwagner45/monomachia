@@ -186,13 +186,13 @@ func test_the_heavies_dummy_adds_the_heavy_follow_up_every_other_time() -> void:
 	var run: DummyRun = _play(Moves.KATANA, &"heavies", 720)
 	var expected: Array[StringName] = []
 	for c: int in 5:
-		expected.append(&"k_h1")
+		expected.append(&"k_iai")
 		if c % 2 == 0:
-			expected.append(&"k_h2")
-	assert_eq(run.swung().slice(0, expected.size()), expected, "Kesa Giri, then Heaven Splitter every other time")
+			expected.append(&"k_h1f")
+	assert_eq(run.swung().slice(0, expected.size()), expected, "the Iai Slash, then Rising Heaven every other time")
 	for e: Dictionary in run.by_dummy(&"swing"):
 		assert_true(e["heavy"], "%s is a heavy" % e["attack"])
-	_assert_gaps(run.swings_of(&"k_h1"), 120, "Kesa Giri")
+	_assert_gaps(run.swings_of(&"k_iai"), 120, "the Iai Slash")
 
 
 func test_each_unblockable_drill_repeats_its_unblockable_from_the_light_slot() -> void:

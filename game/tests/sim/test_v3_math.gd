@@ -218,3 +218,21 @@ func test_a_turn_about_up_by_a_yaw_faces_the_fighters_forward() -> void:
 		var turned: V3 = Quat64.rotate(Quat64.from_axis_angle(V3.make(0.0, 1.0, 0.0), yaw), V3.make(0.0, 0.0, 1.0))
 		var f: V2 = SimMath.fwd(yaw)
 		_assert_v3(turned, f.x, 0.0, f.z, "forward at yaw %s" % yaw)
+
+
+static func _seg_dist(a0: Array, a1: Array, b0: Array, b1: Array) -> float:
+	return SimMath.segment_distance(
+		V3.make(a0[0], a0[1], a0[2]), V3.make(a1[0], a1[1], a1[2]), V3.make(b0[0], b0[1], b0[2]), V3.make(b1[0], b1[1], b1[2]))
+
+
+func test_segment_distance() -> void:
+	assert_eq(_seg_dist([-1, 0, 0], [1, 0, 0], [0, -1, 0], [0, 1, 0]), 0.0, "crossing")
+	assert_eq(_seg_dist([-1, 0, 0], [1, 0, 0], [0, -1, 2], [0, 1, 2]), 2.0, "skew, closest inside both")
+	assert_almost_eq(_seg_dist([0, 0, 0], [1, 0, 0], [2, 1, 0], [3, 1, 0]), sqrt(2.0), 1e-15, "end to end")
+	assert_eq(_seg_dist([0, 0, 0], [2, 0, 0], [1, 3, 0], [3, 3, 0]), 3.0, "parallel and overlapping")
+	assert_almost_eq(_seg_dist([0, 0, 0], [1, 0, 0], [3, 4, 0], [5, 4, 0]), sqrt(20.0), 1e-15, "parallel, apart along")
+	assert_eq(_seg_dist([0.5, 2, 0], [0.5, 2, 0], [0, 0, 0], [1, 0, 0]), 2.0, "a point against a segment")
+	assert_eq(_seg_dist([0, 0, 0], [1, 0, 0], [0.5, 2, 0], [0.5, 2, 0]), 2.0, "a segment against a point")
+	assert_eq(_seg_dist([1, 1, 1], [1, 1, 1], [1, 1, 3], [1, 1, 3]), 2.0, "two points")
+	assert_almost_eq(_seg_dist([0, 1, 2], [3, -1, 0.5], [-2, 0, 1], [1, 2, -1]), _seg_dist([1, 2, -1], [-2, 0, 1], [3, -1, 0.5], [0, 1, 2]), 1e-15,
+			"either order")

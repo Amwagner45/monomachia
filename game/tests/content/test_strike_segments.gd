@@ -1,9 +1,12 @@
 extends GutTest
-## The rules' strike segments (task 7.5) against the models they copy. The
-## rules never load a scene, so each weapon's blade, and bare hands' fist and
-## foot, are numbers in the weapon files; these tests keep them in step:
+## The rules' strike segments (task 7.5) and off-hand grips (7.7) against the
+## models they copy. The rules never load a scene, so each weapon's blade and
+## off-hand grip, and bare hands' fist and foot, are numbers in the weapon
+## files; these tests keep them in step:
 ## - a blade runs from the BladeBase marker to the BladeTip marker, within
 ##   1 cm, and its thickness is the blade's, within 1 mm;
+## - a two-handed weapon's off hand grips at its OffHandGrip marker, within
+##   1 cm, and a one-handed one has none;
 ## - the fist runs along the knuckles of both fighters' hands;
 ## - the foot runs along both fighters' boots, from the heel to the toe, with
 ##   its underside on the sole.
@@ -60,6 +63,19 @@ func test_each_blade_runs_between_its_markers() -> void:
 		var tip: Vector3 = WeaponLook.marker(w, WeaponLook.BLADE_TIP).position
 		assert_lt(_v(blade.base).distance_to(base), 0.01, "%s: the base is BladeBase %s" % [id, base])
 		assert_lt(_v(blade.tip).distance_to(tip), 0.01, "%s: the tip is BladeTip %s" % [id, tip])
+
+
+func test_two_handed_weapons_put_the_off_hand_on_its_marker() -> void:
+	for id: StringName in WeaponLook.IDS:
+		var w: WeaponDef = Moves.WEAPONS[id]
+		var marker: Marker3D = WeaponLook.marker(_weapon(id), WeaponLook.OFF_HAND_GRIP)
+		if WeaponLook.load_id(id).two_handed:
+			assert_not_null(w.off_hand_grip, "%s is held in both hands" % id)
+			if w.off_hand_grip != null:
+				assert_lt(_v(w.off_hand_grip).distance_to(marker.position), 0.01, "%s: the off hand at OffHandGrip %s" % [id, marker.position])
+		else:
+			assert_null(w.off_hand_grip, "%s is held in one hand" % id)
+	assert_null(Moves.FISTS.off_hand_grip, "bare hands are two fists")
 
 
 func test_each_blade_is_as_thick_as_the_model_s() -> void:

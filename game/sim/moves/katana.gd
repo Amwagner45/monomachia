@@ -164,4 +164,6 @@ static func build() -> WeaponDef:
 		# by up to 3 cm; 1.4 cm thick at the habaki and 7 mm along the blade
 		"blade": StrikeSegment.make(V3.make(0.001, 0.09, 0.0), V3.make(-0.077, 0.777, 0.0), 0.015),
 		"foot": null,
+		# the left hand below the right on the long handle
+		"off_hand_grip": V3.make(0.0, -0.15, 0.0),
 	})

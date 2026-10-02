@@ -103,7 +103,7 @@ const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 const SWING_FIELDS: Array[String] = ["swing"]
 ## Weapon fields the demo didn't have: tests/content/test_strike_segments.gd
 ## checks them against the models.
-const WEAPON_REBUILD_FIELDS: Array[String] = ["blade", "foot"]
+const WEAPON_REBUILD_FIELDS: Array[String] = ["blade", "foot", "off_hand_grip"]
 
 var _fx: Dictionary
 

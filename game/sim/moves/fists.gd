@@ -118,4 +118,5 @@ static func build() -> WeaponDef:
 		# the foot along the boot, its underside on the sole and its ends at the
 		# heel and the toe
 		"foot": StrikeSegment.make(V3.make(0.03, -0.005, 0.0), V3.make(0.03, 0.205, 0.0), 0.1),
+		"off_hand_grip": null,
 	})

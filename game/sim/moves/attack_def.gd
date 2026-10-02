@@ -10,6 +10,8 @@ extends RefCounted
 ## - Move files write each move as a Dictionary literal with the TS keys in
 ##   snake_case; finalize_moves() applies the TS defaults to those records and
 ##   builds the AttackDef objects, so "unset" is a missing key until then.
+##   The rebuild changed one default on purpose: lights' hitstun is 14 (the
+##   TS gave 18).
 ## - Optional TS fields that finalizeMoves does not fill keep a sentinel after
 ##   it, chosen so the TS tests read the same way:
 ##     min_range 0.0, lunge 0.0, hop 0.0 (the TS only tests them for truthiness
@@ -186,8 +188,9 @@ static func finalize_moves(moves: Dictionary) -> Dictionary[StringName, AttackDe
 		if not m.has("track_active"):
 			m["track_active"] = 1.2
 		if not m.has("hitstun"):
+			# lights 14 (the demo's 18), so a defender can block or parry the next light
 			m["hitstun"] = (
-				18 if move_kind == &"light" else (26 if move_kind == &"heavy" else (40 if move_kind == &"ultimate" else 24))
+				14 if move_kind == &"light" else (26 if move_kind == &"heavy" else (40 if move_kind == &"ultimate" else 24))
 			)
 		if not m.has("blockstun"):
 			m["blockstun"] = 10 if move_kind == &"light" else (16 if move_kind == &"heavy" else 14)

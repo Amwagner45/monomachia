@@ -294,3 +294,76 @@ func test_a_lunge_into_a_defender_still_stops_0_25_m_clear_of_their_body() -> vo
 		if s.attack[i] == &"k_h1" and s.frame[i] <= KESA_STARTUP:
 			closest = minf(closest, s.apart[i])
 	assert_almost_eq(closest, 2.0 * FIGHTER_RADIUS + LUNGE_GAP, 1e-9, "stopped with the bodies 0.25 m apart")
+
+
+# ------------------------------------------------------------------ hitstun
+
+## The spec's light hitstun: 14 frames. Bare hands keep their own 16 on
+## their first two lights.
+const LIGHT_HITSTUN: int = 14
+const BARE_HAND_HITSTUN: Dictionary[StringName, int] = {&"f_l1": 16, &"f_l2": 16}
+
+
+## A light string's run: its events, the step of each hit, and when the
+## defender came out of hitstun.
+class LightStringRun:
+	extends SimHelpers.Rec
+	var hit_steps: PackedInt32Array = []
+	## The first step the defender is out of hitstun after being hit, or -1.
+	var free_step: int = -1
+	var attacker_recoiled: bool = false
+
+
+## A Katana throws Right Cut and Return Cut at an idle Katana defender, which
+## presses block only on step press (-1 for never).
+static func _right_cut_then_return_cut(press: int) -> LightStringRun:
+	var W: World = H.make_world()
+	var a: Fighter = W.fighters[0]
+	var b: Fighter = W.fighters[1]
+	var r := LightStringRun.new()
+	var was_hit: bool = false
+	for i: int in 60:
+		# the second press is taken as Return Cut once Right Cut can take it
+		var p0: RawInput = H.btn(Btn.LIGHT) if i == 0 or i == 8 else H.idle()
+		W.step([p0, H.btn(Btn.BLOCK) if i == press else H.idle()])
+		var hits_before: int = r.count(&"hit")
+		r.collect(W)
+		if r.count(&"hit") > hits_before:
+			r.hit_steps.append(i)
+		if b.state == &"hitstun":
+			was_hit = true
+		elif was_hit and r.free_step < 0:
+			r.free_step = i
+		r.attacker_recoiled = r.attacker_recoiled or a.state == &"recoil"
+	return r
+
+
+func test_a_defender_hit_by_right_cut_can_parry_return_cut() -> void:
+	var probe: LightStringRun = _right_cut_then_return_cut(-1)
+	var hits: Array = probe.all(&"hit").map(func(e: Dictionary) -> Variant: return e["attack"])
+	assert_eq(hits, [&"k_l1", &"k_l2"], "an idle defender takes both cuts")
+	# Return Cut lands 15 frames after Right Cut (the notes' count), so 14
+	# frames of hitstun leave the defender one free step before it
+	assert_eq(probe.hit_steps.size(), 2)
+	assert_eq(probe.free_step, probe.hit_steps[1] - 1, "out of hitstun for one step before Return Cut lands")
+	# pressing block a step before hitstun ends: the press waits in the buffer
+	var r: LightStringRun = _right_cut_then_return_cut(probe.free_step - 1)
+	assert_eq(r.count(&"hit"), 1, "only Right Cut lands")
+	assert_eq(r.count(&"parry"), 1, "Return Cut is parried")
+	assert_eq(r.find(&"parry").get("kind"), &"parry", "a plain parry")
+	assert_true(r.attacker_recoiled, "and the attacker recoils")
+
+
+func test_every_light_without_its_own_hitstun_has_14() -> void:
+	var wrong: Array[String] = []
+	var lights: int = 0
+	for w: WeaponDef in Moves.WEAPONS.values():
+		for m: AttackDef in w.moves.values():
+			if m.kind != &"light":
+				continue
+			lights += 1
+			var want: int = BARE_HAND_HITSTUN.get(m.id, LIGHT_HITSTUN)
+			if m.hitstun != want:
+				wrong.append("%s %d, want %d" % [m.id, m.hitstun, want])
+	assert_gt(lights, 20, "every weapon's lights, bare hands included")
+	assert_eq(wrong, [] as Array[String])

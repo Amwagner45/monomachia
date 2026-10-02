@@ -1,8 +1,9 @@
 extends GutTest
 ## Checks every field of every weapon and move against the TypeScript data after
 ## finalizeMoves (game/tests/fixtures/moves.json, written by
-## scripts/sim-fixtures.ts). The fixture has the TS camelCase keys; a missing
-## key was undefined in the TS and must hold the port's sentinel.
+## scripts/sim-fixtures.ts), apart from the rebuild's deliberate changes in
+## CHANGED. The fixture has the TS camelCase keys; a missing key was undefined
+## in the TS and must hold the port's sentinel.
 
 ## The sentinel each optional field holds when the TS leaves it undefined
 ## (see attack_def.gd).
@@ -29,6 +30,14 @@ const UNSET: Dictionary = {
 	"invuln": [],
 	"hop": 0.0,
 }
+
+## The demo's data that the rebuild changed on purpose, one row per rule: a
+## move of this kind whose field held "was" in the TS now holds "now". Every
+## move and field no row covers still matches the demo.
+const CHANGED: Array[Dictionary] = [
+	# 8.7: the lights' default hitstun (bare hands keep their own 16)
+	{"field": "hitstun", "kind": "light", "was": 18, "now": 14},
+]
 
 var _fx: Dictionary
 
@@ -61,6 +70,14 @@ static func _same(a: Variant, b: Variant) -> bool:
 	return typeof(na) == typeof(nb) and na == nb
 
 
+## The value a move's field should hold: its TS value, or a CHANGED row's.
+static func _wanted(ts: Dictionary, field: String, ts_value: Variant) -> Variant:
+	for row: Dictionary in CHANGED:
+		if row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
+			return row["now"]
+	return ts_value
+
+
 ## Compares one AttackDef with its TS record; returns the differences.
 func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 	var out: Array[String] = []
@@ -72,8 +89,10 @@ func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 		seen[snake] = true
 		if not AttackDef.KEYS.has(snake):
 			out.append("%s: TS field %s has no AttackDef field" % [where, key])
-		elif not _same(m.get(snake), ts[key]):
-			out.append("%s.%s: got %s, want %s" % [where, snake, m.get(snake), ts[key]])
+		else:
+			var want: Variant = _wanted(ts, snake, ts[key])
+			if not _same(m.get(snake), want):
+				out.append("%s.%s: got %s, want %s" % [where, snake, m.get(snake), want])
 	for snake: String in AttackDef.KEYS:
 		if seen.has(snake):
 			continue

@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.7, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.8.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.8, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.9.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -153,26 +153,27 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's underside (17.5): the rock ledge the props stand on, the crag hanging under it with roots and chains into the clouds, and floating rocks that bob. Cameras above the courtyard leave the rock under the rim out, each camera deciding for itself.
   - The shrine's night sky (17.6): an ink sky with stars, ink clouds and a blood-red moon with a red haze, in the shrine's own environment with its depth and height fog. The moon hangs ahead of player one, where the layout puts it.
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
-- **Checks after 17.7** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 596 Godot tests (132 s on this machine now; 17.6's commit takes as long): rules 138, input 118, audio 31, core 22, view 232, content 52, and 3 project-wide smoke tests;
+  - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
+- **Checks after 17.8** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 603 Godot tests (47 s; the machine is back to its old speed): rules 138, input 118, audio 31, core 22, view 239, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 159 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky and the backdrop's five) passes in a window;
-  - CI passed on every push from 14.1 to 17.5 (8986b71);
+  - the typecheck loads 160 scripts cleanly;
+  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
+  - CI passed on every push from 14.1 to 17.7 (18cd6c1);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
 - **Waiting on its own worktree:**
   - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.7): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside, sky and backdrop. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's ambience and its benchmark (17.8, 17.9).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.8): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside, sky, backdrop, embers and ash. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's benchmark (17.9).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8: left out, as the plan says; the worktree's 28 pale petals on the wind would be cheap to bring back), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -1249,13 +1250,37 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - a bought pagoda and temple hall on every cliff that has one.
       - **Shots reviewed:** gameplay, Watch, menu and establishing at High, Medium and Low, and the top-down view. The establishing view shows the lake under the moon with its red glint and lanterns. Low's sea of clouds is a soft wash; the veil and the mist bring the billows on Medium and High.
       - **The suite's run time:** the Godot tests took about 130 s on this machine for this task and for 17.6's commit alike (56 s when 17.6 was committed), so the slowdown was the machine's; the shrine's tests take about 6 s.
-  - [ ] **17.8 Drifting embers and ash.** Embers from each lantern and up past the edge, and ash across the courtyard, following each preset's particle ratio. The petals are left out unless the owner wants them.
+  - [x] **17.8 Drifting embers and ash.** Embers from each lantern and up past the edge, and ash across the courtyard, following each preset's particle ratio. The petals are left out unless the owner wants them.
     - Check: one ember emitter per lantern; counts follow the presets; shots at High and Low reviewed.
     - Owner: whether to keep the petals.
     - Blocked by: 17.4 · Stories: 47, 57
+    - Done:
+      - **`ShrineParticles`** (`arenas/moonlit_shrine/shrine_particles.gd`; the worktree's `ShrineAmbience`, renamed because "ambience" is the arena's sound bed, `ArenaDef.ambience_id`), salvaged, builds `Particles`:
+        - `LanternEmbers0` and on, embers rising from each lantern's fire (`ShrinePlatform.fire_points()`, public now as the 17.4 note asked), bought lanterns too;
+        - `EdgeEmbers`, embers carried up on the updraft from the open air under the ledge's rim, all round the island, up past the rim and over the courtyard on the wind;
+        - `Ash`, pale flakes falling with the wind over the whole island.
+        - GPU particles, as the 16–18 notes recommend for ambience, in `look_particles`, so each preset's particle ratio thins them: High draws 18 embers a lantern, 70 on the updraft and 260 flakes, Medium 60% and Low 30%. None casts a shadow.
+      - **Shaders:** `particle_flake`, salvaged (camera-facing flakes that spin and flip as they flutter), and `particle_billboard.gdshaderinc`, which it shares with `particle_glow`: turning a quad to face the camera, and fading it out near the camera.
+      - **Changes to the worktree's particles:**
+        - its updraft started inside the ledge's rock (16.5–21 m out, 3 m down), so its embers came up out of the ledge among the lanterns. They now start in the open air 4–8 m past `crag_radius` (the rim's bumps reach 16% past it), 2.5–5.5 m under the floor, and the slowest clear the floor;
+        - its wind blew toward +x while the sea of clouds drifts toward −x. `ShrineLayout.wind` (level, m/s) now carries both: the particles drift with it, and the clouds take its direction (`drift_direction` on `cloud_sea`, 6% slower than their old diagonal);
+        - its wind was a sideways pull labelled as a speed, and its ash's damping (0.3–0.6) outweighed its pull down (0.4), so the slowest flakes hung in the air. Every particle now sets off with the wind and climbs or falls at a set speed (`_launch`); the ash falls at 0.7–1.1 m/s from 8–11 m up, and the slowest reach the floor by three quarters of their life, while they still show;
+        - no turbulence. Godot's turbulence steers each particle toward its noise field every frame. Measured in a window with `capture_aabb()`: at the worktree's settings the updraft's embers peaked about 1.5 m above the floor, just over the parapet, and the ash wandered as far up as down; even at 1% the embers peaked at 3.5 m and the ash stayed 2 m up. Without it the embers climb to about 10 m and the ash falls past the floor. The flakes flutter in their shader instead;
+        - twice the size (embers 8–18 cm, flakes 6–12 cm): the worktree's came to 1–2 px at fight distance. Each lantern now trails a plume that shows;
+        - embers and flakes fade out within 1–4 m of the camera (`near_fade`, off for the lantern halos): a flake 2 m from the camera drew a 25 px pale disc over the opponent;
+        - each visibility box comes from its emitter's launch and pull, and `capture_aabb()` confirmed every particle stays inside;
+        - the petals stay out, waiting on the owner. The floating rocks' lanterns, 31–64 m off, have no embers.
+      - **Tests:**
+        - one ember emitter per lantern, at its fire, the slowest still climbing, bought lanterns too;
+        - the updraft's embers start past the ledge's measured rim and under it, and the slowest from the lowest clear the floor;
+        - ash over the whole floor from above the torii, the flakes that land on the upwind edge set off over the island, and the slowest from the lowest reach the floor by three quarters of their life (both guards fail when broken);
+        - the clouds' drift and every emitter's drift follow the layout's wind, at its speed, with no turbulence;
+        - the near-camera fade, no shadows, and each preset's ratio.
+      - **Shots reviewed:** gameplay, Watch, menu and establishing at High and Low, and the top-down view. The ash shows as pale flecks against the dark and is lost against the pale floor; embers rise past the rim in the establishing view; Low draws 30%.
   - [ ] **17.9 Preset benchmark of the shrine.** The worktree's bench mode in `arena_shot.gd` (interleaved rounds, average and 95th-percentile frame time), run at 1080p on the target laptop with the real fighters. Presets are tuned if High drops below 60 fps, and the numbers go in the spec.
     - Check: High averages at least 60 fps at 1080p; side-by-side preset shots reviewed.
     - Note from 17.7: Low draws the full domain-warped sea of clouds, and Medium two layers of it; a cloud shader without the warp for Low is the first saving if one is needed.
+    - Note from 17.8: the embers and ash are 10 GPU emitters, 474 small unshaded quads on High.
     - Blocked by: 17.5, 17.7, 17.8 · Stories: 57
   - [ ] **17.10 Radius check on the shrine as every match's arena; task 17 ticked.** With the rules at 15 m, a headless computer-vs-computer match on the shrine keeps fighters inside the parapet and dropped weapons bouncing inside. The camera at the wall doesn't pass through lanterns, pillars or trees.
     - Check: the shrine tests pass with the radius from `SimConst`; wall and top-down shots reviewed; the bench is still within budget.

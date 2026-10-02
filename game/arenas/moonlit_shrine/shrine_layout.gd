@@ -89,6 +89,9 @@ const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine",
 ## Direction the moonlight comes from (the key light), independent of the
 ## moon's disc.
 @export var key_light_direction: Vector3 = Vector3(-0.95, 1.05, -0.25)
+## The night's wind, level (m/s; x and z): the embers and ash drift with it,
+## and the sea of clouds drifts its way.
+@export var wind: Vector2 = Vector2(-0.55, -0.19)
 ## The top of the sea of clouds (its veil; the dense sea lies
 ## ShrineBackdrop.CLOUD_SEA_DEPTH lower), which the chains run down into.
 @export var cloud_sea_height: float = -46.0

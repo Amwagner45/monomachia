@@ -69,8 +69,8 @@ static func _lantern_spots(layout: ShrineLayout) -> Array[Transform3D]:
 	return out
 
 
-## Each lantern's fire (arena space), where its light and halo go.
-static func _fire_points(layout: ShrineLayout) -> PackedVector3Array:
+## Each lantern's fire (arena space), where its light, halo and embers go.
+static func fire_points(layout: ShrineLayout) -> PackedVector3Array:
 	var out := PackedVector3Array()
 	for spot: Transform3D in _lantern_spots(layout):
 		out.append(spot * ShrineProps.LANTERN_FIRE)
@@ -288,7 +288,7 @@ static func _lanterns(kits: MeshKitSet, root: Node3D, props: Node3D, layout: Shr
 	for i: int in spots.size():
 		if not layout.place_art(props, &"lantern", i, spots[i]):
 			ShrineProps.lantern(kits, spots[i], rng)
-	var fires: PackedVector3Array = _fire_points(layout)
+	var fires: PackedVector3Array = fire_points(layout)
 	var lights := Node3D.new()
 	lights.name = "LanternLights"
 	root.add_child(lights)

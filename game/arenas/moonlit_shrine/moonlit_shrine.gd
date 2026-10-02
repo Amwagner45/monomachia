@@ -3,7 +3,7 @@ extends Node3D
 ## The Moonlit Shrine arena: a walled stone courtyard floating above a sea of
 ## clouds under a blood-red moon. Everything is built from code and shaders
 ## when the scene enters the tree, from two data files: the ArenaDef (def:
-## walls, spawns, gates, camera limits, ambience) and the ShrineLayout
+## walls, spawns, gates, camera limits, ambience sound) and the ShrineLayout
 ## (layout: where every piece goes).
 ##
 ## Like every arena it brings its own environment, lights and the ink-wash
@@ -17,9 +17,9 @@ extends Node3D
 ## side) and Gate0, Gate1 (the gate anchors); and Platform/GateRope0 and
 ## GateRope1 (each gate's rope barrier, for the match intro to drop).
 ##
-## Built so far: the courtyard (17.3), its props (17.4), the underside (17.5),
-## the night sky (17.6) and the backdrop (17.7). The embers and ash come with
-## task 17.8.
+## Its builders: ShrinePlatform (the courtyard and its props), ShrineUnderside
+## (the rock under it and the floating rocks), ShrineBackdrop (the world round
+## it) and ShrineParticles (the embers and ash on the wind).
 
 ## The highest camera (m above the floor) that leaves out the rock under the
 ## rim: from there and inside the camera's limit (def.camera_max_radius),
@@ -93,6 +93,7 @@ func _build() -> void:
 	add_child(ShrineUnderside.build(layout, def))
 	_floating_rocks = get_node(^"Underside/FloatingRocks")
 	add_child(ShrineBackdrop.build(layout, env.environment.fog_light_color))
+	add_child(ShrineParticles.build(layout, ShrinePlatform.fire_points(layout)))
 	_add_markers()
 	var ink := InkWashPass.new()
 	ink.name = "InkWash"

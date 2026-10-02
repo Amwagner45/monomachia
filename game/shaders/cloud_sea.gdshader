@@ -2,7 +2,8 @@
 // domain-warped cloud, lit cold on the tops and inked in the hollows, fading
 // into the horizon mist with distance, with a clearing where the lake shows
 // through. Transparent and unshaded. The backdrop sets the moon, the horizon
-// (the depth fog's colour), the clearing and the look's noise texture.
+// (the depth fog's colour), the clearing, the wind's direction and the look's
+// noise texture.
 shader_type spatial;
 render_mode unshaded, blend_mix, depth_draw_never, cull_disabled, shadows_disabled;
 
@@ -17,7 +18,10 @@ uniform float coverage : hint_range(0.0, 1.0) = 0.5;
 uniform float softness : hint_range(0.01, 0.5) = 0.17;
 // Noise cells per metre.
 uniform float scale = 0.011;
+// Noise cells per second the clouds drift, and which way: a unit vector,
+// level (x and z).
 uniform float speed = 0.012;
+uniform vec2 drift_direction = vec2(-0.944, -0.33);
 uniform float opacity : hint_range(0.0, 1.0) = 0.92;
 uniform float fade_start = 250.0;
 uniform float fade_end = 1800.0;
@@ -39,7 +43,7 @@ void vertex() {
 }
 
 void fragment() {
-	vec2 p = world_pos.xz * scale + vec2(TIME * speed, TIME * speed * 0.35);
+	vec2 p = world_pos.xz * scale - drift_direction * TIME * speed;
 	// Two noises warp the third, which shapes the cloud.
 	vec2 warp = cloud_fbm(p + 1.7).rg;
 	float c = cloud_fbm(p + warp * 1.6).b;

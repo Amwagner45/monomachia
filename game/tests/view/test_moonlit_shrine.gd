@@ -8,7 +8,8 @@ extends GutTest
 ## the gate landings, the lanterns' lights, halos and flicker, bought art in
 ## place of a procedural prop, the ledge under the props, the rock under the
 ## rim left out per camera by the cameras above the courtyard, the floating
-## rocks bobbing, and the chosen preset applied.
+## rocks bobbing, the embers and ash on the wind, and the chosen preset
+## applied.
 
 const SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
 const SKY_SHADER: Shader = preload("res://shaders/sky_moonlit.gdshader")
@@ -357,6 +358,7 @@ func test_a_scene_in_prop_scenes_replaces_the_procedural_lantern_at_the_same_spo
 		assert_almost_eq(Vector2(at.x, at.z), Vector2(spot.x, spot.z), Vector2.ONE * 0.01, "bought lantern %d on its spot" % i)
 	assert_null(shrine.get_node_or_null("Platform/Props/Glow"), "no procedural lantern's lit paper")
 	assert_eq(_lantern_lights(shrine).size(), layout.lantern_angles.size(), "the bought lanterns still light")
+	assert_eq(_lantern_embers(shrine).size(), layout.lantern_angles.size(), "and give off embers")
 	for kit_name: String in ["Bark", "Pine", "StoneDark"]:
 		assert_eq(_props_aabb(shrine, kit_name), _props_aabb(arena, kit_name), "%s as it was without the bought lanterns" % kit_name)
 
@@ -651,6 +653,132 @@ func test_the_backdrop_shaders_take_the_look_noise() -> void:
 		seen[m.shader] = true
 		assert_eq(_param(m, LookNoise.PARAM), LookNoise.texture(), "%s gets the noise" % node.name)
 	assert_eq(seen.size(), BACKDROP_SHADERS.size(), "every backdrop shader is in use")
+
+
+# ------------------------------------------------------------------ particles
+
+## The embers and ash.
+func _particles(shrine: MoonlitShrine) -> Array[Node]:
+	return shrine.get_node("Particles").find_children("*", "GPUParticles3D", true, false)
+
+
+func _lantern_embers(shrine: MoonlitShrine) -> Array[Node]:
+	return shrine.get_node("Particles").find_children("LanternEmbers*", "GPUParticles3D", false, false)
+
+
+func _process_material(emitter: Node) -> ParticleProcessMaterial:
+	return (emitter as GPUParticles3D).process_material as ParticleProcessMaterial
+
+
+## The slowest a particle of m climbs (m/s; negative when it falls): its
+## slowest launch, along the middle of its aim. The spread scatters each one
+## about that.
+func _slowest_climb(m: ParticleProcessMaterial) -> float:
+	return m.initial_velocity_min * m.direction.normalized().y
+
+
+## A particle of emitter launched at the middle speed, along the middle of
+## its aim (m/s).
+func _middle_launch(emitter: GPUParticles3D) -> Vector3:
+	var m := _process_material(emitter)
+	return m.direction.normalized() * (m.initial_velocity_min + m.initial_velocity_max) * 0.5
+
+
+func test_embers_rise_from_every_lanterns_fire() -> void:
+	var lights: Array[Node] = _lantern_lights(arena)
+	assert_eq(_lantern_embers(arena).size(), lights.size(), "one ember emitter per lantern")
+	for i: int in lights.size():
+		var embers := arena.get_node("Particles/LanternEmbers%d" % i) as GPUParticles3D
+		var fire: Vector3 = (lights[i] as Node3D).global_position
+		assert_almost_eq(embers.global_position, fire, Vector3.ONE * 0.01, "embers %d at the lantern's fire" % i)
+		var m := _process_material(embers)
+		assert_gt(_slowest_climb(m), 0.0, "even the slowest of embers %d climb" % i)
+		assert_gte(m.gravity.y, 0.0, "embers %d aren't pulled down" % i)
+
+
+## The updraft carries embers up from the open air under the ledge's rim,
+## all round the island, and even the slowest clear the floor before they
+## fade.
+func test_embers_rise_past_the_ledges_rim_on_the_updraft() -> void:
+	var updraft := arena.get_node("Particles/EdgeEmbers") as GPUParticles3D
+	var m := _process_material(updraft)
+	assert_eq(m.emission_shape, ParticleProcessMaterial.EMISSION_SHAPE_RING, "all round the island")
+	assert_eq(m.emission_ring_axis, Vector3.UP)
+	var rim: float = 0.0
+	for v: Vector3 in _world_vertices(arena.get_node("Underside/Ledge") as MeshInstance3D):
+		rim = maxf(rim, Vector2(v.x, v.z).length())
+	assert_gt(m.emission_ring_inner_radius, rim, "out past the rim, not in the rock")
+	var lowest: float = updraft.global_position.y - m.emission_ring_height * 0.5
+	assert_lt(lowest + m.emission_ring_height, ShrinePlatform.LEDGE_Y, "under it")
+	var t: float = updraft.lifetime
+	var rise: float = _slowest_climb(m) * t + 0.5 * (m.gravity.y - m.damping_max) * t * t
+	assert_gt(lowest + rise, 0.0, "the slowest from the lowest still clear the floor")
+
+
+## Ash falls over the whole floor from above the torii, the upwind edge too,
+## and even the slowest from the lowest reaches the floor while it still
+## shows (its colour ramp fades it over the last third of its life).
+func test_ash_falls_across_the_courtyard() -> void:
+	var ash := arena.get_node("Particles/Ash") as GPUParticles3D
+	var m := _process_material(ash)
+	assert_eq(m.emission_shape, ParticleProcessMaterial.EMISSION_SHAPE_BOX)
+	var from := AABB(ash.global_position - m.emission_box_extents, m.emission_box_extents * 2.0)
+	var floor_radius: float = arena.def.floor_radius
+	for corner: Vector2 in [Vector2(-1, -1), Vector2(-1, 1), Vector2(1, -1), Vector2(1, 1)]:
+		var c: Vector2 = corner * floor_radius
+		assert_true(from.has_point(Vector3(c.x, from.get_center().y, c.y)), "over all the floor (%s)" % corner)
+	assert_gt(from.position.y, arena.layout.torii_height, "from above the torii")
+	# A flake from the middle of the band at the middle speed drifts this far
+	# by the time it lands, so the one landing on the upwind edge set off
+	# that far further upwind.
+	var middle: Vector3 = _middle_launch(ash)
+	var drift: Vector2 = Vector2(middle.x, middle.z) * (from.get_center().y / -middle.y)
+	var source: Vector2 = -arena.layout.wind.normalized() * floor_radius - drift
+	assert_true(from.has_point(Vector3(source.x, from.get_center().y, source.y)), "the flakes landing on the upwind edge set off over the island")
+	var t: float = ash.lifetime * 0.75
+	var fall: float = -_slowest_climb(m) * t + 0.5 * (-m.gravity.y - m.damping_max) * t * t
+	assert_gt(fall, from.position.y, "the slowest from the lowest reach the floor by three quarters of their life")
+
+
+## One wind, the layout's, carries the embers and ash the way the sea of
+## clouds drifts, and no turbulence takes it away: Godot's turbulence steers
+## every particle toward its noise field each frame, and measured in a window
+## even 1% held the updraft's embers to a third of their climb and kept the
+## ash off the floor.
+func test_the_embers_and_ash_drift_with_the_wind_the_clouds_drift_on() -> void:
+	var wind: Vector2 = arena.layout.wind
+	for clouds: String in ["CloudSea", "CloudVeil"]:
+		var mat := (arena.get_node("World/" + clouds) as GeometryInstance3D).material_override as ShaderMaterial
+		assert_almost_eq(_param(mat, &"drift_direction") as Vector2, wind.normalized(), Vector2.ONE * 0.001, "%s drifts with the wind" % clouds)
+	for emitter: Node in _particles(arena):
+		var m := _process_material(emitter)
+		assert_false(m.turbulence_enabled, "%s keeps to the wind" % emitter.name)
+		var middle: Vector3 = _middle_launch(emitter as GPUParticles3D)
+		assert_almost_eq(Vector2(middle.x, middle.z), wind, Vector2.ONE * 0.01, "%s drifts at the wind's speed" % emitter.name)
+		assert_eq(Vector2(m.gravity.x, m.gravity.z), Vector2.ZERO, "and nothing else pushes %s sideways" % emitter.name)
+
+
+func test_the_embers_and_ash_cast_no_shadows() -> void:
+	for emitter: Node in _particles(arena):
+		assert_eq((emitter as GPUParticles3D).cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "%s casts no shadow" % emitter.name)
+
+
+## Close up they would swell into blots over the fighters.
+func test_the_embers_and_ash_fade_out_in_front_of_the_camera() -> void:
+	for emitter: Node in _particles(arena):
+		var mat := ((emitter as GPUParticles3D).draw_pass_1 as QuadMesh).material as ShaderMaterial
+		var fade: Vector2 = _param(mat, &"near_fade")
+		assert_gt(fade.y, 2.0, "%s is still fading 2 m from the camera" % emitter.name)
+		assert_lt(fade.x, fade.y, "%s fades in smoothly" % emitter.name)
+
+
+func test_each_preset_thins_out_the_embers_and_ash() -> void:
+	var emitters: Array[Node] = _particles(arena)
+	for id: StringName in GraphicsPreset.IDS:
+		var preset: GraphicsPreset = GraphicsPreset.load_id(id)
+		GraphicsApplier.apply_to_tree(preset, arena)
+		for emitter: Node in emitters:
+			assert_almost_eq((emitter as GPUParticles3D).amount_ratio, preset.particle_ratio, 0.001, "%s: %s" % [id, emitter.name])
 
 
 # ------------------------------------------------------------------ presets

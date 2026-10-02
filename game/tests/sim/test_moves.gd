@@ -69,12 +69,24 @@ const MOVE_CHANGES: Array[Dictionary] = [
 ## weapon's strings test checks them against the spec's table.
 const ADDED: Array[StringName] = [
 	&"k_l3", # 9.1: Kesa Cut, the third light
+	&"k_iai", # 9.2: the Iai Slash (vertical), the heavy
+]
+
+## Demo moves the new strings removed.
+const REMOVED: Array[StringName] = [
+	&"k_h1", # 9.2: Kesa Giri, the heavy before the Iai Slash
 ]
 
 ## Demo moves the new strings gave a new id: their id now -> the demo's.
 const MOVED: Dictionary[StringName, StringName] = {
 	&"k_l4": &"k_l3", # 9.1: Crown Cut, now the fourth light
 }
+
+## Weapon fields the new strings changed, one row per field: the weapon's
+## field held "was" in the TS and now holds "now".
+const WEAPON_CHANGES: Array[Dictionary] = [
+	{"weapon": "katana", "field": "heavy_start", "was": "k_h1", "now": "k_iai"}, # 9.2: the Iai Slash
+]
 
 ## Fields the demo didn't have: the strings and continuity tests check them,
 ## and the swing tests the swings.
@@ -199,8 +211,15 @@ func test_every_weapon_field_matches_the_typescript() -> void:
 			var snake: String = key.to_snake_case()
 			if not WeaponDef.KEYS.has(snake):
 				diffs.append("%s: TS field %s has no WeaponDef field" % [wid, key])
-			elif snake != "moves" and not _same(w.get(snake), ts[key]):
-				diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), ts[key]])
+			elif snake != "moves":
+				var want: Variant = ts[key]
+				for row: Dictionary in WEAPON_CHANGES:
+					if row["weapon"] == wid and row["field"] == snake:
+						if not _same(want, row["was"]):
+							diffs.append("%s.%s: its row says the demo had %s; it had %s" % [wid, snake, row["was"], want])
+						want = row["now"]
+				if not _same(w.get(snake), want):
+					diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), want])
 		for snake: String in WeaponDef.KEYS:
 			if not ts.has(snake.to_camel_case()):
 				diffs.append("%s.%s: not in the TS weapon" % [wid, snake])
@@ -217,7 +236,8 @@ func test_every_move_of_every_weapon_matches_the_typescript() -> void:
 		for id: StringName in w.moves:
 			if not ADDED.has(id):
 				demo_ids.append(String(MOVED.get(id, id)))
-		assert_eq(demo_ids, ts_moves.keys(), "%s: the demo's moves, in order, besides the added ones" % wid)
+		var kept: Array = ts_moves.keys().filter(func(id: String) -> bool: return not REMOVED.has(StringName(id)))
+		assert_eq(demo_ids, kept, "%s: the demo's moves, in order, besides the added and removed ones" % wid)
 		var diffs: Array[String] = []
 		for id: StringName in w.moves:
 			var demo_id: String = String(MOVED.get(id, id))
@@ -226,8 +246,8 @@ func test_every_move_of_every_weapon_matches_the_typescript() -> void:
 			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], _rebuilt(ts_moves[demo_id], id)))
 			compared += 1
 		assert_eq(diffs, [] as Array[String], wid)
-	# 18 katana + 16 greatsword + 18 daggers + 15 fists
-	assert_eq(compared, 67)
+	# the demo's 18 katana + 16 greatsword + 18 daggers + 15 fists, less the removed
+	assert_eq(compared, 67 - REMOVED.size())
 
 
 func test_every_move_change_starts_from_the_demos_value() -> void:

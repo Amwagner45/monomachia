@@ -4,8 +4,8 @@ extends GutTest
 
 const H := preload("res://tests/sim/sim_helpers.gd")
 
-## The spec's Katana table, the rows of the light string and its heavy
-## endings: name, frames (startup, active, recovery), damage, posture, the
+## The spec's Katana table, the rows of the light string, its heavy endings
+## and the vertical Iai: name, frames (startup, active, recovery), damage, posture, the
 ## light and heavy follow-ups (&"" for none), and the sides the spec's move
 ## data gives the weapon (start, end).
 const ROWS: Dictionary[StringName, Dictionary] = {
@@ -25,6 +25,11 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 		"name": "Crown Cut", "frames": [14, 4, 22], "damage": 8, "posture": 10,
 		"light": &"", "heavy": &"", "sides": [&"centre", &"centre"],
 	},
+	# the data counts the sheathe in the startup: 9 + 14 = 23
+	&"k_iai": {
+		"name": "Iai Slash (vertical)", "frames": [23, 4, 24], "damage": 13, "posture": 16,
+		"light": &"", "heavy": &"k_h1f", "sides": [&"left", &"right"],
+	},
 	&"k_h1f": {
 		"name": "Rising Heaven", "frames": [16, 4, 24], "damage": 12, "posture": 15,
 		"light": &"", "heavy": &"k_h2", "sides": [&"right", &"left"],
@@ -39,6 +44,15 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 ## active + 6, as Right Cut and Return Cut).
 const KESA_CUT_CANCEL: int = 20
 
+## The Iai Slash sheathes for 9 frames (a held heavy then stays sheathed, as
+## a charge) and draws in 14, so a tapped heavy draws on frame 23 (the
+## plan's decisions).
+const IAI_SHEATHE: int = 9
+const IAI_DRAW: int = 14
+## A tapped Iai dodge-cancels from frame 39: startup + active + half its
+## recovery, rounded up, as every heavy (23 + 4 + 12).
+const IAI_CANCEL: int = 39
+
 ## The spec's length of move id in frames: startup + active + recovery.
 static func _length(id: StringName) -> int:
 	var frames: Array = ROWS[id]["frames"]
@@ -51,13 +65,40 @@ func after_each() -> void:
 
 # ------------------------------------------------------------------ helpers
 
-## A string played by fighter 0: its events, and after each step its state,
-## the attack it was in (&"" outside one) and that attack's frame (-1).
+## A string played by fighter 0: its events, each with "step", the step it
+## came on, and after each step fighter 0's state, the attack it was in (&""
+## outside one), that attack's frame (-1) and whether it was sheathed (holding
+## a charge).
 class PlayedString:
 	extends SimHelpers.Rec
 	var state: Array[StringName] = []
 	var attack: Array[StringName] = []
 	var frame: PackedInt32Array = []
+	var sheathed: Array[bool] = []
+
+	## Steps W with fighter 0's input p0 and fighter 1's p1 (null for idle),
+	## records the step, and returns its events.
+	func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
+		var i: int = state.size()
+		W.step([p0, RawInput.empty() if p1 == null else p1])
+		var news: Array[Dictionary] = W.drain_events()
+		for e: Dictionary in news:
+			e["step"] = i
+		events.append_array(news)
+		var a: Fighter = W.fighters[0]
+		var attacking: bool = a.state == &"attack" and a.atk != null
+		state.append(a.state)
+		attack.append(a.atk.def.id if attacking else &"")
+		frame.append(a.atk.frame if attacking else -1)
+		sheathed.append(attacking and a.atk.charging)
+		return news
+
+	## The step of fighter 0's first event of type t (-1 if none).
+	func step_of(t: StringName) -> int:
+		for e: Dictionary in all(t):
+			if e.get("f", e.get("attacker")) == 0:
+				return e["step"]
+		return -1
 
 	## The frame fighter 0's last attack id ended on, one past the last frame a
 	## step left it in (-1 if it never started): an attack is over on the step
@@ -107,16 +148,9 @@ static func _play(presses: Array[int], gap: float = 2.2, dodge_in: StringName = 
 		elif a.state == &"attack" and a.atk.def.id == dodge_in and a.atk.frame == dodge_on - 1:
 			p0 = H.move(1.0, 0.0, Btn.DODGE)
 			dodged = true
-		W.step([p0, H.idle()])
-		var events: Array[Dictionary] = W.drain_events()
-		r.events.append_array(events)
-		for e: Dictionary in events:
+		for e: Dictionary in r.step(W, p0):
 			if e["t"] == &"swing" and e["f"] == 0:
 				due = true
-		var attacking: bool = a.state == &"attack" and a.atk != null
-		r.state.append(a.state)
-		r.attack.append(a.atk.def.id if attacking else &"")
-		r.frame.append(a.atk.frame if attacking else -1)
 	return r
 
 
@@ -190,9 +224,90 @@ func test_kesa_cut_dodge_cancels_from_frame_20() -> void:
 		)
 
 
+
+# ------------------------------------------------------------------ the Iai Slash
+
+func test_a_tapped_heavy_draws_the_iai_on_frame_23() -> void:
+	var r: PlayedString = _play([Btn.HEAVY])
+	var draw: int = r.step_of(&"swing")
+	assert_eq(r.ids(&"swing"), [&"k_iai"] as Array[StringName], "the heavy is the Iai Slash")
+	assert_eq(r.frame[draw] if draw >= 0 else -1, IAI_SHEATHE + IAI_DRAW, "drawn on frame 23, the sheathe and the draw")
+	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName], "and it hits")
+
+
+## Fighter 0 holds heavy for hold steps against an idle Katana gap m away, for
+## 240 steps.
+static func _hold_heavy(hold: int, gap: float = 2.2) -> PlayedString:
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, gap)
+	var r := PlayedString.new()
+	for i: int in 240:
+		r.step(W, H.btn(Btn.HEAVY) if i < hold else H.idle())
+	return r
+
+
+func test_a_held_iai_stays_sheathed_and_hits_14_frames_after_release() -> void:
+	var r: PlayedString = _hold_heavy(60)
+	assert_eq(r.sheathed.find(true), IAI_SHEATHE + 1, "sheathed once its 9 frames have passed")
+	assert_eq(r.sheathed.rfind(true), 59, "until heavy is let go on step 60")
+	assert_eq(r.frame.slice(IAI_SHEATHE, 60).count(IAI_SHEATHE), 60 - IAI_SHEATHE, "its frames stop on 9 meanwhile")
+	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName])
+	assert_eq(r.step_of(&"hit") - 60, IAI_DRAW, "the cut lands 14 frames after the release")
+
+
+func test_an_iai_held_for_2_5_s_releases_by_itself_as_a_stronger_power_attack() -> void:
+	var r: PlayedString = _hold_heavy(220)
+	var release: int = r.sheathed.rfind(true) + 1
+	assert_eq(release, IAI_SHEATHE + 150, "the stance ends 150 frames (2.5 s) after the sheathe, heavy still held")
+	assert_eq(r.step_of(&"hit") - release, IAI_DRAW, "and the cut lands 14 frames later")
+	var hit: Dictionary = r.find(&"hit")
+	assert_almost_eq(float(hit.get("damage", NAN)), 13.0 * 1.8, 0.005, "a full charge's damage")
+
+
+func test_the_iai_hits_at_3_8_m_where_right_cut_whiffs() -> void:
+	var cut: PlayedString = _play([Btn.LIGHT], 3.8)
+	assert_eq(cut.ids(&"whiff"), [&"k_l1"] as Array[StringName], "Right Cut whiffs")
+	assert_eq(_play([Btn.HEAVY], 3.8).ids(&"hit"), [&"k_iai"] as Array[StringName], "the Iai hits")
+
+
+func test_a_sheathed_fighter_cannot_block() -> void:
+	# fighter 0 holds heavy to stay sheathed, and holds block too from step
+	# 12; the opponent's Right Cut lands while it is sheathed
+	var W: World = H.make_world()
+	var r := PlayedString.new()
+	for i: int in 60:
+		var p0: RawInput = H.btn(Btn.HEAVY) if i < 12 else H.btn(Btn.HEAVY, Btn.BLOCK)
+		r.step(W, p0, H.btn(Btn.LIGHT) if i == 20 else H.idle())
+	var on_me: Callable = func(e: Dictionary) -> bool: return e["target"] == 0
+	var hits: Array[Dictionary] = r.all(&"hit").filter(on_me)
+	assert_eq(hits.size(), 1, "the Right Cut hits")
+	if hits.size() == 1:
+		assert_true(r.sheathed[int(hits[0]["step"]) - 1], "a sheathed fighter")
+	assert_eq(r.all(&"block").filter(on_me), [] as Array[Dictionary], "holding block blocks nothing")
+
+
+func test_a_heavy_after_the_iai_gives_rising_heaven() -> void:
+	assert_eq(_play([Btn.HEAVY, Btn.HEAVY]).ids(&"hit"), [&"k_iai", &"k_h1f"] as Array[StringName])
+
+
+func test_the_iai_dodge_cancels_late_in_its_recovery() -> void:
+	for gap: float in [2.2, 10.0]:
+		var what: String = "after a hit" if gap < 3.0 else "after a whiff"
+		var early: PlayedString = _play([Btn.HEAVY], gap, &"k_iai", IAI_CANCEL - 1)
+		assert_eq(
+			[early.ended_on(&"k_iai"), early.state_after(&"k_iai")],
+			[IAI_CANCEL, &"dodge"],
+			"%s: a dodge pressed on frame 38 is refused there and comes on 39" % what,
+		)
+		var on_time: PlayedString = _play([Btn.HEAVY], gap, &"k_iai", IAI_CANCEL)
+		assert_eq(
+			[on_time.ended_on(&"k_iai"), on_time.state_after(&"k_iai")],
+			[IAI_CANCEL, &"dodge"],
+			"%s: one pressed on frame 39 comes at once" % what,
+		)
+
 # ------------------------------------------------------------------ the spec's table
 
-func test_the_light_string_and_its_heavy_endings_match_the_spec_table() -> void:
+func test_the_rows_built_so_far_match_the_spec_table() -> void:
 	for id: StringName in ROWS:
 		var row: Dictionary = ROWS[id]
 		var m: AttackDef = Moves.KATANA.moves.get(id, null)

@@ -37,10 +37,11 @@ const ATTACK_BRAKE: float = 0.8
 
 ## Kept from the demo: a lunge stops with the two bodies this far apart.
 const LUNGE_GAP: float = 0.25
-## Kesa Giri, from its move data: it lunges 0.6 m over its frames 9 to 24,
-## and its cut lands on frame 23, after 22 frames of startup.
-const KESA_LUNGE: float = 0.6
-const KESA_STARTUP: int = 22
+## The Iai Slash (the Katana's heavy), tapped, from its move data: it lunges
+## 0.4 m over its frames 10 to 25, and its cut lands on frame 24, after 23
+## frames of startup.
+const IAI_LUNGE: float = 0.4
+const IAI_STARTUP: int = 23
 
 
 func after_each() -> void:
@@ -274,28 +275,28 @@ func test_a_lunge_eases_in_and_out_over_the_same_window_and_distance() -> void:
 	var steps: PackedFloat64Array = []
 	var frames: PackedInt32Array = []
 	for i: int in s.moved.size():
-		if s.attack[i] == &"k_h1" and s.moved[i] > 0.0:
+		if s.attack[i] == &"k_iai" and s.moved[i] > 0.0:
 			steps.append(s.moved[i])
 			frames.append(s.frame[i])
-	assert_eq(frames, PackedInt32Array(range(9, 25)), "it moves on frames 9 to 24 and no others")
-	assert_almost_eq(_total(steps), KESA_LUNGE, 1e-9, "0.6 m in all")
+	assert_eq(frames, PackedInt32Array(range(10, 26)), "it moves on frames 10 to 25 and no others")
+	assert_almost_eq(_total(steps), IAI_LUNGE, 1e-9, "0.4 m in all")
 	for k: int in 7:
 		assert_lt(steps[k], steps[k + 1], "the steps rise to the middle (frame %d)" % frames[k + 1])
 		assert_gt(steps[8 + k], steps[9 + k], "then fall (frame %d)" % frames[9 + k])
-	var even_step: float = KESA_LUNGE / 16.0
+	var even_step: float = IAI_LUNGE / 16.0
 	assert_lt(steps[0], even_step / 4.0, "it starts slower than a quarter of an even step")
 	assert_lt(steps[15], even_step / 4.0, "and settles as slowly")
 
 
 func test_a_lunge_into_a_defender_still_stops_0_25_m_clear_of_their_body() -> void:
-	# 1.3 m apart, so Kesa Giri's 0.6 m would carry the attacker into the
+	# 1.3 m apart, so the Iai's 0.4 m would carry the attacker into the
 	# defender. The gap is measured until the cut lands, which knocks the
 	# defender back.
 	var s: FighterSteps = _record(Moves.KATANA, 1.3, 30, func(i: int) -> RawInput:
 		return H.btn(Btn.HEAVY) if i == 0 else H.idle())
 	var closest: float = 1.3
 	for i: int in s.apart.size():
-		if s.attack[i] == &"k_h1" and s.frame[i] <= KESA_STARTUP:
+		if s.attack[i] == &"k_iai" and s.frame[i] <= IAI_STARTUP:
 			closest = minf(closest, s.apart[i])
 	assert_almost_eq(closest, 2.0 * FIGHTER_RADIUS + LUNGE_GAP, 1e-9, "stopped with the bodies 0.25 m apart")
 
@@ -375,13 +376,13 @@ func test_every_light_without_its_own_hitstun_has_14() -> void:
 
 # ------------------------------------------------------------------ heavy dodge cancel
 
-## Kesa Giri: 22 frames of startup (KESA_STARTUP), 4 active and 26 of
-## recovery. The spec's heavy cancel opens at startup + active + half the
-## recovery, rounded up: frame 39 of 52.
-const KESA_ACTIVE: int = 4
-const KESA_RECOVERY: int = 26
-const KESA_CANCEL: int = KESA_STARTUP + KESA_ACTIVE + 13
-const KESA_LAST_FRAME: int = KESA_STARTUP + KESA_ACTIVE + KESA_RECOVERY - 1
+## The Iai Slash, tapped: 23 frames of startup (IAI_STARTUP), 4 active and
+## 24 of recovery. The spec's heavy cancel opens at startup + active + half
+## the recovery, rounded up: frame 39 of 51.
+const IAI_ACTIVE: int = 4
+const IAI_RECOVERY: int = 24
+const IAI_CANCEL: int = IAI_STARTUP + IAI_ACTIVE + 12
+const IAI_LAST_FRAME: int = IAI_STARTUP + IAI_ACTIVE + IAI_RECOVERY - 1
 ## Kept from the demo: a press waits 8 frames in the input buffer.
 const INPUT_BUFFER: int = 8
 
@@ -427,36 +428,37 @@ static func _cancel_run(W: World, start: RawInput, hold: int, press_on: int, def
 	return r
 
 
-## Kesa Giri thrown at an opponent 10 m away (a whiff) or blocking 2.2 m away.
-static func _kesa_giri(press_on: int, blocked: bool) -> CancelRun:
+## The Iai Slash tapped at an opponent 10 m away (a whiff) or blocking 2.2 m
+## away.
+static func _iai(press_on: int, blocked: bool) -> CancelRun:
 	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.2 if blocked else 10.0)
 	return _cancel_run(W, H.btn(Btn.HEAVY), 1, press_on, H.btn(Btn.BLOCK) if blocked else H.idle())
 
 
 func test_a_whiffed_heavy_dodge_cancels_in_the_second_half_of_its_recovery() -> void:
-	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, false)
-	assert_eq(early.attack, &"k_h1")
+	var early: CancelRun = _iai(IAI_CANCEL - INPUT_BUFFER - 1, false)
+	assert_eq(early.attack, &"k_iai")
 	assert_true(early.pressed)
 	assert_eq(early.dodge_frame, -1, "a dodge pressed too early for the buffer to carry never comes")
-	assert_eq(early.last_frame, KESA_LAST_FRAME, "and the cut runs to its end")
-	assert_eq(_kesa_giri(KESA_CANCEL - INPUT_BUFFER, false).dodge_frame, KESA_CANCEL, "a buffered press fires as the cancel opens")
-	assert_eq(_kesa_giri(KESA_CANCEL + 6, false).dodge_frame, KESA_CANCEL + 6, "later presses fire at once")
+	assert_eq(early.last_frame, IAI_LAST_FRAME, "and the cut runs to its end")
+	assert_eq(_iai(IAI_CANCEL - INPUT_BUFFER, false).dodge_frame, IAI_CANCEL, "a buffered press fires as the cancel opens")
+	assert_eq(_iai(IAI_CANCEL + 6, false).dodge_frame, IAI_CANCEL + 6, "later presses fire at once")
 
 
 func test_a_blocked_heavy_dodge_cancels_the_same_way() -> void:
-	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, true)
+	var early: CancelRun = _iai(IAI_CANCEL - INPUT_BUFFER - 1, true)
 	assert_true(early.has(&"block"), "the cut is blocked")
 	assert_true(early.pressed)
 	assert_eq(early.dodge_frame, -1, "no cancel before the second half")
-	assert_eq(early.last_frame, KESA_LAST_FRAME)
-	var late: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER, true)
+	assert_eq(early.last_frame, IAI_LAST_FRAME)
+	var late: CancelRun = _iai(IAI_CANCEL - INPUT_BUFFER, true)
 	assert_true(late.has(&"block"))
-	assert_eq(late.dodge_frame, KESA_CANCEL, "the cancel opens on the same frame")
+	assert_eq(late.dodge_frame, IAI_CANCEL, "the cancel opens on the same frame")
 
 
-## Kesa Giri held for hold steps (its charge starts at step 10), pressing dodge
-## so the press first counts on frame press_on.
-static func _charged_kesa_giri(hold: int, press_on: int) -> CancelRun:
+## The Iai Slash held for hold steps (its charge starts at step 10), pressing
+## dodge so the press first counts on frame press_on.
+static func _charged_iai(hold: int, press_on: int) -> CancelRun:
 	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 10.0)
 	return _cancel_run(W, H.btn(Btn.HEAVY), hold, press_on, H.idle())
 
@@ -464,18 +466,18 @@ static func _charged_kesa_giri(hold: int, press_on: int) -> CancelRun:
 func test_a_charged_heavy_opens_its_cancel_later_by_half_its_extra_recovery() -> void:
 	# held past the charge's 2.5 s: 16 frames of extra recovery (the demo's),
 	# so the cancel opens 8 frames later
-	var full: int = KESA_CANCEL + 8
-	var early: CancelRun = _charged_kesa_giri(170, full - INPUT_BUFFER - 1)
-	assert_eq(early.last_frame, KESA_LAST_FRAME + 16, "a full charge adds 16 frames of recovery")
+	var full: int = IAI_CANCEL + 8
+	var early: CancelRun = _charged_iai(170, full - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, IAI_LAST_FRAME + 16, "a full charge adds 16 frames of recovery")
 	assert_eq(early.dodge_frame, -1, "the uncharged cut's cancel frame isn't open")
-	assert_eq(_charged_kesa_giri(170, full - INPUT_BUFFER).dodge_frame, full, "it opens 8 frames later")
+	assert_eq(_charged_iai(170, full - INPUT_BUFFER).dodge_frame, full, "it opens 8 frames later")
 	# held for 112 steps: 103 frames of charge add 11 frames of recovery, and
 	# half of 11, rounded up, is 6
-	var partial: int = KESA_CANCEL + 6
-	early = _charged_kesa_giri(112, partial - INPUT_BUFFER - 1)
-	assert_eq(early.last_frame, KESA_LAST_FRAME + 11, "103 frames of charge add 11 frames of recovery")
+	var partial: int = IAI_CANCEL + 6
+	early = _charged_iai(112, partial - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, IAI_LAST_FRAME + 11, "103 frames of charge add 11 frames of recovery")
 	assert_eq(early.dodge_frame, -1, "rounding down would open it a frame sooner")
-	assert_eq(_charged_kesa_giri(112, partial - INPUT_BUFFER).dodge_frame, partial, "it opens 6 frames later")
+	assert_eq(_charged_iai(112, partial - INPUT_BUFFER).dodge_frame, partial, "it opens 6 frames later")
 
 
 func test_mountain_slam_cannot_be_dodge_cancelled() -> void:

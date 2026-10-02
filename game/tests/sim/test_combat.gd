@@ -52,7 +52,7 @@ func test_a_heavy_held_for_2_5_s_releases_by_itself_as_a_stronger_power_attack()
 	H.run(W, 220, func(_i: int) -> RawInput: return H.btn(Btn.HEAVY), IDLE, r)
 	var hit: Dictionary = r.find(&"hit")
 	assert_false(hit.is_empty())
-	assert_eq(hit.get("attack"), &"k_h1")
+	assert_eq(hit.get("attack"), &"k_iai") # the Iai Slash since 9.2 (the demo's Kesa Giri, also 13 damage)
 	assert_almost_eq(float(hit.get("damage", NAN)), 13.0 * 1.8, CLOSE)
 
 

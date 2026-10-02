@@ -346,5 +346,5 @@ VERDICT PER PIECE
 - GraphicsApplier._current, InkGrade's LUT cache and LookNoise's texture are static, so state can leak between tests.
 - Salvage hazards: the worktree is uncommitted and based on 67265af. Copy only the listed new files, never game/_probe, never merge the branch, and never carry its premature [x] on task 16. Remove the worktree only after the last piece is salvaged.
 - Effects timed on whole world frames step at 60 Hz on high-refresh displays unless the clock adds host.alpha().
-- The below-deck hiding and the single ink-wash quad assume one camera, so task 23's split screen needs a per-viewport answer.
+- The single ink-wash quad assumes one camera, so task 23's split screen needs a per-viewport answer. (The below-deck hiding is per camera since 17.5: `MoonlitShrine.cull_below_deck`.)
 - Effect positions use the demo's event pos until task 7 sends the blade contact point, so sparks and rings will move when task 7 lands. The reach arc likewise switches from AttackDef.range and arc to swing-derived values.

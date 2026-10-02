@@ -156,7 +156,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - 121 web tests;
   - the typecheck loads 158 scripts cleanly;
   - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders and the rock) passes in a window;
-  - CI passed on the push of 14.1 (6a986cb);
+  - CI passed on every push from 14.1 to 17.5 (8986b71);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.

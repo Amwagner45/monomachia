@@ -47,7 +47,7 @@ func test_gates_stand_beyond_their_spawns_and_face_the_centre() -> void:
 
 
 func test_the_wall_stands_outside_the_walkable_circle() -> void:
-	assert_eq(def.walkable_radius, 15.0)
+	assert_eq(def.walkable_radius, SimConst.ARENA_RADIUS, "the rules' wall")
 	assert_almost_eq(def.wall_inner_radius(), 15.075, 1e-4)
 	assert_almost_eq(def.wall_outer_radius(), 15.525, 1e-4)
 	assert_gte(def.floor_radius, def.wall_outer_radius(), "the floor runs under the whole wall")

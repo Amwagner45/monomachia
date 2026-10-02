@@ -3,7 +3,8 @@ extends RefCounted
 ## Procedural shrine props, each added to a MeshKitSet at a transform so many
 ## props share one mesh per material. Each prop function builds one kind that
 ## ShrineLayout.prop_scenes can replace with bought art (lantern, torii,
-## pillar, pine, dead_tree); the sacred rope is part of the gates.
+## pillar, pine, dead_tree, pagoda, temple_hall); the sacred rope is part of
+## the gates.
 
 const LANTERN_GLOW: Shader = preload("res://shaders/lantern_glow.gdshader")
 
@@ -13,24 +14,39 @@ const LANTERN_GLOW: Shader = preload("res://shaders/lantern_glow.gdshader")
 const LANTERN_FIRE := Vector3(0.0, 2.12, 0.0)
 
 
-## Materials for every kit key the platform and its props use.
-static func materials() -> Dictionary[StringName, Material]:
+## Materials for every kit key the platform, its props and the backdrop's
+## buildings use. outlined = false gives far scenery's, which never draw an
+## outline.
+static func materials(outlined: bool = true) -> Dictionary[StringName, Material]:
 	var glow := ShaderMaterial.new()
 	glow.shader = LANTERN_GLOW
 	return {
-		&"landing": ToonMaterials.prop(LookPalette.STONE_LIGHT, 0.4),
-		&"parapet": ToonMaterials.prop(LookPalette.STONE, 0.35),
-		&"stone": ToonMaterials.prop(LookPalette.STONE_LIGHT, 0.4),
-		&"stone_dark": ToonMaterials.prop(LookPalette.STONE_DARK, 0.3),
+		&"landing": ToonMaterials.prop(LookPalette.STONE_LIGHT, 0.4, outlined),
+		&"parapet": ToonMaterials.prop(LookPalette.STONE, 0.35, outlined),
+		&"stone": ToonMaterials.prop(LookPalette.STONE_LIGHT, 0.4, outlined),
+		&"stone_dark": ToonMaterials.prop(LookPalette.STONE_DARK, 0.3, outlined),
 		&"pebbles": ToonMaterials.prop(LookPalette.STONE_DARK, 0.3, false),
-		&"lacquer": ToonMaterials.prop(LookPalette.LACQUER, 0.3),
-		&"black_lacquer": ToonMaterials.prop(LookPalette.INK_SOFT, 0.0),
-		&"rope": ToonMaterials.prop(LookPalette.ROPE, 0.25),
+		&"lacquer": ToonMaterials.prop(LookPalette.LACQUER, 0.3, outlined),
+		&"black_lacquer": ToonMaterials.prop(LookPalette.INK_SOFT, 0.0, outlined),
+		&"rope": ToonMaterials.prop(LookPalette.ROPE, 0.25, outlined),
 		&"paper": ToonMaterials.prop(LookPalette.PAPER, 0.0, false),
-		&"bark": ToonMaterials.prop(LookPalette.WOOD_DARK, 0.2),
-		&"pine": ToonMaterials.prop(LookPalette.PINE, 0.35),
+		&"bark": ToonMaterials.prop(LookPalette.WOOD_DARK, 0.2, outlined),
+		&"pine": ToonMaterials.prop(LookPalette.PINE, 0.35, outlined),
+		&"wood": ToonMaterials.prop(LookPalette.WOOD_DARK.lightened(0.05), 0.2, outlined),
+		&"roof": ToonMaterials.prop(LookPalette.INK_SOFT.lightened(0.04), 0.1, outlined),
 		&"glow": glow,
+		&"window": distant_glow_material(),
 	}
+
+
+## Lit windows and lanterns far away: the lanterns' glow, dimmer and
+## steadier.
+static func distant_glow_material() -> ShaderMaterial:
+	var window := ShaderMaterial.new()
+	window.shader = LANTERN_GLOW
+	window.set_shader_parameter(&"energy", 2.2)
+	window.set_shader_parameter(&"flicker", 0.12)
+	return window
 
 
 ## A square stone lantern (about 3.2 m) standing on xform, with lit paper
@@ -218,6 +234,38 @@ static func _branch(kit: MeshKit, xform: Transform3D, start: Vector3, dir: Vecto
 			axis = Vector3.RIGHT
 		var child_dir: Vector3 = out_dir.rotated(axis, rng.randf_range(0.35, 0.85))
 		_branch(kit, xform, end, child_dir, length * rng.randf_range(0.55, 0.75), radius * 0.6, depth - 1, rng)
+
+
+## A pagoda of tiers storeys on xform, about width wide at the base, with
+## lit windows on some storeys.
+static func pagoda(kits: MeshKitSet, xform: Transform3D, tiers: int, width: float, rng: RandomNumberGenerator) -> void:
+	var wood: MeshKit = kits.kit(&"wood")
+	var roof: MeshKit = kits.kit(&"roof")
+	var window: MeshKit = kits.kit(&"window")
+	wood.box(xform * Transform3D(Basis(), Vector3(0, 0.6, 0)), Vector3(width * 1.25, 1.2, width * 1.25))
+	var y: float = 1.2
+	for t: int in tiers:
+		var w: float = width * (1.0 - t * 0.13)
+		var storey: float = width * 0.42
+		wood.box(xform * Transform3D(Basis(), Vector3(0, y + storey * 0.5, 0)), Vector3(w, storey, w))
+		if rng.randf() < 0.75:
+			window.box(xform * Transform3D(Basis(), Vector3(0, y + storey * 0.5, w * 0.5 + 0.05)), Vector3(w * 0.3, storey * 0.4, 0.1))
+		if rng.randf() < 0.5:
+			window.box(xform * Transform3D(Basis(), Vector3(w * 0.5 + 0.05, y + storey * 0.5, 0)), Vector3(0.1, storey * 0.4, w * 0.3))
+		y += storey
+		roof.roof(xform * Transform3D(Basis(), Vector3(0, y, 0)), w * 0.95, w * 0.95, storey * 0.55, w * 0.18, 4, w * 0.05)
+		y += storey * 0.3
+	roof.cylinder(xform * Transform3D(Basis(), Vector3(0, y, 0)), width * 0.05, width * 0.02, width * 0.9, 6)
+
+
+## A temple hall on a stone base, width wide and depth deep, with a long hip
+## roof and a lit window at the front (+Z).
+static func temple_hall(kits: MeshKitSet, xform: Transform3D, width: float, depth: float) -> void:
+	kits.kit(&"stone_dark").box(xform * Transform3D(Basis(), Vector3(0, 0.6, 0)), Vector3(width * 1.15, 1.2, depth * 1.2))
+	kits.kit(&"wood").box(xform * Transform3D(Basis(), Vector3(0, 1.2 + width * 0.15, 0)), Vector3(width, width * 0.3, depth))
+	kits.kit(&"window").box(xform * Transform3D(Basis(), Vector3(0, 1.2 + width * 0.14, depth * 0.5 + 0.05)), Vector3(width * 0.55, width * 0.12, 0.1))
+	kits.kit(&"roof").roof(xform * Transform3D(Basis(), Vector3(0, 1.2 + width * 0.3, 0)), width * 0.68, depth * 0.72,
+		width * 0.32, width * 0.08, 4, width * 0.03)
 
 
 ## A box-section beam along points (in xform's space), half-depth hw and

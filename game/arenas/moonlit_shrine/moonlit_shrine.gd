@@ -17,9 +17,9 @@ extends Node3D
 ## side) and Gate0, Gate1 (the gate anchors); and Platform/GateRope0 and
 ## GateRope1 (each gate's rope barrier, for the match intro to drop).
 ##
-## Built so far: the courtyard (17.3), its props (17.4), the underside (17.5)
-## and the night sky (17.6). The backdrop and the embers and ash come with
-## tasks 17.7 and 17.8.
+## Built so far: the courtyard (17.3), its props (17.4), the underside (17.5),
+## the night sky (17.6) and the backdrop (17.7). The embers and ash come with
+## task 17.8.
 
 ## The highest camera (m above the floor) that leaves out the rock under the
 ## rim: from there and inside the camera's limit (def.camera_max_radius),
@@ -92,6 +92,7 @@ func _build() -> void:
 		_lantern_lights.append(light as OmniLight3D)
 	add_child(ShrineUnderside.build(layout, def))
 	_floating_rocks = get_node(^"Underside/FloatingRocks")
+	add_child(ShrineBackdrop.build(layout, env.environment.fog_light_color))
 	_add_markers()
 	var ink := InkWashPass.new()
 	ink.name = "InkWash"

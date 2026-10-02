@@ -4,6 +4,7 @@
 
 [sub_resource type="ShaderMaterial" id="ShaderMaterial_sky"]
 shader = ExtResource("1")
+shader_parameter/moon_radius = 0.085
 
 [sub_resource type="Sky" id="Sky_moonlit"]
 sky_material = SubResource("ShaderMaterial_sky")

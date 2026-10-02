@@ -49,7 +49,7 @@ static func build(layout: ShrineLayout, def: ArenaDef) -> Node3D:
 	noise.fractal_octaves = 4
 	var surface: Array[PackedVector3Array] = _crag_lattice(def.floor_radius - 0.15, layout.crag_radius, layout.crag_depth,
 		96, noise, true)
-	var rock: ShaderMaterial = _rock_material()
+	var rock: ShaderMaterial = rock_material()
 	root.add_child(_ledge(surface, noise, rock))
 	var below := Node3D.new()
 	below.name = "BelowDeck"
@@ -74,9 +74,10 @@ static func bob_rocks(rocks: Node3D, layout: ShrineLayout, time: float) -> void:
 		rock.rotation.y = phase + time * TURN_SPEED
 
 
-## The rock's toon material. No outline: the crag is huge, and the ink-wash
-## pass draws its silhouette.
-static func _rock_material() -> ShaderMaterial:
+## The rock's toon material, for the crag, the floating rocks and the
+## backdrop's cliffs. No outline: the rock is huge, and the ink-wash pass
+## draws its silhouette.
+static func rock_material() -> ShaderMaterial:
 	return ToonMaterials.make_with_shader(ROCK, ToonMaterials.OutlineKind.NONE, {&"brush_noise": 0.12})
 
 

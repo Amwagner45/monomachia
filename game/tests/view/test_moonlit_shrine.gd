@@ -1,16 +1,32 @@
 extends GutTest
 ## The Moonlit Shrine, built headless: the arena's own lights, ink-wash pass
 ## and night sky, with its fog and the moon ahead of player one where the
-## layout puts it; the markers the match reads, a floor at y = 0 under the
-## spawns, a parapet, gate ropes and props outside the walkable circle with
-## only flat pebbles inside it, the torii on the gate landings, the lanterns'
-## lights, halos and flicker, bought art in place of a procedural prop, the
-## ledge under the props, the rock under the rim left out per camera by the
-## cameras above the courtyard, the floating rocks bobbing, and the chosen
-## preset applied.
+## layout puts it; the backdrop inside the far clip, cheap, dipping under the
+## moon to show the lake, and trimmed per preset; the markers the match
+## reads, a floor at y = 0 under the spawns, a parapet, gate ropes and props
+## outside the walkable circle with only flat pebbles inside it, the torii on
+## the gate landings, the lanterns' lights, halos and flicker, bought art in
+## place of a procedural prop, the ledge under the props, the rock under the
+## rim left out per camera by the cameras above the courtyard, the floating
+## rocks bobbing, and the chosen preset applied.
 
 const SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
 const SKY_SHADER: Shader = preload("res://shaders/sky_moonlit.gdshader")
+## The backdrop's own shaders, which all take the look's noise.
+const BACKDROP_SHADERS: Array[Shader] = [
+	ShrineBackdrop.CLOUD_SEA, ShrineBackdrop.MOUNTAIN, ShrineBackdrop.WATERFALL, ShrineBackdrop.LAKE, ShrineBackdrop.MIST,
+]
+## What each preset draws of the backdrop (World's parts): Low keeps the sea
+## of clouds, the mountains and the lake; Medium adds the veil of cloud over
+## the sea, the cliffs with their buildings and waterfalls, and the lanterns
+## on the lake; High adds the mist, round the crag's tip too.
+const SCENERY: Dictionary[StringName, Array] = {
+	&"low": ["CloudSea", "Mountains", "Lake"],
+	&"medium": ["CloudSea", "CloudVeil", "Mountains", "Lake", "Cliffs", "LakeLanterns"],
+	&"high": ["CloudSea", "CloudVeil", "Mountains", "Lake", "Cliffs", "LakeLanterns", "Mist", "CragMist"],
+}
+## How far past the moon's disc (radians) nothing may stand.
+const MOON_MARGIN := 0.015
 
 var arena: MoonlitShrine
 var _services: Node
@@ -59,13 +75,30 @@ func _environment(shrine: MoonlitShrine) -> Environment:
 	return (shrine.get_node("WorldEnvironment") as WorldEnvironment).environment
 
 
-## A parameter of shrine's sky, once its shader is known to declare it: a
+## A parameter of material, once its shader is known to declare it: a
 ## misspelt name would set nothing, so the test reads only real uniforms.
+func _param(material: ShaderMaterial, param: StringName) -> Variant:
+	var names: Array = material.shader.get_shader_uniform_list().map(func(u: Dictionary) -> String: return u["name"])
+	assert_has(names, String(param), "%s is a uniform of %s" % [param, material.shader.resource_path])
+	return material.get_shader_parameter(param)
+
+
+## A parameter of shrine's sky (see _param).
 func _sky_param(shrine: MoonlitShrine, param: StringName) -> Variant:
-	var sky := _environment(shrine).sky.sky_material as ShaderMaterial
-	var names: Array = sky.shader.get_shader_uniform_list().map(func(u: Dictionary) -> String: return u["name"])
-	assert_has(names, String(param), "%s is a uniform of the sky" % param)
-	return sky.get_shader_parameter(param)
+	return _param(_environment(shrine).sky.sky_material as ShaderMaterial, param)
+
+
+## Player one's starting follow camera.
+func _player_one_camera() -> Camera3D:
+	var rig: CameraRig = autofree(CameraRig.new())
+	var me: Vector3 = arena.def.spawn_point(0).origin
+	var them: Vector3 = arena.def.spawn_point(1).origin
+	var view: Dictionary = rig.follow_target(me, them, (them - me).normalized())
+	var cam: Camera3D = _camera_at(view["pos"])
+	cam.fov = rig.base_fov
+	cam.far = arena.def.camera_far
+	cam.look_at(view["look"])
+	return cam
 
 
 func test_its_environment_is_its_own_copy_of_the_night_sky() -> void:
@@ -108,14 +141,7 @@ func test_the_moon_rises_ahead_of_player_one() -> void:
 	var toward_moon: Vector3 = arena.layout.moon_direction.normalized()
 	assert_almost_eq(_sky_param(arena, &"moon_direction"), toward_moon, Vector3.ONE * 1e-5, "the sky's moon is where the layout puts it")
 	assert_gt(toward_moon.y, 0.0, "above the horizon")
-	var rig: CameraRig = autofree(CameraRig.new())
-	var me: Vector3 = arena.def.spawn_point(0).origin
-	var them: Vector3 = arena.def.spawn_point(1).origin
-	var view: Dictionary = rig.follow_target(me, them, (them - me).normalized())
-	var cam: Camera3D = _camera_at(view["pos"])
-	cam.fov = rig.base_fov
-	cam.far = arena.def.camera_far
-	cam.look_at(view["look"])
+	var cam: Camera3D = _player_one_camera()
 	assert_true(cam.is_position_in_frustum(cam.global_position + toward_moon * 1000.0), "in player one's first view")
 
 
@@ -344,16 +370,29 @@ func test_every_prop_kind_can_be_swapped_for_bought_art() -> void:
 	var expected: Dictionary[String, int] = {
 		"Lantern": layout.lantern_angles.size(), "Torii": 2, "Pillar": layout.pillars.size(),
 		"Pine": pines, "DeadTree": layout.trees.size() - pines,
+		"Pagoda": 0, "TempleHall": 0,
 	}
+	for c: Vector4 in layout.cliffs:
+		if c.w >= ShrineBackdrop.PAGODA_CLIFF:
+			expected["Pagoda"] += 1
+		elif c.w >= ShrineBackdrop.TEMPLE_CLIFF:
+			expected["Pagoda"] += 1
+			expected["TempleHall"] += 1
+		else:
+			expected["TempleHall"] += 1
 	var props: Node = shrine.get_node("Platform/Props")
+	var cliffs: Node = shrine.get_node("World/Cliffs")
 	for kind: String in expected:
+		var parent: Node = cliffs if kind in ["Pagoda", "TempleHall"] else props
 		var placed: int = 0
-		for child: Node in props.get_children():
+		for child: Node in parent.get_children():
 			if child.name.begins_with(kind) and child.name.trim_prefix(kind).is_valid_int():
 				placed += 1
 		assert_eq(placed, expected[kind], "bought %s in every spot" % kind)
 	for kit_name: String in ["Stone", "Lacquer", "BlackLacquer", "Bark", "Pine", "Glow"]:
 		assert_null(props.get_node_or_null(kit_name), "no procedural %s left" % kit_name)
+	for kit_name: String in ["Wood", "Roof", "Window", "StoneDark"]:
+		assert_null(cliffs.get_node_or_null(kit_name), "no procedural %s left on the cliffs" % kit_name)
 	var rocks: Array[Node] = shrine.get_node("Underside/FloatingRocks").get_children()
 	assert_eq(rocks.size(), layout.floating_rocks.size(), "a bought floating rock in every spot")
 	for rock: Node in rocks:
@@ -397,11 +436,12 @@ func test_the_ledge_on_the_ground_layer_reaches_past_every_prop_on_it() -> void:
 
 func test_the_rock_under_the_rim_hangs_on_its_own_layer() -> void:
 	var below: Array[Node] = arena.get_node("Underside/BelowDeck").find_children("*", "GeometryInstance3D", true, false)
+	below.append(arena.get_node("World/CragMist"))
 	var names: Array[StringName] = []
 	for node: Node in below:
 		names.append(node.name)
 		assert_eq((node as GeometryInstance3D).layers, LookPalette.BELOW_DECK_LAYER, "%s on the below-deck layer only" % node.name)
-	for part: StringName in [&"Crag", &"Roots", &"Chains"]:
+	for part: StringName in [&"Crag", &"Roots", &"Chains", &"CragMist"]:
 		assert_has(names, part)
 	var crag: AABB = (arena.get_node("Underside/BelowDeck/Crag") as MeshInstance3D).get_aabb()
 	assert_lt(crag.end.y, ShrinePlatform.LEDGE_Y, "the crag hangs under the ledge")
@@ -512,6 +552,105 @@ func test_floating_rocks_bob_over_their_spots() -> void:
 		assert_between(at.y, home.y - ShrineUnderside.BOB_HEIGHT - 0.001, home.y + ShrineUnderside.BOB_HEIGHT + 0.001, "rock %d bobs gently" % i)
 		moved = moved or not is_equal_approx(at.y, start[i])
 	assert_true(moved, "they bob")
+
+
+# ------------------------------------------------------------------ the backdrop
+
+## The camera's far clip takes in the whole backdrop from anywhere the
+## cameras go (the menu's orbit, unclamped, included), and the arena hands
+## it to the match's camera (test_match_scene checks the camera takes it).
+## The mist and the lake lanterns aren't measured: the headless renderer
+## keeps no MultiMesh transforms.
+func test_the_far_clip_reaches_the_farthest_ring_and_the_camera_takes_it() -> void:
+	var rig: CameraRig = autofree(CameraRig.new())
+	var menu: Vector3 = rig.menu_target(0.0)["pos"]
+	var reach: float = maxf(Vector2(arena.def.camera_max_radius, menu.y).length(), menu.length())
+	var farthest_ring: float = 0.0
+	for ring: Node in arena.get_node("World/Mountains").get_children():
+		for v: Vector3 in _world_vertices(ring as MeshInstance3D):
+			farthest_ring = maxf(farthest_ring, Vector2(v.x, v.z).length())
+	assert_gt(farthest_ring, arena.layout.mountain_layers[-1].x, "out to the farthest ring")
+	var farthest: float = 0.0
+	for mi: Node in arena.get_node("World").find_children("*", "MeshInstance3D", true, false):
+		for v: Vector3 in _world_vertices(mi as MeshInstance3D):
+			farthest = maxf(farthest, v.length())
+	assert_lt(farthest + reach, arena.def.camera_far, "the whole backdrop inside the far clip")
+	assert_eq(MatchView.arena_camera_data(arena)["far"], arena.def.camera_far, "handed to the match's camera")
+
+
+func test_each_preset_draws_its_share_of_the_backdrop() -> void:
+	var world: Node = arena.get_node("World")
+	for id: StringName in GraphicsPreset.IDS:
+		GraphicsApplier.apply_to_tree(GraphicsPreset.load_id(id), arena)
+		var drawn: Array = []
+		for part: Node in world.get_children():
+			if (part as Node3D).visible:
+				drawn.append(String(part.name))
+		drawn.sort()
+		var expected: Array = SCENERY[id].duplicate()
+		expected.sort()
+		assert_eq(drawn, expected, "%s draws its share" % id)
+
+
+## The ranges dip toward the moon, so its disc clears everything in the
+## backdrop in player one's first view.
+func test_the_moon_clears_the_backdrop_in_player_ones_view() -> void:
+	var eye: Vector3 = _player_one_camera().global_position
+	var moon: Vector3 = arena.layout.moon_direction.normalized()
+	var moon_angle: float = atan2(moon.x, moon.z)
+	var reach: float = float(_sky_param(arena, &"moon_radius")) + MOON_MARGIN
+	var highest: float = -INF
+	for mi: Node in arena.get_node("World").find_children("*", "MeshInstance3D", true, false):
+		for v: Vector3 in _world_vertices(mi as MeshInstance3D):
+			var d: Vector3 = v - eye
+			if absf(angle_difference(atan2(d.x, d.z), moon_angle)) <= reach:
+				highest = maxf(highest, atan2(d.y, Vector2(d.x, d.z).length()))
+	assert_gt(highest, 0.0, "the mountains stand under the moon")
+	assert_lt(highest, asin(moon.y) - reach, "and below its disc")
+
+
+## The rings in front of the lake's middle dip under the water toward the
+## moon, so from outside the walls (the establishing view) the lake shows
+## under the moon, with its glint. (The fight cameras look over the parapet,
+## which hides anything as far below the horizon as the water.)
+func test_the_rings_in_front_of_the_lake_dip_under_the_water_toward_the_moon() -> void:
+	var moon: Vector3 = arena.layout.moon_direction.normalized()
+	var moon_angle: float = atan2(moon.x, moon.z)
+	var lake: Vector4 = arena.layout.lake
+	var in_front: int = 0
+	for i: int in arena.layout.mountain_layers.size():
+		if arena.layout.mountain_layers[i].x >= lake.y:
+			continue
+		in_front += 1
+		var highest: float = -INF
+		for v: Vector3 in _world_vertices(arena.get_node("World/Mountains/Range%d" % i) as MeshInstance3D):
+			if absf(angle_difference(atan2(v.x, v.z), moon_angle)) <= deg_to_rad(3.0):
+				highest = maxf(highest, v.y)
+		assert_lt(highest, lake.z, "Range%d dips under the water" % i)
+	assert_gt(in_front, 0, "some rings stand in front of the lake")
+
+
+## Far scenery stays cheap: on any preset nothing in it casts a shadow or
+## draws an outline.
+func test_the_backdrop_casts_no_shadows_and_draws_no_outlines() -> void:
+	GraphicsApplier.apply_to_tree(GraphicsPreset.load_id(&"high"), arena)
+	var parts: Array[Node] = arena.get_node("World").find_children("*", "GeometryInstance3D", true, false)
+	assert_gt(parts.size(), 0, "the backdrop has parts")
+	for node: Node in parts:
+		var geo := node as GeometryInstance3D
+		assert_eq(geo.cast_shadow, GeometryInstance3D.SHADOW_CASTING_SETTING_OFF, "%s casts no shadow" % geo.name)
+		assert_false(ToonMaterials.is_outlined(geo.material_override), "%s has no outline" % geo.name)
+
+
+func test_the_backdrop_shaders_take_the_look_noise() -> void:
+	var seen: Dictionary[Shader, bool] = {}
+	for node: Node in arena.get_node("World").find_children("*", "GeometryInstance3D", true, false):
+		var m := (node as GeometryInstance3D).material_override as ShaderMaterial
+		if m == null or not BACKDROP_SHADERS.has(m.shader):
+			continue
+		seen[m.shader] = true
+		assert_eq(_param(m, LookNoise.PARAM), LookNoise.texture(), "%s gets the noise" % node.name)
+	assert_eq(seen.size(), BACKDROP_SHADERS.size(), "every backdrop shader is in use")
 
 
 # ------------------------------------------------------------------ presets

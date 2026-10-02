@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.6, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.7.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.7, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.8.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -152,11 +152,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's props (17.4): a torii on each gate landing, and on the ledge the stone lanterns (with flickering lights that skip the ground, and halos), the roped and broken pillars, the pines, the dead trees and loose rocks. `ShrineLayout.prop_scenes` swaps any prop kind for bought art at the same spots.
   - The shrine's underside (17.5): the rock ledge the props stand on, the crag hanging under it with roots and chains into the clouds, and floating rocks that bob. Cameras above the courtyard leave the rock under the rim out, each camera deciding for itself.
   - The shrine's night sky (17.6): an ink sky with stars, ink clouds and a blood-red moon with a red haze, in the shrine's own environment with its depth and height fog. The moon hangs ahead of player one, where the layout puts it.
-- **Checks after 17.6** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 590 Godot tests (56 s): rules 138, input 118, audio 31, core 22, view 226, content 52, and 3 project-wide smoke tests;
+  - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
+- **Checks after 17.7** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 596 Godot tests (132 s on this machine now; 17.6's commit takes as long): rules 138, input 118, audio 31, core 22, view 232, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
-  - the typecheck loads 158 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock and the sky) passes in a window;
+  - the typecheck loads 159 scripts cleanly;
+  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky and the backdrop's five) passes in a window;
   - CI passed on every push from 14.1 to 17.5 (8986b71);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
@@ -164,7 +165,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - **Waiting on its own worktree:**
   - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.6): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside and sky. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's backdrop and ambience (17.7–17.9).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.7): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside, sky and backdrop. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's ambience and its benchmark (17.8, 17.9).
 
 ### Waiting on the owner
 
@@ -1211,16 +1212,50 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - a layout with the moon elsewhere moves the sky's moon and the rim light, and leaves another shrine's moon alone;
         - height fog per preset.
       - **Shots reviewed:** gameplay, Watch, menu and establishing at High and gameplay at Low. The moon sits up and left of the opponent in player one's view; the Watch and menu views show the stars, the haze and the clouds. Below the horizon the sky is mist until the sea of clouds (17.7).
-  - [ ] **17.7 Sea of clouds, mountains, cliff pagodas, waterfalls and the lake.** The backdrop builder and its shaders, with scenery detail per preset.
+  - [x] **17.7 Sea of clouds, mountains, cliff pagodas, waterfalls and the lake.** The backdrop builder and its shaders, with scenery detail per preset.
     - Note from 17.5: `ShrineLayout.cloud_sea_height` is already there (the chains end in the clouds). `ShrineUnderside._rock_material()` is the rock for the cliffs, and the floating rocks could carry the temple hall.
     - Check: the far clip reaches the farthest ring and the camera takes it; detail follows each preset; gameplay, Watch, menu and establishing shots at the three presets reviewed.
     - Blocked by: 17.4, 17.6 · Stories: 46, 47, 57
+    - Done:
+      - **`ShrineBackdrop`** (`arenas/moonlit_shrine/shrine_backdrop.gd`), salvaged, builds `World`:
+        - `CloudSea`, the dense sea of clouds, and `CloudVeil`, a softer layer over it, with a clearing where the lake shows;
+        - `Mountains`, four rings (`Range0` nearest) with a valley toward the moon;
+        - `Lake`, far off under the moon, and `LakeLanterns` drifting on it;
+        - `Cliffs`: six spires out of the clouds (`Spires`, the crag's rock darkened) with pagodas and temple halls facing the shrine, and `Waterfalls` from three of them into the clouds;
+        - `Mist`, puffs at the waterfalls' feet and on the clouds near the island, and `CragMist` round the crag's tip, on the below-deck layer with the crag.
+        - No part casts a shadow or draws an outline. `ShrineBackdrop.DETAIL` gives each part's scenery detail: Low draws the sea of clouds, the mountains and the lake; Medium adds the veil, the cliffs and the lake lanterns; High adds both mists.
+      - **Shaders**, salvaged: `cloud_sea`, `mountain_layer`, `waterfall`, `lake_water` and `mist_puff`, all unshaded.
+      - **Changes to the worktree's backdrop:**
+        - every shader fetches the look's noise in place of value noise computed per pixel (the cloud sea's domain warp went from 48 hashed lattice lookups a pixel to 8 fetches);
+        - the clouds, the mountains and the lake take the depth fog's colour as `horizon_color`, as the sky's horizon does;
+        - the mountains' strokes round each ring are a multiple of the noise's period, so they meet where the ring closes;
+        - one random stream per kind (mountains, cliffs, pagodas, mist, crag mist, lake lanterns);
+        - the lake could never be seen: the rings in front of it stood 38–70 m above the water even in their valley. The valley toward the moon now drops each ring toward a floor 10 m under the water (`VALLEY_FLOOR`), and the two nearest rings drop all the way (0.95), so the lake shows under the moon from outside the walls. The fight cameras look over the parapet, which hides anything as far below the horizon as the water, so they see a gap in the ranges under the moon instead;
+        - the farthest ring rose 9° above the horizon right under the moon, into its disc; the two farthest valleys are now 0.6 and 0.65 (were 0.45 and 0.2), so every ridge stays under the moon;
+        - the mountains' red moon tint no longer goes negative below the clouds, where it turned the walls dropping into the valley teal;
+        - the lake's data is (angle, distance, height, radius), like the floating rocks'.
+      - **`ShrineProps`** gains the pagoda, the temple hall and their `wood`, `roof` and `window` materials (`distant_glow_material()` lights the windows and the lake lanterns); `materials(false)` gives far scenery's, without outlines.
+      - **`ShrineLayout`** gains `mountain_layers`, `cliffs` (their buildings go by radius: `ShrineBackdrop.PAGODA_CLIFF` and `TEMPLE_CLIFF`), `waterfall_cliffs` and `lake`, and `pagoda` and `temple_hall` in `PROP_KINDS`. A bought pagoda or temple hall is modelled 1 m wide, scaled to its cliff, and should come without outlines.
+      - **The sky's `moon_radius`** is set in the shrine's environment, so tests can read the moon's size.
+      - **`ShrineUnderside.rock_material()`** is public, as the 17.5 note asked. The floating rocks' temple hall stays out: in the worktree only a rock over 3.5 m with the fourth dressing got one, and no rock in the data is.
+      - **Tests:**
+        - the farthest ring is built out to its distance, every point of the backdrop is inside the far clip from anywhere the cameras go (the menu's orbit included), and the arena hands the far clip to the match's camera (`test_match_scene` checks the camera takes it);
+        - what each preset draws of the backdrop, as a table;
+        - the moon clears everything in the backdrop in player one's first view, by the sky's own `moon_radius`;
+        - the rings in front of the lake dip under its water toward the moon;
+        - the crag mist on the below-deck layer;
+        - no shadows or outlines in the backdrop on High;
+        - every backdrop shader in use, with the noise texture;
+        - a bought pagoda and temple hall on every cliff that has one.
+      - **Shots reviewed:** gameplay, Watch, menu and establishing at High, Medium and Low, and the top-down view. The establishing view shows the lake under the moon with its red glint and lanterns. Low's sea of clouds is a soft wash; the veil and the mist bring the billows on Medium and High.
+      - **The suite's run time:** the Godot tests took about 130 s on this machine for this task and for 17.6's commit alike (56 s when 17.6 was committed), so the slowdown was the machine's; the shrine's tests take about 6 s.
   - [ ] **17.8 Drifting embers and ash.** Embers from each lantern and up past the edge, and ash across the courtyard, following each preset's particle ratio. The petals are left out unless the owner wants them.
     - Check: one ember emitter per lantern; counts follow the presets; shots at High and Low reviewed.
     - Owner: whether to keep the petals.
     - Blocked by: 17.4 · Stories: 47, 57
   - [ ] **17.9 Preset benchmark of the shrine.** The worktree's bench mode in `arena_shot.gd` (interleaved rounds, average and 95th-percentile frame time), run at 1080p on the target laptop with the real fighters. Presets are tuned if High drops below 60 fps, and the numbers go in the spec.
     - Check: High averages at least 60 fps at 1080p; side-by-side preset shots reviewed.
+    - Note from 17.7: Low draws the full domain-warped sea of clouds, and Medium two layers of it; a cloud shader without the warp for Low is the first saving if one is needed.
     - Blocked by: 17.5, 17.7, 17.8 · Stories: 57
   - [ ] **17.10 Radius check on the shrine as every match's arena; task 17 ticked.** With the rules at 15 m, a headless computer-vs-computer match on the shrine keeps fighters inside the parapet and dropped weapons bouncing inside. The camera at the wall doesn't pass through lanterns, pillars or trees.
     - Check: the shrine tests pass with the radius from `SimConst`; wall and top-down shots reviewed; the bench is still within budget.

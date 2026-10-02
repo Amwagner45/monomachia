@@ -1,6 +1,6 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 2, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3, 16.1–16.7, 14.1 and 14.2, which put the real fighters in the match, and 17.1–17.9: the arena data behind a radius guard, the arena screenshot rig, the shrine's courtyard, props, underside, night sky, backdrop, and drifting embers and ash, and its benchmark (High 69 fps at 1080p on the target laptop); then 8.1, behaviour tests for the training dummy and the computer's counters, which starts the fluid rules; next is 8.2 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Oct 2, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3, 16.1–16.7, 14.1 and 14.2, which put the real fighters in the match, and 17.1–17.9: the arena data behind a radius guard, the arena screenshot rig, the shrine's courtyard, props, underside, night sky, backdrop, and drifting embers and ash, and its benchmark (High 69 fps at 1080p on the target laptop); then 8.1 and 8.2, which start the fluid rules: behaviour tests for the training dummy and the computer's counters, then the checks pinned to the TypeScript retired at the last bit-exact commit (4222167); next is 8.10, the training dummy's fixes, then 8.3 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -156,17 +156,17 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 **Two layers.** The rules layer knows nothing about graphics, input devices or sound: it is a set of plain GDScript classes (world, fighter, match, input tracker, computer brains and move data) advanced exactly 60 times per second. The presentation layer (nodes, animation, camera, effects, sound, menus) reads the rules layer's state and events and never changes them. A host node runs the fixed-step loop with an accumulator, applies slow motion by scaling the accumulator (not the engine's time scale), feeds each player's input, and gives the presentation an interpolation fraction, which it holds still during hit-stop.
 
-**Faithful port first.** The TypeScript rules are ported module by module with the same names and numbers, including the known quirks (update order, last-write-wins hit-stop, JS rounding and the Mulberry32 generator). Two details make whole runs match bit for bit:
+**Faithful port first.** The TypeScript rules were ported module by module with the same names and numbers, including the known quirks (update order, last-write-wins hit-stop, JS rounding and the Mulberry32 generator). Two details made whole runs match bit for bit, and both stay:
 - the rules keep positions in their own 64-bit vector classes, because Godot's built-in vectors are 32-bit;
 - `game/sim/js_math.gd` computes `sin`, `cos`, `atan2` and `hypot` exactly as V8 does (a port of its fdlibm), instead of using the platform's C library.
 
-The port is proven by:
+The port was proven by:
 
 - the 47 existing rule tests, rewritten for GUT;
-- golden replays: a Node script runs the TypeScript rules on 29 scripted duels and 6 computer-vs-computer matches and records every event and each fighter's state per frame; a GUT test feeds the same inputs to the Godot rules and compares them, within 1e-6 on positions (the margin covers Godot's JSON reader, not the rules) and exactly on events;
-- the Godot computer opponent producing the recorded inputs for all six matches, and the 40-match soak printing the same numbers as the TypeScript soak.
+- golden replays: a Node script ran the TypeScript rules on 29 scripted duels and 6 computer-vs-computer matches and recorded every event and each fighter's state per frame; a GUT test fed the same inputs to the Godot rules and compared them, within 1e-6 on positions (the margin covered Godot's JSON reader, not the rules) and exactly on events;
+- the Godot computer opponent producing the recorded inputs for all six matches, and the 40-match soak and the counterlab printing the same numbers as their TypeScript versions.
 
-The goldens guard the faithful port only. Once the rules change on purpose, they are replaced by tests of the new behaviour.
+The goldens guarded the faithful port only. Commit 4222167 is the last one proven bit for bit: there the two soaks and the two counterlabs still printed identical reports (recorded in the plan's Progress). Task 8.2 then retired the goldens, the brain-parity checks and the whole-run hashes, before the first deliberate rule change, and the rules are now guarded by tests of their behaviour.
 
 **Events.** The rules layer keeps emitting the demo's events (swing, telegraph, hit, block, parry, counter, disarm, and so on). The presentation, sound and HUD consume them, and tests assert on them.
 
@@ -325,8 +325,8 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 - A good test drives the rules only through their public surface, as the demo's tests do: build a world with two fighters, feed per-frame button and stick inputs, then assert on emitted events, HP, posture and state. Tests never reach into presentation code or private fields.
 - **Rules (GUT, headless):**
   - the 47 ported tests;
-  - golden replays against the TypeScript rules until the first deliberate rule change;
-  - behaviour tests for the training dummy (each behaviour judged by its events and states) and for the computer's counters (a brain that always tries the counter lands evade, stomp and leap), which replace the input hashes that pinned both brains to the TypeScript;
+  - golden replays against the TypeScript rules until the first deliberate rule change (retired in task 8.2, at commit 4222167);
+  - behaviour tests for the training dummy (each behaviour judged by its events and states) and for the computer's counters (a brain that always tries the counter lands evade, stomp and leap), which replaced the input hashes that pinned both brains to the TypeScript;
   - new tests for each rule change: arena radius and wall; block walk speed; momentum carry; eased lunges; heavy dodge-cancel; light hitstun letting a defender parry the second hit;
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;
   - every new move and chain: Katana four-light string, Iai vertical and horizontal by stick, Iai follow-ups, strafing while sheathed, sheathed auto-release, dodge cancelling the stance; Greatsword L-L-H, Low Sweep unblockable and jumpable, dodge thrusts; Daggers alternating string, dodge-cancel timing, no light loop from Twin Fang, Passing Cut direction;

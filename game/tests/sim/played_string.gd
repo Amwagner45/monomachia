@@ -13,6 +13,9 @@ var frame: PackedInt32Array = []
 var charging: Array[bool] = []
 var moved: PackedFloat64Array = []
 var apart: PackedFloat64Array = []
+## The step play() pressed each of its presses on, one per press (empty
+## after run()).
+var pressed_on: Array[int] = []
 
 
 ## Fighter 0, holding weapon, plays a string of presses (Btn.LIGHT or
@@ -36,6 +39,7 @@ static func play(
 		var p0: RawInput = SimHelpers.move(mx, 0.0)
 		if due and next < presses.size():
 			p0 = SimHelpers.move(mx, 0.0, presses[next])
+			r.pressed_on.append(i)
 			next += 1
 			due = false
 		elif dodged:
@@ -50,12 +54,13 @@ static func play(
 
 
 ## Fighter 0, holding weapon, plays the input p0 gives each step (step index
-## -> RawInput) for n steps against an idle Katana gap m away.
-static func run(weapon: WeaponDef, p0: Callable, gap: float = 2.2, n: int = 240) -> PlayedString:
+## -> RawInput) for n steps against a Katana gap m away, which plays the input
+## p1 gives (idle without one).
+static func run(weapon: WeaponDef, p0: Callable, gap: float = 2.2, n: int = 240, p1: Callable = Callable()) -> PlayedString:
 	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, gap)
 	var r := PlayedString.new()
 	for i: int in n:
-		r.step(W, p0.call(i))
+		r.step(W, p0.call(i), null if p1.is_null() else p1.call(i))
 	return r
 
 
@@ -92,16 +97,14 @@ func walked(from: int, to: int) -> float:
 
 ## The step of fighter 0's first event of type t (-1 if none).
 func step_of(t: StringName) -> int:
-	for e: Dictionary in all(t):
-		if _by_fighter_0(e):
-			return e["step"]
-	return -1
+	var mine: Array[Dictionary] = by_fighter_0(t)
+	return -1 if mine.is_empty() else mine[0]["step"]
 
 
-## Whether fighter 0 made event e (a swing or whiff names its fighter as "f",
-## a hit or block as "attacker").
-static func _by_fighter_0(e: Dictionary) -> bool:
-	return e.get("f", e.get("attacker")) == 0
+## Fighter 0's events of type t, in order: a swing, whiff or telegraph names
+## its fighter as "f", a hit or block as "attacker".
+func by_fighter_0(t: StringName) -> Array[Dictionary]:
+	return all(t).filter(func(e: Dictionary) -> bool: return e.get("f", e.get("attacker")) == 0)
 
 
 ## The frame fighter 0's last attack id ended on, one past the last frame a
@@ -122,7 +125,6 @@ func state_after(id: StringName) -> StringName:
 ## The ids of fighter 0's attacks that made events of type t, in order.
 func ids(t: StringName) -> Array[StringName]:
 	var out: Array[StringName] = []
-	for e: Dictionary in all(t):
-		if _by_fighter_0(e):
-			out.append(e["attack"])
+	for e: Dictionary in by_fighter_0(t):
+		out.append(e["attack"])
 	return out

@@ -82,17 +82,21 @@ const MOVE_CHANGES: Array[Dictionary] = [
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each
-## weapon's strings test checks them against the spec's table.
+## weapon's strings test checks them against the spec's table. A move that
+## took a removed demo move's id is in REMOVED too.
 const ADDED: Array[StringName] = [
 	&"k_l3", # 9.1: Kesa Cut, the third light
 	&"k_iai", # 9.2: the Iai Slash (vertical), the heavy
 	&"k_iai_h", # 9.4: the Iai Slash (horizontal), its release variant
 	&"k_rdraw", # 9.5: Returning Draw, the horizontal Iai's heavy follow-up
+	&"g_h2", # 10.2: Low Sweep, Overhead Strike's heavy follow-up, under Earthbreaker's id
 ]
 
-## Demo moves the new strings removed.
+## Demo moves the new strings removed (one whose id a new move took is in
+## ADDED too).
 const REMOVED: Array[StringName] = [
 	&"k_h1", # 9.2: Kesa Giri, the heavy before the Iai Slash
+	&"g_h2", # 10.2: Earthbreaker, whose id Low Sweep took
 ]
 
 ## Demo moves the new strings gave a new id: their id now -> the demo's.

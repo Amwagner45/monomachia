@@ -49,9 +49,21 @@ func _play(
 
 
 ## Fighter 0, holding the weapon, plays the input p0 gives each step (step
-## index -> RawInput) for n steps against an idle Katana gap m away.
-func _run(p0: Callable, gap: float = 2.2, n: int = 240) -> PlayedString:
-	return PlayedString.run(weapon, p0, gap, n)
+## index -> RawInput) for n steps against a Katana gap m away, which plays
+## the input p1 gives (idle without one).
+func _run(p0: Callable, gap: float = 2.2, n: int = 240, p1: Callable = Callable()) -> PlayedString:
+	return PlayedString.run(weapon, p0, gap, n, p1)
+
+
+## Plays presses against a Katana 2.2 m away that plays the input p1 gives
+## (to block, jump or dodge), each press on the step _play pressed it on
+## against an idle one.
+func _play_against(presses: Array[int], p1: Callable) -> PlayedString:
+	var on: Array[int] = _play(presses).pressed_on
+	var p0: Callable = func(i: int) -> RawInput:
+		var k: int = on.find(i)
+		return H.btn(presses[k]) if k >= 0 else H.idle()
+	return _run(p0, 2.2, 240, p1)
 
 
 ## Plays presses (the stick at mx), then each of buttons as the last of swings

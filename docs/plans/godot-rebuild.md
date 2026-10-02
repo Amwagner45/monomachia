@@ -1282,7 +1282,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - The hand-over to the clips and back takes 8 frames. The 3-frame wait keeps a tap step with the stick held to its end in the guard: it ran one frame, and its legs flicked toward the clips.
         - A foot moves at most 12 cm in half a frame through the hand-overs, which is the jog's own swing.
         - The other weapons keep the clips until task 15.
-      - **The Iai stance walks** (raised at 14.8): `Locomotion.walks()` counts it, so its legs shuffle, its feet plant, and the lean follows its walk.
+      - **The Iai stance walks** (raised at 14.8): `Locomotion.walks()` counts it, through the rules' `Fighter.in_stance()` (public since 9.6), so its legs shuffle, its feet plant, and the lean follows its walk.
       - **The tap step** is now a shuffle step, so the stance no longer pops into a stride on its first frame:
         - forward and back take two steps (right then left, and left then right);
         - the side steps take a small third step to settle, since the lead lands wide and the brake leaves it about 3 cm off its spot;

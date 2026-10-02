@@ -576,7 +576,7 @@ func test_the_iai_stance_walks_on_the_shuffle() -> void:
 		var v: FighterView = _view(&"rogue")
 		var f: Fighter = W.fighters[0]
 		var watched: Watch = await _watch(W, v, _inputs([[12, 0.0, 0.0, heavy], [60, walk[1], walk[2], heavy]]))
-		assert_true(Locomotion.in_stance(f), "%s: in the Iai stance" % walk[0])
+		assert_true(f.in_stance(), "%s: in the Iai stance" % walk[0])
 		assert_gt(Locomotion.ground_speed(f), 1.0, "%s: walking" % walk[0])
 		gut.p("Iai stance %s: %d steps, slid %.2f cm" % [walk[0], watched.steps, watched.slide * 100.0])
 		assert_eq(v.locomotion.guard, 1.0, "%s: the guard's legs" % walk[0])

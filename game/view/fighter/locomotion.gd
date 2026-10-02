@@ -193,15 +193,9 @@ static func ground_speed(f: Fighter) -> float:
 
 
 ## Whether fighter `f` walks or runs on the ground at will: free, stepping
-## or in the Iai stance (MOVING_STATES, in_stance()).
+## or in the Iai stance (MOVING_STATES, Fighter.in_stance()).
 static func walks(f: Fighter) -> bool:
-	return (MOVING_STATES.has(f.state) or in_stance(f)) and not f.airborne()
-
-
-## Whether fighter `f` holds its sheathed charge, walking at the blocking
-## walk's speed: the Iai stance (the rules' Fighter._in_stance()).
-static func in_stance(f: Fighter) -> bool:
-	return f.state == &"attack" and f.atk != null and f.atk.charging and f.atk.def.charge_move
+	return (MOVING_STATES.has(f.state) or f.in_stance()) and not f.airborne()
 
 
 ## Whether fighter `f` runs with its guard down: moving at will in the free
@@ -211,9 +205,10 @@ static func runs_unguarded(f: Fighter) -> bool:
 
 
 ## Whether fighter `f`'s feet can stand planted: on the ground, standing,
-## walking, stepping or landing (PLANTING_STATES, in_stance()).
+## walking, stepping or landing, or in the Iai stance (PLANTING_STATES,
+## Fighter.in_stance()).
 static func plants(f: Fighter) -> bool:
-	return (PLANTING_STATES.has(f.state) or in_stance(f)) and not f.airborne()
+	return (PLANTING_STATES.has(f.state) or f.in_stance()) and not f.airborne()
 
 
 ## The way fighter `f` travels over the ground from the way it faces

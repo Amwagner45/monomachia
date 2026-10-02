@@ -2,7 +2,8 @@ extends GutTest
 ## Checks every field of every weapon and move against the TypeScript data after
 ## finalizeMoves (game/tests/fixtures/moves.json, written by
 ## scripts/sim-fixtures.ts), apart from the rebuild's deliberate changes (the
-## changes table). The fixture has the TS camelCase keys; a missing key was
+## changes table, the moves the new strings added or moved, and the fields the
+## demo didn't have). The fixture has the TS camelCase keys; a missing key was
 ## undefined in the TS and must hold the port's sentinel.
 
 ## The sentinel each optional field holds when the TS leaves it undefined
@@ -31,11 +32,12 @@ const UNSET: Dictionary = {
 	"hop": 0.0,
 }
 
-## The demo's data that the rebuild changed on purpose, one row per rule: a
-## move of this kind whose field held "was" in the TS (the port's sentinel
-## where the TS left it unset) now holds "now", a value or a function of the
-## move's TS record. Every move and field no row covers still matches the demo.
-## (A static var, as a const can't hold a function.)
+## The demo's data that the rebuild changed on purpose. A rule's row covers
+## every move of a kind, a move's row one move (by its id now): its field,
+## which held "was" in the TS (the port's sentinel where the TS left it unset),
+## now holds "now", a value or a function of the move's TS record with the
+## move rows applied. Every move and field no row covers still matches the
+## demo. (A static var, as a const can't hold a function.)
 static var changes: Array[Dictionary] = [
 	# 8.7: the lights' default hitstun (bare hands keep their own 16)
 	{"field": "hitstun", "kind": "light", "was": 18, "now": 14},
@@ -45,7 +47,30 @@ static var changes: Array[Dictionary] = [
 		"field": "dodge_cancel_from", "kind": "heavy", "was": AttackDef.UNSET,
 		"now": func(ts: Dictionary) -> int: return int(ts["startup"]) + int(ts["active"]) + ceili(float(ts["recovery"]) / 2.0),
 	},
+	# 9.1: the Katana's four-light string; Right Cut ends on Heaven Splitter,
+	# Crown Cut ends the string, and the two heavy follow-ups start sooner
+	# (their lunges end two frames after their cuts start, as before)
+	{"field": "chain_heavy", "move": "k_l1", "was": "k_h1f", "now": "k_h2"},
+	{"field": "chain_heavy", "move": "k_l4", "was": "k_h2", "now": ""},
+	{"field": "startup", "move": "k_h1f", "was": 18, "now": 16},
+	{"field": "lunge_end", "move": "k_h1f", "was": 20, "now": 18},
+	{"field": "startup", "move": "k_h2", "was": 24, "now": 22},
+	{"field": "lunge_end", "move": "k_h2", "was": 26, "now": 24},
 ]
+
+## Moves the new strings added, with no demo move to compare with: each
+## weapon's strings test checks them against the spec's table.
+const ADDED: Array[StringName] = [
+	&"k_l3", # 9.1: Kesa Cut, the third light
+]
+
+## Demo moves the new strings gave a new id: their id now -> the demo's.
+const MOVED: Dictionary[StringName, StringName] = {
+	&"k_l4": &"k_l3", # 9.1: Crown Cut, now the fourth light
+}
+
+## Fields the demo didn't have: the strings and continuity tests check them.
+const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
 var _fx: Dictionary
 
@@ -79,13 +104,30 @@ static func _same(a: Variant, b: Variant) -> bool:
 
 
 ## The value a move's field should hold: its TS value (or sentinel), or a
-## changes row's.
+## rule's changes row's.
 static func _wanted(ts: Dictionary, field: String, ts_value: Variant) -> Variant:
 	for row: Dictionary in changes:
-		if row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
+		if row.has("kind") and row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
 			var now: Variant = row["now"]
 			return (now as Callable).call(ts) if now is Callable else now
 	return ts_value
+
+
+## The TS record of the demo move now called id, with its id now and its move
+## rows applied. Adds to stale each row whose "was" isn't the demo's value.
+static func _rebuilt(ts: Dictionary, id: StringName, stale: Array[String]) -> Dictionary:
+	var out: Dictionary = ts.duplicate()
+	out["id"] = String(id)
+	for row: Dictionary in changes:
+		if row.get("move") != String(id):
+			continue
+		var field: String = row["field"]
+		var key: String = field.to_camel_case()
+		var demo: Variant = ts.get(key, UNSET.get(field))
+		if not _same(demo, row["was"]):
+			stale.append("%s.%s: its changes row says the demo had %s, but it had %s" % [id, field, row["was"], demo])
+		out[key] = row["now"]
+	return out
 
 
 ## Compares one AttackDef with its TS record; returns the differences.
@@ -104,7 +146,7 @@ func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 			if not _same(m.get(snake), want):
 				out.append("%s.%s: got %s, want %s" % [where, snake, m.get(snake), want])
 	for snake: String in AttackDef.KEYS:
-		if seen.has(snake):
+		if seen.has(snake) or REBUILD_FIELDS.has(snake):
 			continue
 		if not UNSET.has(snake):
 			out.append("%s.%s: unset in TS but finalizeMoves should set it" % [where, snake])
@@ -169,14 +211,32 @@ func test_every_move_of_every_weapon_matches_the_typescript() -> void:
 	for wid: String in ts_weapons:
 		var ts_moves: Dictionary = ts_weapons[wid]["moves"]
 		var w: WeaponDef = Moves.WEAPONS[StringName(wid)]
-		assert_eq(_norm(w.moves.keys()), ts_moves.keys(), "%s move order" % wid)
+		var demo_ids: Array = []
+		for id: StringName in w.moves:
+			if not ADDED.has(id):
+				demo_ids.append(String(MOVED.get(id, id)))
+		assert_eq(demo_ids, ts_moves.keys(), "%s: the demo's moves, in order, besides the added ones" % wid)
 		var diffs: Array[String] = []
-		for mid: String in ts_moves:
-			diffs.append_array(_diff_move("%s.%s" % [wid, mid], w.moves.get(StringName(mid), null), ts_moves[mid]))
+		for id: StringName in w.moves:
+			var demo_id: String = String(MOVED.get(id, id))
+			if ADDED.has(id) or not ts_moves.has(demo_id):
+				continue
+			var ts: Dictionary = _rebuilt(ts_moves[demo_id], id, diffs)
+			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], ts))
 			compared += 1
 		assert_eq(diffs, [] as Array[String], wid)
 	# 18 katana + 16 greatsword + 18 daggers + 15 fists
 	assert_eq(compared, 67)
+
+
+func test_every_changes_row_names_a_move_compared_with_the_demo() -> void:
+	for row: Dictionary in changes:
+		if row.has("move"):
+			var id := StringName(row["move"])
+			var known: bool = false
+			for w: WeaponDef in Moves.WEAPONS.values():
+				known = known or w.moves.has(id)
+			assert_true(known and not ADDED.has(id), "%s.%s's row names a move compared with the demo" % [row["move"], row["field"]])
 
 
 func test_every_ultimate_hit_matches_the_typescript() -> void:
@@ -215,6 +275,8 @@ func test_values_are_in_their_unions() -> void:
 		assert_true(m.counter == &"" or AttackDef.COUNTER_KINDS.has(m.counter), "%s counter" % m.id)
 		assert_true(m.sound == &"" or AttackDef.HIT_SOUNDS.has(m.sound), "%s sound" % m.id)
 		assert_true(m.special == &"" or AttackDef.SPECIALS.has(m.special), "%s special" % m.id)
+		assert_true(m.side_start == &"" or AttackDef.SIDES.has(m.side_start), "%s side_start" % m.id)
+		assert_true(m.side_end == &"" or AttackDef.SIDES.has(m.side_end), "%s side_end" % m.id)
 
 
 func test_get_move_falls_back_to_ultimate_hits() -> void:

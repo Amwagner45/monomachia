@@ -1510,7 +1510,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.7 Menu sounds.** `GameServices.play_ui` for move, select, confirm and back, called from the menus.
     - Check: focus moves, presses and Back play their cues on the UI bus; the attract duel stays silent.
     - Blocked by: 19.1 · Stories: 3
-  - [ ] **19.8 Headless check that every sound plays.** Seeded computer-vs-computer matches per weapon pairing with the audio attached, failing on a missing file, an event that played nothing, a logged error, or a music track that doesn't load.
+  - [x] **19.8 Headless check that every sound plays.** Seeded computer-vs-computer matches per weapon pairing with the audio attached, failing on a missing file, an event that played nothing, a logged error, or a music track that doesn't load.
     - Check: it passes, and a scratch edit pointing a cue at a missing file makes it fail.
     - Blocked by: 19.3, 19.4, 19.5, 20.2 · Stories: 50, 60, 63
   - [ ] **19.9 Sound check scene; tasks 19 and 20 ticked.** A tool scene steps through every event's cues, the footsteps, the ambience and the three tracks with their switches, so the owner can hear what a Duel rarely triggers.

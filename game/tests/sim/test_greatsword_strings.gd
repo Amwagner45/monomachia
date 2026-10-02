@@ -3,9 +3,8 @@ extends WeaponStringsTest
 ## played through the rules. Expected numbers come from the spec, not the
 ## code.
 
-## The spec's Greatsword table, the rows built so far (10.1: the L-L-H; see
-## WeaponStringsTest.rows). Overhead Strike's heavy follow-up, g_h2, becomes
-## Low Sweep in 10.2.
+## The spec's Greatsword table, the rows built so far (10.1 and 10.2: the
+## L-L-H and Low Sweep; see WeaponStringsTest.rows).
 const ROWS: Dictionary[StringName, Dictionary] = {
 	&"g_l1": {
 		"name": "Heavy Swing", "frames": [14, 4, 22], "damage": 9, "posture": 11,
@@ -19,6 +18,10 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 		"name": "Overhead Strike", "frames": [26, 5, 32], "damage": 18, "posture": 22,
 		"light": &"", "heavy": &"g_h2", "sides": [&"centre", &"right"],
 	},
+	&"g_h2": {
+		"name": "Low Sweep", "frames": [26, 5, 34], "damage": 16, "posture": 22,
+		"light": &"", "heavy": &"", "sides": [&"right", &"left"],
+	},
 }
 
 ## A heavy held past its frame 9 charges, standing still, and releases by
@@ -27,6 +30,9 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 const CHARGE_FROM: int = 9
 const CHARGE_MAX: int = 150
 
+## A defender who jumps 9 steps before a sweep would hit is in the air as it
+## cuts (test_combat's jump over Reaping Sweep jumps as early).
+const LEAP_LEAD: int = 9
 
 
 func _init() -> void:
@@ -90,16 +96,9 @@ func test_overhead_strike_charges_as_the_l_l_hs_finisher_too() -> void:
 	# a held heavy charges however the heavy started, as the demo's Twin Fang
 	# does after the Daggers' lights: the L-L-H pressed as _play presses it,
 	# with the heavy then held to the end
-	var tapped: PlayedString = _play([Btn.LIGHT, Btn.LIGHT, Btn.HEAVY])
-	var swung: Array[int] = []
-	for e: Dictionary in tapped.all(&"swing"):
-		if e["f"] == 0:
-			swung.append(e["step"])
-	assert_eq(swung.size(), 3, "the L-L-H swings three times")
-	if swung.size() < 3:
-		return
-	var second_light: int = swung[0] + 1
-	var heavy_from: int = swung[1] + 1
+	var on: Array[int] = _play([Btn.LIGHT, Btn.LIGHT, Btn.HEAVY]).pressed_on
+	var second_light: int = on[1]
+	var heavy_from: int = on[2]
 	var held_finisher: Callable = func(i: int) -> RawInput:
 		if i == 0 or i == second_light:
 			return H.btn(Btn.LIGHT)
@@ -123,11 +122,109 @@ func test_a_light_starts_no_backswing_out_of_overhead_strike() -> void:
 func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 	var light: int = Btn.LIGHT
 	var heavy: int = Btn.HEAVY
-	var strings: Array = [[light], [light, light], [heavy], [light, heavy], [light, light, heavy]]
+	var strings: Array = [
+		[light], [light, light], [heavy], [light, heavy], [light, light, heavy],
+		[heavy, heavy], [light, heavy, heavy], [light, light, heavy, heavy],
+	]
 	for presses: Array in strings:
 		var typed: Array[int] = []
 		typed.assign(presses)
 		_assert_stops_after(typed)
+
+
+# ------------------------------------------------------------------ Low Sweep
+
+func test_overhead_strike_goes_on_to_low_sweep() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	assert_eq(_play([heavy, heavy]).ids(&"hit"), [&"g_h1", &"g_h2"] as Array[StringName], "H-H: Overhead Strike, Low Sweep")
+	assert_eq(
+		_play([light, light, heavy, heavy]).ids(&"hit"),
+		[&"g_l1", &"g_l2", &"g_h1", &"g_h2"] as Array[StringName],
+		"L-L-H-H: the L-L-H, then Low Sweep",
+	)
+
+
+func test_low_sweep_telegraphs_a_sweep_as_it_starts() -> void:
+	var r: PlayedString = _play([Btn.HEAVY, Btn.HEAVY])
+	var warnings: Array[Dictionary] = r.by_fighter_0(&"telegraph")
+	assert_eq(warnings.size(), 1, "one warning: Low Sweep's")
+	if warnings.size() != 1:
+		return
+	var e: Dictionary = warnings[0]
+	assert_eq([e["kind"], e["attack"]], [&"sweep", &"g_h2"], "a sweep's, naming Low Sweep")
+	assert_eq(e["step"], r.attack.find(&"g_h2"), "on the step Low Sweep starts")
+
+
+func test_a_blocking_defender_blocks_overhead_strike_but_not_low_sweep() -> void:
+	var r: PlayedString = _play_against([Btn.HEAVY, Btn.HEAVY], func(_i: int) -> RawInput: return H.btn(Btn.BLOCK))
+	assert_eq(r.ids(&"block"), [&"g_h1"] as Array[StringName], "Overhead Strike is blocked")
+	assert_eq(r.ids(&"hit"), [&"g_h2"] as Array[StringName], "Low Sweep hits through the block")
+
+
+func test_a_defender_in_the_air_as_low_sweep_cuts_leaps_over_it_as_a_counter() -> void:
+	# the defender jumps LEAP_LEAD steps before the step Low Sweep hits one
+	# who stays put
+	var heavies: Array[int] = [Btn.HEAVY, Btn.HEAVY]
+	var contact: int = -1
+	for e: Dictionary in _play(heavies).by_fighter_0(&"hit"):
+		if e["attack"] == &"g_h2":
+			contact = e["step"]
+	assert_gt(contact, LEAP_LEAD, "Low Sweep hits a defender who stays put")
+	if contact <= LEAP_LEAD:
+		return
+	var r: PlayedString = _play_against(heavies, H.tap_at(contact - LEAP_LEAD, Btn.JUMP))
+	var counters: Array[Dictionary] = r.all(&"counter")
+	assert_eq(counters.size(), 1, "one counter")
+	if counters.size() == 1:
+		var c: Dictionary = counters[0]
+		assert_eq([c["kind"], c["by"], c["on"]], [&"leap", 1, 0], "the defender leaps on the attacker")
+		var at: int = c["step"]
+		assert_eq([r.attack[at - 1], r.state[at]], [&"g_h2", &"stunned"], "stunning the attacker out of Low Sweep")
+	assert_eq(r.ids(&"hit"), [&"g_h1"] as Array[StringName], "and Low Sweep never hits")
+
+
+func test_low_sweep_ends_the_string() -> void:
+	_assert_starts_nothing_in([Btn.HEAVY, Btn.HEAVY], [&"g_h1", &"g_h2"], LIGHT_OR_HEAVY)
+
+
+func test_low_sweep_is_narrower_and_faster_than_reaping_sweep_and_reaches_past_the_lights() -> void:
+	# the spec's numbers: Low Sweep 26 frames, 110° and 3.2 m; Reaping Sweep
+	# 28 frames and 160°; the lights 3.0 m
+	var moves: Dictionary[StringName, AttackDef] = Moves.GREATSWORD.moves
+	var low: AttackDef = moves[&"g_h2"]
+	var reaping: AttackDef = moves[&"g_sweep"]
+	assert_eq([reaping.startup, reaping.arc, moves[&"g_l1"].range], [28, 160.0, 3.0], "Reaping Sweep's and the lights' numbers")
+	assert_lt(low.startup, reaping.startup, "Low Sweep starts sooner than Reaping Sweep")
+	assert_lt(low.arc, reaping.arc, "and is narrower")
+	assert_gt(low.range, moves[&"g_l1"].range, "it reaches past the lights, as an unblockable does")
+
+
+func test_low_sweep_is_marked_as_an_unblockable_that_can_be_jumped() -> void:
+	# the spec: unblockable (dodge invincibility doesn't help against it, and
+	# it leaves the danger trail, the red ink trail), jumpable, with the sweep
+	# counter, and as a heavy it dodge-cancels from 26 + 5 + 17 = 48. jumpable
+	# matters only close in and off to the side, where the hit's cone widens
+	# more than the leap counter's, so the flag is held here.
+	var m: AttackDef = Moves.GREATSWORD.moves[&"g_h2"]
+	assert_eq(
+		[m.unblockable, m.undodgeable, m.trail, m.jumpable, m.counter, m.dodge_cancel_from],
+		[true, true, &"danger", true, &"sweep", 48],
+	)
+
+
+func test_low_sweep_is_a_sweep_with_its_interim_cone_and_earthbreakers_lunge() -> void:
+	# until weapon paths decide hits (task 7): a sweep (the stand-in's sweep
+	# pose), 3.2 m and 110°, with Earthbreaker's lunge, knockback and
+	# hitstop, its lunge ending two frames after its cut starts, as
+	# Earthbreaker's did
+	var m: AttackDef = Moves.GREATSWORD.moves[&"g_h2"]
+	assert_eq([m.type, m.anim], [&"sweep", &"sweep"], "a sweep")
+	assert_eq(
+		[m.range, m.arc, m.lunge, m.lunge_start, m.lunge_end, m.knockback, m.hitstop],
+		[3.2, 110.0, 0.8, 10, 28, 2.0, 10],
+		"range, arc, lunge and its window, knockback and hitstop",
+	)
 
 
 # ------------------------------------------------------------------ the spec's table

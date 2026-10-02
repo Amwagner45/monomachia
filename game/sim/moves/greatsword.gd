@@ -27,12 +27,14 @@ const MOVES: Dictionary = {
 		"range": 3.1, "arc": 90, "lunge": 0.7, "lunge_start": 10, "lunge_end": 30, "chargeable": true,
 		"chain_heavy": &"g_h2", "hitstop": 9,
 	},
-	# its sides hold continuity until Low Sweep replaces it (10.2)
+	# the heavy string's finisher, at the feet: unblockable, and a jump over it
+	# is a leap counter
 	&"g_h2": {
-		"id": &"g_h2", "name": "Earthbreaker", "kind": &"heavy", "type": &"overhead", "anim": &"overhead", "sound": C,
-		"side_start": &"centre", "side_end": &"centre",
-		"startup": 30, "active": 5, "recovery": 34, "damage": 20, "posture": 24, "knockback": 2.0,
-		"range": 3.0, "arc": 60, "lunge": 0.8, "lunge_start": 10, "lunge_end": 32, "hitstop": 10,
+		"id": &"g_h2", "name": "Low Sweep", "kind": &"heavy", "type": &"sweep", "anim": &"sweep", "sound": C,
+		"side_start": &"right", "side_end": &"left",
+		"startup": 26, "active": 5, "recovery": 34, "damage": 16, "posture": 22, "knockback": 2.0,
+		"range": 3.2, "arc": 110, "lunge": 0.8, "lunge_start": 10, "lunge_end": 28,
+		"unblockable": true, "jumpable": true, "counter": &"sweep", "hitstop": 10,
 	},
 	&"g_sl": {
 		"id": &"g_sl", "name": "Shoulder Charge", "kind": &"light", "type": &"bash", "anim": &"bash", "sound": &"fist",

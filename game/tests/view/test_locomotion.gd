@@ -537,3 +537,209 @@ func test_the_arms_keep_their_grip_while_strafing() -> void:
 				continue
 			var hand: Vector3 = bones[sk.find_bone(side + "Hand")].origin
 			assert_lt(hand.distance_to(rig.hand_frame(side).origin), 0.01, "%s hand on its grip, frame %d" % [side, W.frame])
+
+
+# ------------------------------------------------------------------ the lean and the brace
+
+## How far the top of a body leaning by rotation vector `lean` moves, and
+## which way, in the fighter's frame (x to its left, z forward).
+static func _tipped(lean: Vector3) -> Vector3:
+	if lean.length() < 1e-6:
+		return Vector3.ZERO
+	var up: Vector3 = Basis(lean.normalized(), lean.length()) * Vector3.UP
+	return Vector3(up.x, 0.0, up.z)
+
+
+func test_the_lean_tips_toward_acceleration_and_stops_at_11_degrees() -> void:
+	var most: float = deg_to_rad(11.0)
+	assert_almost_eq(Lean.MOST, most, 1e-6)
+	assert_almost_eq(Lean.target_tilt(Vector3(0.0, 0.0, 5.0)), Vector3(0.0, 0.0, 0.07), Vector3.ONE * 1e-6, "0.014 rad per m/s², forward")
+	assert_almost_eq(Lean.target_tilt(Vector3(0.0, 0.0, -30.0)), Vector3(0.0, 0.0, -most), Vector3.ONE * 1e-6, "back, as far as it goes")
+	assert_almost_eq(Lean.target_tilt(Vector3(-3.0, 0.0, 4.0)), Vector3(-0.042, 0.0, 0.056), Vector3.ONE * 1e-6, "toward it, right and forward")
+	assert_eq(Lean.target_tilt(Vector3.ZERO), Vector3.ZERO, "upright without it")
+	# the rotation tips the top of the body the way the tilt says
+	for tilt: Vector3 in [Vector3(0.0, 0.0, 0.1), Vector3(0.0, 0.0, -0.15), Vector3(0.08, 0.0, 0.0), Vector3(-0.06, 0.0, 0.08)]:
+		var tipped: Vector3 = _tipped(Lean.rotation(tilt))
+		assert_almost_eq(tipped.normalized(), tilt.normalized(), Vector3.ONE * 1e-5, "tilt %s: its way" % tilt)
+		assert_almost_eq(tipped.length(), sin(tilt.length()), 1e-5, "tilt %s: its angle" % tilt)
+
+
+func test_the_brace_drops_the_hips_against_the_way_of_travel() -> void:
+	var ahead: Vector3 = Vector3(0.0, 0.0, 1.0)
+	assert_almost_eq(Lean.brace_drop(Vector3(0.0, 0.0, -10.0), ahead), 0.035, 1e-6, "0.35 cm per m/s² of braking")
+	assert_almost_eq(Lean.brace_drop(Vector3(0.0, 0.0, -30.0), ahead), Lean.DROP_MOST, 1e-6, "at most 5 cm")
+	assert_almost_eq(Lean.DROP_MOST, 0.05, 1e-6)
+	assert_eq(Lean.brace_drop(Vector3(0.0, 0.0, 10.0), ahead), 0.0, "speeding up")
+	assert_eq(Lean.brace_drop(Vector3(8.0, 0.0, 0.0), ahead), 0.0, "turning")
+	assert_almost_eq(Lean.brace_drop(Vector3(-6.0, 0.0, 0.0), Vector3(1.0, 0.0, 0.0)), 0.021, 1e-6, "braking a run to the left")
+
+
+func test_running_leans_into_the_start_and_stands_up_at_speed() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var lean: Lean = v.locomotion.lean
+	_show(v, f)
+	var most: float = 0.0
+	var last: float = 0.0
+	for i: int in 60:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+		var t: Vector3 = lean.shown_tilt
+		assert_lte(t.length(), Lean.MOST + 1e-6, "never past 11°, frame %d" % W.frame)
+		if i == 0:
+			assert_lt(rad_to_deg(t.length()), 2.0, "no snap on the first frame")
+		most = maxf(most, t.z)
+		assert_lt(lean.shown_drop, 0.005, "no brace speeding up")
+		last = t.length()
+	assert_gt(rad_to_deg(most), 4.0, "leaning forward into the start")
+	assert_lt(rad_to_deg(last), 0.5, "upright again at a steady run")
+
+
+func test_braking_leans_back_and_drops_the_hips_then_settles() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var lean: Lean = v.locomotion.lean
+	var body: BodyLayer = v.model.rig.body
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+	var back: float = 0.0
+	var back_at: int = -1
+	var drop: float = 0.0
+	var stopped: int = -1
+	var settled: int = -1
+	for i: int in 60:
+		_step(W, v, SimHelpers.idle())
+		var t: Vector3 = lean.shown_tilt
+		assert_lte(t.length(), Lean.MOST + 1e-6, "never past 11°")
+		assert_lte(lean.shown_drop, Lean.DROP_MOST + 1e-6, "never past 5 cm")
+		if t.z < back:
+			back = t.z
+			back_at = i
+		drop = maxf(drop, lean.shown_drop)
+		assert_almost_eq(body.lean, Lean.rotation(t), Vector3.ONE * 1e-6, "on the body")
+		assert_almost_eq(body.hips_offset.y, -lean.shown_drop, 1e-6, "on the hips")
+		if stopped < 0 and _speed(f) == 0.0:
+			stopped = i
+		var still: bool = rad_to_deg(t.length()) < 0.5 and lean.shown_drop < 0.005
+		if back_at >= 0 and settled < 0 and still:
+			settled = i
+		elif not still:
+			settled = -1
+	assert_lt(rad_to_deg(back), -9.0, "leaning back to brake")
+	assert_gt(drop, 0.035, "the hips dropping")
+	assert_between(stopped, 0, 12, "stopped")
+	assert_lte(back_at - stopped, 3, "leaning furthest back as it stops")
+	assert_between(settled - stopped, 1, 24, "settling upright, the hips back up, within 0.4 s of stopping")
+
+
+func test_the_lean_holds_in_hit_stop_and_shows_between_frames_by_alpha() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var lean: Lean = v.locomotion.lean
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+	for i: int in 4:
+		_step(W, v, SimHelpers.idle())
+	var tilt: Vector3 = lean.tilt
+	var drop: float = lean.drop
+	assert_lt(tilt.z, -0.02, "leaning back")
+	W.hitstop = 8
+	for i: int in 8:
+		_step(W, v, SimHelpers.idle())
+		assert_eq(lean.tilt, tilt, "hit-stop step %d" % i)
+		assert_eq(lean.drop, drop)
+	_step(W, v, SimHelpers.idle())
+	assert_ne(lean.tilt, tilt, "and moves on after it")
+	for alpha: float in [0.0, 0.5]:
+		_show(v, f, alpha)
+		assert_almost_eq(lean.shown_tilt, tilt.lerp(lean.tilt, alpha), Vector3.ONE * 1e-6, "alpha %.1f" % alpha)
+		assert_almost_eq(lean.shown_drop, lerpf(drop, lean.drop, alpha), 1e-6)
+
+
+func test_circling_the_opponent_leans_into_the_turn() -> void:
+	var W: World = _world(3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var lean: Lean = v.locomotion.lean
+	for i: int in 90:
+		_step(W, v, SimHelpers.move(-1.0, 0.0))
+	# 3.5 m/s round a 3 m circle pulls 4.1 m/s² toward the opponent
+	var t: Vector3 = lean.shown_tilt
+	assert_between(rad_to_deg(t.z), 2.5, 4.5, "toward the opponent, into the turn")
+	assert_lt(absf(rad_to_deg(t.x)), 0.5, "not along the way it runs")
+	assert_lt(lean.shown_drop, 0.005, "no brace")
+
+
+func test_an_attack_from_a_run_doesnt_lean_back() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var lean: Lean = v.locomotion.lean
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+	_step(W, v, SimHelpers.move(0.0, 1.0, Btn.LIGHT))
+	assert_eq(f.state, &"attack")
+	for i: int in 20:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+		assert_lt(rad_to_deg(lean.shown_tilt.length()), 1.0, "the attack's own change of speed is its own, frame %d" % W.frame)
+		assert_lt(lean.shown_drop, 0.005)
+
+
+func test_the_guard_rides_the_lean() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	var rig: FighterRig = v.model.rig
+	var sk: Skeleton3D = v.model.skeleton
+	var chest: int = sk.find_bone("UpperChest")
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(0.0, 1.0))
+	for i: int in 15:
+		_step(W, v, SimHelpers.idle())
+		if rad_to_deg(loco.lean.shown_tilt.length()) > 8.0:
+			break
+	assert_gt(rad_to_deg(loco.lean.shown_tilt.length()), 8.0, "leaning back hard")
+	var leaning: Array[Transform3D] = await _posed(v)
+	var held: Vector3 = leaning[chest].affine_inverse() * rig.grip_point("Right")
+	for side: String in FighterRig.SIDES:
+		if rig.drives(side):
+			assert_lt(leaning[sk.find_bone(side + "Hand")].origin.distance_to(rig.hand_frame(side).origin), 0.01, "%s hand on its grip" % side)
+	# the same frame shown upright: the grip sits where it did against the chest
+	loco.lean.prev_tilt = Vector3.ZERO
+	loco.lean.tilt = Vector3.ZERO
+	loco.lean.prev_drop = 0.0
+	loco.lean.drop = 0.0
+	_show(v, f)
+	var upright: Array[Transform3D] = await _posed(v)
+	var still: Vector3 = upright[chest].affine_inverse() * rig.grip_point("Right")
+	assert_lt(held.distance_to(still), 0.015, "the grip rides with the chest")
+
+
+func test_the_lean_is_the_same_when_shown_every_other_frame() -> void:
+	# a match drawn at 30 fps shows two rules frames at a time
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var every: FighterView = _view()
+	var other: FighterView = _view()
+	_show(every, f)
+	_show(other, f)
+	var inputs: Array[RawInput] = []
+	for i: int in 50:
+		inputs.append(SimHelpers.move(0.0, 1.0))
+	for i: int in 30:
+		inputs.append(SimHelpers.idle())
+	var most: float = 0.0
+	for i: int in inputs.size():
+		W.step([inputs[i], SimHelpers.idle()])
+		_show(every, f)
+		if i % 2 == 1:
+			_show(other, f)
+			var a: Lean = every.locomotion.lean
+			var b: Lean = other.locomotion.lean
+			most = maxf(most, a.tilt.length())
+			assert_lt(rad_to_deg(a.tilt.distance_to(b.tilt)), 1.0, "frame %d: %.1f° against %.1f°" % [W.frame, rad_to_deg(a.tilt.z), rad_to_deg(b.tilt.z)])
+			assert_lt(absf(a.drop - b.drop), 0.005, "frame %d's brace" % W.frame)
+	assert_gt(rad_to_deg(most), 8.0, "it leaned")

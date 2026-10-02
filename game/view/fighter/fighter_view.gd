@@ -19,7 +19,8 @@ extends Node3D
 ##   (Locomotion), over the clip for the held weapon (its WeaponHold's) at
 ##   rest, all on the rules' clock, so they hold still through hit-stop and
 ##   pause. They turn toward the way the fighter travels, or run backwards,
-##   while the chest keeps facing the opponent;
+##   while the chest keeps facing the opponent, and the body leans into the
+##   acceleration and braces when braking, the weapons riding with it;
 ## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
 ##   timed on the rules' frames from the KO;
 ## - a disarmed fighter holds nothing, its arms on the clip.
@@ -173,17 +174,19 @@ func _pose(f: Fighter, p: StickPose.Pose) -> void:
 	var rig: FighterRig = model.rig
 	rig.leg_weight = 1.0
 	rig.body.clear()
-	locomotion.turn(rig.body)
 	rig.body.spine_pitch = p.lean
 	rig.body.hips_offset = Vector3(0.0, -p.crouch, 0.0)
+	locomotion.pose_body(rig.body)
 	model.rotation = Vector3(0.0, p.spin, 0.0)
 	if model.weapons.is_empty():
 		return
 	var sweeps: Array[Vector3] = _strike_sweeps(f)
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
+	# the weapons ride the lean and the brace with the upper body
+	var carry: Transform3D = locomotion.carry(model.skeleton)
 	for i: int in model.weapons.size():
 		var hand: StickPose.Hand = hands[i]
-		var xf: Transform3D = FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
+		var xf: Transform3D = carry * FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
 		model.pose_weapon(i, _within_reach(i, xf, rig.body))
 
 

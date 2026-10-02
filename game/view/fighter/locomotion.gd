@@ -29,11 +29,14 @@ extends RefCounted
 ##   forwards, so a strafe is a run turned 80°. Travelling more than
 ##   BACKWARDS_AT from straight ahead, they turn toward the opposite way and
 ##   the cycle runs backwards (a backpedal). The turn follows on a spring,
-##   once per rules frame, and turn() puts it on the body: the pelvis and the
+##   once per rules frame, and pose_body() puts it on the body: the pelvis and the
 ##   thighs share it, the spine turns the chest back, and the clip's own twist
 ##   above the hips comes out as far as the legs move, so the chest faces the
 ##   opponent whichever way the legs run. The leg IK plants the feet where
 ##   the turned legs put them (BodyLayer.clip_feet).
+## - The body leans into the acceleration and braces when braking (Lean),
+##   stepped with the phase, and a weapon held in a guard rides with it
+##   (carry()).
 ##
 ## A KO's fall plays on the model's AnimationPlayer instead: the view stops
 ## updating the tree, and the player's pose stands.
@@ -96,6 +99,8 @@ var leg_yaw_rate: float = 0.0
 var shown_phase: float = 0.0
 var shown: PackedFloat32Array = PackedFloat32Array([1.0, 0.0, 0.0, 0.0])
 var shown_leg_yaw: float = 0.0
+## The lean into acceleration and the brace.
+var lean: Lean = Lean.new()
 
 var _root: AnimationNodeBlendTree
 ## The rules frame the phase is at; -1 before the first update.
@@ -210,7 +215,9 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 		prev_speed = speed
 		prev_phase = phase
 		prev_leg_yaw = leg_yaw
+		lean.reset(f)
 	elif frame > _frame:
+		lean.step(f, frame - _frame)
 		var s: float = ground_speed(f)
 		var target: float = 0.0
 		if s > TURN_MIN_SPEED:
@@ -237,18 +244,30 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 	shown_phase = fposmod(prev_phase + wrapf(phase - prev_phase, -0.5, 0.5) * alpha, 1.0)
 	shown = weights(lerpf(prev_speed, speed, alpha), run_speed, sprint_speed)
 	shown_leg_yaw = lerpf(prev_leg_yaw, leg_yaw, alpha)
+	lean.show(alpha)
 	_show(idle_clip, idle_seconds)
 
 
-## Turns `body` for the legs as last shown: the pelvis takes PELVIS_SHARE of
-## the legs' turn and the thighs the rest, the spine turns the chest back,
-## and the clip's own twist above the hips comes out as far as the legs
-## move, so the chest keeps facing the way the fighter faces.
-func turn(body: BodyLayer) -> void:
+## Lays the legs' turn, the lean and the brace, as last shown, on `body`:
+## - the pelvis takes PELVIS_SHARE of the legs' turn and the thighs the
+##   rest, the spine turns the chest back, and the clip's own twist above the
+##   hips comes out as far as the legs move, so the chest keeps facing the
+##   way the fighter faces;
+## - the whole body tilts by the lean, and the hips drop by the brace on top
+##   of whatever offset `body` already has.
+func pose_body(body: BodyLayer) -> void:
 	body.pelvis_yaw = shown_leg_yaw * PELVIS_SHARE
 	body.thigh_yaw = shown_leg_yaw * (1.0 - PELVIS_SHARE)
 	body.spine_yaw = -body.pelvis_yaw
 	body.untwist = 1.0 - shown[0]
+	body.lean = Lean.rotation(lean.shown_tilt)
+	body.hips_offset.y -= lean.shown_drop
+
+
+## How the lean and the brace move the upper body of `model`'s skeleton (see
+## Lean.carry()), for a weapon held in a guard to ride with it.
+func carry(sk: Skeleton3D) -> Transform3D:
+	return lean.carry(sk.get_bone_global_pose(sk.find_bone("Root")).origin)
 
 
 # ------------------------------------------------------------------ the tree

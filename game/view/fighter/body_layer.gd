@@ -104,21 +104,21 @@ func moved(sk: Skeleton3D, point: Vector3) -> Vector3:
 		clip[bone_name] = sk.get_bone_global_pose(_id(sk, bone_name))
 	var m: Transform3D = Transform3D.IDENTITY
 	if absf(pelvis_yaw) > 1e-5:
-		m = _about(clip[&"Hips"].origin, Quaternion(Vector3.UP, pelvis_yaw)) * m
+		m = about(clip[&"Hips"].origin, Quaternion(Vector3.UP, pelvis_yaw)) * m
 	if lean.length() > 1e-5:
-		m = _about(clip[&"Root"].origin, Quaternion(lean.normalized(), lean.length())) * m
+		m = about(clip[&"Root"].origin, Quaternion(lean.normalized(), lean.length())) * m
 	m = Transform3D(Basis.IDENTITY, hips_offset) * m
 	for bone_name: StringName in SPINE_SHARE:
 		var share: float = SPINE_SHARE[bone_name]
 		var at: Vector3 = (m * clip[bone_name]).origin
 		var yaw: float = spine_yaw * share - untwist * twists[bone_name]
 		if absf(yaw) > 1e-5:
-			m = _about(at, Quaternion(Vector3.UP, yaw)) * m
+			m = about(at, Quaternion(Vector3.UP, yaw)) * m
 		var b: Basis = (m * clip[bone_name]).basis.orthonormalized()
 		if absf(spine_pitch) > 1e-5:
-			m = _about(at, Quaternion(b.x, spine_pitch * share)) * m
+			m = about(at, Quaternion(b.x, spine_pitch * share)) * m
 		if absf(spine_roll) > 1e-5:
-			m = _about(at, Quaternion(b.z, spine_roll * share)) * m
+			m = about(at, Quaternion(b.z, spine_roll * share)) * m
 	return m * point
 
 
@@ -183,7 +183,7 @@ func _twists(sk: Skeleton3D) -> Dictionary[StringName, float]:
 
 
 ## Turning by `q` about the point `at`.
-static func _about(at: Vector3, q: Quaternion) -> Transform3D:
+static func about(at: Vector3, q: Quaternion) -> Transform3D:
 	return Transform3D(Basis.IDENTITY, at) * Transform3D(Basis(q), Vector3.ZERO) * Transform3D(Basis.IDENTITY, -at)
 
 

@@ -30,12 +30,13 @@ extends Node3D
 ##
 ## Strips: --drive=<name> plays one of DRIVES instead of a move, scripted
 ## input from rest (rest_to_sprint: still, then running at the opponent, then
-## sprinting; strafe_left and strafe_right round the opponent, backpedal and
+## sprinting; run_brake and sprint_brake: running or sprinting at it, then
+## letting go; strafe_left and strafe_right round the opponent, backpedal and
 ## back_left away from it, each then stopping), with the opponent out of the
 ## way, and lays out a strip of the chosen frames: the first, every
 ## --every=th (default 4) and the last, each captioned with the speed, the
-## legs' turn, Locomotion's blend and the step phase, a block of rows per
-## view.
+## legs' turn, Locomotion's blend and the step phase, and the lean and the
+## brace, a block of rows per view.
 ##
 ## The defender holds the Katana and takes no input, so a move that reaches it
 ## lands as the rules say. The stage is the preview's studio, and the chosen
@@ -71,6 +72,18 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 	&"rest_to_sprint": {
 		"input": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
 		"notes": "still for 12 frames, running at the opponent for 60, then sprinting for 60",
+		"views": [&"side"],
+		"spacing": 26.0,
+	},
+	&"run_brake": {
+		"input": [[12, 0.0, 0.0, 0], [48, 0.0, 1.0, 0], [36, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, running at the opponent for 48, then letting go of the stick for 36",
+		"views": [&"side"],
+		"spacing": 26.0,
+	},
+	&"sprint_brake": {
+		"input": [[12, 0.0, 0.0, 0], [24, 0.0, 1.0, 0], [36, 0.0, 1.0, 1 << Btn.SPRINT], [36, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, running for 24, sprinting for 36, then letting go for 36",
 		"views": [&"side"],
 		"spacing": 26.0,
 	},
@@ -113,6 +126,8 @@ const LANDMARKS: Array[String] = ["start", "windup", "cocked", "contact", "relea
 ## and the gap between rows and cells.
 const CELL_HEIGHT: int = 360
 const CAPTION_HEIGHT: int = 64
+## A strip cell's caption, a line taller for the lean.
+const STRIP_CAPTION_HEIGHT: int = 88
 const HEADER_HEIGHT: int = 156
 const GAP: int = 6
 const CAPTION_FONT: int = 19
@@ -634,8 +649,8 @@ func render_drive(drive_id: StringName) -> Image:
 		var lines: PackedStringArray = drive_caption(i + 1, loco)
 		strip.append(lines)
 		for view: StringName in views:
-			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR],
-				Vector2i(cell_size(view).x, CAPTION_HEIGHT), CAPTION_FONT)
+			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],
+				Vector2i(cell_size(view).x, STRIP_CAPTION_HEIGHT), CAPTION_FONT)
 			cells[view].append(stack(label, await _capture(view)))
 	var grid: Array[Row] = []
 	for view: StringName in views:
@@ -662,7 +677,8 @@ func render_drive(drive_id: StringName) -> Image:
 
 ## A strip frame's caption: the frame and speed, and the legs' turn when they
 ## turn or run backwards; then the blend's weights (those over 0) and the
-## step phase.
+## step phase; then the lean, its angle and the way the body tips, and the
+## brace's drop of the hips.
 static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
 	var weights: PackedStringArray = []
 	for i: int in 4:
@@ -675,7 +691,23 @@ static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
 	return PackedStringArray([
 		first,
 		"%s · phase %.2f" % [" ".join(weights), loco.shown_phase],
+		_lean_text(loco.lean),
 	])
+
+
+## "upright", or "lean 11° back", with " · hips down 5 cm" while braced.
+static func _lean_text(lean: Lean) -> String:
+	var t: Vector3 = lean.shown_tilt
+	var angle: float = rad_to_deg(t.length())
+	var out: String = "upright"
+	if angle >= 0.5:
+		var way: String = "left" if t.x > 0.0 else "right"
+		if absf(t.z) >= absf(t.x):
+			way = "forward" if t.z > 0.0 else "back"
+		out = "lean %.0f° %s" % [angle, way]
+	if lean.shown_drop >= 0.005:
+		out += " · hips down %.0f cm" % (lean.shown_drop * 100.0)
+	return out
 
 
 ## Lays out a sheet: the header on top, then each row's caption over its

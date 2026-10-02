@@ -1038,9 +1038,43 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
           - `moved()` without the pelvis, untwist or lean;
           - the reach from the clip's shoulders, no turn on the body;
           - the front view's angle, the caption's back, a strafe drive's spacing, the drive's spacing and views ignored.
-  - [ ] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
+  - [x] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
     - Check: the lean follows acceleration within its cap and holds in hit-stop; braking leans back and settles; a run-brake-stop strip is reviewed.
     - Blocked by: 14.5 · Stories: 13
+    - Done:
+      - **`Lean`** (`game/view/fighter/lean.gd`), stepped by Locomotion once per rules frame and shown between frames by the host's alpha, so it holds in hit-stop and pause.
+        - **The acceleration** is the change of the rules' velocity over the ground, turns included, in the fighter's frame. It counts only while the fighter walks or runs on the ground on both frames, so an attack's own change of speed (it keeps half), a dodge or a jump adds nothing. It is eased at 20/s.
+        - **The lean:** the whole body tilts toward it about the ground under it (the Root bone), 0.014 rad per m/s², at most 11°, the leg IK keeping the feet planted.
+        - **The brace:** braking, the acceleration against the way the fighter last travelled, drops the hips 0.35 cm per m/s², at most 5 cm.
+        - **A spring** (critically damped, ω 30) takes the lean and the drop to their targets. The rules' tap step from rest is a one-frame jump to 4.13 m/s, which without it snaps the body 11° in a frame.
+        - **Rates:** the prototype eased at 10/s with no spring. The rules brake from a run in 7 frames, and at 10/s with a spring of 20 the back-lean peaked 5 frames after the stop and took 0.5 s to settle. At 20 and 30 it peaks 2 frames after the stop, settles in about 0.3 s, and a tap step leans forward over 6 frames, to about 9°.
+      - **The weapon rides the lean:** FighterView carries the stand-in weapon poses with the lean and the brace (`Locomotion.carry()`), so the arms keep their shape. Otherwise an 11° lean moves the shoulders about 20 cm against a weapon that stays put. `BodyLayer.about()` is now public.
+      - **What the strips show:**
+        - Setting off from rest, the Rogue leans 3°, 7° and 9° forward through the tap step, and is upright 16 frames in, running at speed.
+        - Letting go at 3.9 m/s, she leans back 2°, 6° and 8° as she slows, and stops at 10° back with the hips 4–5 cm down. She is upright again 18 frames (0.3 s) after the stop.
+        - From a sprint the back-lean reaches 11° while the legs still stride, and holds into the stop.
+        - Circling the opponent at 3 m leans about 3° toward it.
+        - The legs still pop from a mid-stride walk into the guard stance over the brake's last 2 frames (the blend drops from walk to idle between 0.9 m/s and 0). That is the low-speed band 14.9's shuffle takes over.
+      - **Strips:** new drives `run_brake` (still 12 frames, running 48, then letting go for 36) and `sprint_brake` (running 24, sprinting 36, letting go 36), side on, 26 m off. Strip captions gain a third line: "upright", or "lean 10° back · hips down 5 cm".
+      - **Tests:**
+        - `test_locomotion.gd` (30, 9 new):
+          - the target tilt (per m/s², the cap, the way), and the rotation tipping the body the way it says;
+          - the brace's drop against the way of travel only, and its cap;
+          - a run from rest leaning forward without a snap, never past 11°, upright at speed, no brace;
+          - a brake leaning back past 9° with the hips past 3.5 cm, furthest back within 3 frames of the stop, settled within 24 frames, and the values on the body;
+          - hit-stop and alpha;
+          - circling at 3 m leaning 2.5–4.5° toward the opponent;
+          - an attack from a run not leaning back;
+          - the grip riding the chest through the lean (within 1.5 cm of where it sits upright);
+          - the same lean shown every other frame, as at 30 fps.
+        - `test_move_sheet.gd` (2 new): the brake drives, and the caption's lean line and its height.
+        - Mutation-tested: 25 mutations, each failing a test:
+          - the gain, the cap, the way it leans, the prototype's slower rates, no spring;
+          - the drop's gain and cap, a brace when speeding up;
+          - counting every frame or every state, the fighter's frame turned wrong, forgetting the heading once stopped, the acceleration not shared over frames;
+          - the rotation's way, alpha, the carry's way, stepping in hit-stop;
+          - the lean or the brace left off the body, the crouch overwriting the brace, the weapon not riding;
+          - the caption's words, height and upright, and the sprint drive.
   - [ ] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle. Moved here from 14.3 with the owner's OK: the guard must pass PoseCheck, which today's fails (wrists about 42° sideways and 95° back, the Rogue's clip knee caved), so each hand also turns round the handle toward its forearm in place of the rig's fixed 25° grip roll, and the legs go on the stance's IK.
     - Check: on both fighters, the knees on or outside the hip-to-foot line, the rear foot at 30–45°, no crossed feet, the width in band; guard shots reviewed against the critique's fixes 8 and 9; PoseCheck passes on the guard.
     - Blocked by: 14.3 · Stories: 43

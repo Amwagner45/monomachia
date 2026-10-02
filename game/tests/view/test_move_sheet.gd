@@ -332,6 +332,7 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 	var first: PackedStringArray = sheet.strip[0]
 	assert_true(first[0].begins_with("frame 1 · 0.00 m/s"), first[0])
 	assert_eq(first[1], "idle 1.00 · phase 0.00")
+	assert_eq(first[2], "upright")
 	var last: PackedStringArray = sheet.strip[-1]
 	assert_true(last[0].begins_with("frame %d · 7.20 m/s" % inputs.size()), last[0])
 	assert_true(last[1].begins_with("sprint 1.00 · phase "), last[1])
@@ -343,7 +344,7 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 	var rows: int = ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
 	assert_eq(image.get_size(), Vector2i(
 		MoveSheet.STRIP_COLUMNS * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
-		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.CAPTION_HEIGHT + cell.y)))
+		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 
 
 func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> void:
@@ -369,9 +370,47 @@ func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> 
 	var rows: int = 2 * ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
 	assert_eq(image.get_size(), Vector2i(
 		mini(MoveSheet.STRIP_COLUMNS, frames.size()) * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
-		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.CAPTION_HEIGHT + cell.y)))
+		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 	assert_eq(sheet.title[1].get_slice(" · ", 0), "views: front, side")
 	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards")
+
+
+func test_the_brake_drives_run_then_let_go() -> void:
+	for id: StringName in [&"run_brake", &"sprint_brake"]:
+		var inputs: Array[RawInput] = MoveSheet.drive_inputs(id)
+		assert_eq(Vector2(inputs[0].mx, inputs[0].my), Vector2.ZERO, "%s from rest" % id)
+		var last_push: int = -1
+		for i: int in inputs.size():
+			if inputs[i].my > 0.0:
+				assert_eq(inputs[i].mx, 0.0, "%s runs straight at the opponent" % id)
+				last_push = i
+		assert_gt(last_push, 30, "%s runs" % id)
+		assert_gte(inputs.size() - 1 - last_push, 24, "%s then lets go long enough to settle" % id)
+		for i: int in range(last_push + 1, inputs.size()):
+			assert_eq(Vector2(inputs[i].mx, inputs[i].my), Vector2.ZERO, "%s: the stick let go" % id)
+		assert_eq(MoveSheet.DRIVES[id]["views"], [&"side"], "%s seen from the side" % id)
+		assert_gt(float(MoveSheet.DRIVES[id]["spacing"]), 20.0, "%s: room to run" % id)
+	var sprint: Array[RawInput] = MoveSheet.drive_inputs(&"sprint_brake")
+	var pushes: Array[RawInput] = sprint.filter(func(r: RawInput) -> bool: return r.my > 0.0)
+	assert_eq(pushes[-1].buttons, 1 << Btn.SPRINT, "sprinting when it lets go")
+
+
+func test_a_strip_caption_gives_the_lean_and_the_brace() -> void:
+	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=run_brake"]))
+	var loco: Locomotion = sheet.bench.view.locomotion
+	assert_eq(MoveSheet.drive_caption(1, loco)[2], "upright")
+	var cases: Array = [
+		[Vector3(0.0, 0.0, -deg_to_rad(11.0)), 0.05, "lean 11° back · hips down 5 cm"],
+		[Vector3(0.0, 0.0, 0.07), 0.0, "lean 4° forward"],
+		[Vector3(0.1, 0.0, 0.02), 0.012, "lean 6° left · hips down 1 cm"],
+		[Vector3(-0.1, 0.0, 0.0), 0.0, "lean 6° right"],
+		[Vector3(0.0, 0.0, 0.005), 0.0, "upright"],
+	]
+	for c: Array in cases:
+		loco.lean.shown_tilt = c[0]
+		loco.lean.shown_drop = c[1]
+		assert_eq(MoveSheet.drive_caption(1, loco)[2], c[2])
+	assert_gte(MoveSheet.STRIP_CAPTION_HEIGHT, 2 * MoveSheet.TEXT_MARGIN + 3 * MoveSheet.CAPTION_FONT * 5 / 4, "room for three lines")
 
 
 func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:

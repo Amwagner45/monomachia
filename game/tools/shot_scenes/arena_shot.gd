@@ -6,7 +6,7 @@ extends Node3D
 ## stand on their spawns; MatchView.set_arena puts the arena in; the chosen
 ## graphics preset is applied to the renderer, the window and the whole rig.
 ## Each .tscn next to this script picks a view; render one with
-##   node scripts/godot.mjs shots res://tools/shot_scenes/arena_<view>.tscn <out.png> 30 [--preset=<id>] [--arena=<id>]
+##   node scripts/godot.mjs shots res://tools/shot_scenes/arena_<view>.tscn <out.png> 30 [--preset=<id>] [--arena=<id>] [--wall=<degrees>]
 ##
 ## The arena is its ArenaDef's own scene whenever that scene exists, even
 ## while ArenaScenes' radius guard keeps it out of matches, so an arena can be
@@ -26,6 +26,11 @@ extends Node3D
 ##   when it differs from the rules' wall (orange) and its wall's inner face
 ##   (yellow) from the arena's ArenaDef, and the arena's Spawn and Gate
 ##   markers with their facing (cyan), plus a close-up of the wall at +X.
+##
+## At the wall: with wall_angle_deg set (or --wall=<degrees>), side 0 stands
+## backed against the rules' wall at that angle (from +Z toward +X), facing
+## side 1 wall_separation metres further in, so the gameplay and Watch views show
+## where the camera goes when a fighter is cornered (arena_wall.tscn).
 ##
 ## Bench: with entries in bench, the rig times frames instead of taking one
 ## shot (arena_bench.tscn times Low, Medium and High from the gameplay view):
@@ -104,6 +109,13 @@ const GATE_MARK_LIFT: float = 8.0
 @export var top_down_shift: float = 12.0
 ## The overlay rings' width (m): two pixels or so at 46 m tall.
 @export var ring_width: float = 0.1
+
+@export_group("Wall")
+## Back side 0 against the wall at this angle (degrees, from +Z toward +X);
+## NAN leaves both fighters on their spawns.
+@export var wall_angle_deg: float = NAN
+## How far apart the fighters stand, side 1 further in (m).
+@export var wall_separation: float = 3.0
 
 @export_group("Bench")
 ## The entries to time, in order; empty takes one shot instead.
@@ -188,6 +200,8 @@ func _ready() -> void:
 	))
 	# Twice: the view shows the position before the last step.
 	host.step(2)
+	if not is_nan(wall_angle_deg):
+		_back_to_wall()
 	var hud: CanvasLayer = host.get_node("Hud")
 	hud.visible = false
 	hud.set_process(false)
@@ -211,15 +225,22 @@ func _exit_tree() -> void:
 	RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), false)
 
 
-## The command line's --preset=, --arena=, --bench=, --bench-passes=,
-## --bench-frames= and --bench-res= override the exports. An unknown arena, a
-## count below 1 or a bad resolution is an error, so the shot run fails.
+## The command line's --preset=, --arena=, --wall=, --bench=,
+## --bench-passes=, --bench-frames= and --bench-res= override the exports.
+## An unknown arena, a wall angle that isn't a number, a count below 1 or a
+## bad resolution is an error, so the shot run fails.
 func apply_args(args: PackedStringArray) -> void:
 	for a: String in args:
 		if a.begins_with("--preset="):
 			preset_id = StringName(a.trim_prefix("--preset="))
 		elif a.begins_with("--arena="):
 			arena_id = StringName(a.trim_prefix("--arena="))
+		elif a.begins_with("--wall="):
+			var deg: String = a.trim_prefix("--wall=")
+			if not deg.is_valid_float():
+				push_error("arena_shot.gd: --wall= takes an angle in degrees, not '%s'" % a)
+			else:
+				wall_angle_deg = float(deg)
 		elif a.begins_with("--bench="):
 			bench = a.trim_prefix("--bench=").split(";", false)
 		elif a.begins_with("--bench-passes="):
@@ -234,6 +255,22 @@ func apply_args(args: PackedStringArray) -> void:
 				bench_resolution = Vector2i(int(size[0]), int(size[1]))
 	if not ArenaScenes.has(arena_id):
 		push_error("arena_shot.gd: no arena '%s'" % arena_id)
+
+
+## Backs side 0 against the rules' wall at wall_angle_deg, facing side 1
+## wall_separation metres further in, and steps twice so the view shows them
+## there.
+func _back_to_wall() -> void:
+	var a: float = deg_to_rad(wall_angle_deg)
+	var r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
+	var f0: Fighter = host.fighter(0)
+	var f1: Fighter = host.fighter(1)
+	f0.pos = V3.make(sin(a) * r, 0.0, cos(a) * r)
+	f1.pos = V3.make(sin(a) * (r - wall_separation), 0.0, cos(a) * (r - wall_separation))
+	for f: Fighter in [f0, f1]:
+		f.vel = V3.make()
+		f.yaw = SimMath.yaw_to(f.pos, f.opp.pos)
+	host.step(2)
 
 
 ## The whole number after an arg's "=", or fallback (reported) when it isn't

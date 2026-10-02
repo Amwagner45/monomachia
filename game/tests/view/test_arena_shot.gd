@@ -136,6 +136,30 @@ func test_the_command_line_sets_up_a_bench() -> void:
 	rig.free()
 
 
+func test_the_command_line_backs_a_fighter_against_the_wall() -> void:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.apply_args(PackedStringArray(["--wall=40"]))
+	assert_eq(rig.wall_angle_deg, 40.0)
+	rig.apply_args(PackedStringArray(["--wall=north"]))
+	assert_push_error("--wall= takes an angle in degrees")
+	assert_eq(rig.wall_angle_deg, 40.0, "left as it was")
+	rig.free()
+
+
+func test_at_the_wall_side_0_is_backed_against_it_facing_side_1() -> void:
+	var rig: ArenaShot = ArenaShot.new()
+	rig.arena_id = ArenaScenes.STANDIN
+	rig.wall_angle_deg = 90.0
+	add_child_autofree(rig)
+	var r: float = SimConst.ARENA_RADIUS - SimConst.FIGHTER_RADIUS
+	var f0: Fighter = rig.host.fighter(0)
+	var f1: Fighter = rig.host.fighter(1)
+	assert_almost_eq(Vector2(f0.pos.x, f0.pos.z), Vector2(r, 0.0), Vector2.ONE * 1e-6, "side 0 at the wall at 90 degrees (+X)")
+	assert_almost_eq(Vector2(f1.pos.x, f1.pos.z), Vector2(r - rig.wall_separation, 0.0), Vector2.ONE * 1e-6, "side 1 further in")
+	assert_almost_eq(f0.yaw, SimMath.yaw_to(f0.pos, f1.pos), 1e-6, "facing each other")
+	assert_almost_eq(f1.yaw, SimMath.yaw_to(f1.pos, f0.pos), 1e-6)
+
+
 func test_bad_bench_counts_and_sizes_on_the_command_line_are_reported() -> void:
 	var rig: ArenaShot = ArenaShot.new()
 	rig.apply_args(PackedStringArray(["--bench-passes=0", "--bench-frames=lots", "--bench-res=1080p"]))

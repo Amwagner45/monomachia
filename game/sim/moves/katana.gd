@@ -29,8 +29,9 @@ const MOVES: Dictionary = {
 		"startup": 14, "active": 4, "recovery": 22, "damage": 8, "posture": 10, "knockback": 0.6,
 		"range": 2.3, "arc": 60, "lunge": 0.5, "lunge_end": 16, "dodge_cancel_from": 26,
 	},
-	# the heavy: sheathe for 9 frames (held, the stance is the charge), then
-	# draw in 14, lunging only once drawn
+	# the heavy: sheathe for 9 frames (up to the fighter's charge check,
+	# CHARGE_CHECK_FRAME: held, the stance is the charge), then draw in 14,
+	# lunging only once the sheathe ends
 	&"k_iai": {
 		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
 		"side_start": &"left", "side_end": &"right",

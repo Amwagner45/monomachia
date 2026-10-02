@@ -76,7 +76,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 26. [ ] As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
 27. [ ] As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
 28. [ ] As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
-29. [x] As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
+29. [ ] As a Katana player, I want a fully held Iai (2.5 s) to release by itself as a power attack, as other charged heavies do, so that the charge rules stay consistent.
 30. [ ] As a Katana player, I want Flash, Piercing Thrust and Swallow Sweep as block abilities and Moonsplitter as the ultimate, as in the demo, so that the Katana keeps its identity.
 
 ### Greatsword
@@ -307,7 +307,7 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
 
-The Iai's frames count its sheathe in the startup: 23 frames are the 9-frame sheathe, which a held heavy stretches into the stance as a charge, and the 14-frame draw. A tapped heavy draws on frame 23, and a held one 14 frames after release; it lunges only once drawn. Until weapon paths decide hits (task 7), the vertical Iai hits with an interim cone of 3.6 m and 60° after a 0.4 m lunge, which reaches a fighter 3.8 m away where Right Cut misses. Until task 9.3 the sheathed fighter stands still.
+The Iai's frames count its sheathe in the startup: 23 frames are the 9-frame sheathe, which a held heavy stretches into the stance as a charge, and the 14-frame draw. A tapped heavy draws on frame 23 and hits on 24, and a held one hits 14 frames after release. It lunges only once the sheathe ends: 0.4 m over frames 10 to 25, easing in and out. Until weapon paths decide hits (task 7), the vertical Iai hits with an interim cone of 3.6 m and 60°, which with the lunge reaches a fighter 3.8 m away where Right Cut misses. Until task 9.3 the sheathed fighter stands still.
 
 Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). Rising Heaven's and Heaven Splitter's lunges still end two frames after their cuts start.
 
@@ -349,7 +349,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;
   - every new move and chain: Katana four-light string, Iai vertical and horizontal by stick, Iai follow-ups, strafing while sheathed, sheathed auto-release, dodge cancelling the stance; Greatsword L-L-H, Low Sweep unblockable and jumpable, dodge thrusts; Daggers alternating string, dodge-cancel timing, no light loop from Twin Fang, Passing Cut direction;
   - string continuity (`test_string_continuity.gd`): every follow-up starts on the side the move before it ends on, or at centre, and every move in a string has both sides;
-  - every move's data still matches the demo's (`test_moves.gd` against `moves.json`), apart from a table of deliberate differences that each data change adds to.
+  - every move's data still matches the demo's (`test_moves.gd` against `moves.json`), apart from the tables of deliberate differences that each data change adds to (rule-wide and per-move field changes, added, moved and removed moves, and weapon field changes).
 - **Content (GUT, headless):** every fighter scene assembles on the retargeted skeleton and the shared clips drive it; the body is cut down to the head and the headwear is in place; the two palettes differ from the front, the back and the side (rendered in software); every weapon has its markers and length; no held blade runs into its fighter's body; the art stays under 60 MB with no file over 10 MB and textures scaled down.
 - **Input (GUT, headless):** a fake device stands in for the keyboard, mouse and controllers. Tests cover the bindings, profiles and saving, rebinding capture, button names, per-player seats and pause, and the feed into the rules.
 - **Sound:**

@@ -143,6 +143,15 @@ static func _rebuilt(ts: Dictionary, id: StringName) -> Dictionary:
 	return out
 
 
+## The value a weapon's field should hold: its TS value, or its
+## WEAPON_CHANGES row's.
+static func _weapon_wanted(wid: String, field: String, ts_value: Variant) -> Variant:
+	for row: Dictionary in WEAPON_CHANGES:
+		if row["weapon"] == wid and row["field"] == field:
+			return row["now"]
+	return ts_value
+
+
 ## Compares one AttackDef with its TS record; returns the differences.
 func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 	var out: Array[String] = []
@@ -211,12 +220,7 @@ func test_every_weapon_field_matches_the_typescript() -> void:
 			if not WeaponDef.KEYS.has(snake):
 				diffs.append("%s: TS field %s has no WeaponDef field" % [wid, key])
 			elif snake != "moves":
-				var want: Variant = ts[key]
-				for row: Dictionary in WEAPON_CHANGES:
-					if row["weapon"] == wid and row["field"] == snake:
-						if not _same(want, row["was"]):
-							diffs.append("%s.%s: its row says the demo had %s; it had %s" % [wid, snake, row["was"], want])
-						want = row["now"]
+				var want: Variant = _weapon_wanted(wid, snake, ts[key])
 				if not _same(w.get(snake), want):
 					diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), want])
 		for snake: String in WeaponDef.KEYS:
@@ -260,6 +264,14 @@ func test_every_move_change_starts_from_the_demos_value() -> void:
 			if Moves.WEAPONS[StringName(wid)].moves.has(id) and not ADDED.has(id) and ts_weapons[wid]["moves"].has(demo_id):
 				demo = ts_weapons[wid]["moves"][demo_id].get(field.to_camel_case(), UNSET.get(field))
 		assert_true(_same(demo, row["was"]), "%s.%s: the row says the demo had %s; it had %s" % [id, field, row["was"], demo])
+
+
+func test_every_weapon_change_starts_from_the_demos_value() -> void:
+	var ts_weapons: Dictionary = _fx["WEAPONS"]
+	for row: Dictionary in WEAPON_CHANGES:
+		var field: String = row["field"]
+		var demo: Variant = ts_weapons.get(row["weapon"], {}).get(field.to_camel_case(), "no demo field")
+		assert_true(_same(demo, row["was"]), "%s.%s: the row says the demo had %s; it had %s" % [row["weapon"], field, row["was"], demo])
 
 
 func test_every_ultimate_hit_matches_the_typescript() -> void:

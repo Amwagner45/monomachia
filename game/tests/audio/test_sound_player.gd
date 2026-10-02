@@ -228,6 +228,32 @@ func test_stop_all_silences_the_voices_and_drops_pending_cues() -> void:
 	assert_eq(log.size(), 2, "the gong and the body fall were dropped")
 
 
+func test_a_player_is_quiet_until_it_plays_and_after_it_stops() -> void:
+	var player := _player()
+	assert_true(player.is_quiet())
+	player.play_event({"t": "ko", "loser": 1, "winner": 0})
+	assert_false(player.is_quiet())
+	player.stop_all()
+	assert_true(player.is_quiet())
+
+
+func test_a_waiting_cue_or_a_held_voice_is_not_quiet() -> void:
+	var player := _player()
+	var voice: Node = player.play_cue(&"ui_move")
+	voice.call("stop")
+	assert_true(player.is_quiet(), "the only voice finished")
+	player.play_event({"t": "roundStart", "round": 1})
+	player.set_held(true)
+	player.stop_all()
+	player.play_event({"t": "counter", "kind": "parry"})
+	assert_false(player.is_quiet(), "the counter's taiko waits 30 ms")
+	player.advance(0.05)
+	player.stop_all()
+	player.play_cue(&"ui_move")
+	player.set_held(true)
+	assert_false(player.is_quiet(), "a paused voice still has its sound")
+
+
 func test_delayed_cues_run_on_the_process_clock_when_auto_run() -> void:
 	var player := _player()
 	player.auto_run = true
@@ -255,6 +281,16 @@ func test_a_missing_file_is_listed_and_reported_once() -> void:
 	assert_eq(player.missing, PackedStringArray([path]))
 	assert_push_error("no_such_sound.wav")
 	assert_push_error_count(1, "reported once")
+
+
+func test_every_player_lists_a_missing_file_it_asks_for() -> void:
+	var first := _player()
+	var second := _player()
+	var path := "res://assets/audio/sfx/no_such_sound_either.wav"
+	assert_null(first.stream_for(path))
+	assert_null(second.stream_for(path))
+	assert_eq(second.missing, PackedStringArray([path]), "the second player lists it too")
+	assert_push_error_count(2, "each player reports it")
 
 
 func test_an_unknown_cue_is_listed_and_plays_nothing() -> void:

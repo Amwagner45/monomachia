@@ -1423,7 +1423,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.1 Pooled sound player.** `SoundPlayer` with cached streams, flat and 3D voice pools that steal their oldest voice, variations that never repeat back to back, pitch ranges, delayed cues, hold and stop, and a list of anything missing.
     - Check: a colossal hit requests both its cues on Combat; delayed cues fire when due and never while held; pools steal; spatial cues get 3D voices; nothing is missing for the real bank.
     - Blocked by: none · Stories: 50, 63
-  - [ ] **19.2 The rules events' sounds in a match.** `MatchAudio` in the match host plays every event's cues in played matches and on the results screen, keeps the attract duel silent, holds sound in pause, and stops on quit.
+  - [x] **19.2 The rules events' sounds in a match.** `MatchAudio` in the match host plays every event's cues in played matches and on the results screen, keeps the attract duel silent, holds sound in pause, and stops on quit.
     - Check: a scripted Duel plays its cues, in event order, on the right buses; the attract duel is silent; a pause holds the round gong; quitting leaves nothing playing; no stray nodes.
     - Blocked by: 19.1 · Stories: 19, 40, 50
   - [ ] **19.3 Impacts in 3D, the arena reverb and the listener.** Event positions (contact points, else the named fighter's chest); gentle attenuation; an explicit listener on the view camera; an `Area3D` sending to the Arena reverb bus.

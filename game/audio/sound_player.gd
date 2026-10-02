@@ -7,8 +7,9 @@ extends Node
 ##
 ## Each play picks a variation that differs from the cue's last one, a pitch in
 ## the cue's range, the cue's level (plus any extra) and its bus. Streams are
-## loaded once and cached; a file that won't load, or a cue the bank doesn't
-## have, is listed in [member missing] and reported once.
+## loaded once per run and shared by every player; a file that won't load, or
+## a cue the bank doesn't have, is listed in [member missing] and reported
+## once by each player that asks for it.
 ##
 ## [method play_event] expands one rules event into its cues and keeps the
 ## delayed ones (the KO gong, the round gong) until [method advance] passes
@@ -39,7 +40,9 @@ var _spatial: Array[AudioStreamPlayer3D] = []
 ## When each voice last started (a running count), to find the oldest.
 var _started: Dictionary = {}
 var _starts := 0
-var _streams: Dictionary = {}
+## path -> AudioStream, or null for a file that won't load. Shared, so a new
+## match host doesn't load the bank again.
+static var _streams: Dictionary = {}
 ## The variation each cue played last.
 var _last: Dictionary = {}
 ## Cues waiting to start: {cue, at, extra_db, due}, in the order asked.
@@ -158,6 +161,16 @@ func is_held() -> bool:
 	return _held
 
 
+## True when no voice is playing or paused and no cue is waiting.
+func is_quiet() -> bool:
+	if not _pending.is_empty():
+		return false
+	for voice: Node in _voices():
+		if voice.get("playing") or voice.get("stream_paused"):
+			return false
+	return true
+
+
 ## Stops every voice, drops the waiting cues and releases the hold.
 func stop_all() -> void:
 	for voice: Node in _voices():
@@ -181,14 +194,11 @@ func preload_cues(cue_names: Array[StringName]) -> void:
 ## The stream at [param path], loaded once and cached; null (listed in
 ## [member missing]) if it won't load.
 func stream_for(path: String) -> AudioStream:
-	if _streams.has(path):
-		return _streams[path]
-	var stream: AudioStream = null
-	if ResourceLoader.exists(path):
-		stream = load(path) as AudioStream
+	if not _streams.has(path):
+		_streams[path] = (load(path) as AudioStream) if ResourceLoader.exists(path) else null
+	var stream: AudioStream = _streams[path]
 	if stream == null:
 		_report_missing(path, "SoundPlayer: cannot load %s" % path)
-	_streams[path] = stream
 	return stream
 
 

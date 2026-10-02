@@ -308,6 +308,17 @@ func test_pause_stops_stepping() -> void:
 	assert_eq(host.step(5), 5)
 
 
+func test_stop_tells_the_listeners() -> void:
+	var host: MatchHost = _host()
+	watch_signals(host)
+	host.start(_cpu_config())
+	host.step(10)
+	assert_signal_not_emitted(host, "stopped")
+	host.stop()
+	assert_false(host.is_started())
+	assert_signal_emit_count(host, "stopped", 1)
+
+
 func test_only_a_match_being_played_pauses() -> void:
 	var host: MatchHost = _host()
 	host.start(MatchConfig.attract(), true)

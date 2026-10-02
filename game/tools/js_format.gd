@@ -1,8 +1,9 @@
 class_name JsFormat
 extends RefCounted
 ## Prints numbers and small objects exactly as the TypeScript tools do under
-## Node, so the output of the ported tools (soak.gd, counterlab.gd) can be
-## compared with scripts/soak.ts and scripts/counterlab.ts line for line.
+## Node, so the ported tools (soak.gd, counterlab.gd) print their reports as
+## scripts/soak.ts and scripts/counterlab.ts do. The reports matched line for
+## line up to the last bit-exact commit, 4222167 (plan task 8.2).
 ## Tools only: the rules never format text.
 
 

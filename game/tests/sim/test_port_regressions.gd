@@ -123,21 +123,26 @@ func _patch(field: String, value: Variant) -> void:
 	def.set(field, value)
 
 
-## What happened on each step of a patched run.
-class Trace:
-	## the world the run played in
+## What happened on each step of a patched run: every event, each with
+## "step", the index of the step it came on, and the state after each step.
+class Trace extends SimHelpers.Rec:
+	## The world the run played in.
 	var world: World
-	## W.frame and W.hitstop after each step
+	## W.frame after each step.
 	var frame: Array[int] = []
+	## W.hitstop after each step.
 	var hitstop: Array[int] = []
-	## the attacker's and the defender's states after each step
+	## The attacker's state after each step.
 	var attacker: Array[StringName] = []
+	## The defender's state after each step.
 	var defender: Array[StringName] = []
-	## the defender's posture after each step
+	## The defender's posture after each step.
 	var posture: Array[float] = []
-	## the hit and block events, each with "at": the step it came on
-	var hits: Array[Dictionary] = []
-	var blocks: Array[Dictionary] = []
+
+	func collect(W: World) -> void:
+		for e: Dictionary in W.drain_events():
+			e["step"] = frame.size()
+			events.append(e)
 
 
 ## Fighter 0 (the attacker) and fighter 1 (the defender), Katanas 2.2 m apart,
@@ -150,10 +155,7 @@ func _run_patched(steps: int, p0: Callable, p1: Callable, setup: Callable = Call
 	t.world = W
 	for i: int in steps:
 		W.step([p0.call(i), p1.call(i)])
-		for e: Dictionary in W.drain_events():
-			if e["t"] == &"hit" or e["t"] == &"block":
-				e["at"] = i
-				(t.hits if e["t"] == &"hit" else t.blocks).append(e)
+		t.collect(W)
 		t.frame.append(W.frame)
 		t.hitstop.append(W.hitstop)
 		t.attacker.append(W.fighters[0].state)
@@ -176,11 +178,12 @@ static func _idle(_i: int) -> RawInput:
 
 func test_multi_interval_zero_skips_every_active_frame() -> void:
 	# TS: (f - S - 1) % 0 is NaN, NaN !== 0, so no frame ever hits (no error).
+	assert_eq(_run_patched(30, _light_at_0, _idle).count(&"hit"), 1, "unpatched, the Right Cut reaches and hits")
 	_patch("multi_hit", 3)
 	_patch("multi_interval", 0)
 	_patch("active", 6)
 	var t: Trace = _run_patched(30, _light_at_0, _idle)
-	assert_eq(t.hits, [] as Array[Dictionary], "no active frame hits")
+	assert_eq(t.all(&"hit"), [] as Array[Dictionary], "no active frame hits")
 	assert_eq(t.attacker[0], &"attack", "the Right Cut was thrown")
 
 
@@ -191,9 +194,10 @@ func test_a_negative_multi_interval_is_used_as_is() -> void:
 	_patch("multi_interval", -2)
 	_patch("active", 6)
 	var t: Trace = _run_patched(30, _light_at_0, _idle)
-	assert_eq(t.hits.size(), 3, "three hits")
-	for k: int in range(1, t.hits.size()):
-		var gap: int = t.frame[t.hits[k]["at"]] - t.frame[t.hits[k - 1]["at"]]
+	var hits: Array[Dictionary] = t.all(&"hit")
+	assert_eq(hits.size(), 3, "three hits")
+	for k: int in range(1, hits.size()):
+		var gap: int = t.frame[hits[k]["step"]] - t.frame[hits[k - 1]["step"]]
 		assert_eq(gap, 2, "hit %d lands two world frames after the last" % k)
 
 
@@ -202,7 +206,8 @@ func test_a_negative_guard_crush_is_kept() -> void:
 	# addPosture then ignores the negative cost.
 	_patch("guard_crush", -0.5)
 	var t: Trace = _run_patched(30, _light_at_0, _hold_block, func(W: World) -> void: W.fighters[1].posture = 40.0)
-	assert_eq([t.blocks.size(), t.hits.size()], [1, 0], "the Right Cut is blocked")
+	assert_eq([t.count(&"block"), t.count(&"hit")], [1, 0], "the Right Cut is blocked")
+	assert_almost_eq(float(t.find(&"block")["posture"]), 7.0 * -0.5, 1e-9, "the block's posture cost keeps the negative multiplier (Right Cut's 7 × -0.5)")
 	var rises: int = 0
 	for k: int in range(1, t.posture.size()):
 		if t.posture[k] > t.posture[k - 1]:
@@ -214,9 +219,9 @@ func test_a_negative_dodge_cancel_frame_cancels_at_once() -> void:
 	# TS: dodgeCancelFrom !== undefined accepts a negative frame.
 	_patch("dodge_cancel_from", -1)
 	var p0: Callable = func(i: int) -> RawInput:
-		return H.btn(Btn.LIGHT) if i == 0 else (H.btn(Btn.DODGE) if i == 3 else H.idle())
+		return H.btn(Btn.LIGHT) if i == 0 else (H.btn(Btn.DODGE) if i == 1 else H.idle())
 	var t: Trace = _run_patched(12, p0, _idle)
-	assert_eq(t.attacker.slice(0, 4), [&"attack", &"attack", &"attack", &"backstep"] as Array[StringName], "the dodge on step 3 cancels the attack on the spot")
+	assert_eq(t.attacker.slice(0, 2), [&"attack", &"backstep"] as Array[StringName], "a dodge on the attack's first frame cancels it")
 
 
 func test_a_negative_lunge_end_means_no_lunge() -> void:
@@ -230,25 +235,27 @@ func test_a_negative_lunge_end_means_no_lunge() -> void:
 
 
 func test_negative_hitstop_and_hitstun_are_kept() -> void:
-	# TS: hitstop ?? 4 and hitstun ?? 18 keep negative values: the world never
+	# TS: hitstop ?? 4 and hitstun ?? 20 keep negative values: the world never
 	# freezes and the defender recovers at once.
 	_patch("hitstop", -3)
 	_patch("hitstun", -4)
 	var t: Trace = _run_patched(30, _light_at_0, _idle)
-	assert_eq(t.hits.size(), 1, "one hit")
+	assert_eq(t.count(&"hit"), 1, "one hit")
+	var at: int = t.find(&"hit")["step"]
+	assert_eq(t.hitstop[at], -3, "the hit-stop is kept as it is")
 	assert_eq(t.frame, range(1, 31), "the world steps on every step: no hit-stop")
-	var at: int = t.hits[0]["at"]
 	assert_eq([t.defender[at], t.defender[at + 1]], [&"hitstun", &"free"], "the defender is free on the frame after the hit")
 
 
 func test_a_negative_blockstun_is_kept() -> void:
 	# TS: blockstun ?? 12 keeps a negative value, and the block's hit-stop is
-	# max(3, hitstop - 2), so the world freezes the minimum 3 frames.
+	# max(3, hitstop - 2), so the world freezes the minimum 3 frames (as it
+	# would for Right Cut's own 4: the minimum hides the kept -2).
 	_patch("blockstun", -5)
 	_patch("hitstop", -2)
 	var t: Trace = _run_patched(30, _light_at_0, _hold_block)
-	assert_eq(t.blocks.size(), 1, "one block")
-	var at: int = t.blocks[0]["at"]
+	assert_eq(t.count(&"block"), 1, "one block")
+	var at: int = t.find(&"block")["step"]
 	assert_eq(t.hitstop[at], 3, "the minimum hit-stop")
 	var next: int = t.frame.find(t.frame[at] + 1)
 	assert_eq([t.defender[next - 1], t.defender[next]], [&"blockstun", &"free"], "the defender is free on the first frame after the freeze")

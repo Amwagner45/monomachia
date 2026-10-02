@@ -307,7 +307,7 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
 
-Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with a cone like Right Cut's: 2.2 m and 100°, with a 0.35 m lunge.
+Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). Rising Heaven's and Heaven Splitter's lunges still end two frames after their cuts start.
 
 **Greatsword**
 

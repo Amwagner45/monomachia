@@ -53,7 +53,7 @@ func after_each() -> void:
 
 ## A string played by fighter 0: its events, and after each step its state,
 ## the attack it was in (&"" outside one) and that attack's frame (-1).
-class StringRun:
+class PlayedString:
 	extends SimHelpers.Rec
 	var state: Array[StringName] = []
 	var attack: Array[StringName] = []
@@ -83,22 +83,20 @@ class StringRun:
 		return out
 
 
-## Fighter 0 plays a string of presses (Btn.LIGHT or Btn.HEAVY) for n steps
+## Fighter 0 plays a string of presses (Btn.LIGHT or Btn.HEAVY) for 240 steps
 ## against an idle Katana gap m away: the first on step 0, each next one on the
 ## step after the attack before it swings, the first step that attack takes a
 ## follow-up. With dodge_in set, it also presses dodge so that the press
 ## first counts on that attack's frame dodge_on, holding the stick to the side
 ## from then on (a buffered dodge with the stick let go is a backstep).
-static func _play(
-	presses: Array[int], gap: float = 2.2, dodge_in: StringName = &"", dodge_on: int = -1, n: int = 240
-) -> StringRun:
+static func _play(presses: Array[int], gap: float = 2.2, dodge_in: StringName = &"", dodge_on: int = -1) -> PlayedString:
 	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, gap)
 	var a: Fighter = W.fighters[0]
-	var r := StringRun.new()
+	var r := PlayedString.new()
 	var next: int = 0
 	var due: bool = true
 	var dodged: bool = false
-	for i: int in n:
+	for i: int in 240:
 		var p0: RawInput = H.idle()
 		if due and next < presses.size():
 			p0 = H.btn(presses[next])
@@ -125,19 +123,21 @@ static func _play(
 # ------------------------------------------------------------------ the light string
 
 func test_four_lights_hit_with_right_cut_return_cut_kesa_cut_and_crown_cut() -> void:
-	var r: StringRun = _play([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, Btn.LIGHT])
+	var r: PlayedString = _play([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, Btn.LIGHT])
 	assert_eq(r.ids(&"hit"), [&"k_l1", &"k_l2", &"k_l3", &"k_l4"] as Array[StringName])
 
 
 func test_a_heavy_ends_the_string_on_heaven_splitter_or_after_two_lights_on_rising_heaven() -> void:
-	var L: int = Btn.LIGHT
-	var Hv: int = Btn.HEAVY
-	assert_eq(_play([L, Hv]).ids(&"hit"), [&"k_l1", &"k_h2"] as Array[StringName], "L-H: Right Cut, Heaven Splitter")
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	assert_eq(_play([light, heavy]).ids(&"hit"), [&"k_l1", &"k_h2"] as Array[StringName], "L-H: Right Cut, Heaven Splitter")
 	assert_eq(
-		_play([L, L, Hv]).ids(&"hit"), [&"k_l1", &"k_l2", &"k_h1f"] as Array[StringName], "L-L-H: Return Cut, Rising Heaven"
+		_play([light, light, heavy]).ids(&"hit"),
+		[&"k_l1", &"k_l2", &"k_h1f"] as Array[StringName],
+		"L-L-H: Return Cut, Rising Heaven",
 	)
 	assert_eq(
-		_play([L, L, L, Hv]).ids(&"hit"),
+		_play([light, light, light, heavy]).ids(&"hit"),
 		[&"k_l1", &"k_l2", &"k_l3", &"k_h2"] as Array[StringName],
 		"L-L-L-H: Kesa Cut, Heaven Splitter",
 	)
@@ -145,7 +145,7 @@ func test_a_heavy_ends_the_string_on_heaven_splitter_or_after_two_lights_on_risi
 
 func test_crown_cut_ends_the_string() -> void:
 	for press: int in [Btn.LIGHT, Btn.HEAVY]:
-		var r: StringRun = _play([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, press])
+		var r: PlayedString = _play([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, press])
 		var what: String = "a %s pressed in Crown Cut" % ("light" if press == Btn.LIGHT else "heavy")
 		assert_eq(r.ids(&"swing"), [&"k_l1", &"k_l2", &"k_l3", &"k_l4"] as Array[StringName], "%s starts nothing" % what)
 		assert_eq(r.ended_on(&"k_l4"), _length(&"k_l4"), "%s: Crown Cut ends on frame 40, startup + active + recovery" % what)
@@ -153,13 +153,16 @@ func test_crown_cut_ends_the_string() -> void:
 
 
 func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
-	var L: int = Btn.LIGHT
-	var Hv: int = Btn.HEAVY
-	var strings: Array = [[L], [L, L], [L, L, L], [L, L, L, L], [L, L, Hv], [L, Hv]]
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	var strings: Array = [
+		[light], [light, light], [light, light, light], [light, light, light, light],
+		[light, heavy], [light, light, heavy], [light, light, light, heavy],
+	]
 	for presses: Array in strings:
 		var typed: Array[int] = []
 		typed.assign(presses)
-		var r: StringRun = _play(typed)
+		var r: PlayedString = _play(typed)
 		var hits: Array[StringName] = r.ids(&"hit")
 		assert_eq(hits.size(), presses.size(), "every press of %s hits" % [presses])
 		if hits.size() != presses.size():
@@ -170,16 +173,16 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 
 
 func test_kesa_cut_dodge_cancels_from_frame_20() -> void:
-	var L: int = Btn.LIGHT
+	var light: int = Btn.LIGHT
 	for gap: float in [2.2, 10.0]:
 		var what: String = "after a hit" if gap < 3.0 else "after a whiff"
-		var early: StringRun = _play([L, L, L], gap, &"k_l3", KESA_CUT_CANCEL - 1)
+		var early: PlayedString = _play([light, light, light], gap, &"k_l3", KESA_CUT_CANCEL - 1)
 		assert_eq(
 			[early.ended_on(&"k_l3"), early.state_after(&"k_l3")],
 			[KESA_CUT_CANCEL, &"dodge"],
 			"%s: a dodge pressed on frame 19 is refused there and comes on 20" % what,
 		)
-		var on_time: StringRun = _play([L, L, L], gap, &"k_l3", KESA_CUT_CANCEL)
+		var on_time: PlayedString = _play([light, light, light], gap, &"k_l3", KESA_CUT_CANCEL)
 		assert_eq(
 			[on_time.ended_on(&"k_l3"), on_time.state_after(&"k_l3")],
 			[KESA_CUT_CANCEL, &"dodge"],
@@ -201,3 +204,12 @@ func test_the_light_string_and_its_heavy_endings_match_the_spec_table() -> void:
 		assert_eq([m.damage, m.posture], [float(row["damage"]), float(row["posture"])], "%s damage and posture" % row["name"])
 		assert_eq([m.chain_light, m.chain_heavy], [row["light"], row["heavy"]], "%s follow-ups" % row["name"])
 		assert_eq([m.side_start, m.side_end], row["sides"], "%s sides" % row["name"])
+
+
+func test_kesa_cut_hits_with_the_specs_interim_cone() -> void:
+	# until weapon paths decide hits (task 7): a slash from the right shoulder
+	# to the left hip (the stand-in's diagonal cut down), 2.2 m and 100° after
+	# a 0.35 m lunge, knocking back 0.4 m
+	var m: AttackDef = Moves.KATANA.moves[&"k_l3"]
+	assert_eq([m.type, m.anim], [&"slash", &"diagDown"], "Kesa Cut is a diagonal slash down")
+	assert_eq([m.range, m.arc, m.lunge, m.knockback], [2.2, 100.0, 0.35, 0.4], "range, arc, lunge and knockback")

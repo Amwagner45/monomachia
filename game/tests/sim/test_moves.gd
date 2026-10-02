@@ -32,12 +32,12 @@ const UNSET: Dictionary = {
 	"hop": 0.0,
 }
 
-## The demo's data that the rebuild changed on purpose. A rule's row covers
-## every move of a kind, a move's row one move (by its id now): its field,
-## which held "was" in the TS (the port's sentinel where the TS left it unset),
-## now holds "now", a value or a function of the move's TS record with the
-## move rows applied. Every move and field no row covers still matches the
-## demo. (A static var, as a const can't hold a function.)
+## The demo's data that the rebuild changed on purpose, one row per rule: a
+## move of this kind whose field held "was" in the TS (the port's sentinel
+## where the TS left it unset) now holds "now", a value or a function of the
+## move's TS record (with its MOVE_CHANGES applied). Every move and field no
+## row here or in MOVE_CHANGES covers still matches the demo. (A static var,
+## as a const can't hold a function.)
 static var changes: Array[Dictionary] = [
 	# 8.7: the lights' default hitstun (bare hands keep their own 16)
 	{"field": "hitstun", "kind": "light", "was": 18, "now": 14},
@@ -47,15 +47,22 @@ static var changes: Array[Dictionary] = [
 		"field": "dodge_cancel_from", "kind": "heavy", "was": AttackDef.UNSET,
 		"now": func(ts: Dictionary) -> int: return int(ts["startup"]) + int(ts["active"]) + ceili(float(ts["recovery"]) / 2.0),
 	},
+]
+
+## The demo's moves the new strings changed, one row per field: the move (by
+## its id now) whose field held "was" in the TS now holds "now". They apply
+## before the rules' rows, so a rule computed from the move (the heavies'
+## dodge cancel) uses its new numbers.
+const MOVE_CHANGES: Array[Dictionary] = [
 	# 9.1: the Katana's four-light string; Right Cut ends on Heaven Splitter,
 	# Crown Cut ends the string, and the two heavy follow-ups start sooner
 	# (their lunges end two frames after their cuts start, as before)
-	{"field": "chain_heavy", "move": "k_l1", "was": "k_h1f", "now": "k_h2"},
-	{"field": "chain_heavy", "move": "k_l4", "was": "k_h2", "now": ""},
-	{"field": "startup", "move": "k_h1f", "was": 18, "now": 16},
-	{"field": "lunge_end", "move": "k_h1f", "was": 20, "now": 18},
-	{"field": "startup", "move": "k_h2", "was": 24, "now": 22},
-	{"field": "lunge_end", "move": "k_h2", "was": 26, "now": 24},
+	{"move": "k_l1", "field": "chain_heavy", "was": "k_h1f", "now": "k_h2"},
+	{"move": "k_l4", "field": "chain_heavy", "was": "k_h2", "now": ""},
+	{"move": "k_h1f", "field": "startup", "was": 18, "now": 16},
+	{"move": "k_h1f", "field": "lunge_end", "was": 20, "now": 18},
+	{"move": "k_h2", "field": "startup", "was": 24, "now": 22},
+	{"move": "k_h2", "field": "lunge_end", "was": 26, "now": 24},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each
@@ -104,29 +111,23 @@ static func _same(a: Variant, b: Variant) -> bool:
 
 
 ## The value a move's field should hold: its TS value (or sentinel), or a
-## rule's changes row's.
+## changes row's.
 static func _wanted(ts: Dictionary, field: String, ts_value: Variant) -> Variant:
 	for row: Dictionary in changes:
-		if row.has("kind") and row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
+		if row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
 			var now: Variant = row["now"]
 			return (now as Callable).call(ts) if now is Callable else now
 	return ts_value
 
 
-## The TS record of the demo move now called id, with its id now and its move
-## rows applied. Adds to stale each row whose "was" isn't the demo's value.
-static func _rebuilt(ts: Dictionary, id: StringName, stale: Array[String]) -> Dictionary:
+## The TS record of the demo move now called id, with its id now and its
+## MOVE_CHANGES applied.
+static func _rebuilt(ts: Dictionary, id: StringName) -> Dictionary:
 	var out: Dictionary = ts.duplicate()
 	out["id"] = String(id)
-	for row: Dictionary in changes:
-		if row.get("move") != String(id):
-			continue
-		var field: String = row["field"]
-		var key: String = field.to_camel_case()
-		var demo: Variant = ts.get(key, UNSET.get(field))
-		if not _same(demo, row["was"]):
-			stale.append("%s.%s: its changes row says the demo had %s, but it had %s" % [id, field, row["was"], demo])
-		out[key] = row["now"]
+	for row: Dictionary in MOVE_CHANGES:
+		if row["move"] == String(id):
+			out[String(row["field"]).to_camel_case()] = row["now"]
 	return out
 
 
@@ -221,22 +222,24 @@ func test_every_move_of_every_weapon_matches_the_typescript() -> void:
 			var demo_id: String = String(MOVED.get(id, id))
 			if ADDED.has(id) or not ts_moves.has(demo_id):
 				continue
-			var ts: Dictionary = _rebuilt(ts_moves[demo_id], id, diffs)
-			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], ts))
+			diffs.append_array(_diff_move("%s.%s" % [wid, id], w.moves[id], _rebuilt(ts_moves[demo_id], id)))
 			compared += 1
 		assert_eq(diffs, [] as Array[String], wid)
 	# 18 katana + 16 greatsword + 18 daggers + 15 fists
 	assert_eq(compared, 67)
 
 
-func test_every_changes_row_names_a_move_compared_with_the_demo() -> void:
-	for row: Dictionary in changes:
-		if row.has("move"):
-			var id := StringName(row["move"])
-			var known: bool = false
-			for w: WeaponDef in Moves.WEAPONS.values():
-				known = known or w.moves.has(id)
-			assert_true(known and not ADDED.has(id), "%s.%s's row names a move compared with the demo" % [row["move"], row["field"]])
+func test_every_move_change_starts_from_the_demos_value() -> void:
+	var ts_weapons: Dictionary = _fx["WEAPONS"]
+	for row: Dictionary in MOVE_CHANGES:
+		var id := StringName(row["move"])
+		var field: String = row["field"]
+		var demo: Variant = "no demo move"
+		for wid: String in ts_weapons:
+			var demo_id: String = String(MOVED.get(id, id))
+			if Moves.WEAPONS[StringName(wid)].moves.has(id) and not ADDED.has(id) and ts_weapons[wid]["moves"].has(demo_id):
+				demo = ts_weapons[wid]["moves"][demo_id].get(field.to_camel_case(), UNSET.get(field))
+		assert_true(_same(demo, row["was"]), "%s.%s: the row says the demo had %s; it had %s" % [id, field, row["was"], demo])
 
 
 func test_every_ultimate_hit_matches_the_typescript() -> void:

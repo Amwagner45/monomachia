@@ -1,6 +1,9 @@
 // Writes game/tests/fixtures/port.json: TypeScript reference values for
 // game/tests/sim/test_port_regressions.gd, which checks the fixes made after
-// the line-by-line review of the GDScript port.
+// the line-by-line review of the GDScript port: the math as V8 computes it and
+// the tools' number formatting. The arena clamp, the whole-run hashes and the
+// sentinel traces it also wrote retired in plan task 8.2, once the Godot rules
+// began to differ from the TypeScript.
 //
 // usage: npm run godot:fixtures   (or: npx tsx scripts/port-fixtures.ts)
 //
@@ -11,14 +14,9 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { World } from '../src/sim/world';
-import { Match } from '../src/sim/match';
-import { Fighter } from '../src/sim/fighter';
-import { AIBrain, DIFFICULTY } from '../src/sim/ai/brain';
-import { KATANA, DAGGERS, AttackDef } from '../src/sim/moves';
 import { Rng } from '../src/sim/rng';
-import { B, RawInput, dirIndex, emptyInput } from '../src/sim/input';
-import { ARENA_RADIUS, DIR_DEADZONE, FIGHTER_RADIUS } from '../src/sim/constants';
+import { dirIndex } from '../src/sim/input';
+import { DIR_DEADZONE } from '../src/sim/constants';
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const OUT = join(ROOT, 'game', 'tests', 'fixtures', 'port.json');
@@ -86,8 +84,8 @@ for (let i = 0; i < 800; i++) {
 const atan2 = atanArgs.map(([y, x]) => [bits(y), bits(x), bits(Math.atan2(y, x))]);
 
 // --- Thresholds that Math.hypot decides -----------------------------------------
-// Sticks and positions where Math.hypot and sqrt(x*x + z*z) fall on different
-// sides of a threshold: dirIndex's deadzone and the arena clamp.
+// Sticks where Math.hypot and sqrt(x*x + z*z) fall on different sides of
+// dirIndex's deadzone.
 function straddle(r: number, n: number, below: (v: number) => boolean) {
   const out: [number, number][] = [];
   while (out.length < n) {
@@ -105,185 +103,6 @@ function straddle(r: number, n: number, below: (v: number) => boolean) {
   return out;
 }
 const deadzone = straddle(DIR_DEADZONE, 8, (m) => m < DIR_DEADZONE).map(([mx, my]) => [bits(mx), bits(my), dirIndex(mx, my)]);
-
-function makeWorld(w1 = KATANA, w2 = KATANA, gap = 2.2) {
-  const W = new World({ weapon: w1 }, { weapon: w2 }, 7);
-  const [a, b] = W.fighters;
-  a.pos = { x: 0, y: 0, z: -gap / 2 };
-  b.pos = { x: 0, y: 0, z: gap / 2 };
-  a.yaw = 0;
-  b.yaw = Math.PI;
-  a.setState('free');
-  b.setState('free');
-  return W;
-}
-const btn = (...bs: B[]): RawInput => ({ mx: 0, my: 0, buttons: bs.reduce((m, b) => m | (1 << b), 0) });
-const move = (mx: number, my: number, ...bs: B[]): RawInput => ({ mx, my, buttons: bs.reduce((m, b) => m | (1 << b), 0) });
-const idle = () => emptyInput();
-
-// One idle step with fighter 0 placed at (x, z) and fighter 1 at the centre.
-const clampMax = ARENA_RADIUS - FIGHTER_RADIUS;
-const clampArena = straddle(clampMax, 8, (r) => !(r > clampMax)).map(([x, z]) => {
-  const W = makeWorld();
-  const a = W.fighters[0];
-  a.pos = { x, y: 0, z };
-  W.fighters[1].pos = { x: 0, y: 0, z: 0 };
-  W.step([idle(), idle()]);
-  return [bits(x), bits(z), bits(a.pos.x), bits(a.pos.z)];
-});
-
-// --- Bit-exact traces -------------------------------------------------------------
-// FNV-1a over 32-bit words: floats as their two words (-0 counted as 0), ints
-// as one word, strings one word per UTF-16 unit.
-class Hash {
-  h = 2166136261;
-  word(w: number) {
-    this.h = Math.imul((this.h ^ w) >>> 0, 16777619) >>> 0;
-  }
-  num(x: number) {
-    dv.setFloat64(0, x === 0 ? 0 : x);
-    this.word(dv.getUint32(0));
-    this.word(dv.getUint32(4));
-  }
-  int(n: number) {
-    this.word(n >>> 0);
-  }
-  str(s: string) {
-    for (let i = 0; i < s.length; i++) this.word(s.charCodeAt(i));
-  }
-  fighter(f: Fighter) {
-    for (const x of [f.pos.x, f.pos.y, f.pos.z, f.vel.x, f.vel.y, f.vel.z, f.yaw, f.hp, f.posture, f.knockX, f.knockZ]) {
-      this.num(x);
-    }
-    this.int(f.sf);
-    this.str(f.state);
-    this.int(f.armed ? 1 : 0);
-  }
-  step(W: World, inputs: RawInput[]) {
-    for (const i of inputs) {
-      this.num(i.mx);
-      this.num(i.my);
-      this.int(i.buttons);
-    }
-    this.int(W.frame);
-    this.int(W.hitstop);
-    for (const f of W.fighters) this.fighter(f);
-    for (const e of W.drainEvents()) this.str(e.t);
-  }
-}
-
-// A scripted duel: walking, strafing, chains, sprinting, a dodge, a charged
-// heavy, a jump attack and blocks, with stick values that are not unit length.
-function duelP0(i: number): RawInput {
-  if (i < 40) return move(0.37, 0.91);
-  if (i < 100) return i < 70 ? move(1, 0, B.Block) : move(1, 0);
-  if (i === 100 || i === 108 || i === 116) return btn(B.Light);
-  if (i >= 130 && i < 170) return move(-0.6, -0.8, B.Sprint);
-  if (i === 175) return move(0.7, 0.2, B.Dodge);
-  if (i >= 190 && i < 215) return btn(B.Heavy);
-  if (i === 240) return move(0, 1, B.Jump);
-  if (i === 250) return btn(B.Light);
-  if (i === 300) return btn(B.Heavy);
-  if (i >= 270 && i < 330) return move(-1, 0.25);
-  return idle();
-}
-function duelP1(i: number): RawInput {
-  if (i >= 20 && i < 60) return btn(B.Block);
-  if (i === 70 || i === 78) return btn(B.Light);
-  if (i >= 90 && i < 120) return move(-0.45, 0.2);
-  if (i === 150) return btn(B.Heavy);
-  if (i >= 200 && i < 230) return btn(B.Block);
-  if (i === 260) return move(-1, 0, B.Dodge);
-  if (i >= 280 && i < 300) return move(0.3, -0.95);
-  if (i === 320) return btn(B.Light);
-  return idle();
-}
-const DUEL_STEPS = 360;
-const DUEL_EVERY = 30;
-const duel: number[] = [];
-{
-  const W = makeWorld();
-  const h = new Hash();
-  for (let i = 0; i < DUEL_STEPS; i++) {
-    const inputs = [duelP0(i), duelP1(i)];
-    W.step(inputs);
-    h.step(W, inputs);
-    if ((i + 1) % DUEL_EVERY === 0) duel.push(h.h);
-  }
-}
-
-// Computer against computer through a Match, built the way scripts/soak.ts does.
-const AI_STEPS = 3600;
-const AI_EVERY = 300;
-const aiMatch: number[] = [];
-{
-  const W = new World({ weapon: KATANA }, { weapon: DAGGERS }, 1005);
-  const M = new Match(W);
-  const ai = [new AIBrain(W.fighters[0], DIFFICULTY.hard, 16), new AIBrain(W.fighters[1], DIFFICULTY.normal, 82)];
-  const h = new Hash();
-  for (let i = 0; i < AI_STEPS; i++) {
-    const inputs = [ai[0].think(), ai[1].think()];
-    M.step(inputs);
-    h.step(W, inputs);
-    h.str(M.phase);
-    if ((i + 1) % AI_EVERY === 0) aiMatch.push(h.h);
-  }
-}
-
-// --- Optional move fields given values the sentinels used to swallow -----------
-// Each case patches Right Cut (k_l1), runs a katana-vs-katana world for `steps`
-// steps and records per-step state; the patch is undone afterwards.
-type Patch = Partial<AttackDef>;
-function patched(patch: Patch, steps: number, p0: (i: number) => RawInput, p1: (i: number) => RawInput, setup?: (W: World) => void) {
-  const def = KATANA.moves.k_l1;
-  const saved: Record<string, unknown> = {};
-  for (const k of Object.keys(patch)) saved[k] = (def as unknown as Record<string, unknown>)[k];
-  Object.assign(def, patch);
-  try {
-    const W = makeWorld();
-    setup?.(W);
-    const [a, b] = W.fighters;
-    const trace: unknown[] = [];
-    const h = new Hash();
-    for (let i = 0; i < steps; i++) {
-      const inputs = [p0(i), p1(i)];
-      W.step(inputs);
-      const events = W.drainEvents();
-      trace.push([W.hitstop, a.state, b.state, events.filter((e) => e.t === 'hit').length, bits(b.hp), bits(b.posture)]);
-      h.int(W.hitstop);
-      h.fighter(a);
-      h.fighter(b);
-      for (const e of events) h.str(e.t);
-    }
-    return { trace, hash: h.h, aPos: [bits(a.pos.x), bits(a.pos.z)] };
-  } finally {
-    for (const k of Object.keys(patch)) {
-      if (saved[k] === undefined) delete (def as unknown as Record<string, unknown>)[k];
-      else (def as unknown as Record<string, unknown>)[k] = saved[k];
-    }
-  }
-}
-const lightAt0 = (i: number) => (i === 0 ? btn(B.Light) : idle());
-const holdBlock = () => btn(B.Block);
-const sentinels = {
-  // multiInterval 0: (f - S - 1) % 0 is NaN, so every active frame is skipped
-  multiIntervalZero: patched({ multiHit: 3, multiInterval: 0, active: 6 }, 30, lightAt0, idle),
-  // a negative interval is used as is: x % -2 has the sign of x
-  multiIntervalNegative: patched({ multiHit: 3, multiInterval: -2, active: 6 }, 30, lightAt0, idle),
-  // guardCrush ?? blockMitigation keeps a negative multiplier (addPosture then ignores it)
-  guardCrushNegative: patched({ guardCrush: -0.5 }, 30, lightAt0, holdBlock, (W) => {
-    W.fighters[1].posture = 40;
-  }),
-  // dodgeCancelFrom !== undefined accepts a negative frame: cancellable at once
-  dodgeCancelNegative: patched({ dodgeCancelFrom: -1 }, 12, (i) => (i === 0 ? btn(B.Light) : i === 3 ? btn(B.Dodge) : idle()), idle),
-  // lungeEnd ?? S + A keeps a negative end: no lunge at all
-  lungeEndNegative: patched({ lungeEnd: -1 }, 30, lightAt0, idle, (W) => {
-    W.fighters[1].pos.z = 4;
-  }),
-  // hitstop / hitstun / blockstun ?? default keep a negative value
-  hitstopNegative: patched({ hitstop: -3, hitstun: -4 }, 30, lightAt0, idle),
-  blockstunNegative: patched({ blockstun: -5, hitstop: -2 }, 30, lightAt0, holdBlock),
-};
 
 // --- JS number formatting and parsing for the tools -----------------------------
 const toFixedCases: number[] = [
@@ -312,10 +131,6 @@ const data = {
   sincos,
   atan2,
   deadzone,
-  clampArena,
-  duel: { steps: DUEL_STEPS, every: DUEL_EVERY, hashes: duel },
-  aiMatch: { steps: AI_STEPS, every: AI_EVERY, hashes: aiMatch },
-  sentinels,
   toFixed,
   number: numberCases,
   numToString,

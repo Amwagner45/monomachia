@@ -57,8 +57,9 @@ static func to_fixed(x: float, digits: int) -> String:
 
 ## String(x) for a number (Number::toString): the shortest digits that read
 ## back as x, laid out the JS way (fixed notation for exponents -7 to 20,
-## otherwise "1.5e+21", "1e-7"). The digits come from var_to_str, Godot's
-## shortest round-trip form.
+## otherwise "1.5e+21", "1e-7"). The digits come from String.num_scientific,
+## Godot's shortest round-trip form. (var_to_str gives a double that a float32
+## holds exactly float32's shortest digits, too few to read back as x.)
 static func num(x: float) -> String:
 	if is_nan(x):
 		return "NaN"
@@ -75,7 +76,7 @@ static func num(x: float) -> String:
 		digits = str(int(x))
 		point = digits.length()
 	else:
-		var text: String = var_to_str(x)
+		var text: String = String.num_scientific(x)
 		var exponent: int = 0
 		var at: int = text.find("e")
 		if at >= 0:

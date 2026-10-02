@@ -9,9 +9,11 @@ extends SceneTree
 ## Port notes:
 ## - The match count is the first user argument (after --), read like JS
 ##   Number(); the default is 30.
-## - It uses the same seeds as the TS soak, so the printed report is
-##   identical: compare it with `npx tsx scripts/soak.ts <matches>`. Numbers
-##   are printed with JsFormat (JS toFixed and console.log of an object).
+## - It uses the same seeds as the TS soak, and its report matched
+##   `npx tsx scripts/soak.ts <matches>` line for line up to commit 4222167
+##   (plan task 8.2, which records that baseline). Since then the Godot rules
+##   change on their own, so the report describes them alone. Numbers are
+##   printed with JsFormat (JS toFixed and console.log of an object).
 ## - GDScript has no exceptions. The TS try/catch around each match is an
 ##   ErrorCatcher: a Logger that records the first error (a script error such
 ##   as a null access, a push_error or an engine error) raised while a match

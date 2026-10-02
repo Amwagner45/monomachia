@@ -30,7 +30,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - Hits come from weapon paths; the same paths drive the animation.
 - The web version is tagged `v0.1-web-mvp` and deleted at the end. The tag already exists on origin, on master at 76d4a09.
 - Tracker: local Markdown in `docs/` (see `docs/agents/issue-tracker.md`).
-- The port is exact: the Godot rules reproduce all 35 golden recordings of the TypeScript rules, the Godot computer opponent produces the recorded inputs for six full matches, and the 40-match soak prints identical numbers. The rules compute `Math.hypot`, `sin`, `cos` and `atan2` exactly as V8 does (`game/sim/js_math.gd`, a port of V8's fdlibm), so whole runs match the TypeScript bit for bit and do not depend on the platform's C math library.
+- The port was exact up to commit 4222167, the last bit-exact point (8.2): the Godot rules reproduced all 35 golden recordings of the TypeScript rules, the Godot computer opponent produced the recorded inputs for six full matches, and the 40-match soak printed identical numbers. The rules compute `Math.hypot`, `sin`, `cos` and `atan2` exactly as V8 does (`game/sim/js_math.gd`, a port of V8's fdlibm), so whole runs matched the TypeScript bit for bit, and they still do not depend on the platform's C math library.
 - A throwaway animation spike ran early (in scratch, before tasks 7 and 14). Its report, critique and code are kept in `docs/research/animation-spike/`.
   - Verdict: weapon-path animation on the Quaternius fighters works, with conditions, which are now requirements of tasks 7, 14, 14b and 15.
   - Camera: the side offset is 1.3–1.4 m, because 0.9 m hides the opponent.
@@ -52,7 +52,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - The export preset, the size guard and the CI export come early, to catch problems that only show in an exported build.
 
 **Fluid rules (8)**
-- The goldens, the brain-parity hashes and the whole-run hashes retire in one rules-neutral commit, after behaviour tests for the dummy and the counters replace them. The last bit-exact commit is recorded in the plan.
+- The goldens, the brain-parity hashes and the whole-run hashes retired in one rules-neutral commit (8.2), after behaviour tests for the dummy and the counters replaced them (8.1). The last bit-exact commit, 4222167, and its soak and counterlab reports are recorded in Progress.
 - `test_moves` keeps comparing with the demo's `moves.json`, with a table of deliberate differences.
 - The Moonsplitter wave reaches 2 × arena radius + 3 m (33 m), so it still crosses the whole stage.
 - Lunges ease in and out (`SimMath.ease_in_out`), with the same distance and window.
@@ -126,12 +126,12 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 started stage 4 (fluid rules). The owner approves each task before the next starts. Next: 8.2.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. The owner approves each task before the next starts. Next: 8.10, the training dummy's fixes, which the owner asked for right after 8.2; then 8.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
   - the sound and music assets, sound bank and music director (the asset half of tasks 19 and 20).
-  - The rules port matches the TypeScript bit for bit, and a Duel plays from title to results (`npm run godot:run`) with the real Rogue and Hunter and the three weapon models in the toon look, posed from the stand-in stick poses until swings exist. `fighters/preview/preview.tscn` shows the fighters and weapons on their own (in the studio or on the night stage).
+  - The rules port matched the TypeScript bit for bit up to 4222167 (see the baseline below), and a Duel plays from title to results (`npm run godot:run`) with the real Rogue and Hunter and the three weapon models in the toon look, posed from the stand-in stick poses until swings exist. `fighters/preview/preview.tscn` shows the fighters and weapons on their own (in the studio or on the night stage).
   - The safety nets (25.1–25.3, 16.1):
     - `npm run check:sizes` fails CI on any tracked file over 10 MB;
     - `npm run build` exports `build/windows/Monomachia.exe` (179 MB, shaders baked), and `Monomachia.exe --smoke` plays a Watch match to the results and exits 0, or 1 on any error, stall or timeout;
@@ -155,10 +155,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
-- **Checks after 8.1** (the shots, the bench and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
-  - 626 Godot tests (50 s): rules 147, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
-  - 121 web tests;
-  - the typecheck loads 161 scripts cleanly;
+- **Checks after 8.2** (the shots, the bench and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
+  - 585 Godot tests (39 s): rules 106, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
+  - 85 web tests;
+  - the typecheck loads 159 scripts cleanly;
+  - `soak:godot -- 40` and the counterlab print the baseline below exactly;
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 69 fps at 1080p on the target laptop (`arena_bench.tscn`), 66 fps from the Watch camera;
   - CI passed on every push from 14.1 to 17.9 (8c188c4);
@@ -170,14 +171,43 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - Tasks 16.1–17.9 salvaged it piece by piece, reviewed (16.1–16.5, 17.1, 17.3–17.9): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, the shrine's courtyard, props, underside, sky, backdrop, embers and ash, and the bench. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work.
   - Left behind on purpose: `game/_probe`, the bench's hard-coded overrides, the floating rocks' temple hall (no rock in the data was big enough) and the petals, which wait on the owner.
   - Removed on Oct 2, 2026 with the owner's OK, with its `look-and-arena` branch (no commits of its own). The petals' recipe is kept in `godot-rebuild-notes/16-18-look-arena-effects.md` (Open questions).
-- **Behaviour tests for the brains (8.1):** `test_training_brain.gd` checks every dummy behaviour and the counters by events and states, ready for 8.2 to retire the TypeScript input hashes.
+- **Behaviour tests for the brains (8.1):** `test_training_brain.gd` checks every dummy behaviour and the counters by events and states.
+- **The last bit-exact point (8.2): commit 4222167.** There `npm run soak -- 40` and `npm run soak:godot -- 40` printed this same report, and `npx tsx scripts/counterlab.ts` and the Godot counterlab these same tallies. 8.2 then retired the goldens, the brain-parity hashes and the whole-run hashes, so from 8.3 on the soak and the counterlab are compared with these numbers by eye, and balance targets wait for task 12.
+  ```
+  40 matches, 0 failures
+  rounds: 149, avg round 44.5 s, longest 121.8 s
+  per round:
+    blocks                 12.30
+    counter:evade          0.03
+    counter:leap           0.79
+    counter:stomp          0.60
+    disarm:blocked         0.07
+    disarm:parried         0.37
+    disarm:redirect        0.01
+    evade                  0.39
+    framesAtFullPosture    281.12
+    hits                   21.98
+    parry:flash            0.16
+    parry:parry            3.91
+    parry:redirect         0.04
+    rearm                  0.40
+    recall                 0.05
+    ult:disarmedChoice     0.11
+    ult:impaler            0.28
+    ult:moonsplitter       0.37
+    ult:tempest            0.43
+  match wins/losses by weapon: { greatsword: [ 12, 12 ], katana: [ 15, 16 ], daggers: [ 13, 12 ] }
+
+  slam { attempts: 24, 'counter:evade': 17, hit: 4 }
+  thrust { attempts: 24, 'counter:stomp': 15, hit: 2 }
+  sweep { attempts: 25, 'counter:leap': 16 }
+  ```
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Whether to fix the training dummy's two demo bugs (random skips an unblockable, lights stops at two cuts; see 12.3) sooner, right after 8.2 retires the hashes, so Training (task 23) doesn't ship with them before stage 12.
 - Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8: left out, as the plan says; the worktree's 28 pale petals on the wind would be cheap to bring back from the recipe in the look notes), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
@@ -199,7 +229,7 @@ One task at a time, top to bottom. Each stage names its tasks in order.
 1. **Resume and safety nets:** 13.1, 25.1, 25.2, 25.3.
 2. **The look, and the real fighters in the match:** 16.1–16.7, 14.1, 14.2.
 3. **The shrine:** 17.1–17.9.
-4. **Fluid rules:** 8.1, 8.2, 8.3, 17.10, 8.4–8.9, 12.1.
+4. **Fluid rules:** 8.1, 8.2, 8.10, 8.3, 17.10, 8.4–8.9, 12.1.
 5. **Sound and music in the game:** 19.1, 19.2, 19.3, 19.4, 20.1, 20.2, 19.5, 19.6, 20.3, 19.7, 19.8, 19.9.
 6. **The new strings:** 9.1–9.6, 10.1–10.3, 11.1–11.3.
 7. **Swing foundations:** 7.1–7.15.
@@ -237,6 +267,7 @@ One task at a time, top to bottom. Each stage names its tasks in order.
     - a GUT test that replays them on the Godot rules and compares them.
   - Blocked by: 3 (and 5 for the computer-vs-computer goldens).
   - Check: every golden matches, events exactly and positions within 1e-6.
+  - Retired in 8.2, at the last bit-exact commit 4222167, before the first rule change.
 - [x] **5. Port the computer opponent, the training dummy and the tools.** The brain with its three difficulties, the training behaviours, and headless `soak` and `counterlab` runners.
   - Blocked by: 3.
   - Check: `npm run soak:godot -- 40` finishes with no errors, and its numbers are within noise of the TypeScript soak run on the same seeds; computer-vs-computer goldens match.
@@ -280,8 +311,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Each unblockable drill (thrust and sweep for the Katana and the Daggers, sweep and slam for the Greatsword) puts its unblockable on the light slot and only ever throws that, at least 130 frames apart. A drill the weapon lacks keeps the default abilities.
       - Random throws lights, heavies and only unblockables its weapon has. Spar (`fight` in the code) walks in from 6 m (6.4 m today; idle and blocking dummies advance none), attacks and defends against a normal brain.
       - The counterlab setup: a slam is countered only by evade, a thrust only by stomp, a sweep only by leap, all by the brain.
-      - The tests found two demo bugs in the dummy, kept as they are while the TypeScript hashes still pin it and moved to 12.3: random never drills its weapon's first unblockable, and lights never reaches Crown Cut. Flipping the heavies' alternation or the drill's ability slot in the brain fails four of the tests.
-  - [ ] **8.2 Record the demo baselines, then retire the checks pinned to the TypeScript.**
+      - The tests found two demo bugs in the dummy, kept as they were while the TypeScript hashes still pinned it: random never drills its weapon's first unblockable, and lights never reaches Crown Cut. The owner asked for them fixed right after 8.2, in 8.10. Flipping the heavies' alternation or the drill's ability slot in the brain fails four of the tests.
+  - [x] **8.2 Record the demo baselines, then retire the checks pinned to the TypeScript.**
     - Delivers:
       - Before deleting anything, the TypeScript and Godot soaks (`-- 40`) and counterlabs are run and found identical. Their output and the commit hash are recorded in Progress as the last bit-exact point.
       - Deleted: `game/tests/golden/`, `test_golden_replay.gd`, `test_ai_parity.gd`, `tests/golden.test.ts`, `scripts/golden/record.ts` and the `golden:record` script.
@@ -292,6 +323,20 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Afterwards the tests pass, with the counts dropping as expected, and `soak:godot -- 40` still prints the baseline.
       - Nothing outside git history refers to `game/tests/golden`.
     - Blocked by: 8.1 · Stories: 60, 61, 62
+    - Done:
+      - At 4222167 the two soaks printed identical reports and the two counterlabs identical tallies; both are in Progress as the last bit-exact point.
+      - Deleted as listed. The Godot tests went from 626 to 585 (the 35 replays, the guard test, the 2 parity tests and the 3 port tests) and the web tests from 121 to 85 (the golden replay file's 36). The typecheck loads 159 scripts.
+      - `test_port_regressions.gd` lost the clamp fixture, the two whole-run hashes and the trace hash. The sentinel cases (seven, not six) now check what the patched Right Cut does: an interval of 0 never hits, -2 hits three times two frames apart, a negative guard crush adds no posture, a dodge-cancel frame of -1 lets the dodge in at once, a lunge end of -1 never moves the attacker, and negative hit-stop and stuns don't freeze the world or hold the defender. With the patches turned off, all seven fail.
+      - `port.json` regenerated: the math, deadzone and `Number()` sections came out identical. The `toFixed` and `String()` cases changed, because the clamp cases drew from the same random stream. One new `String()` case caught a bug in `JsFormat.num`: `var_to_str` gives a double that a float32 holds exactly float32's shortest digits (0.0071418374 for 0.0071418373845517635). It now takes its digits from `String.num_scientific`. Only the soak's match count and its posture error print through it, so no report changed.
+      - Afterwards `soak:godot -- 40` and the counterlab still print the baseline exactly.
+      - Outside this plan, its research notes (a snapshot of the breakdown) and git history, nothing refers to `game/tests/golden`.
+  - [ ] **8.10 The training dummy's lights and random, fixed.** Added on Oct 2 at the owner's request: numbered last in task 8, built right after 8.2. 8.1's tests found both bugs, which came over from the demo.
+    - Delivers:
+      - Random drills every unblockable its weapon has. Today one tally both picks the next drill and alternates the heavy follow-up, so of four choices the third never comes up (the Katana's and the Daggers' thrust, the Greatsword's sweep), and in random every heavy gets its follow-up.
+      - Lights throws the weapon's whole light string. Today the third tap leaves the 8-frame input buffer one frame before Return Cut can take a follow-up, so Crown Cut never comes. The dummy presses for each follow-up while the attack it is in can still take it, so the string stays whole when task 9 makes it four lights.
+      - `test_training_brain.gd` tightened to match.
+    - Check: random drills every unblockable its weapon has, and the heavy follow-up still comes every other time; lights throws Right Cut, Return Cut and Crown Cut every cycle for the Katana and the whole light string for the Greatsword and the Daggers; the soak and the counterlab still print the baseline (neither uses these behaviours).
+    - Blocked by: 8.2 · Stories: 53
   - [ ] **8.3 Arena radius 15 m, with every value tied to it.**
     - Delivers:
       - `ARENA_RADIUS` 15, with named margins for the Impaler's wall stop (0.7) and the dropped weapon's bounce (0.8).
@@ -537,10 +582,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: Hard parries a late-touching swing about as often as an early one over seeded runs; it ignores a move that can't reach; a 40-match soak is clean.
     - Blocked by: 7.38 · Stories: 5, 41, 54
   - [ ] **12.3 The training dummy performs every unblockable.** A shared `UnblockableRoutes` table (ability slots, Low Sweep as heavy then heavy, Skewer as dodge then heavy) replaces `ability_for`. The Katana dummy's heavies alternate both Iai variants.
-    - Also fixes two dummy bugs carried over from the demo, found by 8.1's tests:
-      - Random never drills its weapon's first unblockable (the Katana's and the Daggers' thrust, the Greatsword's sweep). One tally both picks the next drill and alternates the heavy follow-up, so of four choices the third never comes up, and in random every heavy gets its follow-up.
-      - Lights throws only two cuts. The third tap leaves the 8-frame input buffer one frame before Return Cut can take a follow-up, so Crown Cut never follows. The dummy should time its taps from the attack it is in, so the whole light string (four lights after task 9) comes out.
-    - Check: a Greatsword dummy telegraphs Reaping Sweep and Low Sweep on sweep, and Skewer on thrust; a Katana dummy releases both Iai variants; `test_training_brain.gd` asserts that random drills every unblockable its weapon has and that lights throws the weapon's whole light string.
+    - Check: a Greatsword dummy telegraphs Reaping Sweep and Low Sweep on sweep, and Skewer on thrust; a Katana dummy releases both Iai variants.
     - Blocked by: 12.2 · Stories: 53
   - [ ] **12.4 Counterlab covers every unblockable.** Every route of every weapon, with attempts, counters by kind, hits and whiffs; exit 1 when a counter is never reached.
     - Check: a short GUT counterlab counters each unblockable at least once; the full table goes in the commit.

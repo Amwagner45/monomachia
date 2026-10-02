@@ -3,11 +3,19 @@ extends GutTest
 ## one section per rule. Expected numbers come from the spec, not the code.
 
 const H := preload("res://tests/sim/sim_helpers.gd")
+## toBeCloseTo's default precision (2 digits), as the neighbouring tests use
+const CLOSE: float = 0.005
 
-## The spec's arena: a 15 m wall, with fighters' centres stopping a fighter's
-## radius (0.42 m) inside it.
+## The spec's arena: a 15 m wall.
 const WALL: float = 15.0
-const CENTRE_LIMIT: float = 15.0 - 0.42
+## Fighters' centres stop a fighter's radius (0.42 m) inside the wall.
+const CENTRE_LIMIT: float = WALL - 0.42
+## The Impaler's dash ends 0.7 m inside the wall.
+const IMPALER_STOP: float = WALL - 0.7
+## Dropped weapons bounce off a ring 0.8 m inside the wall.
+const BOUNCE_RING: float = WALL - 0.8
+## The Impaler dashes 24 m/s: 0.4 m a frame.
+const DASH_STEP: float = 0.4
 
 
 func after_each() -> void:
@@ -46,39 +54,39 @@ func test_a_weapon_dropped_near_the_wall_bounces_off_it_and_rests_inside() -> vo
 		furthest = maxf(furthest, _r(W.weapons[0].pos))
 	var w: DroppedWeapon = W.weapons[0]
 	assert_true(w.grounded, "it comes to rest")
-	assert_almost_eq(furthest, WALL - 0.8, 1e-9, "it flies out to its bounce ring, 0.8 m inside the wall, and no further")
-	assert_lte(_r(w.pos), WALL - 0.8, "it rests inside")
+	assert_almost_eq(furthest, BOUNCE_RING, 1e-9, "it flies out to its bounce ring and no further")
+	assert_lt(_r(w.pos), BOUNCE_RING - 1.0, "it bounces back off the ring and rests well inside")
 
 
 func test_the_impaler_dash_stops_0_7_m_inside_the_wall() -> void:
-	# The target hangs above the dash (y 2 m), so the blade never reaches it,
-	# beyond where the dash should stop, so the dash never passes it.
+	# The target hangs 2 m up, beyond where the dash should stop: the blade
+	# never reaches it, and the dash never passes it.
 	var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA)
 	var a: Fighter = W.fighters[0]
 	var b: Fighter = W.fighters[1]
 	a.pos = V3.make()
 	a.hp = 20.0
 	b.pos = V3.make(0.0, 2.0, 14.5)
-	var hold_up: Callable = func(_i: int) -> RawInput:
-		b.pos.y = 2.0
-		b.vel.y = 0.0
-		return H.idle()
 	var dash_frames: int = 0
 	var stop_r: float = -1.0
 	for i: int in 120:
-		W.step([H.btn(Btn.ULTIMATE) if i == 0 else H.idle(), hold_up.call(i)])
+		b.pos.y = 2.0
+		b.vel.y = 0.0
+		W.step([H.btn(Btn.ULTIMATE) if i == 0 else H.idle(), H.idle()])
 		if a.state == &"ult" and a.ult.phase == &"dash":
 			dash_frames = a.ult.pf
 		elif dash_frames > 0 and stop_r < 0.0:
 			stop_r = _r(a.pos)
 	assert_gt(dash_frames, 0, "the Impaler dashed")
-	assert_lt(dash_frames, 40, "the wall ends the dash before its 40 frames")
-	assert_gt(stop_r, WALL - 0.7, "it stops past 0.7 m inside the wall (the demo's 10.8 m)")
-	assert_lte(stop_r, CENTRE_LIMIT, "and inside the wall")
+	# the last dash frame seen is 39 when its 40 frames run out
+	assert_lt(dash_frames, 39, "the stop ends the dash before its frames run out")
+	assert_between(stop_r, IMPALER_STOP, IMPALER_STOP + DASH_STEP, "within one dash step past the stop, 0.7 m inside the wall")
+	assert_lt(stop_r, CENTRE_LIMIT, "short of the wall itself, so the stop ended it, not the wall")
 
 
-func test_a_vertical_moonsplitter_hits_across_28_m() -> void:
-	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 28.0)
+func test_a_vertical_moonsplitter_hits_across_the_widest_gap() -> void:
+	# two fighters with their backs to opposite walls: 29.16 m apart
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.0 * CENTRE_LIMIT)
 	var a: Fighter = W.fighters[0]
 	var b: Fighter = W.fighters[1]
 	a.hp = 20.0
@@ -90,5 +98,5 @@ func test_a_vertical_moonsplitter_hits_across_28_m() -> void:
 		if gap_at_release < 0.0 and r.has(&"ultWave"):
 			gap_at_release = SimMath.dist2(a.pos, b.pos)
 	assert_eq(r.find(&"ultWave").get("kind"), &"vertical")
-	assert_almost_eq(gap_at_release, 28.0, 1e-9, "the fighters stand 28 m apart")
-	assert_almost_eq(b.hp, 70.0, 0.005, "the wave reaches and hits")
+	assert_almost_eq(gap_at_release, 2.0 * CENTRE_LIMIT, 1e-9, "the fighters stand 29.16 m apart")
+	assert_almost_eq(b.hp, 70.0, CLOSE, "the wave reaches and hits")

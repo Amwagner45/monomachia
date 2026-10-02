@@ -1,9 +1,9 @@
 extends GutTest
 ## Checks every field of every weapon and move against the TypeScript data after
 ## finalizeMoves (game/tests/fixtures/moves.json, written by
-## scripts/sim-fixtures.ts), apart from the rebuild's deliberate changes in
-## CHANGED. The fixture has the TS camelCase keys; a missing key was undefined
-## in the TS and must hold the port's sentinel.
+## scripts/sim-fixtures.ts), apart from the rebuild's deliberate changes (the
+## changes table). The fixture has the TS camelCase keys; a missing key was
+## undefined in the TS and must hold the port's sentinel.
 
 ## The sentinel each optional field holds when the TS leaves it undefined
 ## (see attack_def.gd).
@@ -32,11 +32,19 @@ const UNSET: Dictionary = {
 }
 
 ## The demo's data that the rebuild changed on purpose, one row per rule: a
-## move of this kind whose field held "was" in the TS now holds "now". Every
-## move and field no row covers still matches the demo.
-const CHANGED: Array[Dictionary] = [
+## move of this kind whose field held "was" in the TS (the port's sentinel
+## where the TS left it unset) now holds "now", a value or a function of the
+## move's TS record. Every move and field no row covers still matches the demo.
+## (A static var, as a const can't hold a function.)
+static var changes: Array[Dictionary] = [
 	# 8.7: the lights' default hitstun (bare hands keep their own 16)
 	{"field": "hitstun", "kind": "light", "was": 18, "now": 14},
+	# 8.8: heavies dodge-cancel from startup + active + half the recovery,
+	# rounded up (the demo gave them no cancel)
+	{
+		"field": "dodge_cancel_from", "kind": "heavy", "was": AttackDef.UNSET,
+		"now": func(ts: Dictionary) -> int: return int(ts["startup"]) + int(ts["active"]) + ceili(float(ts["recovery"]) / 2.0),
+	},
 ]
 
 var _fx: Dictionary
@@ -70,11 +78,13 @@ static func _same(a: Variant, b: Variant) -> bool:
 	return typeof(na) == typeof(nb) and na == nb
 
 
-## The value a move's field should hold: its TS value, or a CHANGED row's.
+## The value a move's field should hold: its TS value (or sentinel), or a
+## changes row's.
 static func _wanted(ts: Dictionary, field: String, ts_value: Variant) -> Variant:
-	for row: Dictionary in CHANGED:
+	for row: Dictionary in changes:
 		if row["field"] == field and _same(ts.get("kind"), row["kind"]) and _same(ts_value, row["was"]):
-			return row["now"]
+			var now: Variant = row["now"]
+			return (now as Callable).call(ts) if now is Callable else now
 	return ts_value
 
 
@@ -98,8 +108,10 @@ func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 			continue
 		if not UNSET.has(snake):
 			out.append("%s.%s: unset in TS but finalizeMoves should set it" % [where, snake])
-		elif not _same(m.get(snake), UNSET[snake]):
-			out.append("%s.%s: got %s, want the unset sentinel %s" % [where, snake, m.get(snake), UNSET[snake]])
+		else:
+			var want: Variant = _wanted(ts, snake, UNSET[snake])
+			if not _same(m.get(snake), want):
+				out.append("%s.%s: got %s, want %s (the TS left it unset)" % [where, snake, m.get(snake), want])
 	return out
 
 

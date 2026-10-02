@@ -9,7 +9,7 @@ Oct 2, 2026 · status: in build, one task at a time. Stages 1–5 of the build o
 - a soak that reports the balance targets (12.1);
 - sound and music in the game (19.1–19.9, 20.1–20.3): every rules event's sounds, placed in 3D and through the arena's reverb, footsteps, the arena's ambience, the three music tracks switched by the menus and the round call, ducking, menu sounds and saved volumes, with a sound check scene for listening. Stories 50 and 51 wait for the owner's listening pass, and story 52 for the Settings screen (22.9).
 
-14.3–14.9 (animation, draft PR #4) goes on in its own lane. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check, and 9.2 made the Iai Slash the Katana's heavy. Next in this lane is 9.3, walking while sheathed (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+14.3–14.9 (animation, draft PR #4) goes on in its own lane, with 14.3–14.7 done. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check, 9.2 made the Iai Slash the Katana's heavy, and 9.3 lets the fighter walk in its stance. Next in this lane is 9.4, the horizontal Iai (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -184,7 +184,7 @@ The goldens guarded the faithful port only. Commit 4222167 is the last one prove
 - `swing`: the weapon path (see below);
 - `side_start` and `side_end`: which side the weapon starts and ends on, used to check string continuity;
 - `dodge_cancel_from` on heavies;
-- `charge_move`: a charge the fighter can walk during (the Iai stance);
+- `charge_move`: a charge the fighter can walk during, at block speed, and that a dodge cancels (the Iai stance);
 - `release_variant`: the move a charged or held attack turns into when released with the stick left or right (the horizontal Iai);
 - `lunge_along_dodge`: a dodge attack that lunges in the dodge's direction instead of facing forward.
 
@@ -310,7 +310,7 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
 
-The Iai's frames count its sheathe in the startup: 23 frames are the 9-frame sheathe, which a held heavy stretches into the stance as a charge, and the 14-frame draw. A tapped heavy draws on frame 23 and hits on 24, and a held one hits 14 frames after release. It lunges only once the sheathe ends: 0.4 m over frames 10 to 25, easing in and out. Until weapon paths decide hits (task 7), the vertical Iai hits with an interim cone of 3.6 m and 60°, which with the lunge reaches a fighter 3.8 m away where Right Cut misses. Until task 9.3 the sheathed fighter stands still.
+The Iai's frames count its sheathe in the startup: 23 frames are the 9-frame sheathe, which a held heavy stretches into the stance as a charge, and the 14-frame draw. A tapped heavy draws on frame 23 and hits on 24, and a held one hits 14 frames after release. It lunges only once the sheathe ends: 0.4 m over frames 10 to 25, easing in and out. Until weapon paths decide hits (task 7), the vertical Iai hits with an interim cone of 3.6 m and 60°, which with the lunge reaches a fighter 3.8 m away where Right Cut misses. Once the sheathe's 9 frames end, the sheathed fighter walks and strafes at the blocking walk's speed, never sprinting or stepping, and a strafe circles the opponent as a free fighter's does; other weapons' charged heavies still stand still. A dodge cancels the stance, including one pressed up to 8 frames before it begins (the input buffer, as for every dodge cancel) and one pressed on the step heavy is let go, before the draw starts. A dodge pressed in the sheathe of a tapped heavy is refused. Once the draw starts it keeps only the dodge cancel every heavy has, from frame 39, and the walk's speed carries into it, braking as on every attack frame (about 0.14 m of drift after a full-speed strafe).
 
 Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). Rising Heaven's and Heaven Splitter's lunges still end two frames after their cuts start.
 

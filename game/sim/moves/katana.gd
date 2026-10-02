@@ -30,14 +30,14 @@ const MOVES: Dictionary = {
 		"range": 2.3, "arc": 60, "lunge": 0.5, "lunge_end": 16, "dodge_cancel_from": 26,
 	},
 	# the heavy: sheathe for 9 frames (up to the fighter's charge check,
-	# CHARGE_CHECK_FRAME: held, the stance is the charge), then draw in 14,
-	# lunging only once the sheathe ends
+	# CHARGE_CHECK_FRAME: held, the stance is the charge, walked in at the
+	# blocking walk's speed), then draw in 14, lunging only once the sheathe ends
 	&"k_iai": {
 		"id": &"k_iai", "name": "Iai Slash (vertical)", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",
 		"side_start": &"left", "side_end": &"right",
 		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
 		"range": 3.6, "arc": 60, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25, "chargeable": true,
-		"chain_heavy": &"k_h1f",
+		"charge_move": true, "chain_heavy": &"k_h1f",
 	},
 	&"k_h1f": {
 		"id": &"k_h1f", "name": "Rising Heaven", "kind": &"heavy", "type": &"slash", "anim": &"diagUp",

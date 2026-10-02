@@ -432,7 +432,9 @@ func world_dir(mx: float, my: float) -> V2:
 	return SimMath.norm2(to.x * my + rx * mx, to.z * my + rz * mx)
 
 
-func _locomotion() -> void:
+## Walk or run where the stick points. at_block_speed: at the blocking walk's
+## speed and never sprinting, as while blocking (the Iai stance).
+func _locomotion(at_block_speed: bool = false) -> void:
 	var inp: InputTracker = input
 	var mx: float = inp.mx
 	var my: float = inp.my
@@ -448,14 +450,15 @@ func _locomotion() -> void:
 		var to: V2 = SimMath.norm2(opp.pos.x - pos.x, opp.pos.z - pos.z)
 		var rx: float = -to.z
 		var rz: float = to.x
-		var sprinting: bool = inp.sprinting() and not blocking
+		var block_pace: bool = blocking or at_block_speed
+		var sprinting: bool = inp.sprinting() and not block_pace
 		var s_f: float = SimConst.MOVE_RUN_FORWARD if my >= 0.0 else SimConst.MOVE_RUN_BACK
 		var s_s: float = SimConst.MOVE_RUN_STRAFE
 		if sprinting:
 			s_f = SimConst.MOVE_SPRINT
 			s_s = SimConst.MOVE_SPRINT
 		var mult: float = speed_mult()
-		if blocking:
+		if block_pace:
 			mult *= SimConst.MOVE_BLOCK_SPEED_MULT
 		tx = (to.x * my * s_f + rx * mx * s_s) * mult
 		tz = (to.z * my * s_f + rz * mx * s_s) * mult
@@ -652,8 +655,16 @@ func _update_attack() -> void:
 		if inp.is_held(Btn.HEAVY):
 			a.charging = true
 	if a.charging:
+		if def.charge_move:
+			# a charge the fighter walks in (the Iai stance): a dodge cancels it
+			if inp.buffered(Btn.DODGE):
+				inp.consume(Btn.DODGE)
+				start_dodge()
+				return
+			_locomotion(true)
+		else:
+			_brake()
 		a.charge_frames += 1
-		_brake()
 		if not inp.is_held(Btn.HEAVY) or a.charge_frames >= SimConst.CHARGE_MAX:
 			a.charging = false
 			if a.charge_frames >= SimConst.CHARGE_MAX:
@@ -887,7 +898,7 @@ func _integrate() -> void:
 
 	# strafing orbits the opponent: keep distance when moving sideways only
 	var keep: float = -1.0
-	if (state == &"free" or state == &"step") and moving and absf(input.my) < 0.25:
+	if (state == &"free" or state == &"step" or _in_stance()) and moving and absf(input.my) < 0.25:
 		keep = SimMath.dist2(pos, opp.pos)
 
 	pos.x += vel.x * SimConst.DT
@@ -920,6 +931,12 @@ func _integrate() -> void:
 			vel.y = 0.0
 			if falling:
 				_on_land()
+
+
+## Whether the fighter holds a charge it can walk in (charge_move): the Iai
+## stance.
+func _in_stance() -> bool:
+	return state == &"attack" and atk != null and atk.charging and atk.def.charge_move
 
 
 func _on_land() -> void:

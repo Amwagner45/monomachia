@@ -174,6 +174,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The Greatsword's L-L-H (10.1): Heavy Swing, then Backswing, which rides its momentum and starts sooner, then Overhead Strike, the chargeable heavy, which also follows Heavy Swing and starts from neutral; only its heavy follow-up comes after it.
   - Low Sweep (10.2): Overhead Strike's heavy follow-up, an unblockable sweep at the feet that warns as it starts, hits through a block, and gives a defender who jumps it the leap counter.
 - **In other lanes** (each in its own worktree, one task at a time with the owner's OK, merged into this branch when its stage is done): 14.3–14.9, the first part of the fighter animation (`godot/stage-8-animation`, draft PR #4), all done and waiting for the owner's approval to merge (PR #4 is ready), and 7.1–7.15, the swing foundations (`godot/stage-7-swings`, draft PR #5), with 7.1–7.8 done. Their tasks are ticked on their branches and reach this plan when they merge. The animation lane's legs walk only in the free and step states (`Locomotion.MOVING_STATES`), and since 9.3 the Iai stance walks too, so they should count it where the lanes meet, through `Fighter.in_stance()` (public since 9.6). Stage 5, sound and music, ran in a lane of its own too (`godot/stage-5-sound`, PR #3) and is merged.
+  Done in the animation lane, each with its strips or sheets reviewed by the owner:
+  - Pose checks (14.3): `PoseCheck` measures a posed fighter's wrists, elbows, knees, the blade's clearance of the body and its reach into a defender, and `MoveBench` plays a move frame by frame and measures each. Today's stand-in poses fail it, the Katana guard included; the owner moved the guard's pass to 14.8.
+  - Contact sheets (14.4): `tools/shot_scenes/move_sheet.tscn` lays out a move's frames from the gameplay cameras, three-quarter, close and the hands, captioned with PoseCheck's numbers, and `--move=all` renders a weapon's whole set. Its `--drive=` strips play scripted movement from rest (14.5–14.7 add theirs).
+  - Locomotion by speed (14.5): the legs walk, jog and sprint with the rules' speed in an AnimationTree per fighter, every clip on one step phase moved by the rules' clock, so the feet stay planted and the legs hold still in hit-stop and pause. `FootPhase` measures each fighter's strides from its own clips.
+  - Hip-turn strafing and backpedal (14.6): the legs turn toward the way the fighter travels, at most 80°, and run backwards past 100°, while the chest keeps facing the opponent; the running clips' own swing of the shoulders comes out while moving.
+  - Lean and brace (14.7): the body leans into starts, stops and turns, at most 11°, and the hips drop when braking; the stand-in weapon poses ride the lean.
 - **Checks after 10.2** (the bench and the wall shots are from 17.10, the shrine's other shots from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
   - 635 Godot tests (49 s): rules 148, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
@@ -194,6 +200,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - after 9.6 and its review fixes: 794 Godot tests (86 s) and 85 web tests pass, and the typecheck loads 179 scripts;
   - after 10.1 and its review fixes: 806 Godot tests (87 s) and 85 web tests pass, and the typecheck loads 182 scripts;
   - after 10.2 and its review fixes: 814 Godot tests (81 s) and 85 web tests pass, and the typecheck loads 182 scripts.
+  - the animation lane after 14.7, with 9.3 merged in: 846 Godot tests (100 s; the animation tests take most of the extra time) and 85 web tests pass, the typecheck loads 189 scripts, and the skeleton exchange shot renders with no leaks at exit. Every check added in 14.3–14.7 was mutation-tested (each task's Done lists them).
 - **The look-and-arena worktree, fully salvaged:**
   - Task 17 stopped mid-build there (`look-and-arena`, all uncommitted in `.claude/worktrees/wf_c7f99fe5-f9a-1`, based on the old commit 67265af).
   - Tasks 16.1–17.9 salvaged it piece by piece, reviewed (16.1–16.5, 17.1, 17.3–17.9): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, the shrine's courtyard, props, underside, sky, backdrop, embers and ash, and the bench. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work.
@@ -290,6 +297,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
 - Whether the Iai stance's walking speed should halve as the draw starts, as an attack start's does. Today it brakes as on every attack frame, which gives about 0.14 m of sideways drift in the draw after a full-speed strafe (9.3); halving it is one line.
 - Whether the counter lunges, the evade counter's reward, keep the demo's 18 frames of hitstun. 8.7 gave them 14 with every other light, as the plan's check asked; an exception is one line.
+- Whether the footsteps should follow the legs. 19.4's `FootstepCadence` counts the distance run. 14.5's step phase passes 0 at the left foot's mid-stance and about 0.5 at the right's, so it could time them instead. The animation lane leaves the audio code alone until the owner says.
 - Reviews and sign-offs as their tasks land: the camera with a fighter backed against the shrine's wall (17.10: it now comes in to about 1.6 m behind them, short of the props, on about 5% of frames in a match that reaches the wall; story 11 waits on this; `arena_wall.tscn`, or `--wall=<degrees>` on the gameplay and Watch views; the alternative is a camera that pulls in only when a prop is in the way, which needs collision on the props), a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8: left out, as the plan says; the worktree's 28 pale petals on the wind would be cheap to bring back from the recipe in the look notes), a listening pass (19.9: a Duel, a Watch match and the sound check, `node scripts/godot.mjs run res://tools/sound_check.tscn`; stories 50 and 51 wait on it, and its fixes come back as their own small tasks), the Iai's stand-in sheathe and draws (9.6: `skeleton_iai_stance.tscn`, `skeleton_iai_vertical.tscn` and `skeleton_iai_horizontal.tscn`, with `--frame=` for the draws), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
@@ -1064,33 +1072,292 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - The hands are on the grips but the stick keys look stiff on real bodies: short reaches, and a body that only leans. Swings (7.16 on, 14.10) replace them.
         - A disarmed fighter's arms stay on the clip; fists come with 15.x.
         - The flash tints the whole body flat, as the stand-in's did; task 18's effects can refine it.
-  - [ ] **14.3 Pose checks on the posed skeleton (`PoseCheck`).** It measures:
+  - [x] **14.3 Pose checks on the posed skeleton (`PoseCheck`).** It measures:
     - wrist bend and deviation;
     - the elbow angle, at 150–160° on the first active frame and never locked;
     - the knees over the toes;
     - the displayed blade's distance from bone capsules (head with a hat margin, torso, arms, thighs);
     - reach depth into a defender's capsule.
     A GUT helper plays a move frame by frame.
-    - Check: made-up poses fail as expected (a 70° wrist, a blade 3 cm from the head, a locked elbow or 140° elbow at contact, a knee inside the foot line); the Katana guard passes; a report over the StickPose Katana attacks prints.
+    - Check: made-up poses fail as expected (a 70° wrist, a blade 3 cm from the head, a locked elbow or 140° elbow at contact, a knee inside the foot line); the Katana guard passes (moved to 14.8 with the owner's OK: today's guard fails, see below); a report over the StickPose Katana attacks prints.
     - Blocked by: 14.2 · Stories: 21
-  - [ ] **14.4 Contact-sheet tool.** Plays one move on a real fighter against a defender at the duelling distance and captures chosen frames: from the gameplay camera behind the defender and behind the attacker, three-quarter, close up and at the hands. Each frame is labelled with its phase and PoseCheck numbers, driven by `npm run shots` arguments. A batch mode renders every move of a weapon, so a re-key can rerun the whole set.
+    - Done:
+      - **`PoseCheck`** (`game/view/fighter/pose_check.gd`) measures a `Frame`: every bone at the end of the modifier stack in skeleton space, the arms on IK and the held blades. `frame_of()` steps a fighter's skeleton by hand and reads the bones as the last modifier finishes. The caller resumes on the tree's next frame: resuming inside the skeleton's own update and stepping it again never finished. Tests make up poses by editing a real frame.
+        - **Wrists:** the forearm's line (elbow to wrist) as the hand bone sees it. The deviation is its angle out of the hand's bending plane (at most 90° either way) and the bend its angle within it, so a hand folded far back isn't counted twice. Limits ±60° and ±25°. At rest the hands are within 2° of the forearms' line.
+        - **Elbows** on IK: never past 170°, and 150–160° when the frame is a move's first active frame.
+        - **Knees:** the knee's distance outside the plane through the hip that holds the line to the ankle and the toes' direction, so a turned-out foot takes the plane with it; it fails 1 cm inside.
+        - **The blade** (BladeBase to BladeTip) at least 5 cm from the body's capsules, naming the nearest.
+        - **Reach:** how much blade is inside a defender's capsule (0.35 m round, from the feet to 1.75 m). A measure, not a pass or fail.
+      - **The body's capsules** are measured from each fighter's own meshes when a check is made, each skinned vertex going with its heaviest bone: head, torso, upper arms, forearms and thighs.
+        - Each axis moves off its joints by its part's mean offset (the torso's 9–10 cm forward, since the spine runs down the back), its radius takes in 90% of the part's vertices, and its ends are drawn in so the caps stop where the part does (the forearm's at the bracer, not over the hand).
+        - The head counts only what is above its joint (the Rogue's long hair hangs down her back), and then grows to take in the whole hat: the hat margin.
+        - Radii: the Rogue's head 13.9 cm, torso 18.5, upper arms 6.1, forearms 6.3, thighs 13.7–13.8; the Hunter's head 20.6 (his tricorn), torso 18.0, upper arms 6.9 and 10.2 (the pauldron on his left), forearms 5.7, thighs 13.5–14.0. Task 7's reference bodies can start from these.
+        - A capsule is coarse where a part is wide but shallow: the torso's radius is set by the shoulders, and the hood's collar takes its cap up to the chin.
+      - **`MoveBench`** (`game/tools/move_bench.gd`) is the helper: a rules World with the fighter facing a defender 2.5 m away, and the fighter's FighterView stepped by hand. `play(move)` starts the move from the guard in a fresh world, steps the rules with no input, and measures once per attack frame (hit-stop steps are skipped), with the phase and the contact frame from the frame data and reach against the defender where it stood. `summary()` prints a move on one line. The contact sheets (14.4) will play through it.
+      - **What it found:**
+        - The match's Katana guard (the StickPose guard pulled into reach) fails on both fighters. The right wrist turns 40–44° toward the little finger. The left bends back 91–98°: its elbow sits out at the side, so the forearm runs across the belly, while the rig's fixed 25° grip roll points that hand forward-left. The 14.1 review guard fails the same way, and a search of 162 grips, blade angles and edges found no guard that passes with today's grip. The Rogue's Katana hold clip also caves her left knee 1.2 cm inside its foot line. The owner moved the guard's pass to 14.8.
+        - Every StickPose Katana attack fails its wrists on most frames, and at 2.5 m only Leaping Cleave (38 cm) and Lunging Cut (11–19 cm) reach into the defender. The stand-in poses were made for a stick figure; swings replace them.
+      - **Tests:** `test_pose_check.gd` (14): the capsules per fighter, with the Hunter's hat inside his head's; the guard measured on both fighters; the same pose measuring the same; made-up wrists (55° passes, 70° fails, 20° sideways passes, 30° fails, on both hands), a blade over the crown at 3 cm (fails) and 6 cm (passes), elbows (180° and 172° fail, 165° fails only on contact, 155° passes on contact, 140° fails only on contact), knees on the toes' plane (exact, with the foot turned 40°) and a knee pushed inside the guard's; a held blade clearing its own wrist; caps stopping where their parts do; reach through the front, short of it, right through and over the round top; MoveBench's frames, phases and contact on Right Cut, and the same reports twice; and the StickPose report. Each check was mutation-tested (the lock, the contact band, the knee's side, the left hand's deviation, the hat margin, the drawn-in caps, hit-stop steps): each mutation fails a test.
+  - [x] **14.4 Contact-sheet tool.** Plays one move on a real fighter against a defender at the duelling distance and captures chosen frames: from the gameplay camera behind the defender and behind the attacker, three-quarter, close up and at the hands. Each frame is labelled with its phase and PoseCheck numbers, driven by `npm run shots` arguments. A batch mode renders every move of a weapon, so a re-key can rerun the whole set.
     - Check: sheets render for the guard and a Katana light and are reviewed; the batch mode renders a weapon's set; two runs give the same images.
     - Blocked by: 14.3 · Stories: 42, 65
-  - [ ] **14.5 Locomotion by speed.** An AnimationTree advanced by the rules' clock; idle, walk, jog and sprint blended by the rules' speed, from one shared step phase; strides measured with a foot-phase tool.
+    - Done:
+      - **The sheet** (`game/tools/shot_scenes/move_sheet.tscn`): `npm run shots -- res://tools/shot_scenes/move_sheet.tscn <out.png> 1 --fighter=rogue --weapon=katana --move=k_l1`. It plays the move through MoveBench (14.3), the fighter in palette A against a defender in palette B holding the Katana 2.5 m away (the same fighter unless `--defender=`; `--spacing=` changes the distance), in the preview's studio. The defender takes no input, so a move that reaches it lands as the rules say. `--move=guard` (the default) is one row of the fighter in its guard.
+      - **Frames** (`--at=`): frame numbers, the landmarks (start, windup = mid startup, cocked = the last startup frame, contact, release = the last active frame, follow = mid recovery, end), `keys` (every landmark, the default) or `all`.
+      - **Views** (`--views=`, in order): the match's own camera (CameraRig's follow view) over the defender's shoulder and over the attacker's, the whole 16:9 screen; three-quarter from in front on the weapon side, close (head, chest and hands) and the hands on the grip, square.
+      - **Captions:** each row says the frame (of how many), its phase (", contact" on the first active frame) and PoseCheck's numbers, then what fails in red or "passes PoseCheck" in green. The header names the fighter, weapon and move with its frame data, the defender and distance, and the views, and gives MoveBench's summary of the whole move with its failure counts.
+      - **Batch** (`--move=all`): the guard and every move of the weapon, each saved beside the out file as `<out>_<move>.png`; the out file is an index of them all at their first active frame from the first view, with how many pass PoseCheck there. The Katana's 19 sheets for one fighter take about 65 s.
+      - **The same images:** both skeletons are stepped by hand once per rules frame, nothing moves between a frame's captures, and shots run at a fixed 60 fps. Two batch runs of the Katana gave byte-identical files (all 20).
+      - MoveBench gained `begin()` and `next_frame()`, a move one frame at a time (`play()` is built on them), and `dispose()`; its summary now writes its failure counts out. The preview's studio is shared (`build_studio_stage()`).
+      - **Reviewed:** the Rogue's Katana guard, Right Cut (k_l1) and the whole Katana batch. The StickPose stand-in fails PoseCheck on every Katana sheet, as 14.3 found (none of the 19 pass at contact); the sheets also show Swallow Sweep's blade 6.2 cm into the right thigh and Crown Cut, Heaven Splitter and Leaping Cleave bringing the blade within 1 cm of the right forearm.
+      - **Tests:** `test_move_sheet.gd` (15), headless: the landmarks; frames by number, landmark and `all`; the arguments; the defender's default; the gameplay views are CameraRig's follow view from each side, cropped to the whole screen and the others to a centred square; the three-quarter, close and hand views keep the crown (the top of PoseCheck's head capsule, hat included), the grip and the feet in their crops on both fighters; a move sheet's rows, cells, captions and size; the header's lines; the guard's sheet; the verdict and its colours; the batch's moves and file names; the batch saving every sheet and making the index; the layout. `test_pose_check.gd` adds a move stepped by hand matching `play()`. Mutation-tested: 18 mutations (the landmarks, the dropped frames, the cameras, the crops, the cells and gaps, the captions, the header, the batch's saving, the defender's palette, letting go of the world), each failing a test.
+  - [x] **14.5 Locomotion by speed.** An AnimationTree advanced by the rules' clock; idle, walk, jog and sprint blended by the rules' speed, from one shared step phase; strides measured with a foot-phase tool.
     - Check: blend weights at rest, 0.98, 3.9 and 7.2 m/s; the phase never jumps; it freezes in hit-stop and pause; a side strip from rest to sprint is reviewed.
     - Blocked by: 14.2 · Stories: 12, 13
-  - [ ] **14.6 Hip-turn strafing and backpedal.** Legs turn toward travel (±80°, flipping to backwards past ±100° with hysteresis) on a spring, while the chest keeps facing the opponent.
+    - Done:
+      - **`Locomotion`** (`game/view/fighter/locomotion.gd`) is an AnimationTree on each fighter's model: idle (the held weapon's hold clip), `Walk`, `Jog_Fwd` and `Sprint`, each through a seek, blended by three Blend2 nodes. FighterView updates it every frame in place of seeking the hold clip on the player; the KO fall still plays on the player.
+      - **The blend** follows the rules' speed: idle at rest, the walk at 0.98 m/s (the walk clip's own pace), the jog at the fighter's running speed (3.9 m/s times the weapon's speed: 3.51 for the Greatsword, 4.37 for the Daggers, less when disarmed) and the sprint at its sprinting speed (7.2 times the same), linear in between. Only walking and running on the ground count (the states `free` and `step`): a dodge, an attack's lunge, a jump or a stagger keeps the hold clip until its own task.
+      - **One step phase.** At phase 0 the left foot is at mid-stance in every clip, and the right at about 0.5. The phase moves by the speed over the blended stride once per rules frame, and is shown between frames by the host's alpha, as the position is. The world's frame stands still in hit-stop and while paused, and so do the legs.
+      - **`FootPhase`** (`game/view/fighter/foot_phase.gd`; `tools/foot_phase.gd` prints it) measures a clip's ground speed from the feet sweeping back through the middle of their range: in a running stride the ankle lifts while the toes stay down, so a foot's height doesn't show when it is planted, and a foot is furthest ahead mid-air in a run but at heel strike in a walk. Each fighter's gaits are measured on its own skeleton when its model is built, once per fighter. The Rogue: walk 0.93 m/s (stride 1.23 m), jog 4.98 (4.65), sprint 8.36 (5.58); the Hunter: walk 0.97 (1.29), jog 5.30 (4.95), sprint 8.65 (5.77). The jog clip is made for about 5 m/s, so at the rules' 3.9 m/s run it plays at about three-quarters pace with its full stride, the feet still planted; the sprint at about 85%.
+      - **Strips:** the contact-sheet tool's new `--drive=` mode plays scripted input from rest and lays out a side view every `--every=` frames (default 4), each captioned with the speed, the blend and the phase: `npm run shots -- res://tools/shot_scenes/move_sheet.tscn shots/14.5/rogue_rest_to_sprint.png 1 --drive=rest_to_sprint`. The later locomotion tasks add their drives to `DRIVES`.
+      - **What the strips show** (both fighters, rest to sprint): from rest the rules jump straight to 4.13 m/s, a tap step's speed (0.55 m in 8 frames), so a run starts on the jog. The walk shows only while braking, or walking slowly while blocking: the stick's 0.4 dead zone puts the slowest walk at 1.56 m/s, 0.94 while blocking.
+      - The footsteps (19.4) still count distance; the phase could time them instead (left at 0, right at about 0.5), which is the owner's call.
+      - **Tests:** `test_locomotion.gd` (12): the weights at rest, 0.98, 3.9 and 7.2 m/s, half way between and with the Greatsword's speeds; each fighter's strides measured from its own clips; mid-stance on a made-up foot path; the phase moving speed over stride on every frame from rest to sprint, never more than a sprint's step; the shown phase between frames by alpha, across the wrap; holding still in hit-stop and in a paused match (MatchHost); the hold clip at rest on the rules' clock (the pose compared with the clip's, which replaces `test_fighter_view`'s clock test); the jog and the sprint shown at the shared phase; the Greatsword's run and sprint; the left foot at mid-stance at phase 0 in every clip; which states move the legs. `test_move_sheet.gd` adds 3 (the drive's input and frames, the side view, a strip's captions and size). Mutation-tested: 19 mutations (the anchors, the stride, the phase's speed and frame, the clips' alignment, the dodge and the air, alpha, the Blend2 amounts, the weapon's speed, the hold clip's clock, one gait for all, the mid-stance's sweep and speed, the strip's frames, side, spacing and phase), each failing a test.
+  - [x] **14.6 Hip-turn strafing and backpedal.** Legs turn toward travel (±80°, flipping to backwards past ±100° with hysteresis) on a spring, while the chest keeps facing the opponent.
     - Check: the leg-yaw function for 8 directions with hysteresis; the chest within 5° of the opponent while strafing; strips of strafing, backpedalling and moving back-left reviewed.
     - Blocked by: 14.5 · Stories: 12, 13
-  - [ ] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
+    - Done:
+      - **The turn** (`Locomotion`): the legs turn toward the way the fighter travels relative to the way it faces (the rules keep it facing the opponent), at most 80° either way. Travelling more than 100° from straight ahead they turn toward the opposite way and the step phase runs back. The switch has 10° of hysteresis round 100°: backwards past 105°, forwards again under 95°. The spike's band was 90–110°, but the rules' strafe travels at 90.4–91.6° from the facing (they widen the orbit a little to keep the distance), so a strafe straight after a backpedal would have kept running backwards. Below 0.1 m/s the legs turn back to straight and run forwards again.
+      - **The spring:** an exact critically damped spring (ω 12, about a third of a second), stepped once per rules frame and shown between frames by the host's alpha, so it holds in hit-stop and pause like the phase.
+      - **On the body** (`Locomotion.turn()`): the pelvis takes 70% of the turn and the thighs 30%, and the spine turns the chest back by the pelvis's share. The running clips swing the shoulders round against the hips: the jog about ±40°, the sprint ±25°, the walk ±10°. That fails "the chest within 5° of the opponent" whichever way the legs run, and pulls on arms holding a sword. So while the legs move (by the blend's moving weight), `BodyLayer.untwist` turns the spine, neck and head back bone by bone to face the way the hips do. This also steadies the upper body running straight ahead, a change to 14.5's run. At rest the hold clip keeps its own turn of the chest.
+      - **The feet go with the legs:** `BodyLayer` now records the clip's feet after the hips and thighs turn. Before, it recorded them first, so the leg IK (`feet_from_clip`) would have pulled turned feet back onto the clip's forward path.
+      - **The reach check** (`FighterView._within_reach`) places the shoulders with `BodyLayer.moved()`, which works the layer's turns, untwist, hip shift, spine bend and lean on the clip's bones. Before, it handled only the crouch and the bend; untwisting the jog moves a shoulder up to 18 cm on the Rogue and 22 cm on the Hunter.
+      - **Measured:** while strafing at 3 m, the chest and head stay within 0.22° of the opponent on both fighters. At mid-stance the planted foot moves over the ground 0.4 m/s running forward-left at 3.7 m/s, 0.5–0.6 m/s backpedalling at 3.0 and moving back-left at 3.26, and 0.9 m/s strafing at 3.5, where the legs stop at 80° of the 91° travelled.
+      - **Strips:** the contact-sheet tool's drives are now one table (input, notes, views, spacing). New drives: `strafe_left`, `strafe_right`, `backpedal` and `back_left`, each still for 12 frames, moving for 72, then stopped for 24, with the opponent 8 m off so the rules keep the distance and the fighter circles it. There is a new `front` view (from in front, 20° to the fighter's right). Captions give the legs' turn ("legs +80°", "legs -45° back"), and with several views each gets its own block of rows. `npm run shots -- res://tools/shot_scenes/move_sheet.tscn shots/14.6/rogue_strafe_left.png 1 --drive=strafe_left`.
+      - **What the strips show** (both fighters):
+        - From rest, a strafe starts at the tap step's 4.13 m/s while the legs are still turning (15° by frame 16, 38° by frame 20, 80° by about frame 48).
+        - The backpedal is the walk and jog played backwards (0.31 and 0.69 at 3.0 m/s): long running strides backwards. In guard, 14.9's shuffle replaces it.
+        - Back-left runs backwards with the legs turned 49° to the right.
+        - After stopping, the legs turn back to straight over about a third of a second, on the hold clip.
+      - **Tests:**
+        - `test_locomotion.gd` (21, 9 new):
+          - the turn and the backwards flag for 8 directions from either state;
+          - the hysteresis at 94, 96, 100, 104 and 106° each way, and a strafe after a backpedal;
+          - the spring on the closed form, never overshooting, and two half steps equal to one;
+          - strafing left then right at 3 m: the legs at ±80°, the hips turned past 45°, the chest and head within 5° of the opponent on every posed frame, straight again once stopped;
+          - backpedalling: the phase moving back a stride per cycle on every frame, the legs straight, and forwards again at rest;
+          - back-left: backwards with the legs turned toward the opposite of the travel;
+          - the turn holding in hit-stop and shown by alpha, with the 70/30 split and the spine's turn back;
+          - the planted foot under 20% of the running speed at mid-stance on a diagonal;
+          - the hands within 1 cm of their grips while strafing;
+          - and the shown phase going the short way round running backwards.
+        - `test_fighter_rig.gd` (3 new): untwisting squares the spine, neck and head to the hips (halfway at 0.5); turned legs take the planted feet with them; `moved()` matches the posed upper body to 1 mm with every value set.
+        - `test_move_sheet.gd` (3 new): the four drives' input and spacing, the front view, and a strafe strip's captions and per-view blocks.
+        - Mutation-tested: 29 mutations, each failing a test:
+          - the turn's limit, the hysteresis's width and direction, the backwards turn;
+          - the spring's decay and stiffness;
+          - the pelvis's share, the spine's turn back, no untwist and untwisting at rest;
+          - the phase's direction backwards, the shown phase's way round, the shown turn's alpha;
+          - backwards kept at rest, the turn's minimum speed, the travel ignoring the facing;
+          - the feet recorded before the turn;
+          - the neck and head left twisted, absolute twists;
+          - `moved()` without the pelvis, untwist or lean;
+          - the reach from the clip's shoulders, no turn on the body;
+          - the front view's angle, the caption's back, a strafe drive's spacing, the drive's spacing and views ignored.
+  - [x] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
     - Check: the lean follows acceleration within its cap and holds in hit-stop; braking leans back and settles; a run-brake-stop strip is reviewed.
     - Blocked by: 14.5 · Stories: 13
-  - [ ] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle.
+    - Done:
+      - **`Lean`** (`game/view/fighter/lean.gd`), stepped by Locomotion once per rules frame and shown between frames by the host's alpha, so it holds in hit-stop and pause.
+        - **The acceleration** is the change of the rules' velocity over the ground, turns included, in the fighter's frame. It counts only while the fighter walks or runs on the ground on both frames, so an attack's own change of speed (it keeps half), a dodge or a jump adds nothing. It is eased at 20/s.
+        - **The lean:** the whole body tilts toward it about the ground under it (the Root bone), 0.014 rad per m/s², at most 11°, the leg IK keeping the feet planted.
+        - **The brace:** braking, the acceleration against the way the fighter last travelled, drops the hips 0.35 cm per m/s², at most 5 cm.
+        - **A spring** (critically damped, ω 30) takes the lean and the drop to their targets. The rules' tap step from rest is a one-frame jump to 4.13 m/s, which without it snaps the body 11° in a frame.
+        - **Rates:** the prototype eased at 10/s with no spring. The rules brake from a run in 7 frames, and at 10/s with a spring of 20 the back-lean peaked 5 frames after the stop and took 0.5 s to settle. At 20 and 30 it peaks 2 frames after the stop, settles in about 0.3 s, and a tap step leans forward over 6 frames, to about 9°.
+      - **The weapon rides the lean:** FighterView carries the stand-in weapon poses with the lean and the brace (`Locomotion.carry()`), so the arms keep their shape. Otherwise an 11° lean moves the shoulders about 20 cm against a weapon that stays put. `BodyLayer.about()` is now public.
+      - **What the strips show:**
+        - Setting off from rest, the Rogue leans 3°, 7° and 9° forward through the tap step, and is upright 16 frames in, running at speed.
+        - Letting go at 3.9 m/s, she leans back 2°, 6° and 8° as she slows, and stops at 10° back with the hips 4–5 cm down. She is upright again 18 frames (0.3 s) after the stop.
+        - From a sprint the back-lean reaches 11° while the legs still stride, and holds into the stop.
+        - Circling the opponent at 3 m leans about 3° toward it.
+        - The legs still pop from a mid-stride walk into the guard stance over the brake's last 2 frames (the blend drops from walk to idle between 0.9 m/s and 0). That is the low-speed band 14.9's shuffle takes over.
+      - **Strips:** new drives `run_brake` (still 12 frames, running 48, then letting go for 36) and `sprint_brake` (running 24, sprinting 36, letting go 36), side on, 26 m off. Strip captions gain a third line: "upright", or "lean 10° back · hips down 5 cm".
+      - **Tests:**
+        - `test_locomotion.gd` (30, 9 new):
+          - the target tilt (per m/s², the cap, the way), and the rotation tipping the body the way it says;
+          - the brace's drop against the way of travel only, and its cap;
+          - a run from rest leaning forward without a snap, never past 11°, upright at speed, no brace;
+          - a brake leaning back past 9° with the hips past 3.5 cm, furthest back within 3 frames of the stop, settled within 24 frames, and the values on the body;
+          - hit-stop and alpha;
+          - circling at 3 m leaning 2.5–4.5° toward the opponent;
+          - an attack from a run not leaning back;
+          - the grip riding the chest through the lean (within 1.5 cm of where it sits upright);
+          - the same lean shown every other frame, as at 30 fps.
+        - `test_move_sheet.gd` (2 new): the brake drives, and the caption's lean line and its height.
+        - Mutation-tested: 25 mutations, each failing a test:
+          - the gain, the cap, the way it leans, the prototype's slower rates, no spring;
+          - the drop's gain and cap, a brace when speeding up;
+          - counting every frame or every state, the fighter's frame turned wrong, forgetting the heading once stopped, the acceleration not shared over frames;
+          - the rotation's way, alpha, the carry's way, stepping in hit-stop;
+          - the lean or the brace left off the body, the crouch overwriting the brace, the weapon not riding;
+          - the caption's words, height and upright, and the sprint drive.
+  - [x] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle. Moved here from 14.3 with the owner's OK: the guard must pass PoseCheck, which today's fails (wrists about 42° sideways and 95° back, the Rogue's clip knee caved), so each hand also turns round the handle toward its forearm in place of the rig's fixed 25° grip roll, and the legs go on the stance's IK.
     - Check: on both fighters, the knees on or outside the hip-to-foot line, the rear foot at 30–45°, no crossed feet, the width in band; guard shots reviewed against the critique's fixes 8 and 9; PoseCheck passes on the guard.
     - Blocked by: 14.3 · Stories: 43
-  - [ ] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.
+    - Done:
+      - **`GuardStance`** (`game/view/fighter/guard_stance.gd`). A hold with `WeaponHold.guard` set stands in it. Both fighters' Katana holds have it set. It stands over the relaxed `Idle` clip in place of the hold's clip (the Rogue's `Sword_Idle`, the Hunter's `Idle_Shield`), which stood left foot forward with the chest twisted 30–45°.
+        - **The feet**, on leg IK:
+          - the right ankle 24 cm ahead and 14 cm to the right, its toes 6° out;
+          - the left ankle 25 cm behind and 15 cm to the left, turned out 32°, which is 38° from the front foot;
+          - 29 cm apart across the facing and 49 cm along it, at their rest height and flat.
+          The right foot leads, as in a right-handed sword stance, and as 14.9's check asks of the shuffle.
+        - **Knees over the toes.** Each knee's pole now sits ahead of its leg, on the plane through the hip, the ankle and the toes' direction. The spike's poles sat above the foot and caved the knees in. PoseCheck measures both knees on the plane (0.0 cm) on both fighters.
+        - **The pelvis:**
+          - lowered 9 cm and moved 3 cm forward over the stance;
+          - the hips turned 15° toward the rear foot's side, measured from straight ahead (the relaxed idle stands turned 13° to the right, which is taken out), with the clip's own twist above them taken out;
+          - the spine turned back 15°, so the chest faces the opponent (0.0°), and bent 6° forward over the hips;
+          - the head raised 14°: the relaxed idle looks 14° down at the floor and the bend tips it 6° more, so it now watches the opponent, 6° down.
+        - **The weight shift:** the pelvis sways ±3.5 cm along the line from the rear foot to the front one, once every 5 s (at most 4.4 cm/s). It runs on the rules' clock, so it holds still in hit-stop and pause.
+        - **The weapon rides the pelvis,** its drop and its sway, on top of the lean's carry (14.7).
+        - **Moving:** the stance shows as far as the legs stand (Locomotion's idle weight). Walking and running, the feet go back to the clips'. `FighterRig.clip_feet` is now a blend weight, in place of the `feet_from_clip` switch.
+        - The stance still pops into a stride over a tap step's first frame, and back over a brake's last two, as the hold clip did. That is 14.9's to smooth.
+        - The Greatsword and the Daggers keep their holds' clips and the clips' feet until task 15.
+      - **The grip:** each hand turns round the handle toward its forearm, in place of the fixed 25° roll (`FighterRig.seat()`).
+        - The rig predicts the elbow the arm's IK will bend toward its pole (`elbow_at()`, within 5 mm of the IK's), and turns the hand so it carries on the forearm's line. Four passes refine it, since the wrist moves round the handle as the hand turns.
+        - On four guards tried, the wrists bend under 6° on both fighters, where the fixed roll bent them 38–88° back.
+        - How far a wrist turns sideways is set by the guard, not the roll: the rig's hanging elbows want the handle steep.
+        - The roll applies to every posed weapon, so the stand-in attacks and the other weapons' guards gain it too. Right Cut now fails PoseCheck on 15 of its 29 frames, down from 29.
+      - **The Katana guard** is StickPose's row, which the attacks and blocks blend from.
+        - Both hands sit on the centre line at the navel, with the blade raised 50° toward the opponent.
+        - A search of about a thousand guards found the wrists passing with the blade raised 50–60° and the hands 30–40 cm out. As with every stand-in pose, the match pulls the guard 1–4 cm in toward the shoulders.
+        - PoseCheck passes on both fighters:
+
+          | | Wrists, right | Wrists, left | Elbows | Knees | Blade |
+          |---|---|---|---|---|---|
+          | Rogue | −1° bent, −18° sideways | −1°, +3° | 138°, 141° | on the line | 6.8 cm from the right forearm |
+          | Hunter | −1°, −18° | −2°, +4° | 135°, 139° | on the line | 13.0 cm |
+      - **Sheets and strips:**
+        - a new view, three-quarter from the left;
+        - a `stand` drive: 330 frames standing still at 2.5 m, seen from in front and side on, for the weight shift;
+        - strip captions give the shift after the blend, as "weight +3 cm" (+ toward the front foot).
+      - **Tests:**
+        - `test_guard_stance.gd` (8, new):
+          - the front foot ahead, pointing at the opponent, and the rear turned out 30–45°, flat and on the floor;
+          - the feet a stance's width apart and uncrossed, heels and toes;
+          - the knees over the toes;
+          - the pelvis lowered and turned under a square chest, the torso over the hips, the head up and facing the opponent;
+          - the weight shift: its reach, speed, period and line, the hips and the weapon going with it, and only the rules' clock moving it;
+          - PoseCheck passing on the guard;
+          - only the Katana in the guard;
+          - the stance giving way to the clips as the legs walk.
+        - `test_fighter_rig.gd` (2 new): each hand in line with its forearm on four guards on both fighters, and `elbow_at()` against the IK.
+        - `test_move_sheet.gd` (1 new, 2 extended): the left three-quarter view, the stand drive and the caption.
+        - Changed:
+          - the crouch test now plants the stance's feet with the Katana and the clip's with the Greatsword;
+          - at rest the guard squares the chest (untwist 1), and the brace sits on top of the stance's crouch;
+          - the sheet header's failure count is no longer fixed;
+          - the PoseCheck guard test's notes.
+        - Mutation-tested: 31 mutations, 30 failing a test:
+          - the roll fixed at 25°, turned the wrong way or refined once, the elbow away from its pole or its bones swapped, the hand frame worked out again after the update;
+          - the spike's knee poles, the poles behind the knee, the feet not turned, at the ground, crossed or the front one turned out, the clip's feet under the stance;
+          - the hips' turn not measured from straight ahead, the clip's twist left in, no crouch, the head left nodding, the sway across the feet, fast or on the wall's clock;
+          - the stance whatever the legs do, every weapon in it, the hold's clip under it, the weapon not riding it, the old guard;
+          - the upper body's move, the caption's sign and threshold, the stand drive's length, the left view on the right.
+          - The survivor leaves the chest unturned in the reach pull's wrist estimate. The stand-in poses keep the chest square, so the pull comes out the same.
+      - **Raised:** since 9.3 the Iai stance walks, but it is an attack state, which the legs don't count as walking (`Locomotion.MOVING_STATES`). The stance walk is a guard walk, so 14.9 is where it fits.
+  - [x] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.
     - Check: the step planner never crosses the mid-line and leads with the right foot; planted feet slide under 1 cm; guard strafe and backpedal strips reviewed.
     - Blocked by: 14.5, 14.8 · Stories: 12, 14
+    - Done:
+      - **`GuardShuffle`** (`game/view/fighter/guard_shuffle.gd`), a step planner for the guard stance's feet, stepped by Locomotion on the rules' frames.
+        - **Planted feet stay put.** A planted foot keeps its place on the ground and its turn while the fighter moves and turns over it. Its offset from its stance spot is what grows. The feet are shown from the planner's own copy of where the match draws the fighter, so they stand still on screen between rules frames too.
+        - **One foot at a time, the lead first.** Moving, the feet take turns. The first to step is the foot on the side the fighter travels to, with across counted twice over along, since the stance is narrower than it is long:
+
+          | Way | Leads | Way | Leads |
+          |---|---|---|---|
+          | forward | right | back | left |
+          | forward-right | right | back-left | left |
+          | right | right | left | left |
+          | back-right | right | forward-left | left |
+
+        - **When a foot steps:**
+          - it has fallen behind its spot by as far as its steps land ahead (2 cm for the first step from rest);
+          - or it stands 6 cm to the side of its spot's way;
+          - or it is turned 12° from the stance;
+          - or it is about to come within 5 cm of the mid-line;
+          - at rest, it stands 2 cm off its spot.
+        - **Where it lands:** ahead of its spot by half the way the spot moves while the foot stands, so each foot stands about its spot, at most 13 cm off it (the front leg's reach) and at the stance's angle. The landing keeps 5 cm from the mid-line, both when it lands and after the drift to come. A swinging foot's offset moves in the fighter's frame from where it lifted to where it lands, so the swing can't cross the mid-line either. It lifts at most 4 cm, halfway through, less for a short step.
+        - **The cadence follows the speed.** The fighter travels 0.2 m + 0.12 m per m/s a cycle of both feet, and a swing takes half the cycle (5–12 frames):
+
+          | Speed | Steps a second | Swing | Each foot's step |
+          |---|---|---|---|
+          | 0.5 m/s | 4 | 12 frames | 25 cm |
+          | 1.0 m/s | 6 | 9 frames | 33 cm |
+          | 1.6 m/s | 7.5 | 8 frames | 43 cm |
+          | 2.34 m/s (the guard's forward walk) | 9 | 7 frames | 52 cm |
+
+          A slow walk pauses between steps; a fast one doesn't. Moving across, swings are shorter and a foot stands no longer than the fighter takes to travel 16 cm across, so the lead foot never drifts to the mid-line.
+        - **Setting off,** a swing is paced for the speed the fighter is speeding up to, 50 ms ahead, and re-paced every frame. The rules reach the guard's walk in 4 frames, so the waiting foot falls up to 22 cm behind its spot, where a step paced for its first frame's speed left it 26 cm behind.
+        - **Riding.** Where the feet can't stand planted (in the air, an attack, a dodge, a stun, over 6 m/s), they ride with the fighter at their offsets and still step back to their spots. While the clips have the legs, they ride, so a hand-over always starts from the stance.
+        - **The bob and the arms' spring.** The pelvis bobs with the stance's spread, lower as the feet open and higher as they close (−1.5 to +1.2 cm at the guard's backpedal). The weapon follows the bob on a critically damped spring (−1.0 to +0.9 cm, 1–4 frames behind).
+      - **The sink** (`GuardStance.sink()`): the pelvis sinks as far as a leg needs to reach its planted foot within 97% of its length, and the weapon goes down with it. Setting off from rest, the rear foot waits while the front one steps, about 9 frames in which the rules carry the body 26–30 cm. Without the sink, the leg ran out of reach (106%) and the IK dragged the foot 3 cm. With it, the hips dip up to 9–10 cm for about 4 frames as the shuffle sets off forward or back, on top of the stance's 9 cm crouch and a 9° lean into the start. It reads as a push-off.
+      - **The guard's legs** (`Locomotion.guard`, 0 to 1). With a guard stance's weapon (the Katana), the legs are the guard's unless the fighter has run with its guard down for 3 rules frames (free, the stick held, not blocking).
+        - That covers standing, walking while blocking or in the Iai stance, tap-stepping, braking and attacking.
+        - The guard's legs show the stance over the relaxed idle (the clips' blend leans to idle by the guard's weight), don't turn toward travel, and stand on the shuffle's feet.
+        - The hand-over to the clips and back takes 8 frames. The 3-frame wait keeps a tap step with the stick held to its end in the guard: it ran one frame, and its legs flicked toward the clips.
+        - A foot moves at most 12 cm in half a frame through the hand-overs, which is the jog's own swing.
+        - The other weapons keep the clips until task 15.
+      - **The Iai stance walks** (raised at 14.8): `Locomotion.walks()` counts it, through the rules' `Fighter.in_stance()` (public since 9.6), so its legs shuffle, its feet plant, and the lean follows its walk.
+      - **The tap step** is now a shuffle step, so the stance no longer pops into a stride on its first frame:
+        - forward and back take two steps (right then left, and left then right);
+        - the side steps take a small third step to settle, since the lead lands wide and the brake leaves it about 3 cm off its spot;
+        - at the forward tap's widest, the rear foot is still waiting for the front one to land, which reads as a short lunge;
+        - a foot swings about 10 cm in half a frame at most, where the pop moved the feet half a metre in a frame.
+      - **The brake** hands back from the clips over 8 frames and settles in a few shuffle steps, in place of the 2-frame pop.
+      - **Sheets and strips:**
+        - guard drives, all blocking: `guard_forward`, `guard_backpedal`, `guard_strafe_left`, `guard_strafe_right` and `guard_back_left`;
+        - `tap_steps` (a tap each way) and `iai_walk` (sheathed, walking at the opponent, then round it);
+        - a feet view from in front on the left, square to the line between the feet so neither hides the other (a straight-down view was tried: the hood hides the feet);
+        - a drive can set its own frame interval (the guard drives show every other frame);
+        - captions give the guard's legs and which foot is up ("guard · right foot up"), or the guard's weight during a hand-over.
+      - **Tests:**
+        - `test_guard_shuffle.gd` (22, new). On the planner:
+          - standing still on the stance;
+          - the lead first and the feet taking turns in eight directions, back on the stance's spots and angles after;
+          - the feet never crossing the mid-line (at least 2 cm clear) or passing each other, every way at 0.5, 1.2 and the guard's speed, and at a tap step's 4.1 m/s;
+          - planted feet exactly still while circling an opponent 2.5 m off, and between frames;
+          - turning on the spot, the feet turning as they swing;
+          - the cadence;
+          - the feet standing about their spots on average while walking (within 3 cm; 0.6–2.2 cm measured);
+          - setting off, the waiting foot at most 23 cm behind its spot;
+          - the landings' angles and reach;
+          - the low lift;
+          - riding;
+          - the bob and the weapon's spring.
+
+          On the fighter:
+          - the guard walk on both fighters, six ways including circling at 3 m: planted feet sliding 0.00 cm on the posed skeleton at alpha 0.5 and 1, the feet and toes at least 5 cm clear of the mid-line, the legs never turning;
+          - tap steps each way;
+          - the hand-overs and the ramp;
+          - the Iai stance's walk;
+          - the same feet shown every other frame;
+          - hit-stop;
+          - the other weapons on the clips;
+          - the hips bobbing and the grip riding the weapon's bob;
+          - the pelvis sinking for a foot out of reach, the leg reaching it at 97% and the weapon going down with the hips.
+        - `test_move_sheet.gd` (3 new, 3 changed): the guard drives, the tap and Iai drives, the feet view; the legend and the captions.
+        - Changed:
+          - three locomotion tests of the clips (the backpedal, the legs' turn in hit-stop, the planted foot on a diagonal) now use the Greatsword, whose legs run on the clips from the first frame;
+          - the brace's hips add the shuffle's bob and the sink;
+          - the first strip caption now reads the guard.
+        - Mutation-tested: 50 mutations, 48 failing a test:
+          - in the planner: planted feet keeping the last swing spot or riding along, the lead counted along only or never changing, both feet at once, no turns, landings out of the lane, past the reach or on the spot, no lift ahead of the mid-line, one step length, swings paced for the speed now or the slowest pace, no lane cap, a stand of only the other's swing, the first step waiting a whole lead, steps keeping their turn, turned feet never stepping, no lift or lifted while planted, never riding or riding on the ground, no bob, the weapon without its spring, the feet and the body not shown between frames, the feet shown from the world's frame;
+          - in the legs: never or always the guard's legs, the clips over at once, the clips under the guard, the ramp at once, the legs turning in the guard, the feet planted under the clips, frames missed in one jump, the Iai stance not walking or riding, the lean leaving it out;
+          - in the body: no sink, the sink from the clip's hips, the hips not bobbing, the weapon not riding the bob or the sink, the stance's fixed feet;
+          - in the sheet: the feet view along the feet, the caption without the guard or naming the wrong foot, a drive's interval ignored, the guard drives not blocking.
+          - The first run left four survivors, each a missing check, and four checks were added for them: the feet standing about their spots, the waiting foot setting off, the feet turning as they swing, and the sink with the weapon.
+          - Two mutations can't change anything: setting a planted foot's place from its own offset, and zeroing the turn a finished swing already ended on. A planted foot riding along in their place fails 12 tests.
+      - **Raised (rules, not changed):** a tap step toward or away from the opponent stops dead when the stick is let go before its 8 frames end. The strafe's keep-the-distance check in `Fighter._integrate()` counts a neutral stick as sideways, so it holds the spacing. Side taps go their full 0.55 m.
   - [ ] **14.10 Swing playback: weapon and arms (`SwingPlayer`).** Samples the swing at the fractional attack frame and places the weapon from the grip, hand frame and edge, with the arms on IK. The root stays the rules' position. Moves without a swing fall back to StickPose.
     - Check: at every frame of a synthetic swing move, the displayed grip and blade equal the sample (1 mm, 0.5°); its contact sheet is reviewed.
     - Blocked by: 7.15, 14.4, 14.8 · Stories: 16, 21

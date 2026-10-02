@@ -6,9 +6,10 @@ extends RefCounted
 ## its skeleton. In order, under the skeleton:
 ##
 ## 1. BodyLayer: the procedural body (lean, hips, spine, head);
-## 2. RigPre: each gripping hand's frame on its handle, which sets the wrist
-##    target, the elbow poles, the clavicles near full reach, and the foot
-##    targets and knee poles;
+## 2. RigPre: each gripping hand's frame on its handle, turned about it to
+##    carry on the line of its forearm, which sets the wrist target, the
+##    elbow poles, the clavicles near full reach, and the foot targets and
+##    knee poles (the knees over the toes);
 ## 3. RightArmIK and LeftArmIK (TwoBoneIK3D: upper arm, forearm, hand), one
 ##    per arm so that each can be on or off;
 ## 4. LegIK (TwoBoneIK3D, both legs: thigh, shin, foot);
@@ -38,11 +39,10 @@ extends RefCounted
 
 const SIDES: Array[String] = ["Right", "Left"]
 
-## How a posed handle sits in the hand (degrees): turned about the handle so
-## the knuckles lead toward the edge and the backs of the hands come up over
-## it. The spike also tilted the handle 28 degrees across the palm, which
-## left the fingers open round HandGrip's straight fist.
-const GRIP_ROLL: float = 25.0
+## How many times a gripping hand's turn about its handle is refined (see
+## seat()): the wrist moves round the handle as the hand turns, and the
+## elbow with it, so each pass starts from the last one's wrist.
+const ROLL_PASSES: int = 4
 ## The share of a gripping hand's twist that its forearm takes. The skeleton
 ## has no twist bones, so a wrist twisted on its own would pinch.
 const FOREARM_TWIST: float = 0.5
@@ -56,10 +56,6 @@ const ELBOW_POLE: Vector3 = Vector3(0.61, -1.12, -0.72)
 const CLAVICLE_START: float = 0.9
 const CLAVICLE_GAIN: float = 2.2
 const CLAVICLE_MAX: float = 18.0
-## Each knee's pole: above its foot and ahead of it along the foot's yaw, in
-## leg lengths.
-const KNEE_POLE_UP: float = 0.57
-const KNEE_POLE_AHEAD: float = 0.8
 
 var skeleton: Skeleton3D
 var body: BodyLayer
@@ -77,19 +73,24 @@ var elbow_pole: Dictionary[String, Vector3] = {
 }
 ## The foot targets, by side: where the foot bone (the ankle) goes, in
 ## skeleton space, and the foot's turn from straight ahead (radians,
-## positive to the left). They start where the rest pose has them.
+## positive to the left). They start where the rest pose has them. Each
+## knee bends over its toes: its pole is ahead of the leg, on the plane
+## through the hip, the ankle and the way the toes point.
 var foot_position: Dictionary[String, Vector3] = {}
 var foot_yaw: Dictionary[String, float] = {"Right": 0.0, "Left": 0.0}
-## When set, the leg IK keeps each foot where the clip put it, turned as the
-## clip turned it, and bends each knee the way the clip bends it, in place of
-## the foot targets: the body layer can drop the hips into a crouch over
-## planted feet.
-var feet_from_clip: bool = false
+## How far the leg IK keeps each foot where the clip put it, turned as the
+## clip turned it, with the knee bent the way the clip bends it (1), rather
+## than on the foot targets (0): the body layer can drop the hips into a
+## crouch over the clip's planted feet.
+var clip_feet: float = 0.0
 
 var _arm_ik: Dictionary[String, TwoBoneIK3D] = {}
 var _leg_ik: TwoBoneIK3D
 var _markers: Dictionary[String, Node3D] = {}
 var _arm_length: Dictionary[String, float] = {}
+## Each arm's upper arm and forearm: shoulder to elbow and elbow to wrist.
+var _upper_arm: Dictionary[String, float] = {}
+var _forearm: Dictionary[String, float] = {}
 var _leg_length: Dictionary[String, float] = {}
 var _foot_rest: Dictionary[String, Quaternion] = {}
 var _ids: Dictionary[String, int] = {}
@@ -110,8 +111,9 @@ func _init(sk: Skeleton3D) -> void:
 	hand_grip.name = &"HandGrip"
 	hand_grip.measure(sk)
 	for side: String in SIDES:
-		_arm_length[side] = _rest_origin(side + "UpperArm").distance_to(_rest_origin(side + "LowerArm")) \
-			+ _rest_origin(side + "LowerArm").distance_to(_rest_origin(side + "Hand"))
+		_upper_arm[side] = _rest_origin(side + "UpperArm").distance_to(_rest_origin(side + "LowerArm"))
+		_forearm[side] = _rest_origin(side + "LowerArm").distance_to(_rest_origin(side + "Hand"))
+		_arm_length[side] = _upper_arm[side] + _forearm[side]
 		_leg_length[side] = _rest_origin(side + "UpperLeg").distance_to(_rest_origin(side + "LowerLeg")) \
 			+ _rest_origin(side + "LowerLeg").distance_to(_rest_origin(side + "Foot"))
 		_foot_rest[side] = sk.get_bone_global_rest(_id(side + "Foot")).basis.get_rotation_quaternion()
@@ -141,6 +143,21 @@ static func weapon_frame(grip: Vector3, blade: Vector3, edge: Vector3) -> Transf
 	return Transform3D(Basis(x, y, x.cross(y)), grip)
 
 
+## Where a two-bone limb's middle joint goes when its end reaches `wrist`
+## from `shoulder`, with bones `upper` and `lower` long, bent toward `pole`:
+## in the plane of the three, on the pole's side (as the arms' and legs'
+## TwoBoneIK3D bend them). A wrist out of reach is taken as far as the limb
+## goes.
+static func elbow_at(shoulder: Vector3, wrist: Vector3, pole: Vector3, upper: float, lower: float) -> Vector3:
+	var to: Vector3 = wrist - shoulder
+	var d: float = clampf(to.length(), absf(upper - lower) + 1e-4, upper + lower - 1e-4)
+	var along: Vector3 = to.normalized()
+	var toward: Vector3 = pole - shoulder
+	var side: Vector3 = (toward - along * toward.dot(along)).normalized()
+	var a: float = (upper * upper + d * d - lower * lower) / (2.0 * d)
+	return shoulder + along * a + side * sqrt(maxf(upper * upper - a * a, 0.0))
+
+
 ## The fist of a hand ("Right" or "Left") round the held handle, in
 ## hand-bone space (see HandGrip.fist()).
 func fist(side: String) -> Transform3D:
@@ -154,6 +171,11 @@ func arm_length(side: String) -> float:
 
 func leg_length(side: String) -> float:
 	return _leg_length[side]
+
+
+## Where a foot bone (the ankle) is in the rest pose.
+func rest_foot(side: String) -> Vector3:
+	return _rest_origin(side + "Foot")
 
 
 ## Puts a weapon's instances in the hands (one, or two for a pair, made from
@@ -216,18 +238,39 @@ func grip_point(side: String) -> Vector3:
 
 
 ## The hand frame (the hand bone's transform in skeleton space) that seats a
-## hand on its posed weapon's grip point. Only for a hand that drives().
+## hand on its posed weapon's grip point: the one its arm reached for in the
+## last update or, before the first, the one it would reach for from the
+## clip's pose. Only for a hand that drives().
 func hand_frame(side: String) -> Transform3D:
+	if _frames.has(side):
+		return _frames[side]
 	var grip: Array = _grip(side)
-	return seat(side, _poses[grip[0]], grip[1])
+	var chest: Basis = skeleton.get_bone_global_pose(_id("UpperChest")).basis.orthonormalized()
+	return seat(side, _poses[grip[0]], grip[1], _origin(skeleton, side + "UpperArm"), chest)
 
 
-## The hand frame that would seat a hand on `point` (in weapon space) of a
-## weapon posed at `weapon_xf`: the fist round the handle there, turned
-## GRIP_ROLL about it.
-func seat(side: String, weapon_xf: Transform3D, point: Vector3) -> Transform3D:
-	var roll: float = deg_to_rad(GRIP_ROLL) * (-1.0 if side == "Right" else 1.0)
-	return weapon_xf * Transform3D(Basis(Vector3.UP, roll), point) * hand_grip.fist(side).affine_inverse()
+## The hand frame that seats a hand on `point` (in weapon space) of a weapon
+## posed at `weapon_xf`, for an arm whose shoulder is at `shoulder` with the
+## chest turned `chest` (in skeleton space): the fist round the handle there,
+## turned about the handle so that the hand carries on the line of its
+## forearm, from the elbow the arm's IK will bend toward its pole
+## (elbow_at()). The wrist then neither bends back nor forward, however the
+## blade points; how far it turns sideways is up to the guard.
+func seat(side: String, weapon_xf: Transform3D, point: Vector3, shoulder: Vector3, chest: Basis) -> Transform3D:
+	var pole: Vector3 = _pole(side, shoulder, chest)
+	var to_weapon: Basis = weapon_xf.basis.inverse()
+	var wrist: Vector3 = weapon_xf * point
+	var frame: Transform3D = Transform3D.IDENTITY
+	for i: int in ROLL_PASSES:
+		var elbow: Vector3 = elbow_at(shoulder, wrist, pole, _upper_arm[side], _forearm[side])
+		# The forearm's way in the weapon's frame. The hand's +Y (to the
+		# knuckles) is the weapon's +X (the edge) turned `roll` about the
+		# handle (+Y).
+		var forearm: Vector3 = to_weapon * (wrist - elbow)
+		var roll: float = atan2(-forearm.z, forearm.x)
+		frame = weapon_xf * Transform3D(Basis(Vector3.UP, roll), point) * hand_grip.fist(side).affine_inverse()
+		wrist = frame.origin
+	return frame
 
 
 ## The hands that grip held weapon `index` when it is posed, each with the
@@ -287,10 +330,11 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 		ik.influence = clampf(arm_weight, 0.0, 1.0)
 		if not ik.active:
 			continue
-		var frame: Transform3D = hand_frame(side)
+		var shoulder: Vector3 = _origin(sk, side + "UpperArm")
+		var grip: Array = _grip(side)
+		var frame: Transform3D = seat(side, _poses[grip[0]], grip[1], shoulder, chest)
 		_frames[side] = frame
 		_markers[side + "HandTarget"].transform = frame
-		var shoulder: Vector3 = _origin(sk, side + "UpperArm")
 		var over: float = shoulder.distance_to(frame.origin) - CLAVICLE_START * _arm_length[side]
 		if over > 0.0:
 			var clavicle: int = _id(side + "Shoulder")
@@ -300,13 +344,19 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 				var angle: float = minf(over * CLAVICLE_GAIN, deg_to_rad(CLAVICLE_MAX)) * ik.influence
 				BodyLayer.rot_global(sk, clavicle, Quaternion(axis.normalized(), angle))
 				shoulder = _origin(sk, side + "UpperArm")
-		_markers[side + "ElbowPole"].position = shoulder + chest * (elbow_pole[side] * _arm_length[side])
+		_markers[side + "ElbowPole"].position = _pole(side, shoulder, chest)
 	_leg_ik.active = leg_weight > 0.001
 	_leg_ik.influence = clampf(leg_weight, 0.0, 1.0)
 	if not _leg_ik.active:
 		return
+	var from_clip: float = clampf(clip_feet, 0.0, 1.0)
 	for side: String in SIDES:
-		if feet_from_clip:
+		# The knee over the toes: its pole ahead of the leg, on the plane
+		# through the hip, the ankle and the way the toes point.
+		var at: Vector3 = foot_position[side]
+		var ahead: Vector3 = Vector3(sin(foot_yaw[side]), 0.0, cos(foot_yaw[side]))
+		var pole: Vector3 = (_origin(sk, side + "UpperLeg") + at) * 0.5 + ahead * _leg_length[side]
+		if from_clip > 0.0:
 			# The foot where the clip has it, the knee bent the clip's way:
 			# out from the line between the clip's hip and foot.
 			var foot: Vector3 = body.clip_feet[side].origin
@@ -314,13 +364,10 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 			var bend: Vector3 = knee - (body.clip_hips[side] + foot) * 0.5
 			if bend.length() < 0.01:
 				bend = body.clip_feet[side].basis.y
-			_markers[side + "FootTarget"].position = foot
-			_markers[side + "KneePole"].position = knee + bend.normalized() * _leg_length[side]
-		else:
-			var at: Vector3 = foot_position[side]
-			var ahead: Vector3 = Vector3(sin(foot_yaw[side]), 0.0, cos(foot_yaw[side]))
-			_markers[side + "FootTarget"].position = at
-			_markers[side + "KneePole"].position = at + (Vector3.UP * KNEE_POLE_UP + ahead * KNEE_POLE_AHEAD) * _leg_length[side]
+			at = at.lerp(foot, from_clip)
+			pole = pole.lerp(knee + bend.normalized() * _leg_length[side], from_clip)
+		_markers[side + "FootTarget"].position = at
+		_markers[side + "KneePole"].position = pole
 
 
 func _post(sk: Skeleton3D, _delta: float) -> void:
@@ -343,8 +390,8 @@ func _post(sk: Skeleton3D, _delta: float) -> void:
 			var foot: int = _id(side + "Foot")
 			var now: Quaternion = sk.get_bone_global_pose(foot).basis.get_rotation_quaternion()
 			var want: Quaternion = Quaternion(Vector3.UP, foot_yaw[side]) * _foot_rest[side]
-			if feet_from_clip:
-				want = body.clip_feet[side].basis.get_rotation_quaternion()
+			if clip_feet > 0.0:
+				want = want.slerp(body.clip_feet[side].basis.get_rotation_quaternion(), clampf(clip_feet, 0.0, 1.0))
 			BodyLayer.rot_global(sk, foot, now.slerp(want, _leg_ik.influence) * now.inverse())
 
 
@@ -355,6 +402,12 @@ func _carry(sk: Skeleton3D, _delta: float) -> void:
 		var index: int = _carried_index(side)
 		if index >= 0:
 			_weapons[index].transform = sk.get_bone_global_pose(_id(side + "Hand")) * hand_grip.fist(side) * grip
+
+
+## Where an arm's elbow pole is, for its shoulder at `shoulder` with the
+## chest turned `chest` (see ELBOW_POLE).
+func _pole(side: String, shoulder: Vector3, chest: Basis) -> Vector3:
+	return shoulder + chest * (elbow_pole[side] * _arm_length[side])
 
 
 ## The turn of a rotation about its own +Y (radians).

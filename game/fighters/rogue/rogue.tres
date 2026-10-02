@@ -28,6 +28,7 @@ left_wrist = Vector3(0, 0, 25)
 [sub_resource type="Resource" id="Hold_katana"]
 script = ExtResource("15_hold")
 weapon = &"katana"
+guard = true
 
 [sub_resource type="Resource" id="Hold_greatsword"]
 script = ExtResource("15_hold")

@@ -10,8 +10,9 @@ extends RefCounted
 ## - Move files write each move as a Dictionary literal with the TS keys in
 ##   snake_case; finalize_moves() applies the TS defaults to those records and
 ##   builds the AttackDef objects, so "unset" is a missing key until then.
-##   The rebuild changed one default on purpose: lights' hitstun is 14 (the
-##   TS gave 18).
+##   The rebuild changed two defaults on purpose: lights' hitstun is 14 (the
+##   TS gave 18), and heavies dodge-cancel from the middle of their recovery
+##   (the TS gave them no cancel).
 ## - Optional TS fields that finalizeMoves does not fill keep a sentinel after
 ##   it, chosen so the TS tests read the same way:
 ##     min_range 0.0, lunge 0.0, hop 0.0 (the TS only tests them for truthiness
@@ -26,10 +27,12 @@ extends RefCounted
 ##   Where the TS tells undefined apart from every number (`??` or
 ##   `!== undefined`), the sentinel is a value no move can hold, and the
 ##   readers compare with it, so a zero or negative value still counts as set:
-##     lunge_end, dodge_cancel_from, multi_interval: UNSET (an int);
+##     lunge_end, dodge_cancel_from (but see heavies below), multi_interval:
+##       UNSET (an int);
 ##     guard_crush: NAN (`not is_nan(guard_crush)` is the TS `!== undefined`).
 ##   finalize_moves always sets hand, track_startup, track_active, hitstun,
-##   blockstun, hitstop, trail and (for unblockables) undodgeable; before it,
+##   blockstun, hitstop, trail, (for unblockables) undodgeable and (for
+##   heavies) dodge_cancel_from; before it,
 ##   the ints read UNSET, the floats NAN and the names &"".
 ## - undodgeable is tri-state in the TS: u_impale is unblockable but explicitly
 ##   dodgeable. finalize_moves sees that as a present "undodgeable": false key.
@@ -93,7 +96,8 @@ var undodgeable: bool = false
 var power: bool = false
 var chain_light: StringName = &""
 var chain_heavy: StringName = &""
-## light-attack recovery may be cancelled into a dodge after this frame
+## a dodge cancels the recovery from this frame (every heavy gets one; the
+## fighter opens it later by half any extra recovery, and not in the air)
 var dodge_cancel_from: int = UNSET
 var multi_hit: int = 0
 var multi_interval: int = UNSET
@@ -192,6 +196,9 @@ static func finalize_moves(moves: Dictionary) -> Dictionary[StringName, AttackDe
 			m["hitstun"] = (
 				14 if move_kind == &"light" else (26 if move_kind == &"heavy" else (40 if move_kind == &"ultimate" else 24))
 			)
+		if move_kind == &"heavy" and not m.has("dodge_cancel_from"):
+			# heavies dodge-cancel in the second half of their recovery (the demo's had none)
+			m["dodge_cancel_from"] = int(m["startup"]) + int(m["active"]) + ceili(int(m["recovery"]) / 2.0)
 		if not m.has("blockstun"):
 			m["blockstun"] = 10 if move_kind == &"light" else (16 if move_kind == &"heavy" else 14)
 		if not m.has("hitstop"):

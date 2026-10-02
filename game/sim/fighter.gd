@@ -703,8 +703,14 @@ func _update_attack() -> void:
 		start_attack(a.queued, -1)
 		return
 
-	# Dodge-cancel the recovery of quick attacks.
-	if def.dodge_cancel_from != AttackDef.UNSET and f >= def.dodge_cancel_from and inp.buffered(Btn.DODGE):
+	# Dodge-cancel the recovery from the move's cancel frame, later by half any
+	# extra recovery (a charge's), and never in the air.
+	if (
+		def.dodge_cancel_from != AttackDef.UNSET
+		and f >= def.dodge_cancel_from + ceili(a.extra_recovery / 2.0)
+		and not airborne()
+		and inp.buffered(Btn.DODGE)
+	):
 		inp.consume(Btn.DODGE)
 		start_dodge()
 		return

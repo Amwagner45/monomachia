@@ -367,3 +367,130 @@ func test_every_light_without_its_own_hitstun_has_14() -> void:
 				wrong.append("%s %d, want %d" % [m.id, m.hitstun, want])
 	assert_gt(lights, 20, "every weapon's lights, bare hands included")
 	assert_eq(wrong, [] as Array[String])
+
+
+# ------------------------------------------------------------------ heavy dodge cancel
+
+## Kesa Giri: 22 frames of startup (KESA_STARTUP), 4 active and 26 of
+## recovery. The spec's heavy cancel opens at startup + active + half the
+## recovery, rounded up: frame 39 of 52.
+const KESA_ACTIVE: int = 4
+const KESA_RECOVERY: int = 26
+const KESA_CANCEL: int = KESA_STARTUP + KESA_ACTIVE + 13
+const KESA_LAST_FRAME: int = KESA_STARTUP + KESA_ACTIVE + KESA_RECOVERY - 1
+## Kept from the demo: a press waits 8 frames in the input buffer.
+const INPUT_BUFFER: int = 8
+
+
+## An attack and a dodge pressed during it: whether the press was made and
+## whether in the air, the attack frame the dodge (or, with the stick let go
+## by then, the backstep) started on (-1 if it never did), and the attack's
+## last frame.
+class CancelRun:
+	extends SimHelpers.Rec
+	var attack: StringName = &""
+	var pressed: bool = false
+	var pressed_in_the_air: bool = false
+	var last_frame: int = -1
+	var dodge_frame: int = -1
+	## Whether the fighter was in the air as the step the dodge started began.
+	var dodged_in_the_air: bool = false
+
+
+## Fighter 0 holds start for hold steps, then presses dodge (to the side) so
+## that the press first counts on its attack's frame press_on; the opponent
+## holds defend throughout.
+static func _cancel_run(W: World, start: RawInput, hold: int, press_on: int, defend: RawInput) -> CancelRun:
+	var a: Fighter = W.fighters[0]
+	var r := CancelRun.new()
+	for i: int in 400:
+		var p0: RawInput = start if i < hold else H.idle()
+		var in_the_air: bool = a.pos.y > 0.001
+		if not r.pressed and a.state == &"attack" and a.atk.frame == press_on - 1:
+			p0 = H.move(1.0, 0.0, Btn.DODGE)
+			r.pressed = true
+			r.pressed_in_the_air = in_the_air
+		W.step([p0, defend])
+		r.collect(W)
+		if a.state == &"attack":
+			r.attack = a.atk.def.id
+			r.last_frame = a.atk.frame
+		elif r.attack != &"":
+			if a.state == &"dodge" or a.state == &"backstep":
+				r.dodge_frame = r.last_frame + 1
+				r.dodged_in_the_air = in_the_air
+			break
+	return r
+
+
+## Kesa Giri thrown at an opponent 10 m away (a whiff) or blocking 2.2 m away.
+static func _kesa_giri(press_on: int, blocked: bool) -> CancelRun:
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.2 if blocked else 10.0)
+	return _cancel_run(W, H.btn(Btn.HEAVY), 1, press_on, H.btn(Btn.BLOCK) if blocked else H.idle())
+
+
+func test_a_whiffed_heavy_dodge_cancels_in_the_second_half_of_its_recovery() -> void:
+	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, false)
+	assert_eq(early.attack, &"k_h1")
+	assert_true(early.pressed)
+	assert_eq(early.dodge_frame, -1, "a dodge pressed too early for the buffer to carry never comes")
+	assert_eq(early.last_frame, KESA_LAST_FRAME, "and the cut runs to its end")
+	assert_eq(_kesa_giri(KESA_CANCEL - INPUT_BUFFER, false).dodge_frame, KESA_CANCEL, "a buffered press fires as the cancel opens")
+	assert_eq(_kesa_giri(KESA_CANCEL + 6, false).dodge_frame, KESA_CANCEL + 6, "later presses fire at once")
+
+
+func test_a_blocked_heavy_dodge_cancels_the_same_way() -> void:
+	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, true)
+	assert_true(early.has(&"block"), "the cut is blocked")
+	assert_true(early.pressed)
+	assert_eq(early.dodge_frame, -1, "no cancel before the second half")
+	assert_eq(early.last_frame, KESA_LAST_FRAME)
+	var late: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER, true)
+	assert_true(late.has(&"block"))
+	assert_eq(late.dodge_frame, KESA_CANCEL, "the cancel opens on the same frame")
+
+
+## Kesa Giri held for hold steps (its charge starts at step 10), pressing dodge
+## so the press first counts on frame press_on.
+static func _charged_kesa_giri(hold: int, press_on: int) -> CancelRun:
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 10.0)
+	return _cancel_run(W, H.btn(Btn.HEAVY), hold, press_on, H.idle())
+
+
+func test_a_charged_heavy_opens_its_cancel_later_by_half_its_extra_recovery() -> void:
+	# held past the charge's 2.5 s: 16 frames of extra recovery (the demo's),
+	# so the cancel opens 8 frames later
+	var full: int = KESA_CANCEL + 8
+	var early: CancelRun = _charged_kesa_giri(170, full - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, KESA_LAST_FRAME + 16, "a full charge adds 16 frames of recovery")
+	assert_eq(early.dodge_frame, -1, "the uncharged cut's cancel frame isn't open")
+	assert_eq(_charged_kesa_giri(170, full - INPUT_BUFFER).dodge_frame, full, "it opens 8 frames later")
+	# held for 112 steps: 103 frames of charge add 11 frames of recovery, and
+	# half of 11, rounded up, is 6
+	var partial: int = KESA_CANCEL + 6
+	early = _charged_kesa_giri(112, partial - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, KESA_LAST_FRAME + 11, "103 frames of charge add 11 frames of recovery")
+	assert_eq(early.dodge_frame, -1, "rounding down would open it a frame sooner")
+	assert_eq(_charged_kesa_giri(112, partial - INPUT_BUFFER).dodge_frame, partial, "it opens 6 frames later")
+
+
+func test_mountain_slam_cannot_be_dodge_cancelled() -> void:
+	# a block ability, 32 frames of startup, 5 active and 36 of recovery: a
+	# heavy with those frames would cancel from 55
+	var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 10.0, {"a": [&"g_slam", &"g_sweep"]})
+	var r: CancelRun = _cancel_run(W, H.btn(Btn.BLOCK, Btn.LIGHT), 1, 62, H.idle())
+	assert_eq(r.attack, &"g_slam")
+	assert_true(r.pressed)
+	assert_eq(r.dodge_frame, -1, "a dodge late in its recovery does nothing")
+	assert_eq(r.last_frame, 32 + 5 + 36 - 1, "the slam runs to its end")
+
+
+func test_a_jump_heavy_cannot_dodge_cancel_in_the_air() -> void:
+	# the Daggers' Dive Stab (12/4/18) opens its cancel on frame 25
+	var W: World = H.make_world(Moves.DAGGERS, Moves.KATANA, 10.0)
+	W.step([H.btn(Btn.JUMP), H.idle()])
+	var r: CancelRun = _cancel_run(W, H.btn(Btn.HEAVY), 1, 25, H.idle())
+	assert_eq(r.attack, &"d_jh")
+	assert_true(r.pressed_in_the_air, "thrown straight after the jump, it is still in the air there")
+	assert_gt(r.dodge_frame, 25, "the dodge comes after the cancel frame")
+	assert_false(r.dodged_in_the_air, "once the fighter has landed")

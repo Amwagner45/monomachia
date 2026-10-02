@@ -17,12 +17,10 @@ extends Node3D
 ## side) and Gate0, Gate1 (the gate anchors); and Platform/GateRope0 and
 ## GateRope1 (each gate's rope barrier, for the match intro to drop).
 ##
-## Built so far: the courtyard (17.3), its props (17.4) and the underside
-## (17.5). The sky, the backdrop and the embers and ash come with tasks 17.6
-## to 17.8.
+## Built so far: the courtyard (17.3), its props (17.4), the underside (17.5)
+## and the night sky (17.6). The backdrop and the embers and ash come with
+## tasks 17.7 and 17.8.
 
-## The environment until the arena's own sky (task 17.6) sets def.environment.
-const NIGHT_ENVIRONMENT: Environment = preload("res://view/look/ink_night_environment.tres")
 ## The highest camera (m above the floor) that leaves out the rock under the
 ## rim: from there and inside the camera's limit (def.camera_max_radius),
 ## sight lines over the ledge pass above the crag, its roots and its chains.
@@ -80,12 +78,13 @@ static func _flicker(t: float, i: int) -> float:
 
 
 func _build() -> void:
-	assert(def != null and layout != null, "MoonlitShrine needs def and layout")
+	assert(def != null and def.environment != null and layout != null, "MoonlitShrine needs def, its environment and layout")
 	var env := WorldEnvironment.new()
 	env.name = "WorldEnvironment"
-	# Each arena gets its own copy, so a preset can change its fog.
-	var source: Environment = def.environment if def.environment != null else NIGHT_ENVIRONMENT
-	env.environment = source.duplicate(true) as Environment
+	# Each arena gets its own copy, sky included, so a preset can change its
+	# fog and the layout can place its moon.
+	env.environment = def.environment.duplicate(true) as Environment
+	_dress_sky(env.environment)
 	add_child(env)
 	add_child(_build_lights())
 	add_child(ShrinePlatform.build(layout, def))
@@ -140,11 +139,23 @@ func _build_lights() -> Node3D:
 	rim.light_energy = 1.1
 	rim.shadow_enabled = false
 	rim.light_cull_mask = LookPalette.FIGHTER_LAYER
-	# Light only: the sky (task 17.6) draws one moon, from the layout.
+	# Light only: the sky draws the one moon, from the layout.
 	rim.sky_mode = DirectionalLight3D.SKY_MODE_LIGHT_ONLY
 	rim.basis = _shining_from(layout.moon_direction)
 	root.add_child(rim)
 	return root
+
+
+## Puts the sky's moon where the layout says, paints its horizon in the
+## depth fog's colour so the fog fades into it, and gives it the look's noise.
+## A sky that isn't a shader (bought art, say) is left as it is.
+func _dress_sky(environment: Environment) -> void:
+	if environment.sky == null or not environment.sky.sky_material is ShaderMaterial:
+		return
+	var sky := environment.sky.sky_material as ShaderMaterial
+	sky.set_shader_parameter(&"moon_direction", layout.moon_direction.normalized())
+	sky.set_shader_parameter(&"horizon_color", environment.fog_light_color)
+	LookNoise.apply_to(sky)
 
 
 ## A light's basis shining from from_dir: its -Z points away from it.

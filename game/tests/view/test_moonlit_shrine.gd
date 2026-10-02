@@ -1,6 +1,7 @@
 extends GutTest
-## The Moonlit Shrine, built headless: the arena's own lights, environment
-## and ink-wash pass, the markers the match reads, a floor at y = 0 under the
+## The Moonlit Shrine, built headless: the arena's own lights, ink-wash pass
+## and night sky, with its fog and the moon ahead of player one where the
+## layout puts it; the markers the match reads, a floor at y = 0 under the
 ## spawns, a parapet, gate ropes and props outside the walkable circle with
 ## only flat pebbles inside it, the torii on the gate landings, the lanterns'
 ## lights, halos and flicker, bought art in place of a procedural prop, the
@@ -9,6 +10,7 @@ extends GutTest
 ## preset applied.
 
 const SCENE := "res://arenas/moonlit_shrine/moonlit_shrine.tscn"
+const SKY_SHADER: Shader = preload("res://shaders/sky_moonlit.gdshader")
 
 var arena: MoonlitShrine
 var _services: Node
@@ -53,11 +55,83 @@ func test_its_markers_match_the_arena_data() -> void:
 		assert_true(gate.transform.is_equal_approx(arena.def.gate_anchor(side)), "Gate%d" % side)
 
 
-func test_its_environment_is_its_own_copy() -> void:
-	var env: Environment = (arena.get_node("WorldEnvironment") as WorldEnvironment).environment
-	var source: Environment = load("res://view/look/ink_night_environment.tres")
-	assert_ne(env, source, "a copy, so presets don't edit the resource")
-	assert_eq(env.background_color, source.background_color, "the night environment until the sky (17.6)")
+func _environment(shrine: MoonlitShrine) -> Environment:
+	return (shrine.get_node("WorldEnvironment") as WorldEnvironment).environment
+
+
+## A parameter of shrine's sky, once its shader is known to declare it: a
+## misspelt name would set nothing, so the test reads only real uniforms.
+func _sky_param(shrine: MoonlitShrine, param: StringName) -> Variant:
+	var sky := _environment(shrine).sky.sky_material as ShaderMaterial
+	var names: Array = sky.shader.get_shader_uniform_list().map(func(u: Dictionary) -> String: return u["name"])
+	assert_has(names, String(param), "%s is a uniform of the sky" % param)
+	return sky.get_shader_parameter(param)
+
+
+func test_its_environment_is_its_own_copy_of_the_night_sky() -> void:
+	assert_not_null(arena.def.environment, "the shrine's data brings its sky")
+	var env: Environment = _environment(arena)
+	assert_ne(env, arena.def.environment, "a copy, so presets don't edit the resource")
+	assert_eq(env.background_mode, Environment.BG_SKY)
+	var sky := env.sky.sky_material as ShaderMaterial
+	assert_eq(sky.shader, SKY_SHADER)
+	assert_ne(sky, arena.def.environment.sky.sky_material, "its own sky, so the moon set on it leaves the resource alone")
+	assert_eq(_sky_param(arena, LookNoise.PARAM), LookNoise.texture(), "the sky fetches the look's noise")
+	assert_eq(_sky_param(arena, &"horizon_color"), env.fog_light_color, "the depth fog fades into the sky's horizon")
+
+
+## A sky that isn't a shader (bought art, say) comes through as it is.
+func test_a_sky_that_isnt_a_shader_is_left_as_it_is() -> void:
+	var def := arena.def.duplicate() as ArenaDef
+	var panorama := PanoramaSkyMaterial.new()
+	def.environment = Environment.new()
+	def.environment.background_mode = Environment.BG_SKY
+	def.environment.sky = Sky.new()
+	def.environment.sky.sky_material = panorama
+	var shrine: MoonlitShrine = (load(SCENE) as PackedScene).instantiate()
+	shrine.def = def
+	add_child_autofree(shrine)
+	assert_true(_environment(shrine).sky.sky_material is PanoramaSkyMaterial)
+
+
+## The shrine's own fog, before a preset turns any of it off.
+func test_fog_and_height_fog_are_set() -> void:
+	var env: Environment = arena.def.environment
+	assert_true(env.fog_enabled, "depth fog")
+	assert_gt(env.fog_depth_begin, arena.def.camera_max_radius + arena.def.floor_radius, "which starts past the courtyard")
+	assert_gt(env.fog_height_density, 0.0, "height fog")
+	assert_lt(env.fog_height, ShrinePlatform.LEDGE_Y, "which gathers under the ledge, leaving the courtyard clear")
+
+
+## Player one starts at -Z facing +Z, so the moon hangs in their first view.
+func test_the_moon_rises_ahead_of_player_one() -> void:
+	var toward_moon: Vector3 = arena.layout.moon_direction.normalized()
+	assert_almost_eq(_sky_param(arena, &"moon_direction"), toward_moon, Vector3.ONE * 1e-5, "the sky's moon is where the layout puts it")
+	assert_gt(toward_moon.y, 0.0, "above the horizon")
+	var rig: CameraRig = autofree(CameraRig.new())
+	var me: Vector3 = arena.def.spawn_point(0).origin
+	var them: Vector3 = arena.def.spawn_point(1).origin
+	var view: Dictionary = rig.follow_target(me, them, (them - me).normalized())
+	var cam: Camera3D = _camera_at(view["pos"])
+	cam.fov = rig.base_fov
+	cam.far = arena.def.camera_far
+	cam.look_at(view["look"])
+	assert_true(cam.is_position_in_frustum(cam.global_position + toward_moon * 1000.0), "in player one's first view")
+
+
+## The moon is data: a layout with the moon elsewhere moves the sky's moon
+## and the rim light with it, and leaves other shrines' skies alone.
+func test_the_sky_and_the_rim_light_take_the_moon_from_the_layout() -> void:
+	var layout := arena.layout.duplicate() as ShrineLayout
+	layout.moon_direction = Vector3(-2.0, 1.0, 0.5)
+	var shrine: MoonlitShrine = (load(SCENE) as PackedScene).instantiate()
+	shrine.layout = layout
+	add_child_autofree(shrine)
+	var toward_moon: Vector3 = layout.moon_direction.normalized()
+	assert_almost_eq(_sky_param(shrine, &"moon_direction"), toward_moon, Vector3.ONE * 1e-5, "the sky's moon")
+	var rim := shrine.get_node("Lights/MoonRim") as DirectionalLight3D
+	assert_almost_eq(rim.global_basis.z, toward_moon, Vector3.ONE * 1e-4, "the rim light")
+	assert_almost_eq(_sky_param(arena, &"moon_direction"), arena.layout.moon_direction.normalized(), Vector3.ONE * 1e-5, "the first shrine's moon stays")
 
 
 func test_the_moon_casts_the_shadows_and_the_rim_light_touches_fighters_only() -> void:
@@ -474,5 +548,6 @@ func test_every_preset_applies_to_the_courtyard_and_its_props() -> void:
 		var key := arena.get_node("Lights/MoonKey") as DirectionalLight3D
 		assert_eq(key.directional_shadow_max_distance, preset.shadow_max_distance, "%s: moon shadows" % id)
 		assert_eq((arena.get_node("InkWash") as InkWashPass).quality, preset.post_quality, "%s: ink wash" % id)
-		var env: Environment = (arena.get_node("WorldEnvironment") as WorldEnvironment).environment
+		var env: Environment = _environment(arena)
 		assert_eq(env.fog_enabled, preset.fog_enabled, "%s: fog" % id)
+		assert_eq(env.fog_height_density > 0.0, preset.height_fog, "%s: height fog" % id)

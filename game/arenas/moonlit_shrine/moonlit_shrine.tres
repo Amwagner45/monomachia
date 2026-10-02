@@ -1,6 +1,7 @@
-[gd_resource type="Resource" script_class="ArenaDef" load_steps=2 format=3]
+[gd_resource type="Resource" script_class="ArenaDef" load_steps=3 format=3]
 
 [ext_resource type="Script" path="res://arenas/arena_def.gd" id="1"]
+[ext_resource type="Environment" path="res://arenas/moonlit_shrine/moonlit_shrine_env.tres" id="2"]
 
 [resource]
 script = ExtResource("1")
@@ -17,3 +18,4 @@ gate_anchors = Array[Transform3D]([Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0, 0
 camera_max_radius = 19.5
 camera_far = 3000.0
 ambience_id = &"ambience_shrine"
+environment = ExtResource("2")

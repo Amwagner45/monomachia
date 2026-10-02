@@ -82,8 +82,8 @@ const PROP_KINDS: Array[StringName] = [&"lantern", &"torii", &"pillar", &"pine",
 ])
 
 @export_group("World")
-## Direction toward the moon (normalised by the builders). The red rim light
-## shines from it.
+## Direction toward the moon (normalised by the builders): the sky draws the
+## moon there, and the red rim light shines from it.
 @export var moon_direction: Vector3 = Vector3(0.42, 0.25, 1.0)
 ## Direction the moonlight comes from (the key light), independent of the
 ## moon's disc.

@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.5, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.6.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.6, which start stage 3 (the shrine). The owner now approves each task before the next starts. Next: 17.7.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -151,11 +151,12 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's courtyard (17.3): `arenas/moonlit_shrine/moonlit_shrine.tscn` builds the paved floor, the plinth, the parapet, the gate landings and rope barriers and the pebbles from its `ArenaDef` and `ShrineLayout`, with its own night environment, moon key light, red fighter-only rim light and ink-wash pass. Matches still use the stand-in until 8.3; the arena shots show the shrine.
   - The shrine's props (17.4): a torii on each gate landing, and on the ledge the stone lanterns (with flickering lights that skip the ground, and halos), the roped and broken pillars, the pines, the dead trees and loose rocks. `ShrineLayout.prop_scenes` swaps any prop kind for bought art at the same spots.
   - The shrine's underside (17.5): the rock ledge the props stand on, the crag hanging under it with roots and chains into the clouds, and floating rocks that bob. Cameras above the courtyard leave the rock under the rim out, each camera deciding for itself.
-- **Checks after 17.5** (`outline_check`, `ink_check` and the sizes are from 14.2):
-  - 586 Godot tests (53 s): rules 138, input 118, audio 31, core 22, view 222, content 52, and 3 project-wide smoke tests;
+  - The shrine's night sky (17.6): an ink sky with stars, ink clouds and a blood-red moon with a red haze, in the shrine's own environment with its depth and height fog. The moon hangs ahead of player one, where the layout puts it.
+- **Checks after 17.6** (`outline_check`, `ink_check` and the sizes are from 14.2):
+  - 590 Godot tests (56 s): rules 138, input 118, audio 31, core 22, view 226, content 52, and 3 project-wide smoke tests;
   - 121 web tests;
   - the typecheck loads 158 scripts cleanly;
-  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders and the rock) passes in a window;
+  - the arena shots of the shrine render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock and the sky) passes in a window;
   - CI passed on every push from 14.1 to 17.5 (8986b71);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
@@ -163,14 +164,14 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - **Waiting on its own worktree:**
   - **Task 17: stopped mid-build** (`look-and-arena`, all uncommitted in its worktree, based on the old commit 67265af). Task 16's pieces from it are salvaged and done.
     - Most of both tasks exists: the toon material, outlines, ink-wash pass and three presets; the arena data and the floating shrine with its underside, sky, landscape, embers and ash; four test files; screenshots and a preset benchmark (High about 62 fps at 1080p on the target laptop).
-    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.5): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props and underside. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's sky, backdrop and ambience (17.6–17.9).
+    - Tasks 16.1–17.9 salvage it piece by piece, reviewed. Salvaged so far (16.1–16.5, 17.1, 17.3–17.6): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, and the shrine's courtyard, props, underside and sky. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work. Still to come: the shrine's backdrop and ambience (17.7–17.9).
 
 ### Waiting on the owner
 
 - Permission to download the Zen Antique and Zen Kaku Gothic New fonts (SIL Open Font License) from the google/fonts repository, before 22.1.
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 frees them by default, to keep story 24).
-- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+- Reviews and sign-offs as their tasks land: a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8), a listening pass (19.9), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
 
 ## Not yet specified
 
@@ -1182,10 +1183,34 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
         - outlines per preset on the roots and chains, and none on the rock.
       - **Shots reviewed:** establishing and top-down, plus gameplay, Watch and menu at High and establishing at Low. The establishing view is dark until the sky (17.6).
       - **For 17.7:** the backdrop's cliffs used the worktree's `rock_material()`. It is `ShrineUnderside._rock_material()` now; make it public then.
-  - [ ] **17.6 Night sky and blood moon.** The sky shader, the shrine environment, and the moon direction synced from the layout.
+  - [x] **17.6 Night sky and blood moon.** The sky shader, the shrine environment, and the moon direction synced from the layout.
     - Check: the moon rises ahead of player one; fog and height fog are set; gameplay and Watch shots reviewed.
     - Owner: the red moon.
     - Blocked by: 17.3 · Stories: 46, 47
+    - Done:
+      - **`shaders/sky_moonlit.gdshader`**, salvaged:
+        - an ink gradient with a cold mist band at the horizon, the colour the depth fog fades to;
+        - stars, kept clear of the moon;
+        - ink cloud streaks, torn and edged red near the moon;
+        - the blood-red moon with a red haze, stronger along the horizon.
+        - It uses no `TIME`, so Godot doesn't redraw its radiance map every frame.
+      - **Changes to the worktree's sky:**
+        - its noise is the look's shared texture (`look_noise.gdshaderinc`, four fetches for the clouds), in place of value noise computed per pixel, as the spec asks of every shader;
+        - the moon's seas, which the worktree's shots showed as blotchy noise (and the texture's lattice showed as squares), are now twelve soft overlapping patches laid out like the real moon's face, with shores roughened by the noise;
+        - a moon straight overhead keeps its face's axes.
+      - **`arenas/moonlit_shrine/moonlit_shrine_env.tres`**, the night environment's ambient light, tonemap and fog with the sky as background; glow off, as on every preset. It is the shrine's `ArenaDef.environment`.
+      - **`MoonlitShrine`**:
+        - copies its `def.environment`, sky included, so each shrine's sky is its own;
+        - sets the sky's `moon_direction` from `layout.moon_direction` (the red rim light already shines from it), paints its horizon in the depth fog's colour so the fog fades into it, and gives it the look's noise texture. A sky that isn't a shader, bought art say, is left as it is;
+        - no longer falls back to the night environment.
+      - **Tests:**
+        - the environment is the shrine's own copy, with the sky as background, its own sky material, the noise texture and the fog's colour at the horizon (each sky parameter read only once the shader is known to declare it);
+        - a sky that isn't a shader comes through as it is;
+        - the shrine's environment has depth fog that starts past the courtyard and height fog that gathers under the ledge, so the courtyard stays clear;
+        - the moon is above the horizon and inside player one's starting follow view;
+        - a layout with the moon elsewhere moves the sky's moon and the rim light, and leaves another shrine's moon alone;
+        - height fog per preset.
+      - **Shots reviewed:** gameplay, Watch, menu and establishing at High and gameplay at Low. The moon sits up and left of the opponent in player one's view; the Watch and menu views show the stars, the haze and the clouds. Below the horizon the sky is mist until the sea of clouds (17.7).
   - [ ] **17.7 Sea of clouds, mountains, cliff pagodas, waterfalls and the lake.** The backdrop builder and its shaders, with scenery detail per preset.
     - Note from 17.5: `ShrineLayout.cloud_sea_height` is already there (the chains end in the clouds). `ShrineUnderside._rock_material()` is the rock for the cliffs, and the floating rocks could carry the temple hall.
     - Check: the far clip reaches the farthest ring and the camera takes it; detail follows each preset; gameplay, Watch, menu and establishing shots at the three presets reviewed.

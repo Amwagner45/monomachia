@@ -47,12 +47,20 @@ const MOVES: Dictionary = {
 		"side_start": &"right", "side_end": &"left",
 		"startup": 23, "active": 4, "recovery": 24, "damage": 13, "posture": 16, "knockback": 1.0,
 		"range": 3.6, "arc": 110, "lunge": 0.4, "lunge_start": 9, "lunge_end": 25,
+		"chain_light": &"k_l2", "chain_heavy": &"k_rdraw",
 	},
 	&"k_h1f": {
 		"id": &"k_h1f", "name": "Rising Heaven", "kind": &"heavy", "type": &"slash", "anim": &"diagUp",
 		"side_start": &"right", "side_end": &"left",
 		"startup": 16, "active": 4, "recovery": 24, "damage": 12, "posture": 15, "knockback": 0.9,
 		"range": 2.3, "arc": 90, "lunge": 0.5, "lunge_end": 18, "chain_heavy": &"k_h2",
+	},
+	# the horizontal Iai's heavy follow-up, back the other way
+	&"k_rdraw": {
+		"id": &"k_rdraw", "name": "Returning Draw", "kind": &"heavy", "type": &"slash", "anim": &"slashLR",
+		"side_start": &"left", "side_end": &"right",
+		"startup": 16, "active": 4, "recovery": 24, "damage": 12, "posture": 15, "knockback": 0.9,
+		"range": 2.3, "arc": 110, "lunge": 0.5, "lunge_end": 18,
 	},
 	&"k_h2": {
 		"id": &"k_h2", "name": "Heaven Splitter", "kind": &"heavy", "type": &"overhead", "anim": &"overhead",

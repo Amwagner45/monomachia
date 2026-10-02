@@ -75,6 +75,7 @@ const ADDED: Array[StringName] = [
 	&"k_l3", # 9.1: Kesa Cut, the third light
 	&"k_iai", # 9.2: the Iai Slash (vertical), the heavy
 	&"k_iai_h", # 9.4: the Iai Slash (horizontal), its release variant
+	&"k_rdraw", # 9.5: Returning Draw, the horizontal Iai's heavy follow-up
 ]
 
 ## Demo moves the new strings removed.

@@ -6,10 +6,9 @@ const H := preload("res://tests/sim/sim_helpers.gd")
 ## toBeCloseTo's default precision (2 digits), as the neighbouring tests use
 const CLOSE: float = 0.005
 
-## The spec's Katana table, the rows of the light string, its heavy endings
-## and both Iai Slashes: name, frames (startup, active, recovery), damage, posture, the
-## light and heavy follow-ups (&"" for none), and the sides the spec's move
-## data gives the weapon (start, end).
+## The spec's Katana table, all nine rows: name, frames (startup, active,
+## recovery), damage, posture, the light and heavy follow-ups (&"" for none),
+## and the sides the spec's move data gives the weapon (start, end).
 const ROWS: Dictionary[StringName, Dictionary] = {
 	&"k_l1": {
 		"name": "Right Cut", "frames": [11, 3, 16], "damage": 6, "posture": 7,
@@ -32,14 +31,17 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 		"name": "Iai Slash (vertical)", "frames": [23, 4, 24], "damage": 13, "posture": 16,
 		"light": &"", "heavy": &"k_h1f", "sides": [&"left", &"right"],
 	},
-	# its follow-ups, Return Cut (light) and Returning Draw (heavy), come in 9.5
 	&"k_iai_h": {
 		"name": "Iai Slash (horizontal)", "frames": [23, 4, 24], "damage": 13, "posture": 16,
-		"light": &"", "heavy": &"", "sides": [&"right", &"left"],
+		"light": &"k_l2", "heavy": &"k_rdraw", "sides": [&"right", &"left"],
 	},
 	&"k_h1f": {
 		"name": "Rising Heaven", "frames": [16, 4, 24], "damage": 12, "posture": 15,
 		"light": &"", "heavy": &"k_h2", "sides": [&"right", &"left"],
+	},
+	&"k_rdraw": {
+		"name": "Returning Draw", "frames": [16, 4, 24], "damage": 12, "posture": 15,
+		"light": &"", "heavy": &"", "sides": [&"left", &"right"],
 	},
 	&"k_h2": {
 		"name": "Heaven Splitter", "frames": [22, 4, 28], "damage": 15, "posture": 18,
@@ -159,10 +161,13 @@ class PlayedString:
 ## Fighter 0 plays a string of presses (Btn.LIGHT or Btn.HEAVY) for 240 steps
 ## against an idle Katana gap m away: the first on step 0, each next one on the
 ## step after the attack before it swings, the first step that attack takes a
-## follow-up. With dodge_in set, it also presses dodge so that the press
+## follow-up. mx is the stick's sideways push throughout (1.0 draws the
+## horizontal Iai). With dodge_in set, it also presses dodge so that the press
 ## first counts on that attack's frame dodge_on, holding the stick to the side
 ## from then on (a buffered dodge with the stick let go is a backstep).
-static func _play(presses: Array[int], gap: float = 2.2, dodge_in: StringName = &"", dodge_on: int = -1) -> PlayedString:
+static func _play(
+	presses: Array[int], gap: float = 2.2, mx: float = 0.0, dodge_in: StringName = &"", dodge_on: int = -1
+) -> PlayedString:
 	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, gap)
 	var a: Fighter = W.fighters[0]
 	var r := PlayedString.new()
@@ -170,9 +175,9 @@ static func _play(presses: Array[int], gap: float = 2.2, dodge_in: StringName = 
 	var due: bool = true
 	var dodged: bool = false
 	for i: int in 240:
-		var p0: RawInput = H.idle()
+		var p0: RawInput = H.move(mx, 0.0)
 		if due and next < presses.size():
-			p0 = H.btn(presses[next])
+			p0 = H.move(mx, 0.0, presses[next])
 			next += 1
 			due = false
 		elif dodged:
@@ -209,13 +214,40 @@ func test_a_heavy_ends_the_string_on_heaven_splitter_or_after_two_lights_on_risi
 	)
 
 
-func test_crown_cut_ends_the_string() -> void:
+## Plays presses (the stick at mx), then a light or a heavy as the last of
+## swings swings, and checks that it starts nothing: the swings stay swings,
+## and the last of them ends on startup + active + recovery, leaving the
+## fighter free.
+func _assert_ends_the_string(presses: Array[int], swings: Array[StringName], mx: float = 0.0) -> void:
+	var id: StringName = swings.back()
 	for press: int in [Btn.LIGHT, Btn.HEAVY]:
-		var r: PlayedString = _play([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, Btn.LIGHT, press])
-		var what: String = "a %s pressed in Crown Cut" % ("light" if press == Btn.LIGHT else "heavy")
-		assert_eq(r.ids(&"swing"), [&"k_l1", &"k_l2", &"k_l3", &"k_l4"] as Array[StringName], "%s starts nothing" % what)
-		assert_eq(r.ended_on(&"k_l4"), _length(&"k_l4"), "%s: Crown Cut ends on frame 40, startup + active + recovery" % what)
-		assert_eq(r.state_after(&"k_l4"), &"free", "%s: then the fighter is free" % what)
+		var played: Array[int] = presses.duplicate()
+		played.append(press)
+		var r: PlayedString = _play(played, 2.2, mx)
+		var what: String = "a %s pressed in %s" % ["light" if press == Btn.LIGHT else "heavy", ROWS[id]["name"]]
+		assert_eq(r.ids(&"swing"), swings, "%s starts nothing" % what)
+		assert_eq(r.ended_on(id), _length(id), "%s: it ends on startup + active + recovery" % what)
+		assert_eq(r.state_after(id), &"free", "%s: then the fighter is free" % what)
+
+
+## Plays presses (the stick at mx) and checks each one hits, and that the
+## string then stops: its last move ends on startup + active + recovery,
+## leaving the fighter free.
+func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
+	var r: PlayedString = _play(presses, 2.2, mx)
+	var what: String = "%s%s" % [presses, " sideways" if mx != 0.0 else ""]
+	var hits: Array[StringName] = r.ids(&"hit")
+	assert_eq(hits.size(), presses.size(), "every press of %s hits" % what)
+	if hits.size() != presses.size():
+		return
+	var last: StringName = hits.back()
+	assert_eq(r.ended_on(last), _length(last), "%s: %s ends on startup + active + recovery" % [what, last])
+	assert_eq(r.state_after(last), &"free", "%s: and the fighter is free after %s" % [what, last])
+
+
+func test_crown_cut_ends_the_string() -> void:
+	var light: int = Btn.LIGHT
+	_assert_ends_the_string([light, light, light, light], [&"k_l1", &"k_l2", &"k_l3", &"k_l4"])
 
 
 func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
@@ -228,14 +260,7 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 	for presses: Array in strings:
 		var typed: Array[int] = []
 		typed.assign(presses)
-		var r: PlayedString = _play(typed)
-		var hits: Array[StringName] = r.ids(&"hit")
-		assert_eq(hits.size(), presses.size(), "every press of %s hits" % [presses])
-		if hits.size() != presses.size():
-			continue
-		var last: StringName = hits.back()
-		assert_eq(r.ended_on(last), _length(last), "%s ends on startup + active + recovery" % last)
-		assert_eq(r.state_after(last), &"free", "and the fighter is free after %s" % last)
+		_assert_stops_after(typed)
 
 
 ## Plays presses, the last starting attack id, after a hit (2.2 m) and after a
@@ -244,13 +269,13 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 func _assert_dodge_cancels_from(presses: Array[int], id: StringName, cancel: int) -> void:
 	for gap: float in [2.2, 10.0]:
 		var what: String = "%s %s" % [id, "after a hit" if gap < 3.0 else "after a whiff"]
-		var early: PlayedString = _play(presses, gap, id, cancel - 1)
+		var early: PlayedString = _play(presses, gap, 0.0, id, cancel - 1)
 		assert_eq(
 			[early.ended_on(id), early.state_after(id)],
 			[cancel, &"dodge"],
 			"%s: a dodge pressed on frame %d is refused there and comes on %d" % [what, cancel - 1, cancel],
 		)
-		var on_time: PlayedString = _play(presses, gap, id, cancel)
+		var on_time: PlayedString = _play(presses, gap, 0.0, id, cancel)
 		assert_eq(
 			[on_time.ended_on(id), on_time.state_after(id)],
 			[cancel, &"dodge"],
@@ -326,10 +351,6 @@ func test_a_sheathed_fighter_cannot_block() -> void:
 	if hits.size() == 1:
 		assert_true(r.charging[int(hits[0]["step"]) - 1], "a sheathed fighter")
 	assert_eq(r.all(&"block").filter(on_fighter_0), [] as Array[Dictionary], "holding block blocks nothing")
-
-
-func test_a_heavy_after_the_iai_gives_rising_heaven() -> void:
-	assert_eq(_play([Btn.HEAVY, Btn.HEAVY]).ids(&"hit"), [&"k_iai", &"k_h1f"] as Array[StringName])
 
 
 func test_the_iai_dodge_cancels_late_in_its_recovery() -> void:
@@ -535,9 +556,77 @@ func test_the_horizontal_iai_keeps_the_iais_timing_and_charge() -> void:
 	assert_almost_eq(float(full.find(&"hit").get("damage", NAN)), 13.0 * 1.8, CLOSE, "as a full charge's power attack")
 
 
+# ------------------------------------------------------------------ the Iai follow-ups
+
+## As _play, with the stick held right throughout, so the Iai draws the
+## horizontal.
+static func _play_sideways(presses: Array[int]) -> PlayedString:
+	return _play(presses, 2.2, 1.0)
+
+
+func test_the_vertical_iai_goes_on_to_rising_heaven_then_heaven_splitter() -> void:
+	var heavy: int = Btn.HEAVY
+	assert_eq(
+		_play([heavy, heavy, heavy]).ids(&"swing"),
+		[&"k_iai", &"k_h1f", &"k_h2"] as Array[StringName],
+		"heavy, heavy: Rising Heaven, then Heaven Splitter",
+	)
+	assert_eq(_play([heavy, Btn.LIGHT]).ids(&"swing"), [&"k_iai"] as Array[StringName], "a light after it starts nothing")
+
+
+func test_the_horizontal_iai_goes_on_to_returning_draw_or_return_cut() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	assert_eq(_play_sideways([heavy, heavy]).ids(&"swing"), [&"k_iai_h", &"k_rdraw"] as Array[StringName], "heavy: Returning Draw")
+	assert_eq(_play_sideways([heavy, light]).ids(&"swing"), [&"k_iai_h", &"k_l2"] as Array[StringName], "light: Return Cut")
+	assert_eq(
+		_play_sideways([heavy, light, light, light]).ids(&"swing"),
+		[&"k_iai_h", &"k_l2", &"k_l3", &"k_l4"] as Array[StringName],
+		"Return Cut goes on through the light string",
+	)
+	assert_eq(
+		_play_sideways([heavy, light, heavy]).ids(&"swing"),
+		[&"k_iai_h", &"k_l2", &"k_h1f"] as Array[StringName],
+		"or to its heavy, Rising Heaven",
+	)
+
+
+func test_a_held_horizontal_iai_goes_on_to_returning_draw_too() -> void:
+	# heavy held with the stick right to step 40, then pressed again on step
+	# 55, after the cut's swing on step 53
+	var held_then_heavy: Callable = func(i: int) -> RawInput:
+		if i < 40 or i == 55:
+			return H.move(1.0, 0.0, Btn.HEAVY)
+		return H.move(1.0, 0.0)
+	assert_eq(_run(held_then_heavy).ids(&"swing"), [&"k_iai_h", &"k_rdraw"] as Array[StringName])
+
+
+func test_returning_draw_ends_the_string() -> void:
+	_assert_ends_the_string([Btn.HEAVY, Btn.HEAVY], [&"k_iai_h", &"k_rdraw"], 1.0)
+
+
+func test_stopping_after_any_hit_in_the_iais_strings_ends_the_string_when_that_move_ends() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	# mx 1.0 draws the horizontal
+	var strings: Array[Dictionary] = [
+		{"presses": [heavy], "mx": 0.0},
+		{"presses": [heavy, heavy], "mx": 0.0},
+		{"presses": [heavy, heavy, heavy], "mx": 0.0},
+		{"presses": [heavy], "mx": 1.0},
+		{"presses": [heavy, heavy], "mx": 1.0},
+		{"presses": [heavy, light], "mx": 1.0},
+		{"presses": [heavy, light, heavy], "mx": 1.0},
+	]
+	for s: Dictionary in strings:
+		var presses: Array[int] = []
+		presses.assign(s["presses"])
+		_assert_stops_after(presses, s["mx"])
+
+
 # ------------------------------------------------------------------ the spec's table
 
-func test_the_rows_built_so_far_match_the_spec_table() -> void:
+func test_all_nine_rows_match_the_spec_table() -> void:
 	for id: StringName in ROWS:
 		var row: Dictionary = ROWS[id]
 		var m: AttackDef = Moves.KATANA.moves.get(id, null)
@@ -560,6 +649,20 @@ func test_the_horizontal_iai_hits_with_the_specs_interim_cone() -> void:
 		return
 	assert_eq([m.type, m.anim], [&"slash", &"slashRL"], "a right-to-left slash")
 	assert_eq([m.range, m.arc, m.lunge, m.knockback], [3.6, 110.0, 0.4, 1.0], "range, arc, lunge and knockback")
+
+
+func test_returning_draw_hits_with_the_specs_interim_cone() -> void:
+	# until weapon paths decide hits (task 7): a left-to-right slash (the
+	# stand-in's slashLR) with Rising Heaven's reach, lunge and knockback and
+	# Return Cut's width, its lunge ending two frames after its cut starts
+	var m: AttackDef = Moves.KATANA.moves.get(&"k_rdraw", null)
+	assert_not_null(m, "Returning Draw exists")
+	if m == null:
+		return
+	assert_eq([m.type, m.anim], [&"slash", &"slashLR"], "a left-to-right slash")
+	assert_eq(
+		[m.range, m.arc, m.lunge, m.lunge_end, m.knockback], [2.3, 110.0, 0.5, 18, 0.9], "range, arc, lunge, the lunge's end and knockback"
+	)
 
 
 func test_kesa_cut_hits_with_the_specs_interim_cone() -> void:

@@ -103,7 +103,7 @@ const SHAKE_SEED: int = 0x5EED
 
 @export_group("Arena")
 ## Without arena data the camera stays within ARENA_RADIUS + arena_margin of
-## the centre (15.5 m for the demo's 11.5 m arena), except in MENU.
+## the centre (19 m for the 15 m arena), except in MENU.
 @export var arena_margin: float = 4.0
 
 @export_group("Shake and kicks")

@@ -125,7 +125,7 @@ static func run(N: float, out: Callable, limit: int = LIMIT, before_step: Callab
 				if not is_finite(f.pos.x) or not is_finite(f.pos.z) or not is_finite(f.hp):
 					error = "Error: NaN state"
 					break
-				if JsMath.hypot(f.pos.x, f.pos.z) > 12.0:
+				if JsMath.hypot(f.pos.x, f.pos.z) > SimConst.ARENA_RADIUS + 0.5:
 					error = "Error: left the arena"
 					break
 				if f.posture < -1e-6 or f.posture > 100.0001:

@@ -41,12 +41,13 @@ func test_the_shrine_is_known_by_its_data() -> void:
 	assert_null(ArenaScenes.def(&"no_such_arena"))
 
 
-## Task 8.3 sets the rules' radius to the shrine's 15 m and opens the guard;
-## this test changes with it.
-func test_the_shrine_waits_behind_the_guard_while_the_rules_wall_is_at_11_5_m() -> void:
-	assert_eq(SimConst.ARENA_RADIUS, 11.5)
-	assert_eq(ArenaScenes.def(ArenaScenes.MOONLIT_SHRINE).walkable_radius, 15.0)
-	assert_eq(ArenaScenes.scene_path(ArenaScenes.MOONLIT_SHRINE), ArenaScenes.STANDIN_SCENE)
+## Task 8.3 set the rules' radius to the shrine's 15 m, which opened the
+## guard: the shrine draws as itself.
+func test_the_shrine_draws_as_itself_now_the_rules_wall_is_at_its_15_m() -> void:
+	assert_eq(SimConst.ARENA_RADIUS, 15.0)
+	var shrine: ArenaDef = ArenaScenes.def(ArenaScenes.MOONLIT_SHRINE)
+	assert_eq(shrine.walkable_radius, SimConst.ARENA_RADIUS)
+	assert_eq(ArenaScenes.scene_path(ArenaScenes.MOONLIT_SHRINE), "res://arenas/moonlit_shrine/moonlit_shrine.tscn")
 
 
 func test_unknown_ids_and_the_standin_draw_the_standin() -> void:

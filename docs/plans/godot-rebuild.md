@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. The owner approves each task before the next starts. Next: 8.3.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena. The owner approves each task before the next starts. Next: 17.10, the radius check on the shrine.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -146,7 +146,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
     - the Rogue, the Hunter and the three weapons in the look (16.7): `ToonMaterials.fighter_from` and `weapon_from` convert their imported materials, with a two-sided toon shader for open shells, and the Katana's shaders are toon-lit.
   - The fighter rig (14.1): `FighterRig` and `BodyLayer` on each fighter's skeleton, with arm and leg IK, hands locked onto a posed weapon's grips, and fists fitted to each handle by `HandGrip`. Weapons are posed in fighter space or carried in the fist, never in hand sockets.
   - Real fighters in the match (14.2): `FighterView` replaces the capsule stand-ins, with flashes and glows as overlays, models kept across rematches, and the real weapon models on the floor when dropped.
-  - The arena data and the radius guard (17.1): `ArenaDef` and the shrine's `moonlit_shrine.tres`. `ArenaScenes` draws an arena's own scene only when it exists and its walkable radius is the rules' `ARENA_RADIUS`, so the shrine (15 m) waits behind the stand-in until 8.3. Tests that don't need the shrine ask for the stand-in by id, through `main.gd`'s `arena_id` where they go through the menus.
+  - The arena data and the radius guard (17.1): `ArenaDef` and the shrine's `moonlit_shrine.tres`. `ArenaScenes` draws an arena's own scene only when it exists and its walkable radius is the rules' `ARENA_RADIUS`, so the shrine (15 m) waited behind the stand-in until 8.3 set the rules' radius to 15 m. It is now every match's arena. Tests that don't need the shrine ask for the stand-in by id, through `main.gd`'s `arena_id` where they go through the menus.
   - The arena screenshot rig (17.2): `tools/shot_scenes/arena_shot.gd` shoots an arena on a stepped `MatchHost` with the real fighters on its spawns, from the gameplay, Watch and menu cameras, an establishing view and a top-down debug view, at any preset (`arena_gameplay.tscn` … `arena_top_down.tscn`, `--preset=`, `--arena=`). It shoots an arena's own scene past the radius guard.
   - The shrine's courtyard (17.3): `arenas/moonlit_shrine/moonlit_shrine.tscn` builds the paved floor, the plinth, the parapet, the gate landings and rope barriers and the pebbles from its `ArenaDef` and `ShrineLayout`, with its own night environment, moon key light, red fighter-only rim light and ink-wash pass. Matches still use the stand-in until 8.3; the arena shots show the shrine.
   - The shrine's props (17.4): a torii on each gate landing, and on the ledge the stone lanterns (with flickering lights that skip the ground, and halos), the roped and broken pillars, the pines, the dead trees and loose rocks. `ShrineLayout.prop_scenes` swaps any prop kind for bought art at the same spots.
@@ -155,11 +155,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
-- **Checks after 8.10** (the shots, the bench and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
-  - 586 Godot tests (39 s): rules 107, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
+- **Checks after 8.3** (the shots, the bench and CI are from 17.9, except the stand-in's arena shots; `outline_check`, `ink_check` and the sizes from 14.2):
+  - 590 Godot tests (38 s): rules 111, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
-  - the typecheck loads 159 scripts cleanly;
-  - `soak:godot -- 40` and the counterlab print the baseline below exactly;
+  - the typecheck loads 160 scripts cleanly;
+  - `soak:godot -- 40` has 0 failures at 15 m (rounds 140, average 45.5 s, longest 105.2 s, against the baseline's 149, 44.5 s and 121.8 s), and the counterlab still prints the baseline below;
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 69 fps at 1080p on the target laptop (`arena_bench.tscn`), 66 fps from the Watch camera;
   - CI passed on every push from 14.1 to 17.9 (8c188c4);
@@ -342,7 +342,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Lights presses for a light's follow-up when the attack takes one on the next step, asking the fighter (`Fighter.takes_follow_up_at`, which `_update_attack` now uses too, so the rule lives in one place), so the Katana throws Right Cut, Return Cut and Crown Cut, the Greatsword its two lights and the Daggers all four (the demo stopped at three). The fixed presses at 9 and 18 frames are gone.
       - The two tests went red on the demo's behaviour first, then green.
       - The soak and the counterlab still print the baseline exactly (the soak never uses the dummy; the shared follow-up rule left the rules unchanged).
-  - [ ] **8.3 Arena radius 15 m, with every value tied to it.**
+  - [x] **8.3 Arena radius 15 m, with every value tied to it.**
     - Delivers:
       - `ARENA_RADIUS` 15, with named margins for the Impaler's wall stop (0.7) and the dropped weapon's bounce (0.8).
       - The Impaler limit uses them instead of the hard-coded 10.8.
@@ -353,6 +353,13 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The radius guard opens, so the shrine becomes every match's arena; 17.10 then checks it.
     - Check: the new tests pass; the camera and scene tests pass (they start on the stand-in by id since 17.1); the soak has 0 failures, and its round length is noted against the baseline; shots of the stand-in arena, asked for by id, show the wall at 15 m.
     - Blocked by: 8.2, 17.1 · Stories: 15, 30, 34, 62
+    - Done:
+      - `SimConst.ARENA_RADIUS` is 15, with `IMPALER_WALL_MARGIN` (0.7) and `WEAPON_BOUNCE_MARGIN` (0.8). `WAVE_RANGE` is `2 × ARENA_RADIUS + 3` (33 m; the demo's 26 m is the same formula at 11.5 m). The soak fails a fighter more than 0.5 m past the wall (it was 12 m). The camera's comment gives 19 m.
+      - `test_fluid_combat.gd` (new), arena section, red on the 11.5 m rules first: backing away stops a fighter's centre at 14.58 m; a weapon dropped at 14 m flies out to its 14.2 m bounce ring and rests inside; the Impaler's dash ends past 14.3 m, by the wall, in fewer than 40 frames (the target hangs 2 m up, beyond the stop, so the blade never touches it and the dash never passes it); a vertical Moonsplitter hits across 28 m. The test measures with `JsMath.hypot`, since Godot's `Vector2` is 32-bit.
+      - The guard opened: `test_arena_scenes` now checks that the shrine draws as itself, its walkable radius equal to the rules'. Every match without an arena id, and every skeleton shot, is now on the shrine; the tests that need the stand-in ask for it by id, and the suite takes no longer (38 s).
+      - Soak: 0 failures. Rounds 140, average 45.5 s, longest 105.2 s, against the baseline's 149, 44.5 s and 121.8 s. Per round: blocks 12.76 (12.30), parries 3.90 (3.91), disarms 0.40 (0.45), ultimates 1.18 (1.19), the disarmed choice included; match wins and losses Greatsword 12–12, Katana 13–18, Daggers 15–10. The counterlab still prints the baseline: the dummy drills near the centre.
+      - Shots of the stand-in by id (`arena_top_down`, `arena_gameplay` and `arena_watch` with `--arena=standin`) show the rules' wall at 15.00 m, centres stopping at 14.58 m and the stand-in's wall on the rules' ring, with no errors or leaks at exit.
+      - Story 15 (a larger walled arena) is ticked by 17.10, once the shrine is checked as every match's arena.
   - [ ] **8.4 Blocking walk at 60% of running speed.** `MOVE_BLOCK_SPEED_MULT` 0.6, with tests of forward and strafing block speed and that blocking still stops sprinting.
     - Check: the new tests and the posture-drain test pass; the soak is clean.
     - Blocked by: 8.2 · Stories: 14

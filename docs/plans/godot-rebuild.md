@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. 8.4 then raised the blocking walk to 60% of running speed, 8.5 let attacks keep half their speed as they start, 8.6 eased lunges in and out, 8.7 cut light hitstun to 14 frames, and 8.8 let heavies dodge-cancel late in recovery. The owner approves each task before the next starts. Next: 8.9.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. 8.4 then raised the blocking walk to 60% of running speed, 8.5 let attacks keep half their speed as they start, 8.6 eased lunges in and out, 8.7 cut light hitstun to 14 frames, 8.8 let heavies dodge-cancel late in recovery, and 8.9 added the Greatsword's recovery slide, which finishes task 8. The owner approves each task before the next starts. Next: 12.1.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -156,11 +156,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
   - The shrine as every match's arena (17.10): fighters and dropped weapons stay inside its parapet, and every match camera stays within 16.2 m of the centre (`camera_max_radius`, was 19.5), short of the props on the ledge. `test_shrine_as_arena.gd` sweeps the cameras round the wall against the props' real triangles, and `arena_wall.tscn` (or `--wall=<degrees>` on any arena view) shoots a fighter backed against the wall.
-- **Checks after 8.8** (the bench and the wall shots are from 17.10, the shrine's other shots and CI from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
-  - 614 Godot tests (48 s): rules 127, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
+- **Checks after 8.9** (the bench and the wall shots are from 17.10, the shrine's other shots and CI from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
+  - 619 Godot tests (48 s): rules 132, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
   - the typecheck loads 161 scripts cleanly;
-  - `soak:godot -- 40` (8.7; 8.8 printed the same, as the computer doesn't dodge-cancel yet) has 0 failures with the 15 m arena, the 60% blocking walk, half the momentum kept, eased lunges and light hitstun 14 (rounds 151, average 43.8 s, longest 116.3 s, against the baseline's 149, 44.5 s and 121.8 s; disarms 0.84 per round, above the spec's 0.3–0.6, for task 12), and the counterlab still reaches every counter (slam 21 attempts, 16 evades; thrust 23, 13 stomps; sweep 24, 14 leaps; the baseline is below);
+  - `soak:godot -- 40` (8.9) has 0 failures on task 8's finished rules, and the counterlab still reaches every counter; both reports, and their drift from the baseline, are under "Task 8's drift" below;
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 66.8 fps at 1080p on the target laptop (`arena_bench.tscn`, 17.10, on mains power; 95th percentile 16.3 ms), Medium 76.9 and Low 99.9, against 69, 79 and 102 at 17.9 with the rules' wall at 11.5 m;
   - CI passed on every push from 14.1 to 17.9 (8c188c4);
@@ -203,6 +203,42 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   thrust { attempts: 24, 'counter:stomp': 15, hit: 2 }
   sweep { attempts: 25, 'counter:leap': 16 }
   ```
+
+- **Task 8's drift (8.9).** On the finished fluid rules, `soak:godot -- 40` and the Godot counterlab printed:
+  ```
+  40 matches, 0 failures
+  rounds: 148, avg round 42.8 s, longest 116.3 s
+  per round:
+    blocks                 17.89
+    counter:evade          0.02
+    counter:leap           0.59
+    counter:stomp          0.43
+    disarm:blocked         0.08
+    disarm:parried         0.73
+    disarm:redirect        0.02
+    evade                  0.49
+    framesAtFullPosture    481.03
+    hits                   24.02
+    parry:flash            0.12
+    parry:parry            4.37
+    parry:redirect         0.11
+    rearm                  0.70
+    recall                 0.09
+    ult:disarmedChoice     0.24
+    ult:impaler            0.22
+    ult:moonsplitter       0.28
+    ult:tempest            0.39
+  match wins/losses by weapon: { greatsword: [ 9, 15 ], katana: [ 17, 14 ], daggers: [ 14, 11 ] }
+
+  slam { attempts: 23, 'counter:evade': 13, hit: 7 }
+  thrust { attempts: 23, 'counter:stomp': 13, hit: 4 }
+  sweep { attempts: 24, 'counter:leap': 15, hit: 2 }
+  ```
+  - Against the baseline, per round: rounds a little shorter (42.8 s, was 44.5); blocks up by nearly half (17.89, was 12.30) and plain parries up (4.37, was 3.91), so posture sits full far longer (481 frames, was 281) and disarms nearly double (0.83, was 0.45); counters down (1.04, was 1.42); ultimates about the same (1.13, was 1.19).
+  - The step that moved balance most was 8.7 (light hitstun 14): blocks 12.53 to 17.65 and disarms 0.50 to 0.84 in that one step. 8.9's slide moved little beyond it.
+  - Wins and losses by weapon: the Greatsword 9–15 (12–12 at the baseline), the Katana 17–14 (15–16), the Daggers 14–11 (13–12). The Greatsword lost ground at 8.7 and stayed there.
+  - Against the spec's targets: rounds of 35–60 s are met; disarms (0.83, target 0.3–0.6) and the Greatsword's wins (9 of 24, target 45–55%) are not. A 40-match soak is noisy (mirror matches included); task 12's 300-match soaks tune toward the targets.
+  - The counterlab reaches every counter less often than at the baseline: 13 evades from 23 slams (17 from 24), 13 stomps from 23 thrusts (15 from 24), 15 leaps from 24 sweeps (16 from 25), with more hits against the countering fighter.
 
 ### Waiting on the owner
 
@@ -300,7 +336,7 @@ One task at a time, top to bottom. Each stage names its tasks in order.
 
 Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 7 (swing paths for the final moves), then 12.
 
-- [ ] **8. Fluid combat rules.** Arena radius 15 m, with the hard-coded values tied to it; blocking walk 60%; momentum carry; eased lunges; the colossal recovery slide; heavy dodge-cancel; light hitstun 14. The golden replays retire here: they record the demo's rules.
+- [x] **8. Fluid combat rules.** Arena radius 15 m, with the hard-coded values tied to it; blocking walk 60%; momentum carry; eased lunges; the colossal recovery slide; heavy dodge-cancel; light hitstun 14. The golden replays retire here: they record the demo's rules.
   - Check: the new tests from the spec pass; the soak run is clean.
   - [x] **8.1 Behaviour tests for the training dummy and the computer's counters.**
     - Delivers: `game/tests/sim/test_training_brain.gd`. Each dummy behaviour (idle, block, lights, heavies, thrust, sweep, slam, random, spar) is checked against an opponent at practice distance, by its events and states. A counterlab-style test shows a hard brain that always tries the counter lands stomp, leap and evade within 60 s. These replace the TypeScript input hashes that the first rule change breaks.
@@ -416,7 +452,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Every heavy's recovery is an even number of frames today, so rounding up its half matters only for later moves; a partial charge's odd extra recovery checks the rounding now.
       - The shift applies to any extra recovery. Only the evade counter adds some besides a charge, and only to Mountain Slam, which has no cancel.
       - Story 23 (dodging out of a heavy's late recovery) is ticked: the player can now. 12.7 also lists it, for the computer.
-  - [ ] **8.9 Colossal recovery slide, and close out task 8.**
+  - [x] **8.9 Colossal recovery slide, and close out task 8.**
     - Delivers:
       - Greatsword moves (bashes excepted) slide 0.35 m over the first 10 recovery frames, eased out, along the facing, stopping at the minimum gap.
       - Soak and counterlab on the finished rules are compared with the baseline, and the drift goes in Progress.
@@ -428,6 +464,14 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The soak has 0 failures, and counterlab still reaches stomp, leap and evade.
       - `test_main_flow` plays a Duel.
     - Blocked by: 8.3–8.8 · Stories: 20, 59, 62
+    - Done:
+      - `SimConst.COLOSSAL_SLIDE_DIST` (0.35 m) and `COLOSSAL_SLIDE_FRAMES` (10). In `Fighter._update_attack`, a colossal weapon's grounded moves, bashes aside and block abilities included, move the eased-out share of the slide on each of their first 10 recovery frames through `_advance`, on a hit, a block or a whiff. The slide runs along the facing until 7.24 gives it the swing's follow-through. It belongs to the attack state, so a dodge cancel, a follow-up, a stun or a parry's recoil ends it.
+      - `test_fluid_combat.gd`, colossal slide section, red first where a slide should happen. A whiffed Heavy Swing moves exactly 0.35 m over its first 10 recovery frames, each step shorter than the last, and none after; a whiffed Katana Right Cut doesn't move in recovery. It slides the same 0.35 m after a hit and after a block (from 1.5 m, the knockback or the pushback carries the defender clear). Put 1.2 m in front of the attacker as the swing's active frames end, a defender stops the slide with the bodies 0.25 m apart (a block can't show it: its 0.36 m pushback outruns the slide). Heavy Swing's dodge cancel lands on frame 26, its 8th recovery frame, with most of the slide run, and ends the forward movement. Aerial Chop, Guard Crusher, Pommel Strike and Shoulder Charge (beyond the sprint's leftover momentum) don't slide; each check first makes sure the move ran past the slide's frames. With the clamp, the bash exception or the jump-attack exception removed, a test fails.
+      - The slide changed how the seeded computer matches play: `test_shrine_as_arena`'s three matches (seeds 11–13) no longer backed a fighter against the wall. The test now runs seeds from 11 until at least three matches have played and one has reached the wall (at most twelve), and checks every match it runs. Today that is four matches. The cost: losing the wall shows only once all twelve seeds miss it.
+      - `test_main_flow` plays a Duel from the menu to the results and back.
+      - Soak: 0 failures. Against 8.8: rounds 148 (151), average 42.8 s (43.8), blocks 17.89 (17.65), parries 4.37 (4.74), disarms 0.83 (0.84); wins and losses unchanged for the Greatsword (9–15). The counterlab still reaches stomp, leap and evade. The drift from the baseline is in Progress ("Task 8's drift").
+      - The spec's rule list now gives every rule as built, and its Testing Decisions list the slide test. Story 20 waits for 7.24, which slides along the swing's follow-through.
+      - Task 8 is ticked.
 - [ ] **9. Katana strings.** The four-light string, the Iai stance (walk while sheathed, direction at release, auto-release, dodge cancels it) and the follow-ups.
   - Check: the Katana tests from the spec pass.
   - [ ] **9.1 The Katana's four-light string, string sides and the continuity test.**

@@ -107,6 +107,11 @@ const MOVE_SPRINT_ATTACK_MIN_FRAMES: int = 8
 ## The share of its speed a fighter keeps as an attack starts; jump attacks and
 ## hop attacks keep it all. The demo's was 0.3.
 const ATTACK_MOMENTUM_KEEP: float = 0.5
+## Colossal weapons' grounded attacks (bashes aside) slide on this far along
+## the facing as their recovery starts, easing out. The demo had none.
+const COLOSSAL_SLIDE_DIST: float = 0.35
+## The slide takes this many recovery frames.
+const COLOSSAL_SLIDE_FRAMES: int = 10
 
 # DISARMED_MULT = { speed, dodge, jump }
 const DISARMED_MULT_SPEED: float = 1.2

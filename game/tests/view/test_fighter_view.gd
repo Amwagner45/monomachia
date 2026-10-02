@@ -2,8 +2,8 @@ extends GutTest
 ## FighterView, a side's real fighter in the match: placed where the rules
 ## put it, its model kept across matches, its weapon posed from the stick
 ## pose with both hands on the grips through whole attacks, the crouch over
-## planted feet, the clip on the rules' clock, the KO fall, disarming, and
-## the flashes and glows as overlays.
+## planted feet, the KO fall, disarming, and the flashes and glows as
+## overlays (the legs and the clip on the rules' clock: test_locomotion.gd).
 
 const NEAR: float = 0.01
 
@@ -174,22 +174,6 @@ func test_a_crouch_lowers_the_hips_over_planted_feet() -> void:
 		var clip_foot: Vector3 = v.model.rig.body.clip_feet[side].origin
 		assert_lt(_bone(v, crouched, side + "Foot").origin.distance_to(clip_foot), NEAR, "%s foot planted" % side)
 		assert_gt(_bone(v, crouched, side + "LowerLeg").origin.z, _bone(v, standing, side + "LowerLeg").origin.z, "%s knee bends forward" % side)
-
-
-## The clip under the arms runs on the rules' frames: the same frame shows
-## the same moment however much wall time passes.
-func test_the_clip_runs_on_the_rules_clock() -> void:
-	var W: World = _world()
-	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view(&"hunter", Moves.KATANA)
-	_step(W, 70)
-	v.update_from(f, Vector3.ZERO, 0.0, 0.5, 1.0 / 60.0, 0.0)
-	var ap: AnimationPlayer = v.model.animation_player
-	var length: float = ap.current_animation_length
-	assert_eq(ap.current_animation, "ual/" + String(v.model.idle_clip()))
-	assert_almost_eq(ap.current_animation_position, fposmod((W.frame + 0.5) / 60.0, length), 1e-4)
-	v.update_from(f, Vector3.ZERO, 0.0, 0.5, 3.0, 7.0)
-	assert_almost_eq(ap.current_animation_position, fposmod((W.frame + 0.5) / 60.0, length), 1e-4, "frozen while the rules stand still")
 
 
 ## A KO lets go of the pose and plays the fall from the KO on, dimmed.

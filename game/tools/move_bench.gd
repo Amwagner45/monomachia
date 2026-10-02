@@ -97,6 +97,13 @@ func stand() -> void:
 	_show()
 
 
+## Steps the rules once with `input` for the fighter (none for the
+## defender) and shows it.
+func drive(input: RawInput) -> void:
+	world.step([input, RawInput.empty()])
+	_show()
+
+
 ## The fighter's pose now, with the defender where it stands (await it).
 func frame() -> PoseCheck.Frame:
 	return await _frame(_feet(defender))

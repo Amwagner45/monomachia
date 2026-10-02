@@ -256,6 +256,61 @@ func test_the_batch_saves_a_sheet_per_move_and_makes_their_index() -> void:
 	assert_eq(sheet.title[0], "Rogue (palette A) with the Katana against the Rogue (palette B) at 2.5 m: the guard and every move")
 
 
+func test_a_drive_is_scripted_input_from_rest() -> void:
+	var drive: Array = MoveSheet.DRIVES[&"rest_to_sprint"]
+	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"rest_to_sprint")
+	var total: int = 0
+	for segment: Array in drive:
+		total += int(segment[0])
+	assert_eq(inputs.size(), total)
+	assert_eq(inputs[0].my, 0.0, "from rest")
+	assert_eq(inputs[-1].my, 1.0, "toward the opponent")
+	assert_eq(inputs[-1].buttons, 1 << Btn.SPRINT, "sprinting at the end")
+	assert_eq(MoveSheet.drive_frames(25, 10), [1, 10, 20, 25] as Array[int], "the first frame, every tenth and the last")
+	assert_eq(MoveSheet.drive_frames(20, 10), [1, 10, 20] as Array[int])
+
+
+func test_the_side_view_sees_the_whole_fighter_from_its_right() -> void:
+	for id: StringName in FighterLook.IDS:
+		var sheet: MoveSheet = _sheet(PackedStringArray(["--fighter=" + id]))
+		var frame: PoseCheck.Frame = await sheet.bench.frame()
+		var feet: Vector3 = _feet(sheet.bench.attacker)
+		sheet.aim(&"side")
+		var crop: Rect2 = MoveSheet.crop_rect(&"side", sheet.get_viewport().get_visible_rect().size)
+		for p: Vector3 in [_crown(sheet, frame), feet, _world_grip(sheet)]:
+			assert_true(crop.has_point(sheet.camera.unproject_position(p)), "%s: %s inside the crop" % [id, p])
+		var to_camera: Vector3 = ((sheet.camera.global_position - feet) * Vector3(1.0, 0.0, 1.0)).normalized()
+		var right: Vector3 = CameraRig.right_of((_feet(sheet.bench.defender) - feet).normalized())
+		assert_gt(to_camera.dot(right), 0.99, "%s: side on, from the right" % id)
+		MoveBench.free_all()
+
+
+func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
+	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=rest_to_sprint", "--every=20", "--views=side"]))
+	assert_eq(sheet.drive, &"rest_to_sprint")
+	assert_eq(sheet.every, 20)
+	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"rest_to_sprint")
+	var frames: Array[int] = MoveSheet.drive_frames(inputs.size(), 20)
+	var image: Image = await sheet.render_drive(&"rest_to_sprint")
+	assert_eq(sheet.strip.size(), frames.size(), "a cell per chosen frame")
+	assert_gt(sheet.bench.spacing, 20.0, "the opponent far off, out of the way")
+	var first: PackedStringArray = sheet.strip[0]
+	assert_true(first[0].begins_with("frame 1 · 0.00 m/s"), first[0])
+	assert_eq(first[1], "idle 1.00 · phase 0.00")
+	var last: PackedStringArray = sheet.strip[-1]
+	assert_true(last[0].begins_with("frame %d · 7.20 m/s" % inputs.size()), last[0])
+	assert_true(last[1].begins_with("sprint 1.00 · phase "), last[1])
+	var loco: Locomotion = sheet.bench.view.locomotion
+	assert_eq(last[1], "sprint 1.00 · phase %.2f" % loco.shown_phase)
+	assert_string_contains(sheet.title[0], "rest_to_sprint")
+	assert_string_contains(sheet.title[2], "strides: walk %.2f m, jog %.2f, sprint %.2f" % [loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride])
+	var cell: Vector2i = MoveSheet.cell_size(&"side")
+	var rows: int = ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
+	assert_eq(image.get_size(), Vector2i(
+		MoveSheet.STRIP_COLUMNS * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
+		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.CAPTION_HEIGHT + cell.y)))
+
+
 func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:
 	var header: Image = Image.create(100, MoveSheet.HEADER_HEIGHT, false, Image.FORMAT_RGBA8)
 	header.fill(Color.RED)

@@ -15,8 +15,10 @@ extends Node3D
 ##   sweeps it, or down and forward in a guard;
 ## - its lean bends the spine, its crouch drops the hips over feet the leg IK
 ##   keeps where the clip has them, and its spin turns the whole body;
-## - under it all plays the clip for the held weapon (its WeaponHold's), on
-##   the rules' clock, so it holds still through hit-stop and pause;
+## - under it all, the legs walk, jog and sprint with the rules' speed
+##   (Locomotion), over the clip for the held weapon (its WeaponHold's) at
+##   rest, all on the rules' clock, so they hold still through hit-stop and
+##   pause;
 ## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
 ##   timed on the rules' frames from the KO;
 ## - a disarmed fighter holds nothing, its arms on the clip.
@@ -57,6 +59,8 @@ var palette: int = 0
 var weapon_id: StringName = &""
 var side: int = 0
 var model: FighterModel
+## The legs: the model's locomotion tree.
+var locomotion: Locomotion
 ## The last pose applied, for tests and debugging.
 var last_pose: StickPose.Pose
 
@@ -131,7 +135,7 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	if f.state == &"ko":
 		_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
-		_play(model.idle_clip(), (float(frame) + alpha) / float(SimConst.FPS))
+		locomotion.update(f, model.idle_clip(), (float(frame) + alpha) / float(SimConst.FPS), alpha)
 		_pose(f, p)
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
@@ -320,6 +324,7 @@ func _build_model(id: StringName) -> void:
 	add_child(model)
 	model.animation_player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	model.rig.feet_from_clip = true
+	locomotion = Locomotion.new(model, id)
 	_body_meshes.clear()
 	for node: Node in model.skeleton.find_children("*", "MeshInstance3D", true, false):
 		_body_meshes.append(node as MeshInstance3D)

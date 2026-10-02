@@ -21,29 +21,52 @@ extends Node3D
 ##   (the last startup frame), contact (the first active frame), release (the
 ##   last active frame), follow (mid recovery) and end (the last frame the
 ##   move shows), keys (every landmark, the default) or all;
-## - --views=: which of VIEWS, comma-separated, in order (default all);
+## - --views=: which views (VIEW_NAMES), comma-separated, in order (default
+##   VIEWS for a move, DRIVE_VIEWS for a drive);
 ## - --defender=rogue|hunter: the defender, in palette B (default: the same
 ##   fighter as the attacker);
-## - --spacing=: metres between the fighters (default PoseCheck.SPACING).
+## - --spacing=: metres between the fighters (default PoseCheck.SPACING, or
+##   DRIVE_SPACING for a drive).
+##
+## Strips: --drive=<name> plays one of DRIVES instead of a move, scripted
+## input from rest (rest_to_sprint: still, then running at the opponent, then
+## sprinting), with the opponent far off, and lays out a strip of the chosen
+## frames: the first, every --every=th (default 4) and the last, each
+## captioned with the speed, Locomotion's blend and the step phase.
 ##
 ## The defender holds the Katana and takes no input, so a move that reaches it
 ## lands as the rules say. The stage is the preview's studio, and the chosen
 ## graphics preset applies. Nothing moves between the captures of a frame, so
 ## two runs give the same images.
 
-## The views, in their default order: the match camera (CameraRig's FOLLOW)
-## over the defender's shoulder, what the player being attacked sees, and
-## over the attacker's; the attacker's whole body from three-quarters in
-## front, on its weapon side; its head, chest and hands closer; and its hands
-## on the grip.
+## The views of a move's sheet, in their default order: the match camera
+## (CameraRig's FOLLOW) over the defender's shoulder, what the player being
+## attacked sees, and over the attacker's; the attacker's whole body from
+## three-quarters in front, on its weapon side; its head, chest and hands
+## closer; and its hands on the grip.
 const VIEWS: Array[StringName] = [&"defender", &"attacker", &"three_quarter", &"close", &"hands"]
+## The views of a drive's strip: the whole fighter side on, from its right.
+const DRIVE_VIEWS: Array[StringName] = [&"side"]
 const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"defender": "gameplay camera behind the defender",
 	&"attacker": "gameplay camera behind the attacker",
 	&"three_quarter": "three-quarter",
 	&"close": "close",
 	&"hands": "hands",
+	&"side": "side",
 }
+## Scripted input from rest, by name: segments of [frames, strafe axis,
+## forward axis, held buttons].
+const DRIVES: Dictionary[StringName, Array] = {
+	&"rest_to_sprint": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
+}
+const DRIVE_NOTES: Dictionary[StringName, String] = {
+	&"rest_to_sprint": "still for 12 frames, running at the opponent for 60, then sprinting for 60",
+}
+## How far off the opponent stands in a drive (m), out of the way.
+const DRIVE_SPACING: float = 26.0
+## Cells per row of a drive's strip.
+const STRIP_COLUMNS: int = 8
 ## A view's crop of the screen, its width over its height: the gameplay views
 ## keep the whole screen, the others a centred square.
 const ASPECTS: Dictionary[StringName, float] = {&"defender": 16.0 / 9.0, &"attacker": 16.0 / 9.0}
@@ -99,6 +122,10 @@ var defender_id: StringName = &""
 var spacing: float = PoseCheck.SPACING
 ## Where shot.gd saves the sheet (its --out=): the batch's sheets go beside it.
 var out_path: String = ""
+## One of DRIVES to play instead of a move, or empty; and every how many
+## frames its strip shows one.
+var drive: StringName = &""
+var every: int = 4
 
 var bench: MoveBench
 var defender_view: FighterView
@@ -106,7 +133,11 @@ var camera: CameraRig
 ## The last sheet's header lines and rows.
 var title: PackedStringArray = []
 var rows: Array[Row] = []
+## The last strip's captions, a pair of lines per chosen frame.
+var strip: Array[PackedStringArray] = []
 
+var _views_given: bool = false
+var _spacing_given: bool = false
 var _overlay: CanvasLayer
 var _sheet: Image
 var _done: bool = false
@@ -177,15 +208,29 @@ func apply_args(args: PackedStringArray) -> void:
 				at = value
 			"views":
 				views = _parse_views(value)
+				_views_given = true
 			"defender":
 				defender_id = StringName(value)
 			"spacing":
 				if value.is_valid_float() and float(value) > 0.0:
 					spacing = float(value)
+					_spacing_given = true
 				else:
 					push_error("move_sheet.gd: --spacing= takes metres, not '%s'" % value)
 			"out":
 				out_path = value
+			"drive":
+				drive = StringName(value)
+				if not DRIVES.has(drive):
+					push_error("move_sheet.gd: no drive '%s' (%s)" % [value, ", ".join(PackedStringArray(DRIVES.keys()))])
+					drive = &""
+			"every":
+				if value.is_valid_int() and int(value) >= 1:
+					every = int(value)
+				else:
+					push_error("move_sheet.gd: --every= takes a whole number of frames, not '%s'" % value)
+	if drive != &"" and not _views_given:
+		views = DRIVE_VIEWS
 	for id: StringName in [fighter_id, defender_id]:
 		if id != &"" and not FighterLook.IDS.has(id):
 			push_error("move_sheet.gd: no fighter '%s' (%s)" % [id, ", ".join(PackedStringArray(FighterLook.IDS))])
@@ -202,10 +247,10 @@ static func _parse_views(text: String) -> Array[StringName]:
 	var out: Array[StringName] = []
 	for part: String in text.split(",", false):
 		var view: StringName = StringName(part.strip_edges())
-		if VIEWS.has(view):
+		if VIEW_NAMES.has(view):
 			out.append(view)
 		else:
-			push_error("move_sheet.gd: no view '%s' (%s)" % [view, ", ".join(PackedStringArray(VIEWS))])
+			push_error("move_sheet.gd: no view '%s' (%s)" % [view, ", ".join(PackedStringArray(VIEW_NAMES.keys()))])
 	return out if not out.is_empty() else VIEWS
 
 
@@ -289,6 +334,9 @@ func aim(view: StringName) -> void:
 			# a blade raised overhead in frame.
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-45.0)) * 3.8 + Vector3(0.0, 1.3, 0.0),
 				a + forward * 0.7 + Vector3(0.0, 1.05, 0.0), 45.0)
+		&"side":
+			# square on to the way it faces, from its right, the whole body
+			_look_from(a + CameraRig.right_of(forward) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
 		&"close":
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-30.0)) * 2.1 + Vector3(0.0, 1.6, 0.0),
 				a + forward * 0.3 + Vector3(0.0, 1.4, 0.0), 44.0)
@@ -348,7 +396,9 @@ static func row_width(p_views: Array[StringName]) -> int:
 # --- sheets ------------------------------------------------------------------
 
 func _run() -> void:
-	if move == BATCH:
+	if drive != &"":
+		_sheet = await render_drive(drive)
+	elif move == BATCH:
 		_sheet = await batch()
 	else:
 		_sheet = await render(move)
@@ -495,6 +545,85 @@ func batch() -> Image:
 	var header: Image = await _text_image(title, tones(title),
 		Vector2i(clampi(width, 1, _screen_size().x), HEADER_HEIGHT), HEADER_FONT)
 	return compose(header, index)
+
+
+## Drive `drive_id`'s input, a RawInput per frame.
+static func drive_inputs(drive_id: StringName) -> Array[RawInput]:
+	var out: Array[RawInput] = []
+	for segment: Array in DRIVES[drive_id]:
+		for i: int in int(segment[0]):
+			out.append(RawInput.make(segment[1], segment[2], segment[3]))
+	return out
+
+
+## The frames a strip of `total` frames shows: the first, every `p_every`th
+## and the last.
+static func drive_frames(total: int, p_every: int) -> Array[int]:
+	var out: Array[int] = [1]
+	for f: int in range(p_every, total + 1, p_every):
+		if not out.has(f):
+			out.append(f)
+	if not out.has(total):
+		out.append(total)
+	return out
+
+
+## Plays drive `drive_id` from rest in a fresh world, the opponent far off
+## (DRIVE_SPACING unless --spacing= says), and lays out the strip: a cell per
+## view at each chosen frame, captioned with the frame, the speed, the
+## blend's weights and the step phase.
+func render_drive(drive_id: StringName) -> Image:
+	if not _spacing_given:
+		bench.spacing = DRIVE_SPACING
+	bench.stand()
+	_show_defender()
+	strip.clear()
+	var loco: Locomotion = bench.view.locomotion
+	var inputs: Array[RawInput] = drive_inputs(drive_id)
+	var chosen: Array[int] = drive_frames(inputs.size(), every)
+	var cells: Array[Image] = []
+	for i: int in inputs.size():
+		bench.drive(inputs[i])
+		_show_defender()
+		if not chosen.has(i + 1):
+			continue
+		await bench.frame()
+		var lines: PackedStringArray = drive_caption(i + 1, loco)
+		strip.append(lines)
+		for view: StringName in views:
+			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR],
+				Vector2i(cell_size(view).x, CAPTION_HEIGHT), CAPTION_FONT)
+			cells.append(stack(label, await _capture(view)))
+	var grid: Array[Row] = []
+	for i: int in cells.size():
+		if i % STRIP_COLUMNS == 0:
+			grid.append(Row.new())
+		grid[-1].cells.append(cells[i])
+	var view_names: PackedStringArray = []
+	for view: StringName in views:
+		view_names.append(VIEW_NAMES[view])
+	title = PackedStringArray([
+		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVE_NOTES[drive_id]],
+		"views: %s · every %d frames · the opponent %.1f m off" % [", ".join(view_names), every, bench.spacing],
+		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [
+			Locomotion.WALK_SPEED, loco.run_speed, loco.sprint_speed, loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride],
+	])
+	var width: int = mini(STRIP_COLUMNS, cells.size()) * (cells[0].get_width() + GAP) - GAP if not cells.is_empty() else 1
+	var header: Image = await _text_image(title, tones(title), Vector2i(clampi(width, 1, _screen_size().x), HEADER_HEIGHT), HEADER_FONT)
+	return compose(header, grid)
+
+
+## A strip frame's caption: the frame and speed, then the blend's weights
+## (those over 0) and the step phase.
+static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
+	var weights: PackedStringArray = []
+	for i: int in 4:
+		if loco.shown[i] > 0.005:
+			weights.append("%s %.2f" % [Locomotion.NODES[i], loco.shown[i]])
+	return PackedStringArray([
+		"frame %d · %.2f m/s" % [frame, loco.speed],
+		"%s · phase %.2f" % [" ".join(weights), loco.shown_phase],
+	])
 
 
 ## Lays out a sheet: the header on top, then each row's caption over its

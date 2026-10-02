@@ -55,6 +55,12 @@ const IAI_DRAW: int = 14
 ## recovery, rounded up, as every heavy (23 + 4 + 12).
 const IAI_CANCEL: int = 39
 
+## The spec's blocking walk, 60% of running speed (m/s), at which a sheathed
+## fighter walks: running speeds kept from the demo, the Katana's unchanged.
+const BLOCK_STRAFE: float = 3.5 * 0.6
+const BLOCK_FORWARD: float = 3.9 * 0.6
+const BLOCK_BACK: float = 3.0 * 0.6
+
 ## The spec's length of move id in frames: startup + active + recovery.
 static func _length(id: StringName) -> int:
 	var frames: Array = ROWS[id]["frames"]
@@ -69,31 +75,46 @@ func after_each() -> void:
 
 ## A string played by fighter 0: its events, each with "step", the step it
 ## came on, and after each step fighter 0's state, the attack it was in (&""
-## outside one), that attack's frame (-1) and whether it was sheathed (holding
-## a charge).
+## outside one), that attack's frame (-1), whether it was holding a charge
+## (for the Iai, sheathed), how far it moved over the ground in the step and
+## how far apart the two fighters' centres stood.
 class PlayedString:
 	extends SimHelpers.Rec
 	var state: Array[StringName] = []
 	var attack: Array[StringName] = []
 	var frame: PackedInt32Array = []
-	var sheathed: Array[bool] = []
+	var charging: Array[bool] = []
+	var moved: PackedFloat64Array = []
+	var apart: PackedFloat64Array = []
 
 	## Steps W with fighter 0's input p0 and fighter 1's p1 (null for idle),
 	## records the step, and returns its events.
 	func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
 		var i: int = state.size()
+		var a: Fighter = W.fighters[0]
+		var x: float = a.pos.x
+		var z: float = a.pos.z
 		W.step([p0, SimHelpers.idle() if p1 == null else p1])
 		var new_events: Array[Dictionary] = W.drain_events()
 		for e: Dictionary in new_events:
 			e["step"] = i
 		events.append_array(new_events)
-		var a: Fighter = W.fighters[0]
 		var attacking: bool = a.state == &"attack" and a.atk != null
 		state.append(a.state)
 		attack.append(a.atk.def.id if attacking else &"")
 		frame.append(a.atk.frame if attacking else -1)
-		sheathed.append(attacking and a.atk.charging)
+		charging.append(attacking and a.atk.charging)
+		moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
+		apart.append(SimMath.dist2(a.pos, W.fighters[1].pos))
 		return new_events
+
+	## How far fighter 0 moved from step from to step to (not included),
+	## adding up each step, so an orbit counts in full.
+	func walked(from: int, to: int) -> float:
+		var total: float = 0.0
+		for d: float in moved.slice(from, to):
+			total += d
+		return total
 
 	## The step of fighter 0's first event of type t (-1 if none).
 	func step_of(t: StringName) -> int:
@@ -246,20 +267,26 @@ func test_a_tapped_heavy_draws_the_iai_on_frame_23() -> void:
 	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName], "and it hits")
 
 
+## Fighter 0, holding weapon, plays the input p0 gives each step (step index
+## -> RawInput) for n steps against an idle Katana gap m away.
+static func _run(p0: Callable, gap: float = 2.2, n: int = 240, weapon: WeaponDef = Moves.KATANA) -> PlayedString:
+	var W: World = H.make_world(weapon, Moves.KATANA, gap)
+	var r := PlayedString.new()
+	for i: int in n:
+		r.step(W, p0.call(i))
+	return r
+
+
 ## Fighter 0 holds heavy for hold steps against an idle Katana 2.2 m away, for
 ## 240 steps.
 static func _hold_heavy(hold: int) -> PlayedString:
-	var W: World = H.make_world()
-	var r := PlayedString.new()
-	for i: int in 240:
-		r.step(W, H.btn(Btn.HEAVY) if i < hold else H.idle())
-	return r
+	return _run(func(i: int) -> RawInput: return H.btn(Btn.HEAVY) if i < hold else H.idle())
 
 
 func test_a_held_iai_stays_sheathed_and_hits_14_frames_after_release() -> void:
 	var r: PlayedString = _hold_heavy(60)
-	assert_eq(r.sheathed.find(true), IAI_SHEATHE + 1, "sheathed once its 9 frames have passed")
-	assert_eq(r.sheathed.rfind(true), 59, "until heavy is let go on step 60")
+	assert_eq(r.charging.find(true), IAI_SHEATHE + 1, "sheathed once its 9 frames have passed")
+	assert_eq(r.charging.rfind(true), 59, "until heavy is let go on step 60")
 	assert_eq(r.frame.slice(IAI_SHEATHE, 60).count(IAI_SHEATHE), 60 - IAI_SHEATHE, "its frames stop on 9 meanwhile")
 	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName])
 	assert_eq(r.step_of(&"hit") - 60, IAI_DRAW, "the cut lands 14 frames after the release")
@@ -267,7 +294,7 @@ func test_a_held_iai_stays_sheathed_and_hits_14_frames_after_release() -> void:
 
 func test_an_iai_held_for_2_5_s_releases_by_itself_as_a_stronger_power_attack() -> void:
 	var r: PlayedString = _hold_heavy(220)
-	var release: int = r.sheathed.rfind(true) + 1
+	var release: int = r.charging.rfind(true) + 1
 	assert_eq(release, IAI_SHEATHE + 150, "the stance ends 150 frames (2.5 s) after the sheathe, heavy still held")
 	assert_eq(r.step_of(&"hit") - release, IAI_DRAW, "and the cut lands 14 frames later")
 	var hit: Dictionary = r.find(&"hit")
@@ -292,7 +319,7 @@ func test_a_sheathed_fighter_cannot_block() -> void:
 	var hits: Array[Dictionary] = r.all(&"hit").filter(on_fighter_0)
 	assert_eq(hits.size(), 1, "the Right Cut hits")
 	if hits.size() == 1:
-		assert_true(r.sheathed[int(hits[0]["step"]) - 1], "a sheathed fighter")
+		assert_true(r.charging[int(hits[0]["step"]) - 1], "a sheathed fighter")
 	assert_eq(r.all(&"block").filter(on_fighter_0), [] as Array[Dictionary], "holding block blocks nothing")
 
 
@@ -302,6 +329,123 @@ func test_a_heavy_after_the_iai_gives_rising_heaven() -> void:
 
 func test_the_iai_dodge_cancels_late_in_its_recovery() -> void:
 	_assert_dodge_cancels_from([Btn.HEAVY], &"k_iai", IAI_CANCEL)
+
+
+# ------------------------------------------------------------------ the Iai stance
+# Heavy held from step 0: the sheathe takes steps 1 to 9, and the stance
+# begins on step 10.
+
+func test_a_sheathed_fighter_strafes_round_the_opponent_at_block_speed() -> void:
+	var r: PlayedString = _run(func(_i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY), 2.2, 80)
+	assert_eq(r.charging.slice(IAI_SHEATHE + 1).count(false), 0, "sheathed throughout")
+	# up to speed by step 20; the orbit pulls each step back onto the circle
+	var strafed: float = r.walked(20, 80)
+	assert_almost_eq(strafed, BLOCK_STRAFE, BLOCK_STRAFE * 0.02, "a second's strafe is within 2% of the block strafe")
+	var drift: float = 0.0
+	for d: float in r.apart:
+		drift = maxf(drift, absf(d - 2.2))
+	assert_lt(drift, 0.01, "it circles the opponent, keeping its distance within 1 cm")
+
+
+func test_a_sheathed_fighter_walks_forward_and_back_at_block_speed() -> void:
+	# 8 m apart, so the walk forward ends more than 5 m short of the opponent
+	var walks: Array[Dictionary] = [
+		{"way": "forward", "my": 1.0, "speed": BLOCK_FORWARD},
+		{"way": "back", "my": -1.0, "speed": BLOCK_BACK},
+	]
+	for walk: Dictionary in walks:
+		var my: float = walk["my"]
+		var r: PlayedString = _run(func(_i: int) -> RawInput: return H.move(0.0, my, Btn.HEAVY), 8.0, 80)
+		assert_almost_eq(r.walked(20, 80), float(walk["speed"]), 1e-6, "a second's walk %s" % walk["way"])
+
+
+func test_the_fighter_stands_still_while_it_sheathes() -> void:
+	var r: PlayedString = _run(func(_i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY), 2.2, 20)
+	assert_eq(r.walked(0, IAI_SHEATHE + 1), 0.0, "no walking until the sheathe's 9 frames end")
+	assert_gt(r.moved[IAI_SHEATHE + 1], 0.0, "then it walks, sheathed")
+
+
+func test_a_sheathed_fighter_neither_steps_nor_sprints() -> void:
+	# the stick pushed from neutral in the stance (a step when free), with
+	# sprint held; 8 m apart
+	var push: Callable = func(i: int) -> RawInput:
+		return H.move(1.0, 0.0, Btn.HEAVY, Btn.SPRINT) if i >= 30 else H.btn(Btn.HEAVY)
+	var r: PlayedString = _run(push, 8.0, 90)
+	var fastest: float = 0.0
+	for d: float in r.moved.slice(30):
+		fastest = maxf(fastest, d)
+	assert_lte(fastest, BLOCK_STRAFE / 60.0 + 1e-9, "never faster than the block strafe")
+	assert_true(r.charging[89], "and still sheathed")
+
+
+func test_a_dodge_cancels_the_stance() -> void:
+	# a dodge to the right on step 30, heavy still held
+	var dodge_on_30: Callable = func(i: int) -> RawInput:
+		if i < 30:
+			return H.btn(Btn.HEAVY)
+		return H.move(1.0, 0.0, Btn.HEAVY, Btn.DODGE) if i == 30 else H.move(1.0, 0.0, Btn.HEAVY)
+	var r: PlayedString = _run(dodge_on_30)
+	assert_true(r.charging[29], "sheathed when the dodge is pressed")
+	assert_eq(r.state[30], &"dodge", "the dodge comes at once")
+	assert_eq(r.ids(&"swing"), [] as Array[StringName], "and the Iai is never drawn")
+
+
+func test_a_dodge_pressed_late_in_the_sheathe_comes_as_the_stance_begins() -> void:
+	# a dodge to the right pressed on step 5, in the sheathe, waits in the
+	# input buffer (8 frames), as a press made just before any dodge cancel
+	# opens does
+	var held: Callable = func(i: int) -> RawInput:
+		if i < 5:
+			return H.btn(Btn.HEAVY)
+		return H.move(1.0, 0.0, Btn.HEAVY, Btn.DODGE) if i == 5 else H.move(1.0, 0.0, Btn.HEAVY)
+	var r: PlayedString = _run(held, 2.2, 40)
+	assert_eq(r.state.find(&"dodge"), IAI_SHEATHE + 1, "held: not taken in the sheathe, but on the stance's first step")
+	# heavy let go on step 3: there is no stance, so the dodge is refused
+	var tapped: Callable = func(i: int) -> RawInput:
+		if i < 3:
+			return H.btn(Btn.HEAVY)
+		if i < 5:
+			return H.idle()
+		return H.move(1.0, 0.0, Btn.DODGE) if i == 5 else H.move(1.0, 0.0)
+	var t: PlayedString = _run(tapped, 2.2, 120)
+	assert_eq(t.ids(&"hit"), [&"k_iai"] as Array[StringName], "tapped: the Iai draws and hits")
+	assert_false(t.state.has(&"dodge") or t.state.has(&"backstep"), "and no dodge comes")
+
+
+func test_a_dodge_on_the_step_heavy_is_let_go_still_cancels_the_stance() -> void:
+	# heavy let go and dodge pressed together on step 40: the stance is still
+	# on as the step begins, and the draw hasn't started
+	var together: Callable = func(i: int) -> RawInput:
+		if i < 40:
+			return H.btn(Btn.HEAVY)
+		return H.move(1.0, 0.0, Btn.DODGE) if i == 40 else H.move(1.0, 0.0)
+	var r: PlayedString = _run(together)
+	assert_eq(r.state[40], &"dodge", "the dodge comes")
+	assert_eq(r.ids(&"swing"), [] as Array[StringName], "and the Iai is never drawn")
+
+
+func test_a_dodge_during_the_draw_does_not_cancel_it() -> void:
+	# heavy let go on step 40, which starts the draw; a dodge pressed 1, 7 or
+	# 13 steps later, the stick then held to the side
+	for k: int in [1, 7, 13]:
+		var dodge_in_draw: Callable = func(i: int) -> RawInput:
+			if i < 40:
+				return H.btn(Btn.HEAVY)
+			if i < 40 + k:
+				return H.idle()
+			return H.move(1.0, 0.0, Btn.DODGE) if i == 40 + k else H.move(1.0, 0.0)
+		var r: PlayedString = _run(dodge_in_draw, 2.2, 120)
+		assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName], "a dodge %d frames into the draw: the Iai still hits" % k)
+		assert_false(r.state.has(&"dodge") or r.state.has(&"backstep"), "and no dodge comes")
+
+
+func test_other_charged_heavies_still_stand_still() -> void:
+	# their heavies held with the stick to the side, 8 m apart
+	for weapon: WeaponDef in [Moves.GREATSWORD, Moves.DAGGERS]:
+		var r: PlayedString = _run(func(_i: int) -> RawInput: return H.move(1.0, 0.0, Btn.HEAVY), 8.0, 80, weapon)
+		var charged_from: int = r.charging.find(true)
+		assert_gt(charged_from, 0, "%s charges" % weapon.id)
+		assert_eq(r.walked(charged_from, 80), 0.0, "%s stands still while it charges" % weapon.id)
 
 
 # ------------------------------------------------------------------ the spec's table

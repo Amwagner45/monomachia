@@ -30,6 +30,7 @@ const UNSET: Dictionary = {
 	"sound": &"",
 	"invuln": [],
 	"hop": 0.0,
+	"charge_move": false, # the rebuild's, not the TS's (9.3): only the Iai, an added move, has it
 }
 
 ## The demo's data that the rebuild changed on purpose, one row per rule: a
@@ -88,7 +89,9 @@ const WEAPON_CHANGES: Array[Dictionary] = [
 	{"weapon": "katana", "field": "heavy_start", "was": "k_h1", "now": "k_iai"}, # 9.2: the Iai Slash
 ]
 
-## Fields the demo didn't have: the strings and continuity tests check them.
+## Fields the demo didn't have that its moves now hold: the strings and
+## continuity tests check them. (charge_move, which no demo move holds, is in
+## UNSET instead, so a demo move given it fails here.)
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
 var _fx: Dictionary

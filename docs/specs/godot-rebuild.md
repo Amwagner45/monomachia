@@ -325,7 +325,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 - A good test drives the rules only through their public surface, as the demo's tests do: build a world with two fighters, feed per-frame button and stick inputs, then assert on emitted events, HP, posture and state. Tests never reach into presentation code or private fields.
 - **Rules (GUT, headless):**
   - the 47 ported tests;
-  - golden replays against the TypeScript rules until the first deliberate rule change (retired in task 8.2, at commit 4222167);
+  - golden replays against the TypeScript rules until the first deliberate rule change (retired by task 8.2 in ae4fbb5; 4222167 is the last commit they passed on);
   - behaviour tests for the training dummy (each behaviour judged by its events and states) and for the computer's counters (a brain that always tries the counter lands evade, stomp and leap), which replaced the input hashes that pinned both brains to the TypeScript;
   - new tests for each rule change: arena radius and wall; block walk speed; momentum carry; eased lunges; heavy dodge-cancel; light hitstun letting a defender parry the second hit;
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;

@@ -217,6 +217,12 @@ func attack_phase() -> StringName:
 	return &"recovery"
 
 
+## Whether the attack takes a follow-up press on attack frame f: past its
+## startup, with no follow-up queued yet.
+func takes_follow_up_at(f: int) -> bool:
+	return state == &"attack" and atk != null and atk.queued == &"" and f > atk.def.startup
+
+
 func speed_mult() -> float:
 	return moveset().speed_mult * (1.0 if armed else SimConst.DISARMED_MULT_SPEED)
 
@@ -690,7 +696,7 @@ func _update_attack() -> void:
 		world.emit({"t": &"whiff", "f": id, "attack": def.id})
 
 	# Combo chains.
-	if f > S and a.queued == &"":
+	if takes_follow_up_at(f):
 		if def.chain_light != &"" and inp.buffered(Btn.LIGHT) and not (armed and inp.is_held(Btn.BLOCK)):
 			inp.consume(Btn.LIGHT)
 			a.queued = def.chain_light

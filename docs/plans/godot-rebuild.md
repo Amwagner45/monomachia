@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1, 8.2 and 8.10 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. The owner approves each task before the next starts. 8.10 then fixed the training dummy's lights and random, as the owner asked, right after 8.2. Next: 8.3.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. The owner approves each task before the next starts. Next: 8.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -155,8 +155,8 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
-- **Checks after 8.2** (the shots, the bench and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
-  - 585 Godot tests (39 s): rules 106, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
+- **Checks after 8.10** (the shots, the bench and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
+  - 586 Godot tests (39 s): rules 107, input 118, audio 31, core 22, view 253, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
   - the typecheck loads 159 scripts cleanly;
   - `soak:godot -- 40` and the counterlab print the baseline below exactly;
@@ -267,7 +267,7 @@ One task at a time, top to bottom. Each stage names its tasks in order.
     - a GUT test that replays them on the Godot rules and compares them.
   - Blocked by: 3 (and 5 for the computer-vs-computer goldens).
   - Check: every golden matches, events exactly and positions within 1e-6.
-  - Retired in 8.2, at the last bit-exact commit 4222167, before the first rule change.
+  - Retired by 8.2 (ae4fbb5) before the first rule change; 4222167 is the last commit they passed on.
 - [x] **5. Port the computer opponent, the training dummy and the tools.** The brain with its three difficulties, the training behaviours, and headless `soak` and `counterlab` runners.
   - Blocked by: 3.
   - Check: `npm run soak:godot -- 40` finishes with no errors, and its numbers are within noise of the TypeScript soak run on the same seeds; computer-vs-computer goldens match.
@@ -326,8 +326,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Done:
       - At 4222167 the two soaks printed identical reports and the two counterlabs identical tallies; both are in Progress as the last bit-exact point.
       - Deleted as listed. The Godot tests went from 626 to 585 (the 35 replays, the guard test, the 2 parity tests and the 3 port tests) and the web tests from 121 to 85 (the golden replay file's 36). The typecheck loads 159 scripts.
-      - `test_port_regressions.gd` lost the clamp fixture, the two whole-run hashes and the trace hash. The sentinel cases (seven, not six) now check what the patched Right Cut does: an interval of 0 never hits, -2 hits three times two frames apart, a negative guard crush adds no posture, a dodge-cancel frame of -1 lets the dodge in at once, a lunge end of -1 never moves the attacker, and negative hit-stop and stuns don't freeze the world or hold the defender. With the patches turned off, all seven fail.
-      - `port.json` regenerated: the math, deadzone and `Number()` sections came out identical. The `toFixed` and `String()` cases changed, because the clamp cases drew from the same random stream. One new `String()` case caught a bug in `JsFormat.num`: `var_to_str` gives a double that a float32 holds exactly float32's shortest digits (0.0071418374 for 0.0071418373845517635). It now takes its digits from `String.num_scientific`. Only the soak's match count and its posture error print through it, so no report changed.
+      - `test_port_regressions.gd` lost the clamp fixture, the two whole-run hashes and the trace hash. The sentinel cases (seven, not six) now check what the patched Right Cut does: an interval of 0 never hits, -2 hits three times two frames apart, a negative guard crush adds no posture, a dodge-cancel frame of -1 lets the dodge in at once, a lunge end of -1 never moves the attacker, and negative hit-stop and stuns don't freeze the world or hold the defender. The review added an unpatched control (the cut reaches), the block's posture cost (-3.5, so the multiplier is kept), the kept -3 hit-stop, and a dodge on the attack's first frame. With the patches turned off, all seven fail.
+      - `port.json` regenerated: the math, deadzone and `Number()` sections came out identical. The `toFixed` and `String()` cases changed, because the clamp cases drew from the same random stream. One new `String()` case caught a bug in `JsFormat.num`: `var_to_str` gives a double that a float32 holds exactly float32's shortest digits (0.0071418374 for 0.0071418373845517635). It now takes its digits from `String.num_scientific`. Only the soak's match count and its posture error print through it, so no report changed. `port-fixtures.ts` now also writes a fixed float32 case, `Math.fround(0.1)`, so the bug stays covered whatever the random draws.
       - Afterwards `soak:godot -- 40` and the counterlab still print the baseline exactly.
       - Outside this plan, its research notes (a snapshot of the breakdown) and git history, nothing refers to `game/tests/golden`.
   - [x] **8.10 The training dummy's lights and random, fixed.** Added on Oct 2 at the owner's request: numbered last in task 8, built right after 8.2. 8.1's tests found both bugs, which came over from the demo.
@@ -338,10 +338,10 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: random drills every unblockable its weapon has, and the heavy follow-up still comes every other time; lights throws Right Cut, Return Cut and Crown Cut every cycle for the Katana and the whole light string for the Greatsword and the Daggers; the soak and the counterlab still print the baseline (neither uses these behaviours).
     - Blocked by: 8.2 · Stories: 53
     - Done:
-      - Random picks its drill from a tally of its own (`_pick`), so it drills every unblockable its weapon has, and its heavies take the follow-up every other time, as the heavies drill does.
-      - Lights presses for a light's follow-up once that attack reaches its startup frame, the first frame it can take one, so the Katana throws Right Cut, Return Cut and Crown Cut, the Greatsword its two lights and the Daggers all four (the demo stopped at three). The fixed presses at 9 and 18 frames are gone.
+      - Random picks its drill from a tally of its own (`_pick`), so it drills every unblockable its weapon has, and its heavies take the follow-up every other time, as the heavies drill does. Choosing a behaviour resets both tallies, so random starts over at lights.
+      - Lights presses for a light's follow-up when the attack takes one on the next step, asking the fighter (`Fighter.takes_follow_up_at`, which `_update_attack` now uses too, so the rule lives in one place), so the Katana throws Right Cut, Return Cut and Crown Cut, the Greatsword its two lights and the Daggers all four (the demo stopped at three). The fixed presses at 9 and 18 frames are gone.
       - The two tests went red on the demo's behaviour first, then green.
-      - The counterlab still prints the baseline; the soak never uses the dummy.
+      - The soak and the counterlab still print the baseline exactly (the soak never uses the dummy; the shared follow-up rule left the rules unchanged).
   - [ ] **8.3 Arena radius 15 m, with every value tied to it.**
     - Delivers:
       - `ARENA_RADIUS` 15, with named margins for the Impaler's wall stop (0.7) and the dropped weapon's bounce (0.8).

@@ -2,8 +2,8 @@
 // game/tests/sim/test_port_regressions.gd, which checks the fixes made after
 // the line-by-line review of the GDScript port: the math as V8 computes it and
 // the tools' number formatting. The arena clamp, the whole-run hashes and the
-// sentinel traces it also wrote retired in plan task 8.2, once the Godot rules
-// began to differ from the TypeScript.
+// sentinel traces it also wrote retired in plan task 8.2, just before the
+// first deliberate rule change made the Godot rules differ from the TypeScript.
 //
 // usage: npm run godot:fixtures   (or: npx tsx scripts/port-fixtures.ts)
 //
@@ -122,7 +122,9 @@ const numberArgs = [
   '12abc', '1.2.3', '00012', '1e400', '-1e400', '1e-400', '0.1', '0.30000000000000004', '123456789012345678901234567890',
 ];
 const numberCases = numberArgs.map((s) => [s, bits(Number(s)), String(Number(s))]);
-const strCases: number[] = [0.1, 0.1 + 0.2, 1 / 3, 40.5, 1e21, 1e20, 1e-7, 1e-6, 123456789.123, 2 / 3, 100, 1e15, 1e16, -0, -1.5, 5e-324, 1.7976931348623157e308, 0.000001234, 12345678901234567890];
+// Math.fround(0.1) is a double a float32 holds exactly: Godot's var_to_str
+// prints such doubles with too few digits (plan task 8.2).
+const strCases: number[] = [Math.fround(0.1), 0.1, 0.1 + 0.2, 1 / 3, 40.5, 1e21, 1e20, 1e-7, 1e-6, 123456789.123, 2 / 3, 100, 1e15, 1e16, -0, -1.5, 5e-324, 1.7976931348623157e308, 0.000001234, 12345678901234567890];
 for (let i = 0; i < 100; i++) strCases.push(uni(-1, 1) * Math.pow(10, Math.floor(uni(-12, 25))));
 const numToString = strCases.map((x) => [bits(x), String(x)]);
 

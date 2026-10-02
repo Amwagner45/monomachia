@@ -45,8 +45,8 @@ var _spar: AIBrain
 var _next: int = 0
 var _taps: Array[Tap] = []
 var _hold: int = 0
-## Alternates the heavy follow-up.
-var _pattern: int = 0
+## Heavies turns so far: every other one gets its follow-up.
+var _heavy_turns: int = 0
 ## Picks random's next drill.
 var _pick: int = 0
 ## The drill the current cycle runs (&"" before the first).
@@ -72,6 +72,8 @@ func set_behaviour(b: StringName) -> void:
 	_taps = []
 	_hold = 0
 	_drill = &""
+	_pick = 0
+	_heavy_turns = 0
 	# put the practised unblockable on the light slot
 	if b == &"thrust" or b == &"sweep" or b == &"slam":
 		var ab_id: StringName = ability_for(me, b)
@@ -137,8 +139,8 @@ func think() -> RawInput:
 					_next = frame + 110
 				&"heavies":
 					_tap(Btn.HEAVY, frame)
-					var p: int = _pattern
-					_pattern += 1
+					var p: int = _heavy_turns
+					_heavy_turns += 1
 					if p % 2 == 0:
 						_tap(Btn.HEAVY, frame + 34)
 					_next = frame + 120
@@ -159,14 +161,13 @@ func think() -> RawInput:
 	return RawInput.make(mx, my, buttons)
 
 
-## True when the dummy's light has a light follow-up it can take on the next
-## step (its attack frame passes the startup there) and no press for it is
-## already on the way.
+## True when the dummy's light has a light follow-up it takes on the next
+## step and no press for it is already on the way.
 func _light_follow_up_due(frame: int) -> bool:
 	var a: AttackState = me.atk
-	if me.state != &"attack" or a == null or a.def.kind != &"light" or a.def.chain_light == &"":
+	if a == null or not me.takes_follow_up_at(a.frame + 1):
 		return false
-	if a.queued != &"" or a.frame < a.def.startup:
+	if a.def.kind != &"light" or a.def.chain_light == &"":
 		return false
 	for t: Tap in _taps:
 		if t.btn == Btn.LIGHT and t.to >= frame:

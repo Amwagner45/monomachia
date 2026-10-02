@@ -216,6 +216,24 @@ func test_each_unblockable_drill_repeats_its_unblockable_from_the_light_slot() -
 		assert_eq(run.swung().filter(func(id: StringName) -> bool: return id != unblockable), [], label + ": no other swing")
 
 
+func test_choosing_random_again_starts_it_over_at_lights() -> void:
+	var W: World = H.make_world(Moves.KATANA)
+	var dummy: TrainingBrain = TrainingBrain.new(W.fighters[0])
+	dummy.set_behaviour(&"random")
+	for _i: int in 300: # two drills in
+		W.step([dummy.think(), H.idle()])
+	W.drain_events()
+	dummy.set_behaviour(&"random")
+	var swung: Array[StringName] = []
+	for _i: int in 60:
+		W.step([dummy.think(), H.idle()])
+		for e: Dictionary in W.drain_events():
+			if e["t"] == &"swing" and e["f"] == 0:
+				swung.append(e["attack"])
+	dummy.dispose()
+	assert_eq(swung.slice(0, 1), [&"k_l1"] as Array[StringName], "the first drill is lights again")
+
+
 func test_an_unblockable_drill_the_weapon_lacks_leaves_the_default_abilities() -> void:
 	var W: World = H.make_world(Moves.KATANA)
 	var dummy: TrainingBrain = TrainingBrain.new(W.fighters[0])
@@ -238,11 +256,16 @@ func test_the_random_dummy_drills_lights_heavies_and_every_unblockable_its_weapo
 		assert_eq(kinds.size(), wanted.size(), "%s: as many unblockables as it has: %s" % [weapon_id, kinds])
 		for k: StringName in wanted:
 			assert_has(kinds, k, "%s: drills %s" % [weapon_id, k])
-		# its heavies take the follow-up every other time, as the heavies drill does
-		var heavies: int = swung.count(weapon.heavy_start)
-		var follow_ups: int = swung.count(weapon.moves[weapon.heavy_start].chain_heavy)
-		assert_gte(heavies, 2, "%s: heavies" % weapon_id)
-		assert_between(follow_ups, 1, heavies - 1, "%s: some heavies take the follow-up, not all" % weapon_id)
+		# its heavies take the follow-up every other time, first time included,
+		# as the heavies drill does (a heavy the run ends on is left out)
+		var follow_up: StringName = weapon.moves[weapon.heavy_start].chain_heavy
+		var took: Array[bool] = []
+		for k: int in swung.size() - 1:
+			if swung[k] == weapon.heavy_start:
+				took.append(swung[k + 1] == follow_up)
+		assert_gte(took.size(), 2, "%s: heavies" % weapon_id)
+		for k: int in took.size():
+			assert_eq(took[k], k % 2 == 0, "%s: heavy %d %s the follow-up" % [weapon_id, k, "takes" if k % 2 == 0 else "skips"])
 
 
 ## The spar behaviour, `fight` in the code.

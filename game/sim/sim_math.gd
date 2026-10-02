@@ -12,6 +12,8 @@ extends RefCounted
 ##   JsMath.atan2: V8's exact results (see js_math.gd). Math.sqrt is sqrt.
 ## - js_round() is the JS Math.round, which GDScript's round() is not (it rounds
 ##   halves away from zero; JS rounds them toward +infinity).
+## - easeInOut's Math.pow(x, 2) is a plain square, so no rule depends on the
+##   C library's pow.
 
 
 static func clamp(v: float, lo: float, hi: float) -> float:
@@ -83,7 +85,10 @@ static func ease_out_cubic(t: float) -> float:
 
 
 static func ease_in_out(t: float) -> float:
-	return 2.0 * t * t if t < 0.5 else 1.0 - pow(-2.0 * t + 2.0, 2.0) / 2.0
+	if t < 0.5:
+		return 2.0 * t * t
+	var u: float = -2.0 * t + 2.0
+	return 1.0 - u * u / 2.0
 
 
 ## JS Math.round: the nearest integer, halves toward +infinity

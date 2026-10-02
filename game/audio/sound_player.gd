@@ -17,6 +17,11 @@ extends Node
 ## delay clock, and the cues of events played meanwhile wait for the release;
 ## [method play_cue] still plays at once.
 ##
+## 3D cues fall off gently with distance (inverse distance from
+## [member unit_size]) and are not muffled, so the opponent stays clear; a cue
+## nearer than unit_size is boosted by at most [member near_boost_db], so a
+## footstep by the camera stays a footstep.
+##
 ## Knows nothing about matches: the match audio and the menus each own one.
 
 ## Emitted when a cue starts, with the voice playing it.
@@ -29,6 +34,15 @@ signal played(cue: StringName, voice: Node)
 ## Advance the delay clock from _process. Tests turn it off and call
 ## [method advance] themselves.
 @export var auto_run: bool = true
+
+@export_group("3D")
+## The distance (m) at which a 3D cue plays at its own level; each doubling of
+## the distance takes 6 dB off. At 5 m the player's own fighter, about 4.6 m
+## from the camera, is at its level and the opponent at duelling distance
+## about 3 dB under.
+@export var unit_size: float = 5.0
+## The most a 3D cue nearer than unit_size is raised above its level (dB).
+@export var near_boost_db: float = 3.0
 
 ## Picks variations and pitches. Seed it for repeatable runs.
 var rng := RandomNumberGenerator.new()
@@ -61,6 +75,9 @@ func _ready() -> void:
 	for i in spatial_voices:
 		var voice := AudioStreamPlayer3D.new()
 		voice.name = "Spatial%d" % i
+		voice.attenuation_model = AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE
+		# 20500 Hz turns the distance low-pass off.
+		voice.attenuation_filter_cutoff_hz = 20500.0
 		add_child(voice)
 		_spatial.append(voice)
 
@@ -101,18 +118,23 @@ func play_cue(cue_name: StringName, at: Variant = null, extra_db: float = 0.0) -
 	if stream == null:
 		return null
 	_last[cue_name] = pick[1]
+	var level := float(cue["volume_db"]) + extra_db
 	var voice: Node
 	if bool(cue["spatial"]) and at is Vector3:
 		voice = _take(_spatial)
 		if voice != null:
-			(voice as AudioStreamPlayer3D).global_position = at
+			var spatial := voice as AudioStreamPlayer3D
+			spatial.global_position = at
+			spatial.unit_size = unit_size
+			# max_db caps the voice's final level, its own volume included.
+			spatial.max_db = clampf(level + near_boost_db, -24.0, 6.0)
 	else:
 		voice = _take(_flat)
 	if voice == null:
 		return null
 	voice.set("stream", stream)
 	voice.set("bus", cue["bus"])
-	voice.set("volume_db", float(cue["volume_db"]) + extra_db)
+	voice.set("volume_db", level)
 	voice.set("pitch_scale", SoundBank.random_pitch(cue_name, rng))
 	voice.call("play")
 	played.emit(cue_name, voice)

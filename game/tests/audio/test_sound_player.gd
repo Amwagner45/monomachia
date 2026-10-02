@@ -154,6 +154,25 @@ func test_a_spatial_cue_with_a_position_plays_from_a_3d_voice_there() -> void:
 	assert_almost_eq((log[0]["voice"] as Node3D).global_position, at, Vector3.ONE * 0.0001)
 
 
+func test_3d_voices_fall_off_gently_and_stay_bright() -> void:
+	var player := SoundPlayer.new()
+	player.unit_size = 6.0
+	add_child_autofree(player)
+	var voice := player.play_cue(&"hit_blade", Vector3(0, 1, -7)) as AudioStreamPlayer3D
+	assert_eq(voice.attenuation_model, AudioStreamPlayer3D.ATTENUATION_INVERSE_DISTANCE)
+	assert_eq(voice.unit_size, 6.0, "a cue plays at its own level unit_size metres away")
+	assert_almost_eq(voice.attenuation_filter_cutoff_hz, 20500.0, 0.1, "no distance muffling")
+
+
+func test_a_near_3d_cue_is_at_most_near_boost_over_its_level() -> void:
+	var player := _player()
+	player.near_boost_db = 3.0
+	var quiet := player.play_cue(&"footstep", Vector3(0, 0, -1)) as AudioStreamPlayer3D
+	assert_almost_eq(quiet.max_db, -16.0 + 3.0, 0.001, "a footstep by the camera stays a footstep")
+	var loud := player.play_cue(&"hit_colossal", Vector3(0, 1, -1), -1.0) as AudioStreamPlayer3D
+	assert_almost_eq(loud.max_db, 0.0 - 1.0 + 3.0, 0.001)
+
+
 func test_flat_cues_and_cues_without_a_position_play_flat() -> void:
 	var player := _player()
 	var log := _record(player)

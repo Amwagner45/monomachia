@@ -660,17 +660,13 @@ func _update_attack() -> void:
 	var A: int = def.active
 	var R: int = def.recovery + a.extra_recovery
 
-	# Lunge forward along our facing.
+	# Lunge forward along our facing, easing in and out over its window.
 	var ls: int = def.lunge_start
 	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else S + A
 	if a.lunge_total > 0.0 and f > ls and f <= le:
-		var per: float = a.lunge_total / float(maxi(1, le - ls))
-		var d: float = SimMath.dist2(pos, opp.pos)
-		var min_gap: float = SimConst.FIGHTER_RADIUS * 2.0 + 0.25
-		var step: float = minf(per, maxf(0.0, d - min_gap))
-		var dir: V2 = SimMath.fwd(yaw)
-		pos.x += dir.x * step
-		pos.z += dir.z * step
+		var n: float = float(maxi(1, le - ls))
+		var share: float = SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
+		_advance(a.lunge_total * share)
 	if def.hop != 0.0 and f == ls + 1 and not airborne():
 		vel.y = def.hop
 	if def.airborne and def.type == &"overhead" and f == S + 1 and airborne():
@@ -718,6 +714,16 @@ func _update_attack() -> void:
 			backstab_until = W.frame + 30
 		atk = null
 		to_free()
+
+
+## Advance up to dist along our facing, stopping with our bodies 0.25 m apart.
+func _advance(dist: float) -> void:
+	var d: float = SimMath.dist2(pos, opp.pos)
+	var min_gap: float = SimConst.FIGHTER_RADIUS * 2.0 + 0.25
+	var step: float = minf(dist, maxf(0.0, d - min_gap))
+	var dir: V2 = SimMath.fwd(yaw)
+	pos.x += dir.x * step
+	pos.z += dir.z * step
 
 
 func _update_shadow_step(f: int) -> void:

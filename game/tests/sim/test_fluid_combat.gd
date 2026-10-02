@@ -8,8 +8,10 @@ const CLOSE: float = 0.005
 
 ## The spec's arena: a 15 m wall.
 const WALL: float = 15.0
-## Fighters' centres stop a fighter's radius (0.42 m) inside the wall.
-const CENTRE_LIMIT: float = WALL - 0.42
+## A fighter's body radius, kept from the demo.
+const FIGHTER_RADIUS: float = 0.42
+## Fighters' centres stop a fighter's radius inside the wall.
+const CENTRE_LIMIT: float = WALL - FIGHTER_RADIUS
 ## The Impaler's dash ends 0.7 m inside the wall.
 const IMPALER_STOP: float = WALL - 0.7
 ## Dropped weapons bounce off a ring 0.8 m inside the wall.
@@ -32,6 +34,13 @@ const MOMENTUM_KEEP: float = 0.5
 ## on the ground brakes by a fifth of its speed each step after the first.
 const JUMP_FLIGHT: float = 3.5
 const ATTACK_BRAKE: float = 0.8
+
+## Kept from the demo: a lunge stops with the two bodies this far apart.
+const LUNGE_GAP: float = 0.25
+## Kesa Giri, from its move data: it lunges 0.6 m over its frames 9 to 24,
+## and its cut lands on frame 23, after 22 frames of startup.
+const KESA_LUNGE: float = 0.6
+const KESA_STARTUP: int = 22
 
 
 func after_each() -> void:
@@ -120,11 +129,14 @@ func test_a_vertical_moonsplitter_hits_across_the_widest_gap() -> void:
 
 # ------------------------------------------------------------------ helpers
 
-## Fighter 0 on each step of a run: how far it moved along the ground, and the
-## attack it was in afterwards (&"" outside one).
+## Fighter 0 on each step of a run: how far it moved along the ground, the
+## attack it was in afterwards (&"" outside one) and that attack's frame (-1),
+## and how far apart the two fighters' centres stood.
 class FighterSteps:
 	var moved: PackedFloat64Array = []
 	var attack: Array[StringName] = []
+	var frame: PackedInt32Array = []
+	var apart: PackedFloat64Array = []
 
 	## The step that started attack id, or -1.
 	func start_of(id: StringName) -> int:
@@ -153,7 +165,10 @@ static func _record(weapon: WeaponDef, gap: float, n: int, p0: Callable) -> Figh
 		var z: float = a.pos.z
 		W.step([p0.call(i), H.idle()])
 		s.moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
-		s.attack.append(a.atk.def.id if a.state == &"attack" and a.atk != null else &"")
+		var attacking: bool = a.state == &"attack" and a.atk != null
+		s.attack.append(a.atk.def.id if attacking else &"")
+		s.frame.append(a.atk.frame if attacking else -1)
+		s.apart.append(JsMath.hypot(a.pos.x - W.fighters[1].pos.x, a.pos.z - W.fighters[1].pos.z))
 	return s
 
 
@@ -240,3 +255,42 @@ func test_a_hop_attack_keeps_all_its_speed() -> void:
 	assert_eq(i, 30, "Leaping Cleave starts on the press")
 	assert_almost_eq(s.moved[i - 1], SPRINT / 60.0, 1e-9, "sprinting the step before")
 	assert_almost_eq(s.moved[i], s.moved[i - 1], 1e-12, "the step it starts on keeps it all")
+
+
+# ------------------------------------------------------------------ lunge
+
+func test_a_lunge_eases_in_and_out_over_the_same_window_and_distance() -> void:
+	# thrown at a standstill 10 m from the opponent, so all its movement is the
+	# lunge
+	var s: FighterSteps = _record(Moves.KATANA, 10.0, 60, func(i: int) -> RawInput:
+		return H.btn(Btn.HEAVY) if i == 0 else H.idle())
+	var steps: PackedFloat64Array = []
+	var frames: PackedInt32Array = []
+	for i: int in s.moved.size():
+		if s.attack[i] == &"k_h1" and s.moved[i] > 0.0:
+			steps.append(s.moved[i])
+			frames.append(s.frame[i])
+	assert_eq(frames, PackedInt32Array(range(9, 25)), "it moves on frames 9 to 24 and no others")
+	var total: float = 0.0
+	for d: float in steps:
+		total += d
+	assert_almost_eq(total, KESA_LUNGE, 1e-9, "0.6 m in all")
+	for k: int in 7:
+		assert_lt(steps[k], steps[k + 1], "the steps rise to the middle (frame %d)" % frames[k + 1])
+		assert_gt(steps[8 + k], steps[9 + k], "then fall (frame %d)" % frames[9 + k])
+	var even_step: float = KESA_LUNGE / 16.0
+	assert_lt(steps[0], even_step / 4.0, "it starts slower than a quarter of an even step")
+	assert_lt(steps[15], even_step / 4.0, "and settles as slowly")
+
+
+func test_a_lunge_into_a_defender_still_stops_0_25_m_clear_of_their_body() -> void:
+	# 1.3 m apart, so Kesa Giri's 0.6 m would carry the attacker into the
+	# defender. The gap is measured until the cut lands, which knocks the
+	# defender back.
+	var s: FighterSteps = _record(Moves.KATANA, 1.3, 30, func(i: int) -> RawInput:
+		return H.btn(Btn.HEAVY) if i == 0 else H.idle())
+	var closest: float = 1.3
+	for i: int in s.apart.size():
+		if s.attack[i] == &"k_h1" and s.frame[i] <= KESA_STARTUP:
+			closest = minf(closest, s.apart[i])
+	assert_almost_eq(closest, 2.0 * FIGHTER_RADIUS + LUNGE_GAP, 1e-9, "stopped with the bodies 0.25 m apart")

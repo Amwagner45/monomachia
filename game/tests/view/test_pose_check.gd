@@ -4,7 +4,8 @@ extends GutTest
 ## 150-160 degrees on contact and never locked, the knees over the toes, the
 ## blade clear of its own body, and how much blade enters a defender. Made-up
 ## poses built from a real guard fail where they should; the Katana guard
-## passes on both fighters; MoveBench plays a move frame by frame on the
+## is measured on both fighters (test_guard_stance.gd checks that it
+## passes); MoveBench plays a move frame by frame on the
 ## rules' clock, and a report over the stand-in Katana attacks prints.
 
 const SIDES: Array[String] = ["Right", "Left"]
@@ -81,11 +82,10 @@ func test_the_body_capsules_are_measured_from_each_fighter() -> void:
 
 # ------------------------------------------------------------------ the guard
 
-## The match's Katana guard (the stand-in stick pose) is measured on both
-## fighters. It doesn't pass yet: its wrists bend past their limits (the
-## left about 95 degrees back, the right about 42 degrees sideways) and the
-## Rogue's idle clip caves her left knee, so passing moved to plan task
-## 14.8, which builds the grounded guard. Its blade already clears the body.
+## The match's Katana guard is measured on both fighters: both wrists,
+## both elbows, both knees and the blade. Since plan task 14.8 it passes
+## (test_guard_stance.gd); before, the wrists bent past their limits and the
+## Rogue's idle clip caved her left knee.
 func test_the_katana_guard_is_measured_on_both_fighters() -> void:
 	for id: StringName in FighterLook.IDS:
 		var bench: MoveBench = _bench(id)

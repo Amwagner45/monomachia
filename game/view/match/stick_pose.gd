@@ -67,9 +67,15 @@ class Pose:
 
 # ------------------------------------------------------------------ data
 
-## Guard per weapon: [rh, rd, lh, ld]
+## Guard per weapon: [rh, rd, lh, ld]. The Katana's is the grounded guard
+## stance's (GuardStance, plan task 14.8): both hands on the centre line at
+## the navel, the blade raised 50 degrees toward the opponent, so that both
+## wrists pass PoseCheck on the rig's hanging elbows. The stance's lowered
+## pelvis carries it down 9 cm, and FighterView pulls it 1-4 cm in toward
+## the shoulders, as it does every pose out of reach. The left hand's key
+## sits down the handle from the right's.
 const GUARD: Dictionary[StringName, Array] = {
-	&"katana": [[0.24, 1.1, 0.3], [0.02, 0.8, 0.6], [0.14, 1.0, 0.3], [0.02, 0.8, 0.6]],
+	&"katana": [[-0.02, 1.04, 0.33], [0.0, 0.766, 0.643], [-0.02, 0.934, 0.241], [0.0, 0.766, 0.643]],
 	&"greatsword": [[0.3, 0.98, 0.24], [-0.1, 0.88, 0.46], [0.2, 0.88, 0.24], [-0.1, 0.88, 0.46]],
 	&"daggers": [[0.2, 1.16, 0.32], [0.05, 0.34, 0.94], [-0.2, 1.2, 0.3], [-0.05, 0.34, 0.94]],
 	&"fists": [[0.15, 1.45, 0.3], [0.0, 1.0, 0.0], [-0.15, 1.47, 0.3], [0.0, 1.0, 0.0]],

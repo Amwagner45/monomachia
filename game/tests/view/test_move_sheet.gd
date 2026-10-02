@@ -137,6 +137,7 @@ func test_the_close_views_keep_the_attacker_in_their_crops() -> void:
 		var feet: Vector3 = _feet(sheet.bench.attacker)
 		var points: Dictionary[StringName, Array] = {
 			&"three_quarter": [crown, grip, feet],
+			&"three_quarter_left": [crown, grip, feet],
 			&"close": [crown, grip],
 			&"hands": [grip],
 		}
@@ -153,6 +154,11 @@ func test_the_close_views_keep_the_attacker_in_their_crops() -> void:
 		var forward: Vector3 = (_feet(sheet.bench.defender) - feet).normalized()
 		var angle: float = rad_to_deg(forward.angle_to(to_camera.normalized()))
 		assert_between(angle, 30.0, 60.0, "%s: three-quarters from the front" % id)
+		assert_gt(to_camera.dot(CameraRig.right_of(forward)), 0.0, "%s: on its weapon side" % id)
+		sheet.aim(&"three_quarter_left")
+		to_camera = (sheet.camera.global_position - feet) * Vector3(1.0, 0.0, 1.0)
+		assert_between(rad_to_deg(forward.angle_to(to_camera.normalized())), 30.0, 60.0, "%s: three-quarters from the front, on the left" % id)
+		assert_lt(to_camera.dot(CameraRig.right_of(forward)), 0.0, "%s: on its left" % id)
 		MoveBench.free_all()
 
 
@@ -190,7 +196,7 @@ func test_the_header_names_the_move_the_defender_the_views_and_the_whole_move() 
 	var whole: String = MoveBench.summary(&"k_l1", await sheet.bench.play(&"k_l1"))
 	assert_true(sheet.title[3].begins_with("k_l1 29 fr wrist"), "MoveBench's summary of the whole move: " + sheet.title[3])
 	assert_false(sheet.title[3].contains("fails"), "...on two lines")
-	assert_true(sheet.title[4].begins_with("fails 29/29: "), sheet.title[4])
+	assert_true(sheet.title[4].begins_with("fails ") and sheet.title[4].contains("/29: "), sheet.title[4])
 	assert_eq(" ".join((sheet.title[3] + " " + sheet.title[4]).split(" ", false)), " ".join(whole.split(" ", false)))
 	assert_false(sheet.title[4].contains("{"), "counts written out: " + sheet.title[4])
 	var lines: int = sheet.title.size()
@@ -372,7 +378,7 @@ func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> 
 		mini(MoveSheet.STRIP_COLUMNS, frames.size()) * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
 		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 	assert_eq(sheet.title[1].get_slice(" · ", 0), "views: front, side")
-	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards")
+	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards; weight: the guard stance's shift, + toward the front foot")
 
 
 func test_the_brake_drives_run_then_let_go() -> void:
@@ -411,6 +417,32 @@ func test_a_strip_caption_gives_the_lean_and_the_brace() -> void:
 		loco.lean.shown_drop = c[1]
 		assert_eq(MoveSheet.drive_caption(1, loco)[2], c[2])
 	assert_gte(MoveSheet.STRIP_CAPTION_HEIGHT, 2 * MoveSheet.TEXT_MARGIN + 3 * MoveSheet.CAPTION_FONT * 5 / 4, "room for three lines")
+	# the guard stance's weight shift, toward the front foot or the rear,
+	# after the blend
+	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "idle 1.00 · phase 0.00 · weight +2 cm")
+	assert_eq(MoveSheet.drive_caption(1, loco, -0.03)[1], "idle 1.00 · phase 0.00 · weight -3 cm")
+	assert_eq(MoveSheet.drive_caption(1, loco, 0.004)[1], "idle 1.00 · phase 0.00", "under half a centimetre")
+
+
+## The stand drive holds still through a whole weight shift of the guard
+## stance, at the duelling distance, seen from in front and side on.
+func test_the_stand_drive_holds_still_through_a_whole_weight_shift() -> void:
+	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"stand")
+	assert_gte(inputs.size(), int(GuardStance.SHIFT_PERIOD * 60.0), "a whole sway")
+	for r: RawInput in inputs:
+		assert_eq(Vector2(r.mx, r.my), Vector2.ZERO, "still")
+		assert_eq(r.buttons, 0, "nothing pressed")
+	assert_eq(MoveSheet.DRIVES[&"stand"]["views"], [&"front", &"side"])
+	assert_eq(float(MoveSheet.DRIVES[&"stand"]["spacing"]), PoseCheck.SPACING, "at the duelling distance")
+	# its strip captions the shift
+	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=stand", "--every=75", "--views=side"]))
+	await sheet.render_drive(&"stand")
+	var shifts: Array[String] = []
+	for cell: PackedStringArray in sheet.strip:
+		shifts.append(cell[1])
+	gut.p(shifts)
+	assert_true(shifts.any(func(s: String) -> bool: return s.contains("weight +")), "toward the front foot")
+	assert_true(shifts.any(func(s: String) -> bool: return s.contains("weight -")), "and the rear")
 
 
 func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:

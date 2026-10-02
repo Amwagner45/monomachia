@@ -50,7 +50,7 @@ var untwist: float = 0.0
 ## Where the clip put each leg this update, turned with the hips and thighs
 ## (pelvis_yaw, thigh_yaw) but before anything else here moved it, by side
 ## ("Right", "Left"): the hip and knee joints, and the foot. The rig's leg IK
-## can keep the feet there (FighterRig.feet_from_clip), so turned legs plant
+## can keep the feet there (FighterRig.clip_feet), so turned legs plant
 ## their feet where they turned to.
 var clip_hips: Dictionary[String, Vector3] = {}
 var clip_knees: Dictionary[String, Vector3] = {}
@@ -98,6 +98,12 @@ func clear() -> void:
 ## turns and shifts, worked on the clip's bone poses. Read it between
 ## updates, while the skeleton holds the clip's pose.
 func moved(sk: Skeleton3D, point: Vector3) -> Vector3:
+	return upper_body(sk) * point
+
+
+## How this layer will move the upper chest and everything riding it, from
+## the clip's pose (see moved()).
+func upper_body(sk: Skeleton3D) -> Transform3D:
 	var twists: Dictionary[StringName, float] = _twists(sk)
 	var clip: Dictionary[StringName, Transform3D] = {}
 	for bone_name: StringName in [&"Root", &"Hips", &"Spine", &"Chest", &"UpperChest"]:
@@ -119,7 +125,7 @@ func moved(sk: Skeleton3D, point: Vector3) -> Vector3:
 			m = about(at, Quaternion(b.x, spine_pitch * share)) * m
 		if absf(spine_roll) > 1e-5:
 			m = about(at, Quaternion(b.z, spine_roll * share)) * m
-	return m * point
+	return m
 
 
 func _process_modification_with_delta(_delta: float) -> void:

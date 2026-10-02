@@ -129,6 +129,46 @@ func test_a_posed_katana_puts_both_hands_on_its_grips() -> void:
 			assert_lt(miss, NEAR, "%s %s grip on its point" % [id, side])
 
 
+## Each hand turns round the handle toward its forearm, so the wrist doesn't
+## bend back or forward whatever way the blade points: on both fighters, in
+## guards with the blade raised, level, upright and off to the right, each
+## wrist bends less than 10 degrees (PoseCheck's measure).
+func test_each_hand_turns_round_the_handle_toward_its_forearm() -> void:
+	var guards: Array[Array] = [
+		[Vector3(-0.06, 1.08, 0.27), Vector3(0.12, 0.5, 0.86)],
+		[Vector3(-0.04, 1.0, 0.3), Vector3(0.0, 0.2, 1.0)],
+		[Vector3(-0.05, 1.12, 0.25), Vector3(0.0, 1.0, 0.3)],
+		[Vector3(-0.16, 1.02, 0.28), Vector3(-0.2, 0.6, 0.8)],
+	]
+	for id: StringName in FighterLook.IDS:
+		var f: FighterModel = _fighter(id, &"katana", false)
+		var check: PoseCheck = PoseCheck.new(f)
+		for g: Array in guards:
+			f.pose_weapon(0, FighterRig.weapon_frame(g[0], g[1], Vector3(0.0, -1.0, 0.0)))
+			var frame: PoseCheck.Frame = PoseCheck.Frame.new()
+			frame.bones = await _posed(f)
+			frame.driven.assign(FighterRig.SIDES)
+			var wrists: Dictionary[String, Vector2] = check.measure(frame).wrists
+			for side: String in FighterRig.SIDES:
+				gut.p("%s blade %s: %s wrist bent %+.1f, turned %+.1f" % [id, g[1], side, wrists[side].x, wrists[side].y])
+				assert_lt(absf(wrists[side].x), 10.0, "%s, blade %s: the %s wrist in line" % [id, g[1], side])
+
+
+## elbow_at() says where an arm's IK bends its elbow toward its pole.
+func test_the_rig_knows_where_the_ik_bends_each_elbow() -> void:
+	for id: StringName in FighterLook.IDS:
+		var f: FighterModel = _fighter(id, &"katana")
+		var poses: Array[Transform3D] = await _posed(f)
+		var sk: Skeleton3D = f.skeleton
+		for side: String in FighterRig.SIDES:
+			var shoulder: Vector3 = _bone(f, poses, side + "UpperArm").origin
+			var pole: Vector3 = (sk.get_node(NodePath(side + "ElbowPole")) as Node3D).position
+			var upper: float = sk.get_bone_global_rest(sk.find_bone(side + "UpperArm")).origin.distance_to(sk.get_bone_global_rest(sk.find_bone(side + "LowerArm")).origin)
+			var lower: float = sk.get_bone_global_rest(sk.find_bone(side + "LowerArm")).origin.distance_to(sk.get_bone_global_rest(sk.find_bone(side + "Hand")).origin)
+			var predicted: Vector3 = FighterRig.elbow_at(shoulder, _bone(f, poses, side + "Hand").origin, pole, upper, lower)
+			assert_lt(predicted.distance_to(_bone(f, poses, side + "LowerArm").origin), 0.005, "%s %s elbow" % [id, side])
+
+
 func test_the_same_input_gives_the_same_pose() -> void:
 	var f: FighterModel = _fighter(&"hunter", &"katana")
 	f.rig.leg_weight = 1.0
@@ -363,7 +403,7 @@ func test_turned_legs_take_the_planted_feet_with_them() -> void:
 	body.pelvis_yaw = 0.5
 	body.thigh_yaw = 0.2
 	var turned: Array[Transform3D] = await _posed(f)
-	f.rig.feet_from_clip = true
+	f.rig.clip_feet = 1.0
 	f.rig.leg_weight = 1.0
 	body.hips_offset = Vector3(0.0, -0.05, 0.0)
 	var planted: Array[Transform3D] = await _posed(f)

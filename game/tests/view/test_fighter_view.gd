@@ -157,23 +157,27 @@ func test_the_edge_leads_the_strike() -> void:
 	assert_lt(guard.y, -0.5, "a guard's edge faces down")
 
 
-## A crouch drops the hips; the feet stay where the clip has them, the knees
-## bending instead.
+## A crouch drops the hips; the feet stay planted, the knees bending
+## instead: in the Katana's guard stance where the stance has them, and with
+## the Greatsword where the clip has them.
 func test_a_crouch_lowers_the_hips_over_planted_feet() -> void:
-	var W: World = _world()
-	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view(&"rogue", Moves.KATANA)
-	_update(v, f)
-	var standing: Array[Transform3D] = await _posed(v)
-	f.state = &"land"
-	_update(v, f)
-	assert_almost_eq(v.last_pose.crouch, 0.18, 1e-6)
-	var crouched: Array[Transform3D] = await _posed(v)
-	assert_almost_eq(_bone(v, standing, "Hips").origin.y - _bone(v, crouched, "Hips").origin.y, 0.18, 0.005, "the hips drop by the crouch")
-	for side: String in FighterRig.SIDES:
-		var clip_foot: Vector3 = v.model.rig.body.clip_feet[side].origin
-		assert_lt(_bone(v, crouched, side + "Foot").origin.distance_to(clip_foot), NEAR, "%s foot planted" % side)
-		assert_gt(_bone(v, crouched, side + "LowerLeg").origin.z, _bone(v, standing, side + "LowerLeg").origin.z, "%s knee bends forward" % side)
+	for weapon: WeaponDef in [Moves.KATANA, Moves.GREATSWORD]:
+		var W: World = _world(weapon)
+		var f: Fighter = W.fighters[0]
+		var v: FighterView = _view(&"rogue", weapon)
+		_update(v, f)
+		var standing: Array[Transform3D] = await _posed(v)
+		f.state = &"land"
+		_update(v, f)
+		assert_almost_eq(v.last_pose.crouch, 0.18, 1e-6)
+		var crouched: Array[Transform3D] = await _posed(v)
+		assert_almost_eq(_bone(v, standing, "Hips").origin.y - _bone(v, crouched, "Hips").origin.y, 0.18, 0.005, "%s: the hips drop by the crouch" % weapon.id)
+		for side: String in FighterRig.SIDES:
+			var planted: Vector3 = _bone(v, standing, side + "Foot").origin
+			if weapon == Moves.GREATSWORD:
+				planted = v.model.rig.body.clip_feet[side].origin
+			assert_lt(_bone(v, crouched, side + "Foot").origin.distance_to(planted), NEAR, "%s: %s foot planted" % [weapon.id, side])
+			assert_gt(_bone(v, crouched, side + "LowerLeg").origin.z, _bone(v, standing, side + "LowerLeg").origin.z, "%s: %s knee bends forward" % [weapon.id, side])
 
 
 ## A KO lets go of the pose and plays the fall from the KO on, dimmed.

@@ -433,7 +433,7 @@ func test_strafing_turns_the_legs_toward_travel_and_keeps_the_chest_on_the_oppon
 	for i: int in 50:
 		_step(W, v, SimHelpers.idle())
 	assert_almost_eq(rad_to_deg(loco.leg_yaw), 0.0, 0.5, "and back to straight once it stops")
-	assert_eq(body.untwist, 0.0, "at rest the hold keeps its own chest")
+	assert_eq(body.untwist, 1.0, "at rest the guard stance squares the chest to the hips")
 
 
 func test_backpedalling_runs_the_cycle_backwards_with_the_legs_straight() -> void:
@@ -618,7 +618,8 @@ func test_braking_leans_back_and_drops_the_hips_then_settles() -> void:
 			back_at = i
 		drop = maxf(drop, lean.shown_drop)
 		assert_almost_eq(body.lean, Lean.rotation(t), Vector3.ONE * 1e-6, "on the body")
-		assert_almost_eq(body.hips_offset.y, -lean.shown_drop, 1e-6, "on the hips")
+		# the brace on top of the guard stance's crouch, as far as the legs stand
+		assert_almost_eq(body.hips_offset.y, -lean.shown_drop - GuardStance.CROUCH * v.locomotion.shown[0], 1e-6, "on the hips")
 		if stopped < 0 and _speed(f) == 0.0:
 			stopped = i
 		var still: bool = rad_to_deg(t.length()) < 0.5 and lean.shown_drop < 0.005

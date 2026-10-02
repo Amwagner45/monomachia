@@ -1107,9 +1107,70 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
           - the rotation's way, alpha, the carry's way, stepping in hit-stop;
           - the lean or the brace left off the body, the crouch overwriting the brace, the weapon not riding;
           - the caption's words, height and upright, and the sprint drive.
-  - [ ] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle. Moved here from 14.3 with the owner's OK: the guard must pass PoseCheck, which today's fails (wrists about 42° sideways and 95° back, the Rogue's clip knee caved), so each hand also turns round the handle toward its forearm in place of the rig's fixed 25° grip roll, and the legs go on the stance's IK.
+  - [x] **14.8 Grounded guard stance.** A leg-IK stance with the front foot to the opponent, the rear foot turned out 30–45°, the width held and the knees over the toes. The pelvis is lowered with a slow weight shift. The Katana guard replaces its WeaponHold idle. Moved here from 14.3 with the owner's OK: the guard must pass PoseCheck, which today's fails (wrists about 42° sideways and 95° back, the Rogue's clip knee caved), so each hand also turns round the handle toward its forearm in place of the rig's fixed 25° grip roll, and the legs go on the stance's IK.
     - Check: on both fighters, the knees on or outside the hip-to-foot line, the rear foot at 30–45°, no crossed feet, the width in band; guard shots reviewed against the critique's fixes 8 and 9; PoseCheck passes on the guard.
     - Blocked by: 14.3 · Stories: 43
+    - Done:
+      - **`GuardStance`** (`game/view/fighter/guard_stance.gd`). A hold with `WeaponHold.guard` set stands in it. Both fighters' Katana holds have it set. It stands over the relaxed `Idle` clip in place of the hold's clip (the Rogue's `Sword_Idle`, the Hunter's `Idle_Shield`), which stood left foot forward with the chest twisted 30–45°.
+        - **The feet**, on leg IK:
+          - the right ankle 24 cm ahead and 14 cm to the right, its toes 6° out;
+          - the left ankle 25 cm behind and 15 cm to the left, turned out 32°, which is 38° from the front foot;
+          - 29 cm apart across the facing and 49 cm along it, at their rest height and flat.
+          The right foot leads, as in a right-handed sword stance, and as 14.9's check asks of the shuffle.
+        - **Knees over the toes.** Each knee's pole now sits ahead of its leg, on the plane through the hip, the ankle and the toes' direction. The spike's poles sat above the foot and caved the knees in. PoseCheck measures both knees on the plane (0.0 cm) on both fighters.
+        - **The pelvis:**
+          - lowered 9 cm and moved 3 cm forward over the stance;
+          - the hips turned 15° toward the rear foot's side, measured from straight ahead (the relaxed idle stands turned 13° to the right, which is taken out), with the clip's own twist above them taken out;
+          - the spine turned back 15°, so the chest faces the opponent (0.0°), and bent 6° forward over the hips;
+          - the head raised 14°: the relaxed idle looks 14° down at the floor and the bend tips it 6° more, so it now watches the opponent, 6° down.
+        - **The weight shift:** the pelvis sways ±3.5 cm along the line from the rear foot to the front one, once every 5 s (at most 4.4 cm/s). It runs on the rules' clock, so it holds still in hit-stop and pause.
+        - **The weapon rides the pelvis,** its drop and its sway, on top of the lean's carry (14.7).
+        - **Moving:** the stance shows as far as the legs stand (Locomotion's idle weight). Walking and running, the feet go back to the clips'. `FighterRig.clip_feet` is now a blend weight, in place of the `feet_from_clip` switch.
+        - The stance still pops into a stride over a tap step's first frame, and back over a brake's last two, as the hold clip did. That is 14.9's to smooth.
+        - The Greatsword and the Daggers keep their holds' clips and the clips' feet until task 15.
+      - **The grip:** each hand turns round the handle toward its forearm, in place of the fixed 25° roll (`FighterRig.seat()`).
+        - The rig predicts the elbow the arm's IK will bend toward its pole (`elbow_at()`, within 5 mm of the IK's), and turns the hand so it carries on the forearm's line. Four passes refine it, since the wrist moves round the handle as the hand turns.
+        - On four guards tried, the wrists bend under 6° on both fighters, where the fixed roll bent them 38–88° back.
+        - How far a wrist turns sideways is set by the guard, not the roll: the rig's hanging elbows want the handle steep.
+        - The roll applies to every posed weapon, so the stand-in attacks and the other weapons' guards gain it too. Right Cut now fails PoseCheck on 15 of its 29 frames, down from 29.
+      - **The Katana guard** is StickPose's row, which the attacks and blocks blend from.
+        - Both hands sit on the centre line at the navel, with the blade raised 50° toward the opponent.
+        - A search of about a thousand guards found the wrists passing with the blade raised 50–60° and the hands 30–40 cm out. As with every stand-in pose, the match pulls the guard 1–4 cm in toward the shoulders.
+        - PoseCheck passes on both fighters:
+
+          | | Wrists, right | Wrists, left | Elbows | Knees | Blade |
+          |---|---|---|---|---|---|
+          | Rogue | −1° bent, −18° sideways | −1°, +3° | 138°, 141° | on the line | 6.8 cm from the right forearm |
+          | Hunter | −1°, −18° | −2°, +4° | 135°, 139° | on the line | 13.0 cm |
+      - **Sheets and strips:**
+        - a new view, three-quarter from the left;
+        - a `stand` drive: 330 frames standing still at 2.5 m, seen from in front and side on, for the weight shift;
+        - strip captions give the shift after the blend, as "weight +3 cm" (+ toward the front foot).
+      - **Tests:**
+        - `test_guard_stance.gd` (8, new):
+          - the front foot ahead, pointing at the opponent, and the rear turned out 30–45°, flat and on the floor;
+          - the feet a stance's width apart and uncrossed, heels and toes;
+          - the knees over the toes;
+          - the pelvis lowered and turned under a square chest, the torso over the hips, the head up and facing the opponent;
+          - the weight shift: its reach, speed, period and line, the hips and the weapon going with it, and only the rules' clock moving it;
+          - PoseCheck passing on the guard;
+          - only the Katana in the guard;
+          - the stance giving way to the clips as the legs walk.
+        - `test_fighter_rig.gd` (2 new): each hand in line with its forearm on four guards on both fighters, and `elbow_at()` against the IK.
+        - `test_move_sheet.gd` (1 new, 2 extended): the left three-quarter view, the stand drive and the caption.
+        - Changed:
+          - the crouch test now plants the stance's feet with the Katana and the clip's with the Greatsword;
+          - at rest the guard squares the chest (untwist 1), and the brace sits on top of the stance's crouch;
+          - the sheet header's failure count is no longer fixed;
+          - the PoseCheck guard test's notes.
+        - Mutation-tested: 31 mutations, 30 failing a test:
+          - the roll fixed at 25°, turned the wrong way or refined once, the elbow away from its pole or its bones swapped, the hand frame worked out again after the update;
+          - the spike's knee poles, the poles behind the knee, the feet not turned, at the ground, crossed or the front one turned out, the clip's feet under the stance;
+          - the hips' turn not measured from straight ahead, the clip's twist left in, no crouch, the head left nodding, the sway across the feet, fast or on the wall's clock;
+          - the stance whatever the legs do, every weapon in it, the hold's clip under it, the weapon not riding it, the old guard;
+          - the upper body's move, the caption's sign and threshold, the stand drive's length, the left view on the right.
+          - The survivor leaves the chest unturned in the reach pull's wrist estimate. The stand-in poses keep the chest square, so the pull comes out the same.
+      - **Raised:** since 9.3 the Iai stance walks, but it is an attack state, which the legs don't count as walking (`Locomotion.MOVING_STATES`). The stance walk is a guard walk, so 14.9 is where it fits.
   - [ ] **14.9 Guard shuffle step.** A procedural shuffle in 8 directions (lead foot first, the trailing foot closes, the feet never cross, width and angles kept), with the cadence taken from the rules' speed and the arms on a slight spring, blending with the clips.
     - Check: the step planner never crosses the mid-line and leads with the right foot; planted feet slide under 1 cm; guard strafe and backpedal strips reviewed.
     - Blocked by: 14.5, 14.8 · Stories: 12, 14

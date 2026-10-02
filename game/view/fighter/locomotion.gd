@@ -1,7 +1,8 @@
 class_name Locomotion
 extends RefCounted
 ## The legs under a fighter in the match: an AnimationTree on its model
-## blending idle (the held weapon's hold clip), walk, jog and sprint by the
+## blending idle (the held weapon's hold clip, or the relaxed idle under a
+## guard stance: see FighterView), walk, jog and sprint by the
 ## rules' speed, advanced by the rules' clock. FighterView updates it every
 ## frame; it never changes the rules.
 ##
@@ -192,6 +193,11 @@ static func spring(x: float, rate: float, target: float, omega: float, dt: float
 	var c: float = rate + omega * d
 	var e: float = exp(-omega * dt)
 	return Vector2(target + (d + c * dt) * e, (rate - omega * c * dt) * e)
+
+
+## The clip the idle shows (the one last passed to update()).
+func idle_clip() -> StringName:
+	return _idle_clip
 
 
 ## Seconds into moving clip `index` (in CLIPS) at shared phase `p`.

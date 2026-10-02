@@ -17,6 +17,10 @@ extends Resource
 @export var weapon: StringName = &""
 ## The clip to idle in with this weapon; empty for the look's idle clip.
 @export var clip: StringName = &""
+## In a match, the fighter stands in the grounded guard stance (GuardStance)
+## with this weapon instead of idling in `clip`, the weapon posed in its
+## guard.
+@export var guard: bool = false
 ## Held with the blade out of the little-finger side of the fist instead of
 ## the thumb side: the dagger along the forearm, or a greatsword trailing
 ## from a hanging arm.

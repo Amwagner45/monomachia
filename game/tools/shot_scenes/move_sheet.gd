@@ -49,12 +49,14 @@ extends Node3D
 ## three-quarters in front, on its weapon side; its head, chest and hands
 ## closer; and its hands on the grip.
 const VIEWS: Array[StringName] = [&"defender", &"attacker", &"three_quarter", &"close", &"hands"]
-## Besides these, for the drives: the whole fighter side on from its right,
-## and from in front, a little to its right.
+## Besides these, for the drives and the guard: the whole fighter side on
+## from its right, from in front, a little to its right, and from
+## three-quarters in front on its left.
 const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"defender": "gameplay camera behind the defender",
 	&"attacker": "gameplay camera behind the attacker",
 	&"three_quarter": "three-quarter",
+	&"three_quarter_left": "three-quarter from the left",
 	&"close": "close",
 	&"hands": "hands",
 	&"side": "side",
@@ -110,6 +112,12 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"notes": "still for 12 frames, moving back and to the left for 72, then stopping",
 		"views": [&"front"],
 		"spacing": 8.0,
+	},
+	&"stand": {
+		"input": [[330, 0.0, 0.0, 0]],
+		"notes": "standing still for 330 frames, a whole weight shift of the guard stance",
+		"views": [&"front", &"side"],
+		"spacing": PoseCheck.SPACING,
 	},
 }
 ## Cells per row of a drive's strip.
@@ -385,6 +393,10 @@ func aim(view: StringName) -> void:
 			# a blade raised overhead in frame.
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-45.0)) * 3.8 + Vector3(0.0, 1.3, 0.0),
 				a + forward * 0.7 + Vector3(0.0, 1.05, 0.0), 45.0)
+		&"three_quarter_left":
+			# the same from the front on the off-hand (left) side
+			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(45.0)) * 3.8 + Vector3(0.0, 1.3, 0.0),
+				a + forward * 0.7 + Vector3(0.0, 1.05, 0.0), 45.0)
 		&"side":
 			# square on to the way it faces, from its right, the whole body
 			_look_from(a + CameraRig.right_of(forward) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
@@ -646,7 +658,7 @@ func render_drive(drive_id: StringName) -> Image:
 		if not chosen.has(i + 1):
 			continue
 		await bench.frame()
-		var lines: PackedStringArray = drive_caption(i + 1, loco)
+		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
 		strip.append(lines)
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],
@@ -663,7 +675,7 @@ func render_drive(drive_id: StringName) -> Image:
 		view_names.append(VIEW_NAMES[view])
 	title = PackedStringArray([
 		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"]],
-		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards" % [
+		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards; weight: the guard stance's shift, + toward the front foot" % [
 			", ".join(view_names), every, bench.spacing],
 		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [
 			Locomotion.WALK_SPEED, loco.run_speed, loco.sprint_speed, loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride],
@@ -677,9 +689,10 @@ func render_drive(drive_id: StringName) -> Image:
 
 ## A strip frame's caption: the frame and speed, and the legs' turn when they
 ## turn or run backwards; then the blend's weights (those over 0) and the
-## step phase; then the lean, its angle and the way the body tips, and the
+## step phase, and the guard stance's weight shift `sway` (m, + toward the
+## front foot); then the lean, its angle and the way the body tips, and the
 ## brace's drop of the hips.
-static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
+static func drive_caption(frame: int, loco: Locomotion, sway: float = 0.0) -> PackedStringArray:
 	var weights: PackedStringArray = []
 	for i: int in 4:
 		if loco.shown[i] > 0.005:
@@ -690,7 +703,7 @@ static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
 		first += " · legs %s%s" % ["%+.0f°" % turn if absf(turn) >= 0.5 else "0°", " back" if loco.backwards else ""]
 	return PackedStringArray([
 		first,
-		"%s · phase %.2f" % [" ".join(weights), loco.shown_phase],
+		"%s · phase %.2f%s" % [" ".join(weights), loco.shown_phase, _sway_text(sway)],
 		_lean_text(loco.lean),
 	])
 
@@ -708,6 +721,14 @@ static func _lean_text(lean: Lean) -> String:
 	if lean.shown_drop >= 0.005:
 		out += " · hips down %.0f cm" % (lean.shown_drop * 100.0)
 	return out
+
+
+## " · weight +2 cm" from the guard stance's weight shift `sway` (m, +
+## toward the front foot); nothing under half a centimetre.
+static func _sway_text(sway: float) -> String:
+	if absf(sway) < 0.005:
+		return ""
+	return " · weight %+.0f cm" % (sway * 100.0)
 
 
 ## Lays out a sheet: the header on top, then each row's caption over its

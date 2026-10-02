@@ -17,6 +17,15 @@ const BOUNCE_RING: float = WALL - 0.8
 ## The Impaler dashes 24 m/s: 0.4 m a frame.
 const DASH_STEP: float = 0.4
 
+## The spec's blocking walk: 60% of running speed.
+const BLOCK_WALK: float = 0.6
+## Running speeds (m/s), kept from the demo (story 12), before the weapon's
+## speed: the Greatsword moves 10% slower and the Daggers 12% faster.
+const RUN_FORWARD: float = 3.9
+const RUN_STRAFE: float = 3.5
+const RUN_BACK: float = 3.0
+const SPRINT: float = 7.2
+
 
 func after_each() -> void:
 	H.dispose_all()
@@ -100,3 +109,49 @@ func test_a_vertical_moonsplitter_hits_across_the_widest_gap() -> void:
 	assert_eq(r.find(&"ultWave").get("kind"), &"vertical")
 	assert_almost_eq(gap_at_release, 2.0 * CENTRE_LIMIT, 1e-9, "the fighters stand 29.16 m apart")
 	assert_almost_eq(b.hp, 70.0, CLOSE, "the wave reaches and hits")
+
+
+# ------------------------------------------------------------------ block walk
+
+## How far fighter 0 walks in one second holding inp, once up to speed (20
+## frames in), against an idle opponent gap m away. It adds up each step, so
+## a strafe's orbit counts in full.
+static func _walk_one_second(weapon: WeaponDef, gap: float, inp: RawInput) -> float:
+	var W: World = H.make_world(weapon, Moves.KATANA, gap)
+	var a: Fighter = W.fighters[0]
+	for _i: int in 20:
+		W.step([inp, H.idle()])
+	var walked: float = 0.0
+	for _i: int in 60:
+		var x: float = a.pos.x
+		var z: float = a.pos.z
+		W.step([inp, H.idle()])
+		walked += JsMath.hypot(a.pos.x - x, a.pos.z - z)
+	return walked
+
+
+func test_walking_forward_while_blocking_is_60_percent_of_running() -> void:
+	# 8 m apart, so the walker ends more than 4 m short of the opponent
+	var weapon_speed: Dictionary[StringName, float] = {&"katana": 1.0, &"greatsword": 0.9, &"daggers": 1.12}
+	for id: StringName in weapon_speed:
+		var expected: float = RUN_FORWARD * weapon_speed[id] * BLOCK_WALK
+		var walked: float = _walk_one_second(Moves.WEAPONS[id], 8.0, H.move(0.0, 1.0, Btn.BLOCK))
+		assert_almost_eq(walked, expected, 1e-6, "%s walks forward %.4f m/s blocking" % [id, expected])
+
+
+func test_strafing_and_backing_away_while_blocking_are_60_percent_of_running() -> void:
+	# The strafe orbits the opponent 6 m away (strafes keep their distance
+	# inside 9 m). Each step is pulled back onto the circle, which shortens the
+	# second's walk by about 3e-5 m, hence the looser tolerance.
+	var strafed: float = _walk_one_second(Moves.KATANA, 6.0, H.move(1.0, 0.0, Btn.BLOCK))
+	assert_almost_eq(strafed, RUN_STRAFE * BLOCK_WALK, 1e-4, "strafing")
+	var backed: float = _walk_one_second(Moves.KATANA, 6.0, H.move(0.0, -1.0, Btn.BLOCK))
+	assert_almost_eq(backed, RUN_BACK * BLOCK_WALK, 1e-6, "backing away")
+
+
+func test_holding_block_stops_a_sprint() -> void:
+	# 20 m apart, so the sprint (about 9 m in all) never reaches the opponent
+	var sprint: float = _walk_one_second(Moves.KATANA, 20.0, H.move(0.0, 1.0, Btn.SPRINT))
+	var blocking: float = _walk_one_second(Moves.KATANA, 20.0, H.move(0.0, 1.0, Btn.SPRINT, Btn.BLOCK))
+	assert_almost_eq(sprint, SPRINT, 1e-6, "the sprint button sprints")
+	assert_almost_eq(blocking, RUN_FORWARD * BLOCK_WALK, 1e-6, "blocking walks at the blocking walk instead")

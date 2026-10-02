@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. The owner approves each task before the next starts. Next: 8.4.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. Right after 8.2, as the owner asked, 8.10 fixed the training dummy's lights and random. Then 8.3, the first rule change, set the arena radius to 15 m, which made the Moonlit Shrine every match's arena, and 17.10 checked the shrine in that role, which finishes task 17. 8.4 then raised the blocking walk to 60% of running speed. The owner approves each task before the next starts. Next: 8.5.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -156,11 +156,11 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
   - The shrine as every match's arena (17.10): fighters and dropped weapons stay inside its parapet, and every match camera stays within 16.2 m of the centre (`camera_max_radius`, was 19.5), short of the props on the ledge. `test_shrine_as_arena.gd` sweeps the cameras round the wall against the props' real triangles, and `arena_wall.tscn` (or `--wall=<degrees>` on any arena view) shoots a fighter backed against the wall.
-- **Checks after 17.10** (the shrine's other shots and CI are from 17.9; `outline_check`, `ink_check` and the sizes from 14.2):
-  - 598 Godot tests (43 s): rules 111, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
+- **Checks after 8.4** (the bench and the wall shots are from 17.10, the shrine's other shots and CI from 17.9, and `outline_check`, `ink_check` and the sizes from 14.2):
+  - 601 Godot tests (47 s): rules 114, input 118, audio 31, core 22, view 261, content 52, and 3 project-wide smoke tests;
   - 85 web tests;
   - the typecheck loads 161 scripts cleanly;
-  - `soak:godot -- 40` (8.3; no rule changed since) has 0 failures at 15 m (rounds 140, average 45.5 s, longest 105.2 s, against the baseline's 149, 44.5 s and 121.8 s), and the counterlab still prints the baseline below;
+  - `soak:godot -- 40` (8.4) has 0 failures with the 15 m arena and the 60% blocking walk (rounds 139, average 45.9 s, longest 102.0 s, against the baseline's 149, 44.5 s and 121.8 s), and the counterlab still prints the baseline below;
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 66.8 fps at 1080p on the target laptop (`arena_bench.tscn`, 17.10, on mains power; 95th percentile 16.3 ms), Medium 76.9 and Low 99.9, against 69, 79 and 102 at 17.9 with the rules' wall at 11.5 m;
   - CI passed on every push from 14.1 to 17.9 (8c188c4);
@@ -363,9 +363,16 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Shots of the stand-in by id (`arena_top_down`, `arena_gameplay` and `arena_watch` with `--arena=standin`) show the rules' wall at 15.00 m, centres stopping at 14.58 m and the stand-in's wall on the rules' ring, with no errors or leaks at exit.
       - Story 15 (a larger walled arena) is ticked by 17.10, once the shrine is checked as every match's arena.
       - For task 12: the computer still uses the Moonsplitter only under 14 m and the Impaler under 12 m (its own choices, not tied to the radius), though fighters can now stand 29 m apart.
-  - [ ] **8.4 Blocking walk at 60% of running speed.** `MOVE_BLOCK_SPEED_MULT` 0.6, with tests of forward and strafing block speed and that blocking still stops sprinting.
+  - [x] **8.4 Blocking walk at 60% of running speed.** `MOVE_BLOCK_SPEED_MULT` 0.6, with tests of forward and strafing block speed and that blocking still stops sprinting.
     - Check: the new tests and the posture-drain test pass; the soak is clean.
     - Blocked by: 8.2 · Stories: 14
+    - Done:
+      - `SimConst.MOVE_BLOCK_SPEED_MULT` is 0.6 (was 0.45).
+      - `test_fluid_combat.gd`, block walk section, red on the 45% first. In the second after reaching speed, a blocking fighter walks forward 2.34 m with the Katana, 2.106 m with the Greatsword and 2.6208 m with the Daggers, and the Katana strafes 2.1 m and backs away 1.8 m. The expected numbers are the spec's 60% of the demo's running speeds, which the spec keeps. Holding sprint walks 7.2 m, and holding block with it 2.34 m; with the rule that blocking stops a sprint removed, that test fails.
+      - The posture-drain test still passes (its moving threshold is 0.3 m/s).
+      - Soak: 0 failures. Rounds 139, average 45.9 s, longest 102.0 s, against 140, 45.5 s and 105.2 s at 8.3. Per round: blocks 13.32 (12.76 at 8.3), parries 3.89 (3.90), disarms 0.39 (0.40), ultimates 1.14 (1.18), the disarmed choice included; match wins and losses Greatsword 11–13, Katana 16–15, Daggers 13–12. The counterlab still prints the baseline.
+      - Nothing in the view reads the block speed yet. 14.5 sets its locomotion blend bands against the rules' speeds, and 14.9's guard shuffle takes its step rate from them.
+      - Story 14 (walking faster while blocking) is ticked by 14.9, once the guard shuffle shows the walk.
   - [ ] **8.5 Attacks keep half their momentum.** `ATTACK_MOMENTUM_KEEP` 0.5 replaces the 0.3 in `start_attack`; airborne and hop attacks keep it all.
     - Check: the step a light starts on has exactly half the previous speed; a jump attack keeps its velocity; the soak is clean.
     - Blocked by: 8.2 · Stories: 16, 19, 20

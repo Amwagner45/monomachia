@@ -1,6 +1,14 @@
 # Spec: Monomachia rebuilt in Godot
 
-Oct 2, 2026 · status: in build, one task at a time. Tasks 1–6, 13 and 21 are done, and of the broken-down tasks 13.1, 25.1–25.3, 16.1–16.7, 14.1 and 14.2, which put the real fighters in the match, and 17.1–17.9: the arena data behind a radius guard, the arena screenshot rig, the shrine's courtyard, props, underside, night sky, backdrop, and drifting embers and ash, and its benchmark (High 69 fps at 1080p on the target laptop); then 8.1 and 8.2, which start the fluid rules: behaviour tests for the training dummy and the computer's counters, then the checks pinned to the TypeScript retired at the last bit-exact commit (4222167); then 8.10, which fixed the training dummy's lights (the whole light string) and random (every unblockable), and 8.3, the first rule change: the arena radius is 15 m, so every match is fought on the Moonlit Shrine; then 17.10, which checked the shrine as every match's arena and kept the cameras out of its props, finishing task 17; then 8.4, which raised the blocking walk to 60% of running speed, 8.5, which lets attacks keep half their speed as they start (was 30%), 8.6, which eases lunges in and out, 8.7, which cuts light hitstun to 14 frames, 8.8, which lets heavies dodge-cancel late in recovery, and 8.9, which adds the Greatsword's recovery slide and finishes task 8; next is 12.1 (see the plan's build order and Progress) · branch `feature/godot-rebuild`
+Oct 2, 2026 · status: in build, one task at a time. Stages 1–4 of the build order are done, and with them tasks 1–6, 8, 13, 16, 17 and 21:
+- the rules port, bit for bit with the TypeScript up to its last checked commit (4222167);
+- the fighter models merged, and the safety nets: a file-size guard, the Windows export with a smoke run, and CI (13.1, 25.1–25.3, 16.1);
+- the real fighters and weapons in the match, in the toon and ink-wash look (16.1–16.7, 14.1, 14.2);
+- the Moonlit Shrine as every match's arena (17.1–17.10; High 67 fps at 1080p on the target laptop);
+- the fluid combat rules (8.1–8.10): a 15 m arena, a 60% blocking walk, half the momentum kept, eased lunges, light hitstun 14, heavy dodge cancels and the Greatsword's recovery slide;
+- a soak that reports the balance targets (12.1).
+
+Stage 5 (sound and music, draft PR #3) and 14.3–14.9 (animation, draft PR #4) go on in their own lanes. Stage 6, the new strings, has begun: 9.1 built the Katana's four-light string, the moves' sides and the continuity check. Next in this lane is 9.2, the Iai Slash (see the plan's build order and Progress) · branch `feature/godot-rebuild`
 
 The playable duel from the web demo, rebuilt in Godot 4.7 as a PC game on the new direction from `docs/design.md`. Real fighters replace the block puppets, weapons swing along authored paths that also decide what they hit, the camera sits over the shoulder like For Honor, and the fight takes place on a larger floating shrine drawn in a toon and ink-wash style. The rules, the three weapons, the four modes, the computer opponent and the remappable controls carry over; the web version is retired once the Godot build matches it.
 
@@ -63,7 +71,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 ### Katana
 
-25. [ ] As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
+25. [x] As a Katana player, I want a string of four lights, alternating sides and ending in a crown cut, so that the Katana is the slashing weapon the design describes.
 26. [ ] As a Katana player, I want my heavy to be the Iai Slash: pressing heavy sheathes the blade, I can strafe while holding it, and releasing draws a long-range slash, so that the Katana has its signature quick-draw.
 27. [ ] As a Katana player, I want the Iai Slash to be vertical (from above) unless I'm holding left or right when I release, which makes it horizontal (right to left), so that I choose its shape.
 28. [ ] As a Katana player, I want an optional heavy follow-up after each Iai Slash: a rising cut from below after the vertical one, and a left-to-right cut after the horizontal one, so that I can extend the string or stop.
@@ -181,6 +189,8 @@ The goldens guarded the faithful port only. Commit 4222167 is the last one prove
 
 Chains stay as they are: each move names at most one light follow-up and one heavy follow-up, and pressing nothing ends the string.
 
+**Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. Built so far (task 9.1): Right Cut, Kesa Cut and Rising Heaven run right to left, Return Cut left to right, and Crown Cut and Heaven Splitter centre to centre; Kesa Giri, the heavy until the Iai replaces it, runs right to left.
+
 **Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
 - the grip position;
 - the hand frame, from which the blade direction follows, within the wrist limits;
@@ -216,7 +226,7 @@ Swings are stored as sampled data, so a move can later take its path from an aut
 - Light hitstun default 14 frames (was 18), so that from the second hit on a defender can block or parry, and strings are no longer guaranteed after the first hit. It applies to every light without its own hitstun, the movement attacks and counter lunges included. Two exceptions: bare hands keep their own 16 on their first two lights, so their early hits stay guaranteed, and the Daggers' lights, which follow each other faster, get a shorter hitstun of their own (task 11.1).
 - The new strings (next section).
 
-Task 8 built the rules above. On them the 40-match soak has rounds of 42.8 s, 0.83 disarms per round and the Greatsword winning 9 of its 24 matches, so disarms and the Greatsword's win rate are outside the targets under Testing Decisions; task 12 tunes toward them (the plan's Progress has the numbers).
+Task 8 built the rules above. On them the first 300-match tuning run (12.1) has rounds of 39.9 s, 0.74 disarms per round, and win rates against the other weapons of 48.5% for the Katana, 37.4% for the Greatsword and 62.8% for the Daggers. So disarms and the Greatsword's and the Daggers' win rates are outside the targets under Testing Decisions; task 12 tunes toward them (the plan's Progress has the numbers).
 
 **Presentation of fighters.**
 
@@ -266,7 +276,7 @@ Task 8 built the rules above. On them the 40-match soak has rounds of 42.8 s, 0.
 
 - `test`: GUT, headless.
 - `typecheck`: loads every script and fails on any error.
-- `soak`: headless computer-vs-computer matches with balance numbers.
+- `soak`: headless computer-vs-computer matches with balance numbers and the targets; `soak:tune` runs 300 for tuning.
 - `build`: Windows export.
 - `dev`: opens the editor.
 - `shots`: renders chosen scenes to PNG in a window, and fails on any shader or script error.
@@ -295,6 +305,8 @@ CI installs Godot 4.7.2 and its export templates, checks the file sizes, runs te
 | Heaven Splitter | heavy follow-up | overhead | 22 / 4 / 28 | 15 / 18 | end of string |
 
 The Katana's sprint, dodge, backstep and jump attacks, block abilities and ultimate are unchanged. While sheathed the fighter can't block; a dodge cancels the stance.
+
+Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with a cone like Right Cut's: 2.2 m and 100°, with a 0.35 m lunge.
 
 **Greatsword**
 
@@ -333,7 +345,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
   - new tests for each rule change (`test_fluid_combat.gd`): arena radius and wall; block walk speed; momentum carry; eased lunges; heavy dodge-cancel; light hitstun letting a defender parry the second hit; the colossal slide;
   - swing hit detection: a blade that passes behind or above the defender misses; a low sweep misses a jumping defender; an unblockable's longer blade hits at a range a normal attack misses; hits land on the frame the blade first touches the capsule;
   - every new move and chain: Katana four-light string, Iai vertical and horizontal by stick, Iai follow-ups, strafing while sheathed, sheathed auto-release, dodge cancelling the stance; Greatsword L-L-H, Low Sweep unblockable and jumpable, dodge thrusts; Daggers alternating string, dodge-cancel timing, no light loop from Twin Fang, Passing Cut direction;
-  - string continuity: every chain's `side_end` matches the next move's `side_start`;
+  - string continuity (`test_string_continuity.gd`): every follow-up starts on the side the move before it ends on, or at centre, and every move in a string has both sides;
   - every move's data still matches the demo's (`test_moves.gd` against `moves.json`), apart from a table of deliberate differences that each data change adds to.
 - **Content (GUT, headless):** every fighter scene assembles on the retargeted skeleton and the shared clips drive it; the body is cut down to the head and the headwear is in place; the two palettes differ from the front, the back and the side (rendered in software); every weapon has its markers and length; no held blade runs into its fighter's body; the art stays under 60 MB with no file over 10 MB and textures scaled down.
 - **Input (GUT, headless):** a fake device stands in for the keyboard, mouse and controllers. Tests cover the bindings, profiles and saving, rebinding capture, button names, per-player seats and pause, and the feed into the rules.
@@ -346,7 +358,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
     - the tracks have the design tempos and loop for exactly their bars.
 - **Poses (GUT, headless):** `PoseCheck` measures the posed skeleton against the swing rules above: the wrists, the elbows on contact and never locked, the knees over the toes, the blade 5 cm clear of capsules measured from each fighter's own meshes, and how much blade enters a defender 2.5 m away. `MoveBench` plays any move frame by frame on the rules' clock for it.
 - **Host and camera (GUT, headless):** the fixed step, hit-stop and slow motion, pause and focus loss, the camera's distances, the HUD's timing, and the flow from title to results, all driven through `step()` without a window.
-- **Soak:** 40 computer-vs-computer matches must finish without errors or impossible values (NaN, a fighter outside the arena, posture out of range). They report round length, parries, counters, disarms and ultimates per round, and each weapon's win rate. Target after tuning: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55% of its matches.
+- **Soak:** 40 computer-vs-computer matches must finish without errors or impossible values (NaN, a fighter outside the arena, posture out of range). They report round length, parries, counters, disarms and ultimates per round, and each weapon's win rate against the other weapons (mirror matches left out). Target after tuning: rounds of 35–60 s, 0.3–0.6 disarms per round, each weapon winning 45–55% of its matches against the other weapons. A targets block marks each in or out; a target out of range is not a failure. Tuning runs 300 matches (`soak:tune`); the 40-match run stays the clean check.
 - **Presentation:** scripted screenshot scenes, rendered in a window from the command line:
   - a pose gallery of every attack at wind-up, contact and follow-through, for each weapon, on each fighter: contact sheets (`tools/shot_scenes/move_sheet.tscn`) play a move against a defender 2.5 m away and show its chosen frames from the gameplay camera behind each fighter, three-quarter, close and at the hands, each frame captioned with its phase and PoseCheck numbers; `--move=all` renders a weapon's whole set, the same images on every run;
   - the arena from the gameplay camera and the Watch camera;

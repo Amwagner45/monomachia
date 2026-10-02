@@ -128,8 +128,8 @@ func start(cfg: MatchConfig, p_attract: bool = false) -> bool:
 	var s0: MatchSide = cfg.sides[0]
 	var s1: MatchSide = cfg.sides[1]
 	world = World.new(
-		FighterConfig.make(s0.weapon(), s0.resolved_abilities(), s0.display_name()),
-		FighterConfig.make(s1.weapon(), s1.resolved_abilities(), s1.display_name()),
+		FighterConfig.make(s0.weapon(), s0.resolved_abilities(), s0.display_name(), s0.fighter_id),
+		FighterConfig.make(s1.weapon(), s1.resolved_abilities(), s1.display_name(), s1.fighter_id),
 		cfg.world_seed,
 	)
 	sim_match = Match.new(world)

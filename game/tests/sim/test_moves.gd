@@ -91,6 +91,9 @@ const WEAPON_CHANGES: Array[Dictionary] = [
 ## Fields the demo didn't have: the strings and continuity tests check them,
 ## and the swing tests the swings.
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end", "swing"]
+## Weapon fields the demo didn't have: tests/content/test_strike_segments.gd
+## checks them against the models.
+const WEAPON_REBUILD_FIELDS: Array[String] = ["blade", "foot"]
 
 var _fx: Dictionary
 
@@ -225,7 +228,7 @@ func test_every_weapon_field_matches_the_typescript() -> void:
 				if not _same(w.get(snake), want):
 					diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), want])
 		for snake: String in WeaponDef.KEYS:
-			if not ts.has(snake.to_camel_case()):
+			if not ts.has(snake.to_camel_case()) and not WEAPON_REBUILD_FIELDS.has(snake):
 				diffs.append("%s.%s: not in the TS weapon" % [wid, snake])
 		assert_eq(diffs, [] as Array[String], wid)
 

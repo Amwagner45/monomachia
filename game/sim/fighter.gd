@@ -19,6 +19,7 @@ extends RefCounted
 ##   and .atan2 (V8's exact results, see js_math.gd); Math.round is
 ##   SimMath.js_round; every TS division of two ints is written as a float
 ##   division.
+## - body and hurt_capsule() are the rebuild's (task 7.5).
 
 ## FState
 const STATES: Array[StringName] = [
@@ -61,6 +62,8 @@ var weapon: WeaponDef
 var abilities: Array[StringName]
 var name: String
 var armed: bool = true
+## The fighter's body in the rules: its hurt capsule (task 7.5).
+var body: FighterBody
 
 var hp: float = SimConst.HP_MAX
 var posture: float = 0.0
@@ -123,6 +126,7 @@ func _init(p_id: int, cfg: FighterConfig) -> void:
 	weapon = cfg.weapon
 	abilities = cfg.abilities if not cfg.abilities.is_empty() else cfg.weapon.default_abilities
 	name = cfg.name if cfg.name != "" else cfg.weapon.name
+	body = FighterBody.of(cfg.fighter_id)
 
 
 # ------------------------------------------------------------------ queries
@@ -133,6 +137,12 @@ func moveset() -> WeaponDef:
 
 func airborne() -> bool:
 	return pos.y > 0.001 or vel.y > 0.0
+
+
+## The hurt capsule that blades are swept against, where the fighter stands
+## now (risen with them in the air).
+func hurt_capsule() -> Capsule:
+	return body.hurt_capsule(pos)
 
 
 func hp_frac() -> float:

@@ -10,8 +10,12 @@ extends RefCounted
 ## does: 0 when the move starts, up to the move's total frames.
 ## - A hand track moves a weapon (or a fist): each key holds the grip and the
 ##   weapon's orientation, its blade (weapon +Y) and its edge (weapon +X),
-##   plus an optional tweak of the elbow's pole. A foot track moves a foot the
-##   same way, its pole being the knee's.
+##   plus an optional tweak of the elbow's pole. A bare hand's fist has a
+##   weapon's frame (see WeaponLook). A foot track moves a foot the same way:
+##   its grip is the ankle, its blade runs along the foot toward the toes and
+##   its edge out of the sole (forward and down when standing), and its pole
+##   is the knee's. What each track strikes with is the weapon's
+##   StrikeSegment (WeaponDef.blade and .foot), in that frame.
 ## - The body track holds the torso and pelvis coil and the pelvis shift.
 ## Positions and directions are (right, up, forward) from the fighter's feet,
 ## as SimMath.local_to_world takes them. A key's ease scales the speed through

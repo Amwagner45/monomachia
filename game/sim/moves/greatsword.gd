@@ -119,4 +119,7 @@ static func build() -> WeaponDef:
 		"ultimate": &"impaler",
 		"reach": 2.75,
 		"blurb": "Slow and crushing. Huge knockback, sweeps and overhead slams.",
+		# the blade from the guard to the point, 2.1 cm thick
+		"blade": StrikeSegment.make(V3.make(0.0, 0.136, 0.0), V3.make(0.0, 1.352, 0.0), 0.022),
+		"foot": null,
 	})

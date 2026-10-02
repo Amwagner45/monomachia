@@ -112,4 +112,10 @@ static func build() -> WeaponDef:
 		"ultimate": &"disarmed",
 		"reach": 1.2,
 		"blurb": "Punches and kicks: little damage, heavy posture damage, big knockback.",
+		# the fist across the knuckles, from the little finger's to the index
+		# finger's, thick enough to cover them on either hand of either fighter
+		"blade": StrikeSegment.make(V3.make(0.002, -0.039, 0.0), V3.make(0.021, 0.034, 0.0), 0.076),
+		# the foot along the boot, its underside on the sole and its ends at the
+		# heel and the toe
+		"foot": StrikeSegment.make(V3.make(0.03, -0.005, 0.0), V3.make(0.03, 0.205, 0.0), 0.1),
 	})

@@ -13,6 +13,7 @@ extends RefCounted
 ##   snake_case and build it with from_dict().
 ## - from_dict() also puts the weapon's swings (task 7) on its moves, from its
 ##   swing file (SwingFile.path_for(id)) when it has one.
+## - blade and foot are the rebuild's (task 7.5): what the swings strike with.
 
 const WEAPON_IDS: Array[StringName] = [&"katana", &"greatsword", &"daggers", &"fists"]
 const ULTIMATE_IDS: Array[StringName] = [&"moonsplitter", &"impaler", &"tempest", &"disarmed"]
@@ -49,13 +50,19 @@ var ultimate: StringName = &""
 var reach: float = 0.0
 ## blurb for menus
 var blurb: String = ""
+## What a hand track sweeps (task 7.5): the blade, between the weapon model's
+## BladeBase and BladeTip markers, or bare hands' fist.
+var blade: StrikeSegment = null
+## What a foot track sweeps: bare hands' foot; null for a weapon with no
+## kicks.
+var foot: StrikeSegment = null
 
 ## Every key a weapon record has: the fields above, in order.
 const KEYS: Array[String] = [
 	"id", "name", "cls", "speed_mult", "dodge_mult", "parry_window", "block_mitigation", "moves",
 	"light_start", "heavy_start", "sprint_light", "sprint_heavy", "dodge_light", "dodge_heavy",
 	"back_light", "back_heavy", "jump_light", "jump_heavy", "abilities", "default_abilities",
-	"ultimate", "reach", "blurb",
+	"ultimate", "reach", "blurb", "blade", "foot",
 ]
 
 
@@ -94,4 +101,6 @@ static func from_dict(d: Dictionary) -> WeaponDef:
 	w.ultimate = StringName(d["ultimate"])
 	w.reach = float(d["reach"])
 	w.blurb = String(d["blurb"])
+	w.blade = d["blade"]
+	w.foot = d["foot"]
 	return w

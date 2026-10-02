@@ -37,9 +37,9 @@ const ATTACK_BRAKE: float = 0.8
 
 ## Kept from the demo: a lunge stops with the two bodies this far apart.
 const LUNGE_GAP: float = 0.25
-## The Iai Slash (the Katana's heavy), tapped, from its move data: it lunges
-## 0.4 m over its frames 10 to 25, and its cut lands on frame 24, after 23
-## frames of startup.
+## The Iai Slash (the Katana's heavy), tapped, from the spec's Katana notes:
+## it lunges 0.4 m over its frames 10 to 25, and its cut lands on frame 24,
+## after 23 frames of startup.
 const IAI_LUNGE: float = 0.4
 const IAI_STARTUP: int = 23
 

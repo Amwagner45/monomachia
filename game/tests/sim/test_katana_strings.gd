@@ -3,6 +3,8 @@ extends GutTest
 ## through the rules. Expected numbers come from the spec, not the code.
 
 const H := preload("res://tests/sim/sim_helpers.gd")
+## toBeCloseTo's default precision (2 digits), as the neighbouring tests use
+const CLOSE: float = 0.005
 
 ## The spec's Katana table, the rows of the light string, its heavy endings
 ## and the vertical Iai: name, frames (startup, active, recovery), damage, posture, the
@@ -80,25 +82,30 @@ class PlayedString:
 	## records the step, and returns its events.
 	func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
 		var i: int = state.size()
-		W.step([p0, RawInput.empty() if p1 == null else p1])
-		var news: Array[Dictionary] = W.drain_events()
-		for e: Dictionary in news:
+		W.step([p0, SimHelpers.idle() if p1 == null else p1])
+		var new_events: Array[Dictionary] = W.drain_events()
+		for e: Dictionary in new_events:
 			e["step"] = i
-		events.append_array(news)
+		events.append_array(new_events)
 		var a: Fighter = W.fighters[0]
 		var attacking: bool = a.state == &"attack" and a.atk != null
 		state.append(a.state)
 		attack.append(a.atk.def.id if attacking else &"")
 		frame.append(a.atk.frame if attacking else -1)
 		sheathed.append(attacking and a.atk.charging)
-		return news
+		return new_events
 
 	## The step of fighter 0's first event of type t (-1 if none).
 	func step_of(t: StringName) -> int:
 		for e: Dictionary in all(t):
-			if e.get("f", e.get("attacker")) == 0:
+			if _by_fighter_0(e):
 				return e["step"]
 		return -1
+
+	## Whether fighter 0 made event e (a swing or whiff names its fighter as
+	## "f", a hit or block as "attacker").
+	static func _by_fighter_0(e: Dictionary) -> bool:
+		return e.get("f", e.get("attacker")) == 0
 
 	## The frame fighter 0's last attack id ended on, one past the last frame a
 	## step left it in (-1 if it never started): an attack is over on the step
@@ -114,12 +121,11 @@ class PlayedString:
 		var i: int = attack.rfind(id)
 		return &"?" if i < 0 or i + 1 >= state.size() else state[i + 1]
 
-	## The ids of fighter 0's attacks that made events of type t, in order
-	## (a swing or whiff names its fighter as "f", a hit or block as "attacker").
+	## The ids of fighter 0's attacks that made events of type t, in order.
 	func ids(t: StringName) -> Array[StringName]:
 		var out: Array[StringName] = []
 		for e: Dictionary in all(t):
-			if e.get("f", e.get("attacker")) == 0:
+			if _by_fighter_0(e):
 				out.append(e["attack"])
 		return out
 
@@ -206,23 +212,28 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 		assert_eq(r.state_after(last), &"free", "and the fighter is free after %s" % last)
 
 
-func test_kesa_cut_dodge_cancels_from_frame_20() -> void:
-	var light: int = Btn.LIGHT
+## Plays presses, the last starting attack id, after a hit (2.2 m) and after a
+## whiff (10 m), and checks a dodge pressed on its frame cancel - 1 is refused
+## there and comes on cancel, and one pressed on cancel comes at once.
+func _assert_dodge_cancels_from(presses: Array[int], id: StringName, cancel: int) -> void:
 	for gap: float in [2.2, 10.0]:
-		var what: String = "after a hit" if gap < 3.0 else "after a whiff"
-		var early: PlayedString = _play([light, light, light], gap, &"k_l3", KESA_CUT_CANCEL - 1)
+		var what: String = "%s %s" % [id, "after a hit" if gap < 3.0 else "after a whiff"]
+		var early: PlayedString = _play(presses, gap, id, cancel - 1)
 		assert_eq(
-			[early.ended_on(&"k_l3"), early.state_after(&"k_l3")],
-			[KESA_CUT_CANCEL, &"dodge"],
-			"%s: a dodge pressed on frame 19 is refused there and comes on 20" % what,
+			[early.ended_on(id), early.state_after(id)],
+			[cancel, &"dodge"],
+			"%s: a dodge pressed on frame %d is refused there and comes on %d" % [what, cancel - 1, cancel],
 		)
-		var on_time: PlayedString = _play([light, light, light], gap, &"k_l3", KESA_CUT_CANCEL)
+		var on_time: PlayedString = _play(presses, gap, id, cancel)
 		assert_eq(
-			[on_time.ended_on(&"k_l3"), on_time.state_after(&"k_l3")],
-			[KESA_CUT_CANCEL, &"dodge"],
-			"%s: one pressed on frame 20 comes at once" % what,
+			[on_time.ended_on(id), on_time.state_after(id)],
+			[cancel, &"dodge"],
+			"%s: one pressed on frame %d comes at once" % [what, cancel],
 		)
 
+
+func test_kesa_cut_dodge_cancels_from_frame_20() -> void:
+	_assert_dodge_cancels_from([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT], &"k_l3", KESA_CUT_CANCEL)
 
 
 # ------------------------------------------------------------------ the Iai Slash
@@ -235,10 +246,10 @@ func test_a_tapped_heavy_draws_the_iai_on_frame_23() -> void:
 	assert_eq(r.ids(&"hit"), [&"k_iai"] as Array[StringName], "and it hits")
 
 
-## Fighter 0 holds heavy for hold steps against an idle Katana gap m away, for
+## Fighter 0 holds heavy for hold steps against an idle Katana 2.2 m away, for
 ## 240 steps.
-static func _hold_heavy(hold: int, gap: float = 2.2) -> PlayedString:
-	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, gap)
+static func _hold_heavy(hold: int) -> PlayedString:
+	var W: World = H.make_world()
 	var r := PlayedString.new()
 	for i: int in 240:
 		r.step(W, H.btn(Btn.HEAVY) if i < hold else H.idle())
@@ -260,7 +271,7 @@ func test_an_iai_held_for_2_5_s_releases_by_itself_as_a_stronger_power_attack() 
 	assert_eq(release, IAI_SHEATHE + 150, "the stance ends 150 frames (2.5 s) after the sheathe, heavy still held")
 	assert_eq(r.step_of(&"hit") - release, IAI_DRAW, "and the cut lands 14 frames later")
 	var hit: Dictionary = r.find(&"hit")
-	assert_almost_eq(float(hit.get("damage", NAN)), 13.0 * 1.8, 0.005, "a full charge's damage")
+	assert_almost_eq(float(hit.get("damage", NAN)), 13.0 * 1.8, CLOSE, "a full charge's damage")
 
 
 func test_the_iai_hits_at_3_8_m_where_right_cut_whiffs() -> void:
@@ -277,12 +288,12 @@ func test_a_sheathed_fighter_cannot_block() -> void:
 	for i: int in 60:
 		var p0: RawInput = H.btn(Btn.HEAVY) if i < 12 else H.btn(Btn.HEAVY, Btn.BLOCK)
 		r.step(W, p0, H.btn(Btn.LIGHT) if i == 20 else H.idle())
-	var on_me: Callable = func(e: Dictionary) -> bool: return e["target"] == 0
-	var hits: Array[Dictionary] = r.all(&"hit").filter(on_me)
+	var on_fighter_0: Callable = func(e: Dictionary) -> bool: return e["target"] == 0
+	var hits: Array[Dictionary] = r.all(&"hit").filter(on_fighter_0)
 	assert_eq(hits.size(), 1, "the Right Cut hits")
 	if hits.size() == 1:
 		assert_true(r.sheathed[int(hits[0]["step"]) - 1], "a sheathed fighter")
-	assert_eq(r.all(&"block").filter(on_me), [] as Array[Dictionary], "holding block blocks nothing")
+	assert_eq(r.all(&"block").filter(on_fighter_0), [] as Array[Dictionary], "holding block blocks nothing")
 
 
 func test_a_heavy_after_the_iai_gives_rising_heaven() -> void:
@@ -290,20 +301,8 @@ func test_a_heavy_after_the_iai_gives_rising_heaven() -> void:
 
 
 func test_the_iai_dodge_cancels_late_in_its_recovery() -> void:
-	for gap: float in [2.2, 10.0]:
-		var what: String = "after a hit" if gap < 3.0 else "after a whiff"
-		var early: PlayedString = _play([Btn.HEAVY], gap, &"k_iai", IAI_CANCEL - 1)
-		assert_eq(
-			[early.ended_on(&"k_iai"), early.state_after(&"k_iai")],
-			[IAI_CANCEL, &"dodge"],
-			"%s: a dodge pressed on frame 38 is refused there and comes on 39" % what,
-		)
-		var on_time: PlayedString = _play([Btn.HEAVY], gap, &"k_iai", IAI_CANCEL)
-		assert_eq(
-			[on_time.ended_on(&"k_iai"), on_time.state_after(&"k_iai")],
-			[IAI_CANCEL, &"dodge"],
-			"%s: one pressed on frame 39 comes at once" % what,
-		)
+	_assert_dodge_cancels_from([Btn.HEAVY], &"k_iai", IAI_CANCEL)
+
 
 # ------------------------------------------------------------------ the spec's table
 

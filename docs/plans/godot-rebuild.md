@@ -967,9 +967,47 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - **What the strips show** (both fighters, rest to sprint): from rest the rules jump straight to 4.13 m/s, a tap step's speed (0.55 m in 8 frames), so a run starts on the jog. The walk shows only while braking, or walking slowly while blocking: the stick's 0.4 dead zone puts the slowest walk at 1.56 m/s, 0.94 while blocking.
       - The footsteps (19.4) still count distance; the phase could time them instead (left at 0, right at about 0.5), which is the owner's call.
       - **Tests:** `test_locomotion.gd` (12): the weights at rest, 0.98, 3.9 and 7.2 m/s, half way between and with the Greatsword's speeds; each fighter's strides measured from its own clips; mid-stance on a made-up foot path; the phase moving speed over stride on every frame from rest to sprint, never more than a sprint's step; the shown phase between frames by alpha, across the wrap; holding still in hit-stop and in a paused match (MatchHost); the hold clip at rest on the rules' clock (the pose compared with the clip's, which replaces `test_fighter_view`'s clock test); the jog and the sprint shown at the shared phase; the Greatsword's run and sprint; the left foot at mid-stance at phase 0 in every clip; which states move the legs. `test_move_sheet.gd` adds 3 (the drive's input and frames, the side view, a strip's captions and size). Mutation-tested: 19 mutations (the anchors, the stride, the phase's speed and frame, the clips' alignment, the dodge and the air, alpha, the Blend2 amounts, the weapon's speed, the hold clip's clock, one gait for all, the mid-stance's sweep and speed, the strip's frames, side, spacing and phase), each failing a test.
-  - [ ] **14.6 Hip-turn strafing and backpedal.** Legs turn toward travel (±80°, flipping to backwards past ±100° with hysteresis) on a spring, while the chest keeps facing the opponent.
+  - [x] **14.6 Hip-turn strafing and backpedal.** Legs turn toward travel (±80°, flipping to backwards past ±100° with hysteresis) on a spring, while the chest keeps facing the opponent.
     - Check: the leg-yaw function for 8 directions with hysteresis; the chest within 5° of the opponent while strafing; strips of strafing, backpedalling and moving back-left reviewed.
     - Blocked by: 14.5 · Stories: 12, 13
+    - Done:
+      - **The turn** (`Locomotion`): the legs turn toward the way the fighter travels relative to the way it faces (the rules keep it facing the opponent), at most 80° either way. Travelling more than 100° from straight ahead they turn toward the opposite way and the step phase runs back. The switch has 10° of hysteresis round 100°: backwards past 105°, forwards again under 95°. The spike's band was 90–110°, but the rules' strafe travels at 90.4–91.6° from the facing (they widen the orbit a little to keep the distance), so a strafe straight after a backpedal would have kept running backwards. Below 0.1 m/s the legs turn back to straight and run forwards again.
+      - **The spring:** an exact critically damped spring (ω 12, about a third of a second), stepped once per rules frame and shown between frames by the host's alpha, so it holds in hit-stop and pause like the phase.
+      - **On the body** (`Locomotion.turn()`): the pelvis takes 70% of the turn and the thighs 30%, and the spine turns the chest back by the pelvis's share. The running clips swing the shoulders round against the hips: the jog about ±40°, the sprint ±25°, the walk ±10°. That fails "the chest within 5° of the opponent" whichever way the legs run, and pulls on arms holding a sword. So while the legs move (by the blend's moving weight), `BodyLayer.untwist` turns the spine, neck and head back bone by bone to face the way the hips do. This also steadies the upper body running straight ahead, a change to 14.5's run. At rest the hold clip keeps its own turn of the chest.
+      - **The feet go with the legs:** `BodyLayer` now records the clip's feet after the hips and thighs turn. Before, it recorded them first, so the leg IK (`feet_from_clip`) would have pulled turned feet back onto the clip's forward path.
+      - **The reach check** (`FighterView._within_reach`) places the shoulders with `BodyLayer.moved()`, which works the layer's turns, untwist, hip shift, spine bend and lean on the clip's bones. Before, it handled only the crouch and the bend; untwisting the jog moves a shoulder up to 18 cm on the Rogue and 22 cm on the Hunter.
+      - **Measured:** while strafing at 3 m, the chest and head stay within 0.22° of the opponent on both fighters. At mid-stance the planted foot moves over the ground 0.4 m/s running forward-left at 3.7 m/s, 0.5–0.6 m/s backpedalling at 3.0 and moving back-left at 3.26, and 0.9 m/s strafing at 3.5, where the legs stop at 80° of the 91° travelled.
+      - **Strips:** the contact-sheet tool's drives are now one table (input, notes, views, spacing). New drives: `strafe_left`, `strafe_right`, `backpedal` and `back_left`, each still for 12 frames, moving for 72, then stopped for 24, with the opponent 8 m off so the rules keep the distance and the fighter circles it. There is a new `front` view (from in front, 20° to the fighter's right). Captions give the legs' turn ("legs +80°", "legs -45° back"), and with several views each gets its own block of rows. `npm run shots -- res://tools/shot_scenes/move_sheet.tscn shots/14.6/rogue_strafe_left.png 1 --drive=strafe_left`.
+      - **What the strips show** (both fighters):
+        - From rest, a strafe starts at the tap step's 4.13 m/s while the legs are still turning (15° by frame 16, 38° by frame 20, 80° by about frame 48).
+        - The backpedal is the walk and jog played backwards (0.31 and 0.69 at 3.0 m/s): long running strides backwards. In guard, 14.9's shuffle replaces it.
+        - Back-left runs backwards with the legs turned 49° to the right.
+        - After stopping, the legs turn back to straight over about a third of a second, on the hold clip.
+      - **Tests:**
+        - `test_locomotion.gd` (21, 9 new):
+          - the turn and the backwards flag for 8 directions from either state;
+          - the hysteresis at 94, 96, 100, 104 and 106° each way, and a strafe after a backpedal;
+          - the spring on the closed form, never overshooting, and two half steps equal to one;
+          - strafing left then right at 3 m: the legs at ±80°, the hips turned past 45°, the chest and head within 5° of the opponent on every posed frame, straight again once stopped;
+          - backpedalling: the phase moving back a stride per cycle on every frame, the legs straight, and forwards again at rest;
+          - back-left: backwards with the legs turned toward the opposite of the travel;
+          - the turn holding in hit-stop and shown by alpha, with the 70/30 split and the spine's turn back;
+          - the planted foot under 20% of the running speed at mid-stance on a diagonal;
+          - the hands within 1 cm of their grips while strafing;
+          - and the shown phase going the short way round running backwards.
+        - `test_fighter_rig.gd` (3 new): untwisting squares the spine, neck and head to the hips (halfway at 0.5); turned legs take the planted feet with them; `moved()` matches the posed upper body to 1 mm with every value set.
+        - `test_move_sheet.gd` (3 new): the four drives' input and spacing, the front view, and a strafe strip's captions and per-view blocks.
+        - Mutation-tested: 29 mutations, each failing a test:
+          - the turn's limit, the hysteresis's width and direction, the backwards turn;
+          - the spring's decay and stiffness;
+          - the pelvis's share, the spine's turn back, no untwist and untwisting at rest;
+          - the phase's direction backwards, the shown phase's way round, the shown turn's alpha;
+          - backwards kept at rest, the turn's minimum speed, the travel ignoring the facing;
+          - the feet recorded before the turn;
+          - the neck and head left twisted, absolute twists;
+          - `moved()` without the pelvis, untwist or lean;
+          - the reach from the clip's shoulders, no turn on the body;
+          - the front view's angle, the caption's back, a strafe drive's spacing, the drive's spacing and views ignored.
   - [ ] **14.7 Lean into runs, and brace when braking.** A lean toward smoothed acceleration (at most 11°), and a back-lean with a pelvis drop when braking.
     - Check: the lean follows acceleration within its cap and holds in hit-stop; braking leans back and settles; a run-brake-stop strip is reviewed.
     - Blocked by: 14.5 · Stories: 13

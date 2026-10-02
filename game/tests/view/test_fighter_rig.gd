@@ -297,6 +297,108 @@ func test_the_body_layer_turns_the_body() -> void:
 	assert_gt(posed[head].origin.z, clip[head].origin.z + 0.2, "leaning about +X tips the body forward")
 
 
+## A bone's turn about the vertical from its rest (radians, positive to the
+## fighter's left).
+func _heading(f: FighterModel, poses: Array[Transform3D], bone: String) -> float:
+	var i: int = f.skeleton.find_bone(bone)
+	var turn: Basis = poses[i].basis.orthonormalized() * f.skeleton.get_bone_global_rest(i).basis.orthonormalized().inverse()
+	var fwd: Vector3 = turn * Vector3.BACK
+	return atan2(fwd.x, fwd.z)
+
+
+## Freezes `f` in the jog where it twists its chest furthest from its hips,
+## and returns that twist.
+func _jog_twisted(f: FighterModel) -> float:
+	var ap: AnimationPlayer = f.animation_player
+	f.play(&"Jog_Fwd", 0.0)
+	var length: float = ap.current_animation_length
+	var sk: Skeleton3D = f.skeleton
+	var best: float = 0.0
+	var best_at: float = 0.0
+	for k: int in 24:
+		ap.seek(length * k / 24.0, true)
+		var clip: Array[Transform3D] = []
+		for i: int in sk.get_bone_count():
+			clip.append(sk.get_bone_global_pose(i))
+		var twist: float = wrapf(_heading(f, clip, "UpperChest") - _heading(f, clip, "Hips"), -PI, PI)
+		if absf(twist) > absf(best):
+			best = twist
+			best_at = length * k / 24.0
+	ap.seek(best_at, true)
+	ap.pause()
+	return best
+
+
+## Untwisting takes the clip's own twist above the hips out, bone by bone:
+## the spine, neck and head face the way the hips do.
+func test_untwisting_squares_the_spine_neck_and_head_to_the_hips() -> void:
+	var f: FighterModel = _fighter(&"rogue", null, false)
+	var twist: float = _jog_twisted(f)
+	assert_gt(absf(rad_to_deg(twist)), 30.0, "the jog swings the chest")
+	var clip: Array[Transform3D] = await _posed(f)
+	var hips: float = _heading(f, clip, "Hips")
+	var body: BodyLayer = f.rig.body
+	body.untwist = 1.0
+	var posed: Array[Transform3D] = await _posed(f)
+	for bone: String in ["Spine", "Chest", "UpperChest", "Neck", "Head"]:
+		assert_almost_eq(rad_to_deg(wrapf(_heading(f, posed, bone) - hips, -PI, PI)), 0.0, 0.5, "%s faces the way the hips do" % bone)
+	assert_almost_eq(_heading(f, posed, "Hips"), hips, 1e-4, "the hips stay")
+	body.untwist = 0.5
+	posed = await _posed(f)
+	assert_almost_eq(wrapf(_heading(f, posed, "UpperChest") - hips, -PI, PI), twist / 2.0, deg_to_rad(0.5), "half of it")
+	body.clear()
+	assert_eq(body.untwist, 0.0)
+
+
+## The legs' turn takes the feet with it: the leg IK keeps them where the
+## turned legs put them, not where the clip had them.
+func test_turned_legs_take_the_planted_feet_with_them() -> void:
+	var f: FighterModel = _fighter(&"rogue", null, false)
+	f.play(&"Walk", 0.0)
+	f.animation_player.seek(0.1, true)
+	f.animation_player.pause()
+	var sk: Skeleton3D = f.skeleton
+	var clip: Array[Transform3D] = await _posed(f)
+	var body: BodyLayer = f.rig.body
+	body.pelvis_yaw = 0.5
+	body.thigh_yaw = 0.2
+	var turned: Array[Transform3D] = await _posed(f)
+	f.rig.feet_from_clip = true
+	f.rig.leg_weight = 1.0
+	body.hips_offset = Vector3(0.0, -0.05, 0.0)
+	var planted: Array[Transform3D] = await _posed(f)
+	for side: String in FighterRig.SIDES:
+		var foot: int = sk.find_bone(side + "Foot")
+		assert_gt(turned[foot].origin.distance_to(clip[foot].origin), 0.05, "%s foot: turning the legs moves it" % side)
+		assert_lt(planted[foot].origin.distance_to(turned[foot].origin), NEAR, "%s foot planted where the turned leg put it" % side)
+		var angle: float = planted[foot].basis.get_rotation_quaternion().angle_to(turned[foot].basis.get_rotation_quaternion())
+		assert_lt(rad_to_deg(angle), 1.0, "%s foot turned with the leg" % side)
+
+
+## moved() says where the body layer puts a point riding the upper chest
+## (a shoulder, say), before the skeleton updates: the reach check uses it.
+func test_the_body_layer_says_where_it_moves_the_upper_body() -> void:
+	var f: FighterModel = _fighter(&"rogue", null, false)
+	_jog_twisted(f)
+	var sk: Skeleton3D = f.skeleton
+	var bones: Array[String] = ["UpperChest", "Neck", "LeftShoulder", "RightShoulder", "LeftUpperArm", "RightUpperArm"]
+	var body: BodyLayer = f.rig.body
+	body.pelvis_yaw = 0.6
+	body.thigh_yaw = 0.25
+	body.spine_yaw = -0.6
+	body.untwist = 1.0
+	body.hips_offset = Vector3(0.02, -0.08, 0.03)
+	body.spine_pitch = 0.2
+	body.spine_roll = -0.1
+	body.lean = Vector3(0.08, 0.0, -0.05)
+	var said: Dictionary[String, Vector3] = {}
+	for bone: String in bones:
+		said[bone] = body.moved(sk, sk.get_bone_global_pose(sk.find_bone(bone)).origin)
+	var posed: Array[Transform3D] = await _posed(f)
+	for bone: String in bones:
+		assert_lt(_bone(f, posed, bone).origin.distance_to(said[bone]), 0.001, bone)
+
+
 ## The finger solver on a made-up finger: each joint and the tip land on
 ## the circle, going round it the way fingers curl.
 func test_wrap_curls_puts_each_joint_on_the_circle() -> void:

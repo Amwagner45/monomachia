@@ -18,7 +18,8 @@ extends Node3D
 ## - under it all, the legs walk, jog and sprint with the rules' speed
 ##   (Locomotion), over the clip for the held weapon (its WeaponHold's) at
 ##   rest, all on the rules' clock, so they hold still through hit-stop and
-##   pause;
+##   pause. They turn toward the way the fighter travels, or run backwards,
+##   while the chest keeps facing the opponent;
 ## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
 ##   timed on the rules' frames from the KO;
 ## - a disarmed fighter holds nothing, its arms on the clip.
@@ -172,6 +173,7 @@ func _pose(f: Fighter, p: StickPose.Pose) -> void:
 	var rig: FighterRig = model.rig
 	rig.leg_weight = 1.0
 	rig.body.clear()
+	locomotion.turn(rig.body)
 	rig.body.spine_pitch = p.lean
 	rig.body.hips_offset = Vector3(0.0, -p.crouch, 0.0)
 	model.rotation = Vector3(0.0, p.spin, 0.0)
@@ -203,14 +205,14 @@ func _strike_sweeps(f: Fighter) -> Array[Vector3]:
 
 ## Pulls a weapon pose in toward the shoulders until every hand that grips
 ## it can reach its grip within REACH of its arm. The shoulders are the
-## clip's, moved as the body layer will move them: the hips dropped and the
-## spine bent.
+## clip's, moved as the body layer will move them (BodyLayer.moved()): the
+## hips turned and dropped, the spine turned and bent.
 func _within_reach(index: int, xf: Transform3D, body: BodyLayer) -> Transform3D:
 	var rig: FighterRig = model.rig
 	var grips: Dictionary[String, Vector3] = rig.grips_on(index)
 	var shoulders: Dictionary[String, Vector3] = {}
 	for s: String in grips:
-		shoulders[s] = _bent(model.skeleton, _clip_origin(s + "UpperArm"), body)
+		shoulders[s] = body.moved(model.skeleton, _clip_origin(s + "UpperArm"))
 	for attempt: int in 4:
 		var moved: bool = false
 		for s: String in grips:
@@ -222,27 +224,6 @@ func _within_reach(index: int, xf: Transform3D, body: BodyLayer) -> Transform3D:
 		if not moved:
 			break
 	return xf
-
-
-## A point of the clip's upper body moved the way `body` will move it: by
-## the hips' offset, then bent forward by the spine pitch, shared over
-## Spine, Chest and UpperChest, each turning about its own joint.
-static func _bent(sk: Skeleton3D, point: Vector3, body: BodyLayer) -> Vector3:
-	point += body.hips_offset
-	if absf(body.spine_pitch) < 1e-5:
-		return point
-	var joints: Array[Vector3] = []
-	for bone: StringName in BodyLayer.SPINE_SHARE:
-		joints.append(sk.get_bone_global_pose(sk.find_bone(bone)).origin + body.hips_offset)
-	var i: int = 0
-	for bone: StringName in BodyLayer.SPINE_SHARE:
-		var turn: Basis = Basis(Vector3.RIGHT, body.spine_pitch * BodyLayer.SPINE_SHARE[bone])
-		var at: Vector3 = joints[i]
-		point = at + turn * (point - at)
-		for k: int in range(i + 1, joints.size()):
-			joints[k] = at + turn * (joints[k] - at)
-		i += 1
-	return point
 
 
 func _clip_origin(bone: String) -> Vector3:

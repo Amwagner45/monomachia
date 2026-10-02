@@ -3,7 +3,10 @@ extends GutTest
 ## clip), walk, jog and sprint blended by the rules' speed, every clip played
 ## from one shared step phase that moves a stride per cycle, each fighter's
 ## strides measured from its own clips by FootPhase, all on the rules' clock,
-## so it holds still in hit-stop and pause.
+## so it holds still in hit-stop and pause. The legs turn toward the way the
+## fighter travels (at most 80°, running backwards past 100° with hysteresis)
+## on a spring, the feet going with them, while the chest keeps facing the
+## opponent.
 
 ## The bones compared when a pose should be a clip's.
 const BONES: Array[String] = ["Hips", "Spine", "LeftUpperLeg", "LeftLowerLeg", "RightUpperLeg", "RightLowerLeg", "LeftFoot"]
@@ -77,6 +80,28 @@ func _assert_weights(got: PackedFloat32Array, want: Array, what: String) -> void
 	assert_eq(got.size(), 4, what)
 	for i: int in 4:
 		assert_almost_eq(got[i], float(want[i]), 1e-5, "%s: %s" % [what, ["idle", "walk", "jog", "sprint"][i]])
+
+
+## A bone's turn about the vertical from its rest, in a posed frame's bones
+## (radians, positive to the fighter's left).
+static func _heading(v: FighterView, bones: Array[Transform3D], bone: String) -> float:
+	var sk: Skeleton3D = v.model.skeleton
+	var i: int = sk.find_bone(bone)
+	var turn: Basis = bones[i].basis.orthonormalized() * sk.get_bone_global_rest(i).basis.orthonormalized().inverse()
+	var fwd: Vector3 = turn * Vector3.BACK
+	return atan2(fwd.x, fwd.z)
+
+
+## Where a bone of the posed frame is in the world.
+static func _world_at(v: FighterView, bones: Array[Transform3D], bone: String) -> Vector3:
+	var sk: Skeleton3D = v.model.skeleton
+	return sk.global_transform * bones[sk.find_bone(bone)].origin
+
+
+## The posed fighter's bones, at the end of the modifier stack.
+func _posed(v: FighterView) -> Array[Transform3D]:
+	var frame: PoseCheck.Frame = await PoseCheck.frame_of(v.model)
+	return frame.bones
 
 
 # ------------------------------------------------------------------ the blend
@@ -175,11 +200,16 @@ func test_the_shown_phase_blends_between_rules_frames_by_alpha() -> void:
 	for alpha: float in [0.0, 0.25, 1.0]:
 		_show(v, f, alpha)
 		assert_almost_eq(loco.shown_phase, fposmod(loco.prev_phase + step * alpha, 1.0), 1e-6, "alpha %.2f" % alpha)
-	# across the wrap from just under 1 to just over 0
+	# across the wrap from just under 1 to just over 0, and back again
+	# running backwards: the short way round
 	loco.prev_phase = 0.99
 	loco.phase = 0.01
 	_show(v, f, 0.5)
-	assert_almost_eq(loco.shown_phase, 0.0, 1e-6, "half way round the wrap")
+	assert_almost_eq(wrapf(loco.shown_phase, -0.5, 0.5), 0.0, 1e-6, "half way round the wrap")
+	loco.prev_phase = 0.01
+	loco.phase = 0.99
+	_show(v, f, 0.25)
+	assert_almost_eq(wrapf(loco.shown_phase, -0.5, 0.5), 0.005, 1e-6, "a quarter of the way back round it")
 
 
 func test_the_phase_holds_in_hit_stop() -> void:
@@ -319,3 +349,191 @@ func test_only_walking_and_running_on_the_ground_move_the_legs() -> void:
 	f.set_state(&"free")
 	f.pos = V3.make(0.0, 0.5, 0.0)
 	assert_eq(Locomotion.ground_speed(f), 0.0, "in the air")
+
+
+# ------------------------------------------------------------------ the hip turn
+
+func test_the_legs_turn_toward_travel_in_eight_directions() -> void:
+	# [travel, runs backwards, the legs' turn], in degrees, positive to the
+	# fighter's left: forwards up to the side (the turn stops at 80°),
+	# backwards behind it, the legs turned to the travel's opposite
+	var cases: Array = [
+		[0.0, false, 0.0], [45.0, false, 45.0], [90.0, false, 80.0], [135.0, true, -45.0],
+		[180.0, true, 0.0], [-135.0, true, 45.0], [-90.0, false, -80.0], [-45.0, false, -45.0],
+	]
+	for c: Array in cases:
+		var travel: float = deg_to_rad(c[0])
+		for was: bool in [false, true]:
+			assert_eq(Locomotion.runs_backwards(travel, was), c[1], "%+.0f° after running %s" % [c[0], "backwards" if was else "forwards"])
+		assert_almost_eq(rad_to_deg(Locomotion.leg_target(travel, c[1])), c[2], 1e-4, "%+.0f°: the legs' turn" % c[0])
+	assert_almost_eq(rad_to_deg(Locomotion.leg_target(-PI, true)), 0.0, 1e-4, "straight back either way round")
+
+
+func test_running_backwards_switches_at_100_degrees_with_hysteresis() -> void:
+	for side: float in [1.0, -1.0]:
+		var at: Callable = func(deg: float, was: bool) -> bool:
+			return Locomotion.runs_backwards(side * deg_to_rad(deg), was)
+		assert_false(at.call(104.0, false), "short of 105° a forward run stays forward")
+		assert_true(at.call(106.0, false), "past 105° it runs backwards")
+		assert_true(at.call(96.0, true), "over 95° a backward run stays backward")
+		assert_false(at.call(94.0, true), "under 95° it runs forwards again")
+		assert_false(at.call(100.0, false), "at 100° each keeps what it was")
+		assert_true(at.call(100.0, true), "at 100° each keeps what it was")
+	# the rules' strafe orbits out a little, travelling at up to about 92°
+	# from the facing: it runs forwards whatever came before
+	assert_false(Locomotion.runs_backwards(deg_to_rad(92.0), true), "a strafe after a backpedal")
+	# in the band the turn stops at 80°, whichever way the legs run
+	assert_almost_eq(rad_to_deg(Locomotion.leg_target(deg_to_rad(100.0), false)), 80.0, 1e-4)
+	assert_almost_eq(rad_to_deg(Locomotion.leg_target(deg_to_rad(100.0), true)), -80.0, 1e-4)
+
+
+func test_the_legs_turn_on_a_critically_damped_spring() -> void:
+	# from rest toward a turn of 1, frame by frame: on the closed form
+	# 1 - (1 + wt)e^(-wt), never overshooting
+	var w: float = Locomotion.LEG_SPRING
+	assert_eq(w, 12.0)
+	var x: Vector2 = Vector2.ZERO
+	for i: int in 60:
+		var before: float = x.x
+		x = Locomotion.spring(x.x, x.y, 1.0, w, 1.0 / 60.0)
+		var t: float = (i + 1) / 60.0
+		assert_almost_eq(x.x, 1.0 - (1.0 + w * t) * exp(-w * t), 1e-5, "frame %d" % (i + 1))
+		assert_gte(x.x, before, "never turning back")
+		assert_lte(x.x, 1.0, "never overshooting")
+	# two half steps land where one whole step does
+	var one: Vector2 = Locomotion.spring(0.2, -0.5, 1.0, w, 1.0 / 30.0)
+	var half: Vector2 = Locomotion.spring(0.2, -0.5, 1.0, w, 1.0 / 60.0)
+	half = Locomotion.spring(half.x, half.y, 1.0, w, 1.0 / 60.0)
+	assert_almost_eq(half.x, one.x, 1e-6)
+	assert_almost_eq(half.y, one.y, 1e-5)
+
+
+func test_strafing_turns_the_legs_toward_travel_and_keeps_the_chest_on_the_opponent() -> void:
+	var W: World = _world(3.0)
+	var f: Fighter = W.fighters[0]
+	var opp: Fighter = W.fighters[1]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	var body: BodyLayer = v.model.rig.body
+	_show(v, f)
+	# left, then right: [the strafe axis, the way the legs turn]
+	for spec: Array in [[-1.0, 1.0], [1.0, -1.0]]:
+		for i: int in 60:
+			_step(W, v, SimHelpers.move(spec[0], 0.0))
+			if i < 40:
+				continue
+			var bones: Array[Transform3D] = await _posed(v)
+			var to: float = SimMath.yaw_to(f.pos, opp.pos)
+			for bone: String in ["UpperChest", "Head"]:
+				var off: float = rad_to_deg(wrapf(f.yaw + _heading(v, bones, bone) - to, -PI, PI))
+				assert_lt(absf(off), 5.0, "%s faces the opponent strafing %s (off by %.1f°)" % [bone, "left" if spec[0] < 0.0 else "right", off])
+			assert_gt(_heading(v, bones, "Hips") * spec[1], deg_to_rad(45.0), "the hips turn toward travel")
+		assert_false(loco.backwards)
+		assert_almost_eq(rad_to_deg(loco.leg_yaw), 80.0 * spec[1], 0.5, "the legs turned as far as they go")
+	for i: int in 50:
+		_step(W, v, SimHelpers.idle())
+	assert_almost_eq(rad_to_deg(loco.leg_yaw), 0.0, 0.5, "and back to straight once it stops")
+	assert_eq(body.untwist, 0.0, "at rest the hold keeps its own chest")
+
+
+func test_backpedalling_runs_the_cycle_backwards_with_the_legs_straight() -> void:
+	# near enough the middle that it doesn't back into the wall
+	var W: World = _world(8.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	_show(v, f)
+	for i: int in 50:
+		var before: float = loco.phase
+		_step(W, v, SimHelpers.move(0.0, -1.0))
+		var s: float = _speed(f)
+		assert_true(loco.backwards, "frame %d" % W.frame)
+		assert_almost_eq(wrapf(loco.phase - before, -0.5, 0.5), -s / loco.stride(s) / 60.0, 1e-5, "back a stride per cycle at %.2f m/s" % s)
+	assert_almost_eq(_speed(f), SimConst.MOVE_RUN_BACK, 1e-3, "at the backpedal's speed")
+	assert_almost_eq(rad_to_deg(loco.leg_yaw), 0.0, 0.5, "the legs straight")
+	for i: int in 20:
+		_step(W, v, SimHelpers.idle())
+	assert_false(loco.backwards, "standing still, the legs face forwards again")
+
+
+func test_moving_back_left_runs_backwards_with_the_legs_turned_right() -> void:
+	var W: World = _world(8.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(-0.7071, -0.7071))
+	var travel: float = rad_to_deg(Locomotion.travel(f))
+	assert_between(travel, 120.0, 140.0, "back and to the left")
+	assert_true(loco.backwards)
+	assert_almost_eq(rad_to_deg(loco.leg_yaw), travel - 180.0, 0.5, "turned to the right, running back along it")
+	var bones: Array[Transform3D] = await _posed(v)
+	assert_lt(_heading(v, bones, "Hips"), deg_to_rad(-25.0), "the hips turned right")
+
+
+func test_the_legs_turn_holds_in_hit_stop_and_shows_between_frames_by_alpha() -> void:
+	var W: World = _world(3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	var body: BodyLayer = v.model.rig.body
+	_show(v, f)
+	for i: int in 5:
+		_step(W, v, SimHelpers.move(-1.0, 0.0))
+	var held: float = loco.leg_yaw
+	assert_between(rad_to_deg(held), 5.0, 70.0, "turning")
+	W.hitstop = 8
+	for i: int in 8:
+		_step(W, v, SimHelpers.move(-1.0, 0.0))
+		assert_eq(loco.leg_yaw, held, "hit-stop step %d" % i)
+		assert_eq(loco.shown_leg_yaw, held)
+	_step(W, v, SimHelpers.move(-1.0, 0.0))
+	assert_gt(loco.leg_yaw, held, "and turns on after it")
+	for alpha: float in [0.0, 0.5]:
+		_show(v, f, alpha)
+		assert_almost_eq(loco.shown_leg_yaw, lerpf(held, loco.leg_yaw, alpha), 1e-6, "alpha %.1f" % alpha)
+	assert_almost_eq(body.pelvis_yaw, 0.7 * loco.shown_leg_yaw, 1e-6, "the pelvis takes 70% of the turn")
+	assert_almost_eq(body.thigh_yaw, 0.3 * loco.shown_leg_yaw, 1e-6, "the thighs the rest")
+	assert_almost_eq(body.spine_yaw, -0.7 * loco.shown_leg_yaw, 1e-6, "the spine turns the chest back")
+
+
+func test_the_planted_foot_stays_put_running_on_a_diagonal() -> void:
+	var W: World = _world()
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var loco: Locomotion = v.locomotion
+	_show(v, f)
+	for i: int in 40:
+		_step(W, v, SimHelpers.move(-0.7071, 0.7071))
+	assert_almost_eq(rad_to_deg(loco.leg_yaw), rad_to_deg(Locomotion.travel(f)), 0.5, "the legs turned the way it runs")
+	var last: Vector3 = Vector3.INF
+	var slides: Array[float] = []
+	for i: int in 80:
+		_step(W, v, SimHelpers.move(-0.7071, 0.7071))
+		var foot: Vector3 = _world_at(v, await _posed(v), "LeftFoot")
+		var planted: bool = absf(wrapf(loco.shown_phase, -0.5, 0.5)) < 0.05
+		if planted and last != Vector3.INF:
+			slides.append(Vector2(foot.x - last.x, foot.z - last.z).length() * 60.0)
+		last = foot if planted else Vector3.INF
+	assert_gt(slides.size(), 4, "it passed mid-stance")
+	var s: float = _speed(f)
+	for slide: float in slides:
+		assert_lt(slide, 0.2 * s, "the left foot at mid-stance slides %.2f m/s over the ground, running at %.2f" % [slide, s])
+
+
+func test_the_arms_keep_their_grip_while_strafing() -> void:
+	var W: World = _world(3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view()
+	var rig: FighterRig = v.model.rig
+	var sk: Skeleton3D = v.model.skeleton
+	for i: int in 50:
+		_step(W, v, SimHelpers.move(-1.0, 0.0))
+		if i < 20:
+			continue
+		var bones: Array[Transform3D] = await _posed(v)
+		for side: String in FighterRig.SIDES:
+			if not rig.drives(side):
+				continue
+			var hand: Vector3 = bones[sk.find_bone(side + "Hand")].origin
+			assert_lt(hand.distance_to(rig.hand_frame(side).origin), 0.01, "%s hand on its grip, frame %d" % [side, W.frame])

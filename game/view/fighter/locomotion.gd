@@ -24,6 +24,16 @@ extends RefCounted
 ##   position does. The world's frame stands still in hit-stop and while
 ##   paused, and so do the legs.
 ## - The hold clip runs on the rules' clock, as before (the time is passed in).
+## - The legs turn toward the way the fighter travels, relative to the way
+##   it faces (the opponent), by at most LEG_TURN_MAX: the clips only run
+##   forwards, so a strafe is a run turned 80°. Travelling more than
+##   BACKWARDS_AT from straight ahead, they turn toward the opposite way and
+##   the cycle runs backwards (a backpedal). The turn follows on a spring,
+##   once per rules frame, and turn() puts it on the body: the pelvis and the
+##   thighs share it, the spine turns the chest back, and the clip's own twist
+##   above the hips comes out as far as the legs move, so the chest faces the
+##   opponent whichever way the legs run. The leg IK plants the feet where
+##   the turned legs put them (BodyLayer.clip_feet).
 ##
 ## A KO's fall plays on the model's AnimationPlayer instead: the view stops
 ## updating the tree, and the player's pose stands.
@@ -37,6 +47,23 @@ const NODES: Array[StringName] = [&"idle", &"walk", &"jog", &"sprint"]
 const WALK_SPEED: float = 0.98
 ## The fighter states in which the legs walk and run with the speed.
 const MOVING_STATES: Array[StringName] = [&"free", &"step"]
+## The furthest the legs turn from straight ahead, either way (radians).
+const LEG_TURN_MAX: float = 80.0 * PI / 180.0
+## Travelling further than this from straight ahead (radians, either way),
+## the legs run backwards. The switch has BACKWARDS_HYSTERESIS round it, so a
+## way near it doesn't flicker: backwards past 105°, forwards again under 95°.
+## A strafe travels at up to about 92° (the rules widen the orbit a little to
+## keep the distance), so it runs forwards whatever came before.
+const BACKWARDS_AT: float = 100.0 * PI / 180.0
+const BACKWARDS_HYSTERESIS: float = 10.0 * PI / 180.0
+## How stiff the spring the legs' turn follows is (1/s): critically damped,
+## about a third of a second to turn.
+const LEG_SPRING: float = 12.0
+## How much of the legs' turn the pelvis takes; the thighs take the rest.
+const PELVIS_SHARE: float = 0.7
+## Below this ground speed (m/s) the travel has no way to it, and the legs
+## turn back to straight ahead and run forwards.
+const TURN_MIN_SPEED: float = 0.1
 
 ## Each fighter's gaits (FighterLook id -> Array of FootPhase.Gait, in CLIPS
 ## order), measured once.
@@ -56,10 +83,19 @@ var prev_speed: float = 0.0
 ## The fighter's running and sprinting speeds, the jog's and sprint's anchors.
 var run_speed: float = SimConst.MOVE_RUN_FORWARD
 var sprint_speed: float = SimConst.MOVE_SPRINT
-## What was shown last: the phase, and the weights of idle, walk, jog and
-## sprint.
+## The legs run backwards: the step phase runs back.
+var backwards: bool = false
+## The legs' turn from straight ahead (radians, positive to the fighter's
+## left) after the last rules frame and after the one before, and how fast
+## it turns (rad/s).
+var leg_yaw: float = 0.0
+var prev_leg_yaw: float = 0.0
+var leg_yaw_rate: float = 0.0
+## What was shown last: the phase, the weights of idle, walk, jog and
+## sprint, and the legs' turn.
 var shown_phase: float = 0.0
 var shown: PackedFloat32Array = PackedFloat32Array([1.0, 0.0, 0.0, 0.0])
+var shown_leg_yaw: float = 0.0
 
 var _root: AnimationNodeBlendTree
 ## The rules frame the phase is at; -1 before the first update.
@@ -122,6 +158,37 @@ static func ground_speed(f: Fighter) -> float:
 	return Vector2(f.vel.x, f.vel.z).length()
 
 
+## The way fighter `f` travels over the ground from the way it faces
+## (radians, 0 straight ahead, positive to its left).
+static func travel(f: Fighter) -> float:
+	return wrapf(atan2(f.vel.x, f.vel.z) - f.yaw, -PI, PI)
+
+
+## Whether legs travelling `way` (as travel() gives it) run backwards, when
+## they ran backwards before (`was`) or not: past BACKWARDS_AT, with the
+## hysteresis.
+static func runs_backwards(way: float, was: bool) -> bool:
+	var at: float = BACKWARDS_AT + BACKWARDS_HYSTERESIS / 2.0 * (-1.0 if was else 1.0)
+	return absf(way) > at
+
+
+## The legs' turn for travelling `way`: toward it, or toward its opposite when
+## running backwards (`back`), by at most LEG_TURN_MAX either way.
+static func leg_target(way: float, back: bool) -> float:
+	var turn: float = wrapf(way - PI, -PI, PI) if back else way
+	return clampf(turn, -LEG_TURN_MAX, LEG_TURN_MAX)
+
+
+## A critically damped spring of stiffness `omega` (1/s) at `x`, moving at
+## `rate`, `dt` seconds on toward `target`: (x, rate) then. Exact, so two
+## half steps land where one whole step does.
+static func spring(x: float, rate: float, target: float, omega: float, dt: float) -> Vector2:
+	var d: float = x - target
+	var c: float = rate + omega * d
+	var e: float = exp(-omega * dt)
+	return Vector2(target + (d + c * dt) * e, (rate - omega * c * dt) * e)
+
+
 ## Seconds into moving clip `index` (in CLIPS) at shared phase `p`.
 func clip_time(index: int, p: float) -> float:
 	var g: FootPhase.Gait = gaits[index]
@@ -142,19 +209,46 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 		speed = ground_speed(f)
 		prev_speed = speed
 		prev_phase = phase
+		prev_leg_yaw = leg_yaw
 	elif frame > _frame:
 		var s: float = ground_speed(f)
+		var target: float = 0.0
+		if s > TURN_MIN_SPEED:
+			var way: float = travel(f)
+			backwards = runs_backwards(way, backwards)
+			target = leg_target(way, backwards)
+		else:
+			backwards = false
 		var length: float = stride(s)
 		var step: float = s / length / float(SimConst.FPS) if length > 0.0 else 0.0
+		if backwards:
+			step = -step
 		for i: int in frame - _frame:
 			prev_phase = phase
 			phase = fposmod(phase + step, 1.0)
+			prev_leg_yaw = leg_yaw
+			var turned: Vector2 = spring(leg_yaw, leg_yaw_rate, target, LEG_SPRING, 1.0 / float(SimConst.FPS))
+			leg_yaw = turned.x
+			leg_yaw_rate = turned.y
 		prev_speed = speed if frame - _frame == 1 else s
 		speed = s
 		_frame = frame
-	shown_phase = fposmod(prev_phase + fposmod(phase - prev_phase, 1.0) * alpha, 1.0)
+	# the short way round: forwards or, running backwards, back
+	shown_phase = fposmod(prev_phase + wrapf(phase - prev_phase, -0.5, 0.5) * alpha, 1.0)
 	shown = weights(lerpf(prev_speed, speed, alpha), run_speed, sprint_speed)
+	shown_leg_yaw = lerpf(prev_leg_yaw, leg_yaw, alpha)
 	_show(idle_clip, idle_seconds)
+
+
+## Turns `body` for the legs as last shown: the pelvis takes PELVIS_SHARE of
+## the legs' turn and the thighs the rest, the spine turns the chest back,
+## and the clip's own twist above the hips comes out as far as the legs
+## move, so the chest keeps facing the way the fighter faces.
+func turn(body: BodyLayer) -> void:
+	body.pelvis_yaw = shown_leg_yaw * PELVIS_SHARE
+	body.thigh_yaw = shown_leg_yaw * (1.0 - PELVIS_SHARE)
+	body.spine_yaw = -body.pelvis_yaw
+	body.untwist = 1.0 - shown[0]
 
 
 # ------------------------------------------------------------------ the tree

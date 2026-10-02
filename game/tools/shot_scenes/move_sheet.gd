@@ -22,17 +22,20 @@ extends Node3D
 ##   last active frame), follow (mid recovery) and end (the last frame the
 ##   move shows), keys (every landmark, the default) or all;
 ## - --views=: which views (VIEW_NAMES), comma-separated, in order (default
-##   VIEWS for a move, DRIVE_VIEWS for a drive);
+##   VIEWS for a move, the drive's own for a drive);
 ## - --defender=rogue|hunter: the defender, in palette B (default: the same
 ##   fighter as the attacker);
 ## - --spacing=: metres between the fighters (default PoseCheck.SPACING, or
-##   DRIVE_SPACING for a drive).
+##   the drive's own for a drive).
 ##
 ## Strips: --drive=<name> plays one of DRIVES instead of a move, scripted
 ## input from rest (rest_to_sprint: still, then running at the opponent, then
-## sprinting), with the opponent far off, and lays out a strip of the chosen
-## frames: the first, every --every=th (default 4) and the last, each
-## captioned with the speed, Locomotion's blend and the step phase.
+## sprinting; strafe_left and strafe_right round the opponent, backpedal and
+## back_left away from it, each then stopping), with the opponent out of the
+## way, and lays out a strip of the chosen frames: the first, every
+## --every=th (default 4) and the last, each captioned with the speed, the
+## legs' turn, Locomotion's blend and the step phase, a block of rows per
+## view.
 ##
 ## The defender holds the Katana and takes no input, so a move that reaches it
 ## lands as the rules say. The stage is the preview's studio, and the chosen
@@ -45,8 +48,8 @@ extends Node3D
 ## three-quarters in front, on its weapon side; its head, chest and hands
 ## closer; and its hands on the grip.
 const VIEWS: Array[StringName] = [&"defender", &"attacker", &"three_quarter", &"close", &"hands"]
-## The views of a drive's strip: the whole fighter side on, from its right.
-const DRIVE_VIEWS: Array[StringName] = [&"side"]
+## Besides these, for the drives: the whole fighter side on from its right,
+## and from in front, a little to its right.
 const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"defender": "gameplay camera behind the defender",
 	&"attacker": "gameplay camera behind the attacker",
@@ -54,17 +57,48 @@ const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"close": "close",
 	&"hands": "hands",
 	&"side": "side",
+	&"front": "front",
 }
-## Scripted input from rest, by name: segments of [frames, strafe axis,
-## forward axis, held buttons].
-const DRIVES: Dictionary[StringName, Array] = {
-	&"rest_to_sprint": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
+## Scripted input from rest, by name:
+## - input: segments of [frames, strafe axis (+ to the right), forward axis,
+##   held buttons];
+## - notes: what it does, for the header;
+## - views: the strip's views when --views= doesn't say;
+## - spacing: how far off the opponent stands (m): out of the way, and for a
+##   strafe near enough (under 9 m) that the rules keep the distance, so the
+##   fighter circles it.
+const DRIVES: Dictionary[StringName, Dictionary] = {
+	&"rest_to_sprint": {
+		"input": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
+		"notes": "still for 12 frames, running at the opponent for 60, then sprinting for 60",
+		"views": [&"side"],
+		"spacing": 26.0,
+	},
+	&"strafe_left": {
+		"input": [[12, 0.0, 0.0, 0], [72, -1.0, 0.0, 0], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, strafing left round the opponent for 72, then stopping",
+		"views": [&"front"],
+		"spacing": 8.0,
+	},
+	&"strafe_right": {
+		"input": [[12, 0.0, 0.0, 0], [72, 1.0, 0.0, 0], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, strafing right round the opponent for 72, then stopping",
+		"views": [&"front"],
+		"spacing": 8.0,
+	},
+	&"backpedal": {
+		"input": [[12, 0.0, 0.0, 0], [72, 0.0, -1.0, 0], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, backing away from the opponent for 72, then stopping",
+		"views": [&"side"],
+		"spacing": 8.0,
+	},
+	&"back_left": {
+		"input": [[12, 0.0, 0.0, 0], [72, -0.7071, -0.7071, 0], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, moving back and to the left for 72, then stopping",
+		"views": [&"front"],
+		"spacing": 8.0,
+	},
 }
-const DRIVE_NOTES: Dictionary[StringName, String] = {
-	&"rest_to_sprint": "still for 12 frames, running at the opponent for 60, then sprinting for 60",
-}
-## How far off the opponent stands in a drive (m), out of the way.
-const DRIVE_SPACING: float = 26.0
 ## Cells per row of a drive's strip.
 const STRIP_COLUMNS: int = 8
 ## A view's crop of the screen, its width over its height: the gameplay views
@@ -230,7 +264,9 @@ func apply_args(args: PackedStringArray) -> void:
 				else:
 					push_error("move_sheet.gd: --every= takes a whole number of frames, not '%s'" % value)
 	if drive != &"" and not _views_given:
-		views = DRIVE_VIEWS
+		var own: Array[StringName] = []
+		own.assign(DRIVES[drive]["views"])
+		views = own
 	for id: StringName in [fighter_id, defender_id]:
 		if id != &"" and not FighterLook.IDS.has(id):
 			push_error("move_sheet.gd: no fighter '%s' (%s)" % [id, ", ".join(PackedStringArray(FighterLook.IDS))])
@@ -337,6 +373,10 @@ func aim(view: StringName) -> void:
 		&"side":
 			# square on to the way it faces, from its right, the whole body
 			_look_from(a + CameraRig.right_of(forward) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
+		&"front":
+			# from in front, a little to its right, the whole body: legs
+			# turned under a chest that faces the camera
+			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-20.0)) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
 		&"close":
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-30.0)) * 2.1 + Vector3(0.0, 1.6, 0.0),
 				a + forward * 0.3 + Vector3(0.0, 1.4, 0.0), 44.0)
@@ -550,7 +590,7 @@ func batch() -> Image:
 ## Drive `drive_id`'s input, a RawInput per frame.
 static func drive_inputs(drive_id: StringName) -> Array[RawInput]:
 	var out: Array[RawInput] = []
-	for segment: Array in DRIVES[drive_id]:
+	for segment: Array in DRIVES[drive_id]["input"]:
 		for i: int in int(segment[0]):
 			out.append(RawInput.make(segment[1], segment[2], segment[3]))
 	return out
@@ -568,20 +608,23 @@ static func drive_frames(total: int, p_every: int) -> Array[int]:
 	return out
 
 
-## Plays drive `drive_id` from rest in a fresh world, the opponent far off
-## (DRIVE_SPACING unless --spacing= says), and lays out the strip: a cell per
-## view at each chosen frame, captioned with the frame, the speed, the
-## blend's weights and the step phase.
+## Plays drive `drive_id` from rest in a fresh world, the opponent out of
+## the way (the drive's spacing unless --spacing= says), and lays out the
+## strip: a cell at each chosen frame, captioned with the frame, the speed,
+## the legs' turn, the blend's weights and the step phase, in a block of
+## rows per view.
 func render_drive(drive_id: StringName) -> Image:
 	if not _spacing_given:
-		bench.spacing = DRIVE_SPACING
+		bench.spacing = float(DRIVES[drive_id]["spacing"])
 	bench.stand()
 	_show_defender()
 	strip.clear()
 	var loco: Locomotion = bench.view.locomotion
 	var inputs: Array[RawInput] = drive_inputs(drive_id)
 	var chosen: Array[int] = drive_frames(inputs.size(), every)
-	var cells: Array[Image] = []
+	var cells: Dictionary[StringName, Array] = {}
+	for view: StringName in views:
+		cells[view] = []
 	for i: int in inputs.size():
 		bench.drive(inputs[i])
 		_show_defender()
@@ -593,35 +636,44 @@ func render_drive(drive_id: StringName) -> Image:
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR],
 				Vector2i(cell_size(view).x, CAPTION_HEIGHT), CAPTION_FONT)
-			cells.append(stack(label, await _capture(view)))
+			cells[view].append(stack(label, await _capture(view)))
 	var grid: Array[Row] = []
-	for i: int in cells.size():
-		if i % STRIP_COLUMNS == 0:
-			grid.append(Row.new())
-		grid[-1].cells.append(cells[i])
+	for view: StringName in views:
+		for i: int in cells[view].size():
+			if i % STRIP_COLUMNS == 0:
+				grid.append(Row.new())
+			grid[-1].cells.append(cells[view][i])
 	var view_names: PackedStringArray = []
 	for view: StringName in views:
 		view_names.append(VIEW_NAMES[view])
 	title = PackedStringArray([
-		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVE_NOTES[drive_id]],
-		"views: %s · every %d frames · the opponent %.1f m off" % [", ".join(view_names), every, bench.spacing],
+		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"]],
+		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards" % [
+			", ".join(view_names), every, bench.spacing],
 		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [
 			Locomotion.WALK_SPEED, loco.run_speed, loco.sprint_speed, loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride],
 	])
-	var width: int = mini(STRIP_COLUMNS, cells.size()) * (cells[0].get_width() + GAP) - GAP if not cells.is_empty() else 1
+	var width: int = 1
+	if not grid.is_empty():
+		width = mini(STRIP_COLUMNS, chosen.size()) * (grid[0].cells[0].get_width() + GAP) - GAP
 	var header: Image = await _text_image(title, tones(title), Vector2i(clampi(width, 1, _screen_size().x), HEADER_HEIGHT), HEADER_FONT)
 	return compose(header, grid)
 
 
-## A strip frame's caption: the frame and speed, then the blend's weights
-## (those over 0) and the step phase.
+## A strip frame's caption: the frame and speed, and the legs' turn when they
+## turn or run backwards; then the blend's weights (those over 0) and the
+## step phase.
 static func drive_caption(frame: int, loco: Locomotion) -> PackedStringArray:
 	var weights: PackedStringArray = []
 	for i: int in 4:
 		if loco.shown[i] > 0.005:
 			weights.append("%s %.2f" % [Locomotion.NODES[i], loco.shown[i]])
+	var first: String = "frame %d · %.2f m/s" % [frame, loco.speed]
+	var turn: float = rad_to_deg(loco.shown_leg_yaw)
+	if absf(turn) >= 0.5 or loco.backwards:
+		first += " · legs %s%s" % ["%+.0f°" % turn if absf(turn) >= 0.5 else "0°", " back" if loco.backwards else ""]
 	return PackedStringArray([
-		"frame %d · %.2f m/s" % [frame, loco.speed],
+		first,
 		"%s · phase %.2f" % [" ".join(weights), loco.shown_phase],
 	])
 

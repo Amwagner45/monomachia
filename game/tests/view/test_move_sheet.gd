@@ -257,7 +257,7 @@ func test_the_batch_saves_a_sheet_per_move_and_makes_their_index() -> void:
 
 
 func test_a_drive_is_scripted_input_from_rest() -> void:
-	var drive: Array = MoveSheet.DRIVES[&"rest_to_sprint"]
+	var drive: Array = MoveSheet.DRIVES[&"rest_to_sprint"]["input"]
 	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"rest_to_sprint")
 	var total: int = 0
 	for segment: Array in drive:
@@ -268,6 +268,24 @@ func test_a_drive_is_scripted_input_from_rest() -> void:
 	assert_eq(inputs[-1].buttons, 1 << Btn.SPRINT, "sprinting at the end")
 	assert_eq(MoveSheet.drive_frames(25, 10), [1, 10, 20, 25] as Array[int], "the first frame, every tenth and the last")
 	assert_eq(MoveSheet.drive_frames(20, 10), [1, 10, 20] as Array[int])
+
+
+func test_the_strafe_and_backpedal_drives_move_the_way_they_say() -> void:
+	# each drive's stick while it moves: [strafe axis (+ right), forward axis]
+	var moving: Dictionary[StringName, Vector2] = {
+		&"strafe_left": Vector2(-1.0, 0.0),
+		&"strafe_right": Vector2(1.0, 0.0),
+		&"backpedal": Vector2(0.0, -1.0),
+		&"back_left": Vector2(-0.7071, -0.7071),
+	}
+	for id: StringName in moving:
+		var inputs: Array[RawInput] = MoveSheet.drive_inputs(id)
+		assert_eq(Vector2(inputs[0].mx, inputs[0].my), Vector2.ZERO, "%s from rest" % id)
+		var mid: RawInput = inputs[inputs.size() / 2]
+		assert_almost_eq(Vector2(mid.mx, mid.my), moving[id], Vector2.ONE * 1e-4, "%s moves" % id)
+		assert_eq(Vector2(inputs[-1].mx, inputs[-1].my), Vector2.ZERO, "%s stops at the end" % id)
+		assert_lt(float(MoveSheet.DRIVES[id]["spacing"]), 9.0, "%s: near enough that the rules keep the distance while it orbits" % id)
+		assert_true(MoveSheet.VIEW_NAMES.has(MoveSheet.DRIVES[id]["views"][0]), "%s: its own view" % id)
 
 
 func test_the_side_view_sees_the_whole_fighter_from_its_right() -> void:
@@ -282,6 +300,23 @@ func test_the_side_view_sees_the_whole_fighter_from_its_right() -> void:
 		var to_camera: Vector3 = ((sheet.camera.global_position - feet) * Vector3(1.0, 0.0, 1.0)).normalized()
 		var right: Vector3 = CameraRig.right_of((_feet(sheet.bench.defender) - feet).normalized())
 		assert_gt(to_camera.dot(right), 0.99, "%s: side on, from the right" % id)
+		MoveBench.free_all()
+
+
+func test_the_front_view_sees_the_whole_fighter_from_in_front() -> void:
+	for id: StringName in FighterLook.IDS:
+		var sheet: MoveSheet = _sheet(PackedStringArray(["--fighter=" + id]))
+		var frame: PoseCheck.Frame = await sheet.bench.frame()
+		var feet: Vector3 = _feet(sheet.bench.attacker)
+		sheet.aim(&"front")
+		var crop: Rect2 = MoveSheet.crop_rect(&"front", sheet.get_viewport().get_visible_rect().size)
+		for p: Vector3 in [_crown(sheet, frame), feet, _world_grip(sheet)]:
+			assert_false(sheet.camera.is_position_behind(p), "%s: %s in front" % [id, p])
+			assert_true(crop.has_point(sheet.camera.unproject_position(p)), "%s: %s inside the crop" % [id, p])
+		var to_camera: Vector3 = ((sheet.camera.global_position - feet) * Vector3(1.0, 0.0, 1.0)).normalized()
+		var forward: Vector3 = (_feet(sheet.bench.defender) - feet).normalized()
+		assert_between(rad_to_deg(forward.angle_to(to_camera)), 10.0, 30.0, "%s: from in front" % id)
+		assert_gt(to_camera.dot(CameraRig.right_of(forward)), 0.0, "%s: a little to its right" % id)
 		MoveBench.free_all()
 
 
@@ -309,6 +344,34 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 	assert_eq(image.get_size(), Vector2i(
 		MoveSheet.STRIP_COLUMNS * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
 		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.CAPTION_HEIGHT + cell.y)))
+
+
+func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> void:
+	assert_eq(_sheet(PackedStringArray(["--drive=strafe_left"])).views, [&"front"] as Array[StringName], "the drive's own view")
+	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=strafe_left", "--every=24", "--views=front,side"]))
+	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"strafe_left")
+	var frames: Array[int] = MoveSheet.drive_frames(inputs.size(), 24)
+	var image: Image = await sheet.render_drive(&"strafe_left")
+	assert_almost_eq(sheet.bench.spacing, float(MoveSheet.DRIVES[&"strafe_left"]["spacing"]), 1e-6)
+	assert_eq(sheet.strip.size(), frames.size(), "captions per chosen frame")
+	assert_eq(sheet.strip[0][0], "frame 1 · 0.00 m/s", "at rest, nothing about the legs")
+	var strafing: int = frames.find(72)
+	assert_gt(strafing, 0)
+	assert_eq(sheet.strip[strafing][0], "frame 72 · 3.50 m/s · legs +80°", "strafing left, the legs turned left")
+	var loco: Locomotion = sheet.bench.view.locomotion
+	loco.backwards = true
+	loco.shown_leg_yaw = deg_to_rad(-45.0)
+	assert_eq(MoveSheet.drive_caption(9, loco)[0], "frame 9 · %.2f m/s · legs -45° back" % loco.speed, "running backwards")
+	loco.shown_leg_yaw = 0.0
+	assert_eq(MoveSheet.drive_caption(9, loco)[0], "frame 9 · %.2f m/s · legs 0° back" % loco.speed, "straight back")
+	# the front view's cells first, then the side view's
+	var cell: Vector2i = MoveSheet.cell_size(&"front")
+	var rows: int = 2 * ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
+	assert_eq(image.get_size(), Vector2i(
+		mini(MoveSheet.STRIP_COLUMNS, frames.size()) * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
+		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.CAPTION_HEIGHT + cell.y)))
+	assert_eq(sheet.title[1].get_slice(" · ", 0), "views: front, side")
+	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards")
 
 
 func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:

@@ -90,15 +90,17 @@ static func _swing(record: Variant, move: AttackDef, where: String, errors: Arra
 	if not tracks is Dictionary or (tracks as Dictionary).is_empty():
 		errors.append("%s: needs tracks, an object of parts" % where)
 		return null
-	var swing: Swing = Swing.new()
+	var swing: Swing = Swing.new(move.total_frames())
 	for part_name: Variant in tracks:
 		var part := StringName(str(part_name))
 		var at: String = "%s.%s" % [where, part]
 		if not Swing.PARTS.has(part):
 			errors.append("%s: unknown part (the parts are %s)" % [at, ", ".join(Swing.PARTS)])
 			continue
+		var before: int = errors.size()
 		var keys: Array[Swing.KeyPose] = _keys(tracks[part_name], part == &"body", move.total_frames(), at, errors)
-		swing.add_track(part, keys)
+		if errors.size() == before:
+			swing.add_track(part, keys)
 	return swing
 
 

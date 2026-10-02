@@ -123,6 +123,24 @@ func test_from_axes_round_trips_any_rotation() -> void:
 		_assert_v3(Quat64.rotate(again, v), want.x, want.y, want.z, "round trip of %s" % q)
 
 
+func test_from_to_is_the_shortest_turn_between_two_directions() -> void:
+	var x: V3 = V3.make(1.0, 0.0, 0.0)
+	var y: V3 = V3.make(0.0, 1.0, 0.0)
+	var q: Quat64 = Quat64.from_to(x, V3.make(0.0, 3.0, 0.0))
+	_assert_v3(Quat64.rotate(q, x), 0.0, 1.0, 0.0, "x onto y")
+	_assert_v3(Quat64.rotate(q, V3.make(0.0, 0.0, 1.0)), 0.0, 0.0, 1.0, "the axis of the turn stays put")
+	assert_almost_eq(Quat64.angle_between(Quat64.identity(), q), PI / 2.0, EPS, "a quarter turn")
+	var a: V3 = V3.normalized(V3.make(1.0, 2.0, -0.5))
+	var b: V3 = V3.normalized(V3.make(-0.3, 0.2, 1.0))
+	var ab: V3 = Quat64.rotate(Quat64.from_to(a, b), a)
+	_assert_v3(ab, b.x, b.y, b.z, "a onto b")
+	assert_almost_eq(Quat64.angle_between(Quat64.identity(), Quat64.from_to(a, b)), JsMath.atan2(V3.length(V3.cross(a, b)), V3.dot(a, b)), EPS,
+			"turns by the angle between them, no more")
+	assert_almost_eq(Quat64.angle_between(Quat64.identity(), Quat64.from_to(y, y)), 0.0, EPS, "no turn between equal directions")
+	var back: V3 = Quat64.rotate(Quat64.from_to(y, V3.make(0.0, -2.0, 0.0)), y)
+	_assert_v3(back, 0.0, -1.0, 0.0, "opposite directions: a half turn")
+
+
 func test_angle_between_rotations() -> void:
 	var axis: V3 = V3.make(1.0, 2.0, -0.5)
 	var a: Quat64 = Quat64.from_axis_angle(axis, 0.3)

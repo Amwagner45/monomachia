@@ -44,11 +44,7 @@ static func from_axes(y_axis: V3, x_axis: V3) -> Quat64:
 	var ny: V3 = V3.normalized(y_axis)
 	var px: V3 = V3.sub(x_axis, V3.scale(ny, V3.dot(x_axis, ny)))
 	if V3.length(px) < 1e-9:
-		var ax: float = absf(ny.x)
-		var ay: float = absf(ny.y)
-		var az: float = absf(ny.z)
-		var helper: V3 = V3.make(1.0, 0.0, 0.0) if ax <= ay and ax <= az \
-				else (V3.make(0.0, 1.0, 0.0) if ay <= az else V3.make(0.0, 0.0, 1.0))
+		var helper: V3 = _furthest_axis(ny)
 		px = V3.sub(helper, V3.scale(ny, V3.dot(helper, ny)))
 	var nx: V3 = V3.normalized(px)
 	var nz: V3 = V3.cross(nx, ny)
@@ -65,6 +61,24 @@ static func from_axes(y_axis: V3, x_axis: V3) -> Quat64:
 		return Quat64.make((ny.x + nx.y) / s, 0.25 * s, (nz.y + ny.z) / s, (nz.x - nx.z) / s)
 	var s: float = sqrt(1.0 + nz.z - nx.x - ny.y) * 2.0
 	return Quat64.make((nz.x + nx.z) / s, (nz.y + ny.z) / s, 0.25 * s, (nx.y - ny.x) / s)
+
+
+## The shortest turn taking the direction `from` onto the direction `to`
+## (neither needs to be unit length). Between opposite directions it is a half
+## turn about an axis square to them.
+static func from_to(from: V3, to: V3) -> Quat64:
+	var a: V3 = V3.normalized(from)
+	var b: V3 = V3.normalized(to)
+	var d: float = V3.dot(a, b)
+	if d < -1.0 + 1e-12:
+		# Any axis square to a will do.
+		var axis: V3 = V3.normalized(V3.cross(a, _furthest_axis(a)))
+		return Quat64.make(axis.x, axis.y, axis.z, 0.0)
+	# Half the turn's angle comes from normalizing (a x b, 1 + a . b).
+	var c: V3 = V3.cross(a, b)
+	var w: float = 1.0 + d
+	var l: float = sqrt(c.x * c.x + c.y * c.y + c.z * c.z + w * w)
+	return Quat64.make(c.x / l, c.y / l, c.z / l, w / l)
 
 
 ## The rotation `b` followed by `a` (the product a * b).
@@ -110,6 +124,16 @@ static func nlerp(a: Quat64, b: Quat64, t: float) -> Quat64:
 	var q: Quat64 = Quat64.make(a.x + (bb.x - a.x) * t, a.y + (bb.y - a.y) * t, a.z + (bb.z - a.z) * t, a.w + (bb.w - a.w) * t)
 	var l: float = sqrt(q.x * q.x + q.y * q.y + q.z * q.z + q.w * q.w)
 	return Quat64.make(q.x / l, q.y / l, q.z / l, q.w / l)
+
+
+## The world axis furthest from the unit direction `v`, to square onto it.
+static func _furthest_axis(v: V3) -> V3:
+	var ax: float = absf(v.x)
+	var ay: float = absf(v.y)
+	var az: float = absf(v.z)
+	if ax <= ay and ax <= az:
+		return V3.make(1.0, 0.0, 0.0)
+	return V3.make(0.0, 1.0, 0.0) if ay <= az else V3.make(0.0, 0.0, 1.0)
 
 
 ## `b`, or -b (the same rotation) when that is nearer `a`, so a blend between

@@ -199,7 +199,7 @@ Chains stay as they are: each move names at most one light follow-up and one hea
 
 The body's keys hold the torso and pelvis coil and the pelvis shift, so the hips can be keyed to lead the hands, and a swing with two hands still has one coil.
 
-Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own.
+Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own. The hands arc around the middle of the shoulder line, 1.44 m up and 6 cm back from the feet (the Rogue's shoulders are at 1.42 m and the Hunter's at 1.46 m), and a foot around the middle of the hips; both points sit on the spine, so a coil doesn't move them. A key with ease 0 holds still, and the grip's distance from the pivot, the coils and the pelvis shift never overshoot their keys.
 
 The early spike (see the plan) proved this works on the Quaternius fighters and set the rules every swing must meet:
 - wrist bend within about ±60° and deviation within ±25°;

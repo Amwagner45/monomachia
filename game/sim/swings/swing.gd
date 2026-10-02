@@ -16,6 +16,10 @@ extends RefCounted
 ## Positions and directions are (right, up, forward) from the fighter's feet,
 ## as SimMath.local_to_world takes them. A key's ease scales the speed through
 ## it: 0 stops there (a cocked hold, a settle), 1 is the even default.
+##
+## SwingSampler gives a track's pose between keys. Each track's poses at the
+## whole frames 0 to last_frame are worked out once, when it is added, and
+## tick() reads them.
 
 const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"body"]
 
@@ -41,12 +45,36 @@ class KeyPose:
 	var ease: float = 1.0
 
 
+## A track's pose at one moment, from SwingSampler. Hand and foot tracks fill
+## grip, blade, edge and pole; the body track torso, pelvis and pelvis_shift.
+class Sample:
+	var grip: V3 = V3.make()
+	var blade: V3 = V3.make(0.0, 1.0, 0.0)
+	var edge: V3 = V3.make(1.0, 0.0, 0.0)
+	var pole: V3 = V3.make()
+	var torso: float = 0.0
+	var pelvis: float = 0.0
+	var pelvis_shift: V3 = V3.make()
+
+
+## The move's last frame (its total frames): the tables run from 0 to it.
+var last_frame: int = 0
 var _tracks: Dictionary[StringName, Array] = {}
+var _ticks: Dictionary[StringName, Array] = {}
 
 
-## Adds the track for `part` (one of PARTS), its keys sorted by frame.
+func _init(p_last_frame: int = 0) -> void:
+	last_frame = p_last_frame
+
+
+## Adds the track for `part` (one of PARTS), its keys sorted by frame, and
+## works out its poses at every whole frame.
 func add_track(part: StringName, keys: Array[KeyPose]) -> void:
 	_tracks[part] = keys
+	var ticks: Array[Sample] = []
+	for f: int in last_frame + 1:
+		ticks.append(SwingSampler.sample(keys, part, float(f)))
+	_ticks[part] = ticks
 
 
 ## The parts this swing has tracks for, in the order they were added.
@@ -61,3 +89,20 @@ func track(part: StringName) -> Array[KeyPose]:
 	if not _tracks.has(part):
 		return [] as Array[KeyPose]
 	return _tracks[part]
+
+
+## The pose of `part` at the whole frame `frame`, from the table: frames
+## past the last hold its pose, as do frames before 0. Null when the swing has
+## no such track. Shared: don't change it.
+func tick(part: StringName, frame: int) -> Sample:
+	if not _ticks.has(part):
+		return null
+	return _ticks[part][clampi(frame, 0, last_frame)]
+
+
+## The pose of `part` at frame `t`, which may fall between frames (for
+## drawing between steps). Null when the swing has no such track.
+func sample(part: StringName, t: float) -> Sample:
+	if not _tracks.has(part):
+		return null
+	return SwingSampler.sample(track(part), part, t)

@@ -126,7 +126,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 ## Progress
 
-Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1 and 8.2 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. The owner approves each task before the next starts. Next: 8.10, the training dummy's fixes, which the owner asked for right after 8.2; then 8.3.
+Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is broken into the single tasks below. Done since: 13.1, 25.1, 25.2, 25.3, 16.1, and, after the owner's go-ahead, 16.2–16.7, which finish task 16, then 14.1 and 14.2, which finish stage 2 of the build order, and 17.1–17.9, which finish stage 3 (the shrine; 17.10 waits for 8.3 in stage 4). Oct 2: the look-and-arena worktree was removed with the owner's OK, and 8.1, 8.2 and 8.10 started stage 4 (fluid rules): the checks pinned to the TypeScript are retired at the last bit-exact commit. The owner approves each task before the next starts. 8.10 then fixed the training dummy's lights and random, as the owner asked, right after 8.2. Next: 8.3.
 
 - **Done and merged on `feature/godot-rebuild`:**
   - tasks 1–6, 13 and 21;
@@ -171,7 +171,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - Tasks 16.1–17.9 salvaged it piece by piece, reviewed (16.1–16.5, 17.1, 17.3–17.9): MeshKit, the toon material and outlines, the ink-wash pass and grade, the night environment, the presets, the arena data, the shrine's courtyard, props, underside, sky, backdrop, embers and ash, and the bench. 16.6, 16.7 and 17.2 (the stand-in arena, the fighters and the weapons in the look, the arena shot rig) were new work.
   - Left behind on purpose: `game/_probe`, the bench's hard-coded overrides, the floating rocks' temple hall (no rock in the data was big enough) and the petals, which wait on the owner.
   - Removed on Oct 2, 2026 with the owner's OK, with its `look-and-arena` branch (no commits of its own). The petals' recipe is kept in `godot-rebuild-notes/16-18-look-arena-effects.md` (Open questions).
-- **Behaviour tests for the brains (8.1):** `test_training_brain.gd` checks every dummy behaviour and the counters by events and states.
+- **Behaviour tests for the brains (8.1):** `test_training_brain.gd` checks every dummy behaviour and the counters by events and states. Since 8.10 the dummy's lights throws the whole light string and random drills every unblockable its weapon has.
 - **The last bit-exact point (8.2): commit 4222167.** There `npm run soak -- 40` and `npm run soak:godot -- 40` printed this same report, and `npx tsx scripts/counterlab.ts` and the Godot counterlab these same tallies. 8.2 then retired the goldens, the brain-parity hashes and the whole-run hashes, so from 8.3 on the soak and the counterlab are compared with these numbers by eye, and balance targets wait for task 12.
   ```
   40 matches, 0 failures
@@ -330,13 +330,18 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - `port.json` regenerated: the math, deadzone and `Number()` sections came out identical. The `toFixed` and `String()` cases changed, because the clamp cases drew from the same random stream. One new `String()` case caught a bug in `JsFormat.num`: `var_to_str` gives a double that a float32 holds exactly float32's shortest digits (0.0071418374 for 0.0071418373845517635). It now takes its digits from `String.num_scientific`. Only the soak's match count and its posture error print through it, so no report changed.
       - Afterwards `soak:godot -- 40` and the counterlab still print the baseline exactly.
       - Outside this plan, its research notes (a snapshot of the breakdown) and git history, nothing refers to `game/tests/golden`.
-  - [ ] **8.10 The training dummy's lights and random, fixed.** Added on Oct 2 at the owner's request: numbered last in task 8, built right after 8.2. 8.1's tests found both bugs, which came over from the demo.
+  - [x] **8.10 The training dummy's lights and random, fixed.** Added on Oct 2 at the owner's request: numbered last in task 8, built right after 8.2. 8.1's tests found both bugs, which came over from the demo.
     - Delivers:
       - Random drills every unblockable its weapon has. Today one tally both picks the next drill and alternates the heavy follow-up, so of four choices the third never comes up (the Katana's and the Daggers' thrust, the Greatsword's sweep), and in random every heavy gets its follow-up.
       - Lights throws the weapon's whole light string. Today the third tap leaves the 8-frame input buffer one frame before Return Cut can take a follow-up, so Crown Cut never comes. The dummy presses for each follow-up while the attack it is in can still take it, so the string stays whole when task 9 makes it four lights.
       - `test_training_brain.gd` tightened to match.
     - Check: random drills every unblockable its weapon has, and the heavy follow-up still comes every other time; lights throws Right Cut, Return Cut and Crown Cut every cycle for the Katana and the whole light string for the Greatsword and the Daggers; the soak and the counterlab still print the baseline (neither uses these behaviours).
     - Blocked by: 8.2 · Stories: 53
+    - Done:
+      - Random picks its drill from a tally of its own (`_pick`), so it drills every unblockable its weapon has, and its heavies take the follow-up every other time, as the heavies drill does.
+      - Lights presses for a light's follow-up once that attack reaches its startup frame, the first frame it can take one, so the Katana throws Right Cut, Return Cut and Crown Cut, the Greatsword its two lights and the Daggers all four (the demo stopped at three). The fixed presses at 9 and 18 frames are gone.
+      - The two tests went red on the demo's behaviour first, then green.
+      - The counterlab still prints the baseline; the soak never uses the dummy.
   - [ ] **8.3 Arena radius 15 m, with every value tied to it.**
     - Delivers:
       - `ARENA_RADIUS` 15, with named margins for the Impaler's wall stop (0.7) and the dropped weapon's bounce (0.8).

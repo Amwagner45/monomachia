@@ -11,6 +11,13 @@ extends RefCounted
 ## - Fighter.abilities is always replaced with a new array, never changed in
 ##   place: by default it is the weapon's own default_abilities array.
 ## - dispose() is new: it disposes the sparring brain and drops the fighter.
+##
+## Since the port (plan task 8.10), two demo bugs are fixed:
+## - random picks its drill from a tally of its own. The demo shared one with
+##   the heavy follow-up, so of four drills the third never came up;
+## - lights presses for each light follow-up once the attack can take it,
+##   instead of at fixed times, so the whole light string comes out. The demo's
+##   third press came a frame too late for the Katana's Crown Cut.
 
 ## TrainingBehaviour
 const BEHAVIOURS: Array[StringName] = [
@@ -38,7 +45,12 @@ var _spar: AIBrain
 var _next: int = 0
 var _taps: Array[Tap] = []
 var _hold: int = 0
+## Alternates the heavy follow-up.
 var _pattern: int = 0
+## Picks random's next drill.
+var _pick: int = 0
+## The drill the current cycle runs (&"" before the first).
+var _drill: StringName = &""
 
 var me: Fighter
 
@@ -59,6 +71,7 @@ func set_behaviour(b: StringName) -> void:
 	_next = 0
 	_taps = []
 	_hold = 0
+	_drill = &""
 	# put the practised unblockable on the light slot
 	if b == &"thrust" or b == &"sweep" or b == &"slam":
 		var ab_id: StringName = ability_for(me, b)
@@ -113,15 +126,14 @@ func think() -> RawInput:
 				for k: StringName in [&"thrust", &"sweep", &"slam"]:
 					if ability_for(me, k) != &"":
 						opts.append(k)
-				b = opts[_pattern % opts.size()]
-				_pattern += 1
+				b = opts[_pick % opts.size()]
+				_pick += 1
 				if b == &"thrust" or b == &"sweep" or b == &"slam":
 					_set_behaviour_keep_random(b)
+			_drill = b
 			match b:
 				&"lights":
 					_tap(Btn.LIGHT, frame)
-					_tap(Btn.LIGHT, frame + 9)
-					_tap(Btn.LIGHT, frame + 18)
 					_next = frame + 110
 				&"heavies":
 					_tap(Btn.HEAVY, frame)
@@ -134,6 +146,8 @@ func think() -> RawInput:
 					_tap(Btn.BLOCK, frame, 3)
 					_tap(Btn.LIGHT, frame + 1, 2)
 					_next = frame + 130
+	if _drill == &"lights" and _light_follow_up_due(frame):
+		_tap(Btn.LIGHT, frame)
 	for t: Tap in _taps:
 		if frame >= t.from and frame <= t.to:
 			buttons |= 1 << t.btn
@@ -143,6 +157,21 @@ func think() -> RawInput:
 			kept.append(t)
 	_taps = kept
 	return RawInput.make(mx, my, buttons)
+
+
+## True when the dummy's light has a light follow-up it can take on the next
+## step (its attack frame passes the startup there) and no press for it is
+## already on the way.
+func _light_follow_up_due(frame: int) -> bool:
+	var a: AttackState = me.atk
+	if me.state != &"attack" or a == null or a.def.kind != &"light" or a.def.chain_light == &"":
+		return false
+	if a.queued != &"" or a.frame < a.def.startup:
+		return false
+	for t: Tap in _taps:
+		if t.btn == Btn.LIGHT and t.to >= frame:
+			return false
+	return true
 
 
 ## kind: &"thrust" | &"sweep" | &"slam"

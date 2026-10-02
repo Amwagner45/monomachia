@@ -28,6 +28,13 @@ const UNBLOCKABLE_KINDS: Dictionary[StringName, Array] = {
 	&"daggers": [&"thrust", &"sweep"],
 }
 
+## Each weapon's whole light string, from its light starter.
+const LIGHT_STRINGS: Dictionary[StringName, Array] = {
+	&"katana": [&"k_l1", &"k_l2", &"k_l3"],
+	&"greatsword": [&"g_l1", &"g_l2"],
+	&"daggers": [&"d_l1", &"d_l2", &"d_l3", &"d_l4"],
+}
+
 ## [drill, the dummy's weapon, the counter that beats it]
 const COUNTERS: Array = [
 	[&"slam", &"greatsword", &"evade"],
@@ -162,19 +169,17 @@ func test_the_blocking_dummy_holds_block_and_blocks_every_light() -> void:
 	assert_eq(hit, [], "nothing hits the dummy")
 
 
-## The dummy taps light three times, 9 frames apart, but Crown Cut never
-## follows: Return Cut can first take a follow-up on world frame 28, and the
-## third tap (frame 19) has left the 8-frame input buffer by then. The demo
-## does the same; plan task 12.3 fixes it.
-func test_the_lights_dummy_throws_right_cut_then_return_cut_110_frames_apart() -> void:
-	var run: DummyRun = _play(Moves.KATANA, &"lights", 660)
-	var expected: Array[StringName] = []
-	for _s: int in 5:
-		expected.append_array([&"k_l1", &"k_l2"])
-	var swung: Array[StringName] = run.swung()
-	assert_eq(swung.slice(0, 10), expected, "Right Cut then Return Cut, five times over")
-	assert_eq(swung.filter(func(id: StringName) -> bool: return id != &"k_l1" and id != &"k_l2"), [], "and nothing else")
-	_assert_gaps(run.swings_of(&"k_l1"), 110, "Right Cut")
+func test_the_lights_dummy_throws_its_weapons_whole_light_string_110_frames_apart() -> void:
+	for weapon_id: StringName in LIGHT_STRINGS:
+		var string: Array = LIGHT_STRINGS[weapon_id]
+		var run: DummyRun = _play(Moves.WEAPONS[weapon_id], &"lights", 660)
+		var expected: Array[StringName] = []
+		for _s: int in 5:
+			expected.append_array(string)
+		var swung: Array[StringName] = run.swung()
+		assert_eq(swung.slice(0, expected.size()), expected, "%s: the whole light string, five times over" % weapon_id)
+		assert_eq(swung.filter(func(id: StringName) -> bool: return not string.has(id)), [], "%s: and nothing else" % weapon_id)
+		_assert_gaps(run.swings_of(string[0]), 110, "%s string" % weapon_id)
 
 
 func test_the_heavies_dummy_adds_the_heavy_follow_up_every_other_time() -> void:
@@ -222,22 +227,22 @@ func test_an_unblockable_drill_the_weapon_lacks_leaves_the_default_abilities() -
 	dummy.dispose()
 
 
-## Random should drill every unblockable its weapon has, but it never drills
-## the first (the Katana's and the Daggers' thrust, the Greatsword's sweep):
-## one tally both picks the next drill and alternates the heavy follow-up, so
-## a heavies turn skips a pick, and of four choices the third never comes up.
-## The demo does the same; plan task 12.3 fixes it and tightens this test.
-func test_the_random_dummy_mixes_lights_heavies_and_its_weapons_unblockables() -> void:
+func test_the_random_dummy_drills_lights_heavies_and_every_unblockable_its_weapon_has() -> void:
 	for weapon_id: StringName in UNBLOCKABLE_KINDS:
 		var weapon: WeaponDef = Moves.WEAPONS[weapon_id]
 		var run: DummyRun = _play(weapon, &"random", 1800)
 		var swung: Array[StringName] = run.swung()
 		assert_has(swung, weapon.light_start, "%s: lights" % weapon_id)
-		assert_has(swung, weapon.heavy_start, "%s: heavies" % weapon_id)
 		var kinds: Array[StringName] = _kinds(run.by_dummy(&"telegraph"))
-		assert_false(kinds.is_empty(), "%s: unblockable drills" % weapon_id)
-		for k: StringName in kinds:
-			assert_has(UNBLOCKABLE_KINDS[weapon_id], k, "%s: only unblockables it has" % weapon_id)
+		var wanted: Array = UNBLOCKABLE_KINDS[weapon_id]
+		assert_eq(kinds.size(), wanted.size(), "%s: as many unblockables as it has: %s" % [weapon_id, kinds])
+		for k: StringName in wanted:
+			assert_has(kinds, k, "%s: drills %s" % [weapon_id, k])
+		# its heavies take the follow-up every other time, as the heavies drill does
+		var heavies: int = swung.count(weapon.heavy_start)
+		var follow_ups: int = swung.count(weapon.moves[weapon.heavy_start].chain_heavy)
+		assert_gte(heavies, 2, "%s: heavies" % weapon_id)
+		assert_between(follow_ups, 1, heavies - 1, "%s: some heavies take the follow-up, not all" % weapon_id)
 
 
 ## The spar behaviour, `fight` in the code.

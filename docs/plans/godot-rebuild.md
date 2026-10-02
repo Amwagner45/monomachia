@@ -1442,7 +1442,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [x] **19.3 Impacts in 3D, the arena reverb and the listener.** Event positions (contact points, else the named fighter's chest); gentle attenuation; an explicit listener on the view camera; the Arena reverb on the Combat and Foley bus chain (it replaced the planned `Area3D`; see Decisions).
     - Check: a hit plays from a 3D voice at its point; the opponent's hits sit on the opponent's side of the listener (the sign of their position in the listener's space); a dodge plays at the dodging fighter; the KO calls stay flat while the body fall is placed; Combat and Foley pass through the Arena reverb, which keeps the dry sound.
     - Blocked by: 19.2 · Stories: 50
-  - [ ] **19.4 Footsteps.** `FootstepCadence` counts ground distance per fighter (not in the air, a dodge, a knockdown or hit-stop) and plays the footstep cue at the feet every stride, behind an interface the real foot contacts can drive later.
+  - [x] **19.4 Footsteps.** `FootstepCadence` counts ground distance per fighter (not in the air, a dodge, a knockdown or hit-stop) and plays the footstep cue at the feet every stride, behind an interface the real foot contacts can drive later.
     - Check: distance over stride gives the count; standing, jumping and dodging give none; hit-stop gives none.
     - Blocked by: 19.3 · Stories: 50
   - [ ] **20.1 Music player with 10–20 ms fades.** `FadedLoop` and `MusicPlayer` with crossfades, following the director's track changes.

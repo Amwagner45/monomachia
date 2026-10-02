@@ -14,6 +14,10 @@ extends Node3D
 ## arena's room is the Arena bus's reverb, which the Combat and Foley buses
 ## feed (see default_bus_layout.tres): Godot 4.7's Area3D reverb would take a
 ## 3D cue off its own bus, so there is no reverb area.
+##
+## Footsteps: a FootstepCadence turns each rules step's movement into
+## footfalls, and [method foot_down] plays the footstep cue at the feet. The
+## locomotion clips' foot contacts can call foot_down() in its place later.
 
 ## The fields that name the fighter an event happened to, in the order they
 ## are looked for (see SimEvents).
@@ -30,6 +34,7 @@ var host: MatchHost
 var player: SoundPlayer
 var listener: AudioListener3D
 var camera: Camera3D
+var footsteps := FootstepCadence.new()
 
 
 func _ready() -> void:
@@ -64,11 +69,13 @@ func bind(p_host: MatchHost) -> void:
 		host.sim_event.disconnect(_on_sim_event)
 		host.pause_changed.disconnect(_on_pause_changed)
 		host.stopped.disconnect(_on_stopped)
+		host.stepped.disconnect(_on_stepped)
 	host = p_host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
 	host.pause_changed.connect(_on_pause_changed)
 	host.stopped.connect(_on_stopped)
+	host.stepped.connect(_on_stepped)
 
 
 ## Puts the listener where the camera is. The view moves the camera earlier in
@@ -76,6 +83,11 @@ func bind(p_host: MatchHost) -> void:
 func follow_camera() -> void:
 	if camera != null:
 		listener.global_transform = camera.global_transform
+
+
+## A foot comes down at [param at]: plays a footstep there.
+func foot_down(at: Vector3) -> void:
+	player.play_cue(&"footstep", at)
 
 
 ## Where a rules event happened, for its spatial cues: its contact point
@@ -99,12 +111,20 @@ func event_position(e: Dictionary) -> Variant:
 
 func _on_match_started(_config: MatchConfig) -> void:
 	player.stop_all()
+	footsteps.reset()
 
 
 func _on_sim_event(e: Dictionary) -> void:
 	if host.attract:
 		return
 	player.play_event(e, event_position)
+
+
+func _on_stepped(_step: int) -> void:
+	if host.attract:
+		return
+	for foot: Dictionary in footsteps.update(host.world.fighters, host.world.frame):
+		foot_down(foot["at"])
 
 
 func _on_pause_changed(paused: bool) -> void:

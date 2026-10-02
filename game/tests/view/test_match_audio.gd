@@ -31,11 +31,14 @@ func _cpu(mode: StringName = MatchConfig.DUEL, seed_value: int = 7) -> MatchConf
 	)
 
 
-## Every cue the match's sound player starts, with its bus.
-func _record() -> Array[Dictionary]:
+## Every cue the match's sound player starts, with its bus; without the
+## footsteps, which come from the fighters' movement rather than events, when
+## footsteps is false.
+func _record(footsteps: bool = true) -> Array[Dictionary]:
 	var log: Array[Dictionary] = []
 	audio.player.played.connect(func(cue: StringName, voice: Node) -> void:
-		log.append({"cue": cue, "bus": voice.get("bus")}))
+		if footsteps or cue != &"footstep":
+			log.append({"cue": cue, "bus": voice.get("bus")}))
 	return log
 
 
@@ -60,7 +63,7 @@ func _descendants(node: Node) -> int:
 func test_a_played_duel_plays_its_events_cues_in_order_on_their_buses() -> void:
 	var events: Array[Dictionary] = []
 	host.sim_event.connect(func(e: Dictionary) -> void: events.append(e))
-	var log := _record()
+	var log := _record(false)
 	host.start(_cpu())
 	host.step(Match.INTRO_FRAMES + 60 * 20)
 	var expected: Array[StringName] = []
@@ -164,11 +167,13 @@ func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
 
 # ------------------------------------------------------------------ in 3D
 
-## Every cue started, with where it plays (null when flat).
-func _record_places() -> Array[Dictionary]:
+## Every cue started, with where it plays (null when flat); footsteps as for
+## _record().
+func _record_places(footsteps: bool = true) -> Array[Dictionary]:
 	var log: Array[Dictionary] = []
 	audio.player.played.connect(func(cue: StringName, voice: Node) -> void:
-		log.append({"cue": cue, "at": (voice as Node3D).global_position if voice is Node3D else null}))
+		if footsteps or cue != &"footstep":
+			log.append({"cue": cue, "at": (voice as Node3D).global_position if voice is Node3D else null}))
 	return log
 
 
@@ -225,7 +230,7 @@ func test_lightning_sounds_where_it_strikes() -> void:
 
 
 func test_in_a_played_duel_every_placed_cue_plays_where_its_event_happened() -> void:
-	var played := _record_places()
+	var played := _record_places(false)
 	var expected: Array[Dictionary] = []
 	host.sim_event.connect(func(e: Dictionary) -> void:
 		var at: Variant = null
@@ -293,3 +298,42 @@ func test_the_match_s_listener_takes_over_from_another() -> void:
 	assert_true(second_audio.listener.is_current())
 	assert_false(other.is_current())
 
+
+# ------------------------------------------------------------------ footsteps
+
+func test_a_foot_down_plays_a_footstep_there() -> void:
+	var log := _record_places()
+	audio.foot_down(Vector3(1.0, 0.0, -2.0))
+	assert_eq(_cues(log), [&"footstep"] as Array[StringName])
+	assert_almost_eq(log[0]["at"], Vector3(1.0, 0.0, -2.0), Vector3.ONE * 1e-4)
+
+
+func test_fighters_moving_in_a_played_duel_step_at_their_feet() -> void:
+	var steps: Array[Dictionary] = []
+	audio.player.played.connect(func(cue: StringName, voice: Node) -> void:
+		if cue != &"footstep":
+			return
+		var feet: Array[Vector3] = []
+		for i: int in 2:
+			var f: Fighter = host.fighter(i)
+			feet.append(Vector3(f.pos.x, f.pos.y, f.pos.z))
+		steps.append({"at": (voice as Node3D).global_position, "feet": feet, "bus": voice.get("bus"),
+			"path": (voice.get("stream") as AudioStream).resource_path}))
+	host.start(_cpu())
+	host.step(Match.INTRO_FRAMES + 60 * 20)
+	assert_gt(steps.size(), 10, "the fighters close in and circle")
+	for k: int in steps.size():
+		var at: Vector3 = steps[k]["at"]
+		var feet: Array[Vector3] = steps[k]["feet"]
+		assert_true(at.distance_to(feet[0]) < 1e-4 or at.distance_to(feet[1]) < 1e-4, "step %d is at a fighter's feet" % k)
+		assert_eq(steps[k]["bus"], &"Foley")
+		if k > 0:
+			assert_ne(steps[k]["path"], steps[k - 1]["path"], "step %d repeats the last variation" % k)
+
+
+func test_a_new_match_starts_every_stride_afresh() -> void:
+	host.start(_cpu())
+	host.step(Match.INTRO_FRAMES + 60 * 3)
+	host.start(_cpu(MatchConfig.DUEL, 8))
+	for i: int in 2:
+		assert_eq(audio.footsteps._travel[i], 0.0, "fighter %d's stride" % i)

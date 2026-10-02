@@ -30,7 +30,7 @@ The rules in game/sim still match the TypeScript bit for bit. Neither waiting br
 - **Block walk:** constants.gd:84 `MOVE_BLOCK_SPEED_MULT = 0.45`, read in Fighter._locomotion (fighter.gd:442-443).
 - **Momentum:** fighter.gd:599-602 `vel *= 0.3` in start_attack (not for airborne or hop moves).
   - While an attack runs, `_brake` multiplies velocity by 0.8 every frame, so carried speed fades fast.
-  - Keeping 0.5 means about v/30 m of extra travel; at sprint speed that is 0.24 m instead of 0.14 m.
+  - Keeping 0.5 means about v/24 m of extra travel (v/40 at 0.3); at sprint speed that is 0.30 m instead of 0.18 m. (Corrected in plan task 8.5: the brake skips the step an attack starts on.)
 - **Lunge:** fighter.gd:657-667 moves a flat share per frame (`lunge_total / (le - ls)`), clamped so the gap never drops below `2*FIGHTER_RADIUS + 0.25`. The window defaults to `le = S + A`. `SimMath.ease_in_out` (quadratic) and `ease_out_cubic` already exist; the dodge uses `ease_out_cubic`.
 - **Dodge cancel:** fighter.gd:704-708 applies only where `dodge_cancel_from` is set. Today only lights have it (for example k_l1 20, g_l1 26, d_l1 13); no heavy does.
 - **Hitstun:** attack_def.gd:189-191 `finalize_moves` gives lights 18. Fists f_l1 and f_l2 set 16 themselves; no other light sets its own.
@@ -107,7 +107,7 @@ The Impaler test can hold the defender up by setting its pos.y each step from th
 - notes: Task 9's sheathed Iai stance strafes 'at block speed', so it reuses this constant.
 
 ### [8] momentum-carry-half (S): Attacks keep half of the current velocity
-- delivers: New SimConst.ATTACK_MOMENTUM_KEEP = 0.5 replaces the 0.3 in Fighter.start_attack (fighter.gd:599-602). Airborne and hop attacks still keep their full velocity. | test_fluid_combat.gd, section 'momentum': | - running toward a far opponent (10 m gap, about 30 frames to reach full speed), the step a light starts leaves exactly half the previous step's horizontal speed; | - the attacker then travels about v/30 m further than a standing attacker (the 0.8-per-frame brake during the attack); | - a jump attack keeps its velocity.
+- delivers: New SimConst.ATTACK_MOMENTUM_KEEP = 0.5 replaces the 0.3 in Fighter.start_attack (fighter.gd:599-602). Airborne and hop attacks still keep their full velocity. | test_fluid_combat.gd, section 'momentum': | - running toward a far opponent (10 m gap, about 30 frames to reach full speed), the step a light starts leaves exactly half the previous step's horizontal speed; | - the attacker then travels about v/24 m further than a standing attacker (the 0.8-per-frame brake during the attack); | - a jump attack keeps its velocity.
 - check: The new test passes. | npm test and npm run typecheck pass. | Soak: 0 failures.
 - depends: retire-ts-reference
 - stories: 16, 19, 20

@@ -603,9 +603,9 @@ func start_attack(p_id: StringName, started_by: int = -1) -> bool:
 	if def.special == &"shadowStep":
 		_plan_shadow_step()
 	if not def.airborne and def.hop == 0.0:
-		# keep a little of the running momentum
-		vel.x *= 0.3
-		vel.z *= 0.3
+		# keep some of the momentum (jump attacks and hop attacks keep it all)
+		vel.x *= SimConst.ATTACK_MOMENTUM_KEEP
+		vel.z *= SimConst.ATTACK_MOMENTUM_KEEP
 	return true
 
 

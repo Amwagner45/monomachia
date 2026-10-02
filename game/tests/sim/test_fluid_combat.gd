@@ -155,9 +155,9 @@ class FighterSteps:
 
 
 ## Runs n steps with fighter 0's input from p0 (step index -> RawInput) and an
-## idle Katana opponent gap m away.
-static func _record(weapon: WeaponDef, gap: float, n: int, p0: Callable) -> FighterSteps:
-	var W: World = H.make_world(weapon, Moves.KATANA, gap)
+## idle Katana opponent gap m away; abilities as H.make_world takes them.
+static func _record(weapon: WeaponDef, gap: float, n: int, p0: Callable, abilities: Dictionary = {}) -> FighterSteps:
+	var W: World = H.make_world(weapon, Moves.KATANA, gap, abilities)
 	var a: Fighter = W.fighters[0]
 	var s := FighterSteps.new()
 	for i: int in n:
@@ -170,6 +170,13 @@ static func _record(weapon: WeaponDef, gap: float, n: int, p0: Callable) -> Figh
 		s.frame.append(a.atk.frame if attacking else -1)
 		s.apart.append(JsMath.hypot(a.pos.x - W.fighters[1].pos.x, a.pos.z - W.fighters[1].pos.z))
 	return s
+
+
+static func _total(steps: PackedFloat64Array) -> float:
+	var t: float = 0.0
+	for d: float in steps:
+		t += d
+	return t
 
 
 # ------------------------------------------------------------------ block walk
@@ -271,10 +278,7 @@ func test_a_lunge_eases_in_and_out_over_the_same_window_and_distance() -> void:
 			steps.append(s.moved[i])
 			frames.append(s.frame[i])
 	assert_eq(frames, PackedInt32Array(range(9, 25)), "it moves on frames 9 to 24 and no others")
-	var total: float = 0.0
-	for d: float in steps:
-		total += d
-	assert_almost_eq(total, KESA_LUNGE, 1e-9, "0.6 m in all")
+	assert_almost_eq(_total(steps), KESA_LUNGE, 1e-9, "0.6 m in all")
 	for k: int in 7:
 		assert_lt(steps[k], steps[k + 1], "the steps rise to the middle (frame %d)" % frames[k + 1])
 		assert_gt(steps[8 + k], steps[9 + k], "then fall (frame %d)" % frames[9 + k])
@@ -367,3 +371,267 @@ func test_every_light_without_its_own_hitstun_has_14() -> void:
 				wrong.append("%s %d, want %d" % [m.id, m.hitstun, want])
 	assert_gt(lights, 20, "every weapon's lights, bare hands included")
 	assert_eq(wrong, [] as Array[String])
+
+
+# ------------------------------------------------------------------ heavy dodge cancel
+
+## Kesa Giri: 22 frames of startup (KESA_STARTUP), 4 active and 26 of
+## recovery. The spec's heavy cancel opens at startup + active + half the
+## recovery, rounded up: frame 39 of 52.
+const KESA_ACTIVE: int = 4
+const KESA_RECOVERY: int = 26
+const KESA_CANCEL: int = KESA_STARTUP + KESA_ACTIVE + 13
+const KESA_LAST_FRAME: int = KESA_STARTUP + KESA_ACTIVE + KESA_RECOVERY - 1
+## Kept from the demo: a press waits 8 frames in the input buffer.
+const INPUT_BUFFER: int = 8
+
+
+## An attack and a dodge pressed during it: whether the press was made and
+## whether in the air, the attack frame the dodge (or, with the stick let go
+## by then, the backstep) started on (-1 if it never did), and the attack's
+## last frame.
+class CancelRun:
+	extends SimHelpers.Rec
+	var attack: StringName = &""
+	var pressed: bool = false
+	var pressed_in_the_air: bool = false
+	var last_frame: int = -1
+	var dodge_frame: int = -1
+	## Whether the fighter was in the air as the step the dodge started began.
+	var dodged_in_the_air: bool = false
+
+
+## Fighter 0 holds start for hold steps, then presses dodge (to the side) so
+## that the press first counts on its attack's frame press_on; the opponent
+## holds defend throughout.
+static func _cancel_run(W: World, start: RawInput, hold: int, press_on: int, defend: RawInput) -> CancelRun:
+	var a: Fighter = W.fighters[0]
+	var r := CancelRun.new()
+	for i: int in 400:
+		var p0: RawInput = start if i < hold else H.idle()
+		var in_the_air: bool = a.pos.y > 0.001
+		if not r.pressed and a.state == &"attack" and a.atk.frame == press_on - 1:
+			p0 = H.move(1.0, 0.0, Btn.DODGE)
+			r.pressed = true
+			r.pressed_in_the_air = in_the_air
+		W.step([p0, defend])
+		r.collect(W)
+		if a.state == &"attack":
+			r.attack = a.atk.def.id
+			r.last_frame = a.atk.frame
+		elif r.attack != &"":
+			if a.state == &"dodge" or a.state == &"backstep":
+				r.dodge_frame = r.last_frame + 1
+				r.dodged_in_the_air = in_the_air
+			break
+	return r
+
+
+## Kesa Giri thrown at an opponent 10 m away (a whiff) or blocking 2.2 m away.
+static func _kesa_giri(press_on: int, blocked: bool) -> CancelRun:
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.2 if blocked else 10.0)
+	return _cancel_run(W, H.btn(Btn.HEAVY), 1, press_on, H.btn(Btn.BLOCK) if blocked else H.idle())
+
+
+func test_a_whiffed_heavy_dodge_cancels_in_the_second_half_of_its_recovery() -> void:
+	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, false)
+	assert_eq(early.attack, &"k_h1")
+	assert_true(early.pressed)
+	assert_eq(early.dodge_frame, -1, "a dodge pressed too early for the buffer to carry never comes")
+	assert_eq(early.last_frame, KESA_LAST_FRAME, "and the cut runs to its end")
+	assert_eq(_kesa_giri(KESA_CANCEL - INPUT_BUFFER, false).dodge_frame, KESA_CANCEL, "a buffered press fires as the cancel opens")
+	assert_eq(_kesa_giri(KESA_CANCEL + 6, false).dodge_frame, KESA_CANCEL + 6, "later presses fire at once")
+
+
+func test_a_blocked_heavy_dodge_cancels_the_same_way() -> void:
+	var early: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER - 1, true)
+	assert_true(early.has(&"block"), "the cut is blocked")
+	assert_true(early.pressed)
+	assert_eq(early.dodge_frame, -1, "no cancel before the second half")
+	assert_eq(early.last_frame, KESA_LAST_FRAME)
+	var late: CancelRun = _kesa_giri(KESA_CANCEL - INPUT_BUFFER, true)
+	assert_true(late.has(&"block"))
+	assert_eq(late.dodge_frame, KESA_CANCEL, "the cancel opens on the same frame")
+
+
+## Kesa Giri held for hold steps (its charge starts at step 10), pressing dodge
+## so the press first counts on frame press_on.
+static func _charged_kesa_giri(hold: int, press_on: int) -> CancelRun:
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 10.0)
+	return _cancel_run(W, H.btn(Btn.HEAVY), hold, press_on, H.idle())
+
+
+func test_a_charged_heavy_opens_its_cancel_later_by_half_its_extra_recovery() -> void:
+	# held past the charge's 2.5 s: 16 frames of extra recovery (the demo's),
+	# so the cancel opens 8 frames later
+	var full: int = KESA_CANCEL + 8
+	var early: CancelRun = _charged_kesa_giri(170, full - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, KESA_LAST_FRAME + 16, "a full charge adds 16 frames of recovery")
+	assert_eq(early.dodge_frame, -1, "the uncharged cut's cancel frame isn't open")
+	assert_eq(_charged_kesa_giri(170, full - INPUT_BUFFER).dodge_frame, full, "it opens 8 frames later")
+	# held for 112 steps: 103 frames of charge add 11 frames of recovery, and
+	# half of 11, rounded up, is 6
+	var partial: int = KESA_CANCEL + 6
+	early = _charged_kesa_giri(112, partial - INPUT_BUFFER - 1)
+	assert_eq(early.last_frame, KESA_LAST_FRAME + 11, "103 frames of charge add 11 frames of recovery")
+	assert_eq(early.dodge_frame, -1, "rounding down would open it a frame sooner")
+	assert_eq(_charged_kesa_giri(112, partial - INPUT_BUFFER).dodge_frame, partial, "it opens 6 frames later")
+
+
+func test_mountain_slam_cannot_be_dodge_cancelled() -> void:
+	# a block ability, 32 frames of startup, 5 active and 36 of recovery: a
+	# heavy with those frames would cancel from 55
+	var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 10.0, {"a": [&"g_slam", &"g_sweep"]})
+	var r: CancelRun = _cancel_run(W, H.btn(Btn.BLOCK, Btn.LIGHT), 1, 62, H.idle())
+	assert_eq(r.attack, &"g_slam")
+	assert_true(r.pressed)
+	assert_eq(r.dodge_frame, -1, "a dodge late in its recovery does nothing")
+	assert_eq(r.last_frame, 32 + 5 + 36 - 1, "the slam runs to its end")
+
+
+func test_a_jump_heavy_cannot_dodge_cancel_in_the_air() -> void:
+	# the Daggers' Dive Stab (12/4/18) opens its cancel on frame 25
+	var W: World = H.make_world(Moves.DAGGERS, Moves.KATANA, 10.0)
+	W.step([H.btn(Btn.JUMP), H.idle()])
+	var r: CancelRun = _cancel_run(W, H.btn(Btn.HEAVY), 1, 25, H.idle())
+	assert_eq(r.attack, &"d_jh")
+	assert_true(r.pressed_in_the_air, "thrown straight after the jump, it is still in the air there")
+	assert_gt(r.dodge_frame, 25, "the dodge comes after the cancel frame")
+	assert_false(r.dodged_in_the_air, "once the fighter has landed")
+
+
+# ------------------------------------------------------------------ colossal slide
+
+## The spec's colossal slide, as the plan sets it: 0.35 m over the first 10
+## recovery frames, eased out.
+const SLIDE: float = 0.35
+const SLIDE_FRAMES: int = 10
+## Heavy Swing, from its move data: 14 frames of startup and 4 active, so its
+## recovery starts on frame 19, and it dodge-cancels from frame 26.
+const SWING_ACTIVE_END: int = 14 + 4
+const SWING_CANCEL: int = 26
+
+
+## How far fighter 0 moves on each of attack id's recovery frames (frames
+## past startup + active), in order.
+static func _recovery_steps(s: FighterSteps, id: StringName) -> PackedFloat64Array:
+	var def: AttackDef = null
+	for w: WeaponDef in Moves.WEAPONS.values():
+		def = w.moves.get(id, def)
+	var out: PackedFloat64Array = []
+	for i: int in s.moved.size():
+		if s.attack[i] == id and s.frame[i] > def.startup + def.active:
+			out.append(s.moved[i])
+	return out
+
+
+## Asserts attack id ran past the slide's frames and moved no more than allow
+## in its recovery (leftover momentum aside, nothing).
+func _assert_no_slide(s: FighterSteps, id: StringName, what: String, allow: float = 0.0) -> void:
+	var steps: PackedFloat64Array = _recovery_steps(s, id)
+	assert_gt(steps.size(), SLIDE_FRAMES, "%s's recovery outlasts the slide's frames" % what)
+	assert_lte(_total(steps), allow, "%s doesn't slide" % what)
+
+
+func test_a_whiffed_greatsword_swing_slides_into_its_recovery() -> void:
+	var tap_light := func(i: int) -> RawInput: return H.btn(Btn.LIGHT) if i == 0 else H.idle()
+	var swing: PackedFloat64Array = _recovery_steps(_record(Moves.GREATSWORD, 10.0, 60, tap_light), &"g_l1")
+	assert_gt(swing.size(), SLIDE_FRAMES, "Heavy Swing's recovery outlasts the slide")
+	assert_almost_eq(_total(swing), SLIDE, 1e-9, "it slides 0.35 m")
+	for k: int in SLIDE_FRAMES - 1:
+		assert_gt(swing[k], swing[k + 1], "easing out (recovery frame %d)" % (k + 2))
+	assert_eq(_total(swing.slice(SLIDE_FRAMES)), 0.0, "all of it in the first 10 recovery frames")
+	var cut: FighterSteps = _record(Moves.KATANA, 10.0, 60, tap_light)
+	assert_eq(cut.start_of(&"k_l1"), 0)
+	_assert_no_slide(cut, &"k_l1", "a Katana Right Cut")
+
+
+func test_the_slide_runs_after_a_hit_and_after_a_block() -> void:
+	# 1.5 m from the defender the swing lands, and the knockback, or the
+	# block's pushback, carries the defender out of the slide's way
+	for run: Array in [[H.idle(), &"hit"], [H.btn(Btn.BLOCK), &"block"]]:
+		var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 1.5)
+		var a: Fighter = W.fighters[0]
+		var r: H.Rec = H.Rec.new()
+		var start_z: float = NAN
+		var end_z: float = NAN
+		for i: int in 60:
+			W.step([H.btn(Btn.LIGHT) if i == 0 else H.idle(), run[0]])
+			r.collect(W)
+			if a.state != &"attack":
+				break
+			if a.atk.frame == SWING_ACTIVE_END:
+				start_z = a.pos.z
+			elif a.atk.frame == SWING_ACTIVE_END + SLIDE_FRAMES:
+				end_z = a.pos.z
+		assert_true(r.has(run[1]), "the swing lands: %s" % run[1])
+		assert_almost_eq(end_z - start_z, SLIDE, 1e-9, "and slides 0.35 m after the %s" % run[1])
+
+
+func test_the_slide_stops_short_of_a_defender() -> void:
+	# Heavy Swing whiffs from 10 m. As its active frames end, the defender is
+	# put 1.2 m in front, inside the 0.35 m slide. (A block can't show this:
+	# its pushback, 0.36 m, outruns the slide.)
+	var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 10.0)
+	var a: Fighter = W.fighters[0]
+	var b: Fighter = W.fighters[1]
+	var closest: float = INF
+	for i: int in 50:
+		W.step([H.btn(Btn.LIGHT) if i == 0 else H.idle(), H.idle()])
+		if a.state != &"attack":
+			break
+		if a.atk.frame == SWING_ACTIVE_END:
+			b.pos = V3.make(a.pos.x, 0.0, a.pos.z + 1.2)
+		elif a.atk.frame > SWING_ACTIVE_END:
+			closest = minf(closest, SimMath.dist2(a.pos, b.pos))
+	assert_almost_eq(closest, 2.0 * FIGHTER_RADIUS + LUNGE_GAP, 1e-9, "it stops with the bodies 0.25 m apart")
+
+
+func test_a_dodge_cancel_ends_the_slide() -> void:
+	# The dodge goes to the side, so forward movement after it starts would be
+	# the slide's.
+	var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 10.0)
+	var a: Fighter = W.fighters[0]
+	var start_z: float = NAN
+	var dodge_z: float = NAN
+	var last_frame: int = -1
+	var dodge_frame: int = -1
+	for i: int in 60:
+		var p0: RawInput = H.btn(Btn.LIGHT) if i == 0 else H.idle()
+		if a.state == &"attack" and a.atk.frame == SWING_CANCEL - 1:
+			p0 = H.move(1.0, 0.0, Btn.DODGE)
+		W.step([p0, H.idle()])
+		if a.state == &"attack":
+			last_frame = a.atk.frame
+			if last_frame == SWING_ACTIVE_END:
+				start_z = a.pos.z
+		elif a.state == &"dodge" and dodge_frame < 0:
+			dodge_frame = last_frame + 1
+			dodge_z = a.pos.z
+	assert_eq(dodge_frame, SWING_CANCEL, "the dodge cancels the swing on its 8th recovery frame, inside the slide")
+	assert_between(dodge_z - start_z, 0.3, SLIDE - 0.001, "most of the slide had run, but not all")
+	assert_almost_eq(a.pos.z, dodge_z, 1e-9, "and nothing carries the fighter forward after the dodge starts")
+
+
+func test_jump_attacks_and_bashes_dont_slide() -> void:
+	# a jump straight up, then Aerial Chop
+	var chop: FighterSteps = _record(Moves.GREATSWORD, 10.0, 90, func(i: int) -> RawInput:
+		return H.btn(Btn.JUMP) if i == 0 else (H.btn(Btn.LIGHT) if i == 2 else H.idle()))
+	assert_eq(chop.start_of(&"g_jl"), 2)
+	_assert_no_slide(chop, &"g_jl", "Aerial Chop")
+	# Guard Crusher, a block ability
+	var crush: FighterSteps = _record(Moves.GREATSWORD, 10.0, 60, func(i: int) -> RawInput:
+		return H.btn(Btn.BLOCK, Btn.LIGHT) if i == 0 else H.idle(), {"a": [&"g_crush", &"g_slam"]})
+	assert_eq(crush.start_of(&"g_crush"), 0)
+	_assert_no_slide(crush, &"g_crush", "Guard Crusher")
+	# Shoulder Charge out of a sprint: only what is left of the sprint's
+	# momentum, braked each frame, carries it (under 1 cm)
+	var charge: FighterSteps = _record(Moves.GREATSWORD, 14.0, 70, func(i: int) -> RawInput:
+		return H.move(0.0, 1.0, Btn.SPRINT, Btn.LIGHT) if i == 20 else (H.move(0.0, 1.0, Btn.SPRINT) if i < 20 else H.idle()))
+	assert_eq(charge.start_of(&"g_sl"), 20)
+	_assert_no_slide(charge, &"g_sl", "Shoulder Charge", 0.01)
+	# Pommel Strike out of a dodge
+	var pommel: FighterSteps = _record(Moves.GREATSWORD, 10.0, 80, func(i: int) -> RawInput:
+		return H.move(1.0, 0.0, Btn.DODGE) if i == 0 else (H.btn(Btn.LIGHT) if i == 26 else H.idle()))
+	assert_gt(pommel.start_of(&"g_dl"), 0)
+	_assert_no_slide(pommel, &"g_dl", "Pommel Strike")

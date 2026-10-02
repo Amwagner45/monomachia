@@ -667,6 +667,12 @@ func _update_attack() -> void:
 		var n: float = float(maxi(1, le - ls))
 		var share: float = SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
 		_advance(a.lunge_total * share)
+	# A colossal swing slides on into its first recovery frames, easing out.
+	var into_recovery: int = f - S - A
+	if into_recovery > 0 and into_recovery <= SimConst.COLOSSAL_SLIDE_FRAMES and _slides(def):
+		var n: float = float(SimConst.COLOSSAL_SLIDE_FRAMES)
+		var slid: float = SimMath.ease_out_cubic(float(into_recovery) / n) - SimMath.ease_out_cubic(float(into_recovery - 1) / n)
+		_advance(SimConst.COLOSSAL_SLIDE_DIST * slid)
 	if def.hop != 0.0 and f == ls + 1 and not airborne():
 		vel.y = def.hop
 	if def.airborne and def.type == &"overhead" and f == S + 1 and airborne():
@@ -703,8 +709,14 @@ func _update_attack() -> void:
 		start_attack(a.queued, -1)
 		return
 
-	# Dodge-cancel the recovery of quick attacks.
-	if def.dodge_cancel_from != AttackDef.UNSET and f >= def.dodge_cancel_from and inp.buffered(Btn.DODGE):
+	# Dodge-cancel the recovery from the move's cancel frame, later by half any
+	# extra recovery (a charge's), and never in the air.
+	if (
+		def.dodge_cancel_from != AttackDef.UNSET
+		and f >= def.dodge_cancel_from + ceili(a.extra_recovery / 2.0)
+		and not airborne()
+		and inp.buffered(Btn.DODGE)
+	):
 		inp.consume(Btn.DODGE)
 		start_dodge()
 		return
@@ -714,6 +726,12 @@ func _update_attack() -> void:
 			backstab_until = W.frame + 30
 		atk = null
 		to_free()
+
+
+## Whether def slides on into its recovery: a colossal weapon's grounded
+## attacks, bashes aside.
+func _slides(def: AttackDef) -> bool:
+	return moveset().cls == &"colossal" and not def.airborne and def.type != &"bash"
 
 
 ## Advance up to dist along our facing, stopping with our bodies 0.25 m apart.

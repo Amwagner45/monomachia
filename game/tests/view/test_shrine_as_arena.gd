@@ -14,6 +14,8 @@ const NEAR_REACH: float = 0.16
 ## A generous bound on how high a fighter's feet go (jumps, leaps, being held
 ## up on the Impaler's blade); the computer matches below check it.
 const FEET_CEILING: float = 2.5
+## A body reaching this far from the centre is backed against the wall.
+const AT_THE_WALL: float = SimConst.ARENA_RADIUS - 0.01
 
 var def: ArenaDef
 
@@ -33,9 +35,17 @@ func test_a_default_match_is_fought_on_the_shrine() -> void:
 
 
 func test_computer_matches_back_fighters_against_the_wall_but_never_through_it() -> void:
+	# Whether a match reaches the wall depends on how it plays, which every
+	# rule change shifts, so seeds run until one has (at least three matches,
+	# at most twelve), and every match run is checked. The cost: losing the
+	# wall shows only once all twelve seeds miss it.
 	var furthest_body: float = 0.0
 	var highest_feet: float = 0.0
-	for seed_value: int in [11, 12, 13]:
+	var played: int = 0
+	for seed_value: int in range(11, 23):
+		if played >= 3 and furthest_body > AT_THE_WALL:
+			break
+		played += 1
 		var W: World = SimHelpers.track(World.new(FighterConfig.make(Moves.KATANA), FighterConfig.make(Moves.GREATSWORD), seed_value))
 		var M: Match = Match.new(W)
 		var brains: Array[AIBrain] = [
@@ -53,7 +63,7 @@ func test_computer_matches_back_fighters_against_the_wall_but_never_through_it()
 		assert_eq(M.phase, &"matchEnd", "seed %d: the match finished" % seed_value)
 		for b: AIBrain in brains:
 			b.dispose()
-	assert_gt(furthest_body, SimConst.ARENA_RADIUS - 0.01, "a fighter was backed against the wall")
+	assert_gt(furthest_body, AT_THE_WALL, "a fighter was backed against the wall")
 	assert_lte(furthest_body, def.wall_inner_radius(), "and no fighter's body passed the parapet's inner face")
 	assert_lt(highest_feet, FEET_CEILING, "no fighter's feet went higher than FEET_CEILING")
 

@@ -212,7 +212,7 @@ VERDICT PER PIECE
 - files: game/arenas/moonlit_shrine/shrine_backdrop.gd, game/shaders/cloud_sea.gdshader, game/shaders/mountain_layer.gdshader, game/shaders/waterfall.gdshader, game/shaders/lake_water.gdshader, game/shaders/mist_puff.gdshader, game/arenas/moonlit_shrine/moonlit_shrine.gd, game/tests/view/test_moonlit_shrine.gd
 
 ### [17] shrine-embers-ash (S): Drifting embers and ash
-- delivers: game/arenas/moonlit_shrine/shrine_ambience.gd: embers from each lantern, embers carried up past the edge, ash falling across the courtyard. All in group look_particles. | shaders/particle_flake.gdshader. | The worktree's petals only if the owner keeps them. | Tests: one ember emitter per lantern; ash and embers follow each preset's particle ratio.
+- delivers: game/arenas/moonlit_shrine/shrine_ambience.gd: embers from each lantern, embers carried up past the edge, ash falling across the courtyard. All in group look_particles. | shaders/particle_flake.gdshader. | The worktree's petals only if the owner keeps them. | Tests: one ember emitter per lantern; ash and embers follow each preset's particle ratio. | Built in 17.8 as game/arenas/moonlit_shrine/shrine_particles.gd (ShrineParticles, under Particles), since "ambience" names the arena's sound bed; see the plan's Done notes.
 - check: GUT tests pass, and the shader_check shot passes. | Gameplay and watch shots at High and Low, reviewed. | npm test and npm run typecheck pass.
 - depends: shrine-props
 - stories: 47, 57

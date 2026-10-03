@@ -4,7 +4,7 @@ extends WeaponStringsTest
 ## code.
 
 ## The spec's Twin Daggers table, the rows built so far (see
-## WeaponStringsTest.rows): the four lights and Twin Fang.
+## WeaponStringsTest.rows): the four lights, Twin Fang and Spinning Backhand.
 const ROWS: Dictionary[StringName, Dictionary] = {
 	&"d_l1": {
 		"name": "Quick Slice", "frames": [7, 2, 13], "damage": 4, "posture": 4,
@@ -26,10 +26,20 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 		"name": "Twin Fang", "frames": [16, 3, 20], "damage": 10, "posture": 9,
 		"light": &"", "heavy": &"d_h2", "sides": [&"centre", &"centre"],
 	},
+	&"d_h2": {
+		"name": "Spinning Backhand", "frames": [18, 5, 22], "damage": 12, "posture": 10,
+		"light": &"", "heavy": &"", "sides": [&"centre", &"centre"],
+	},
 }
 
 ## The four lights, in the order the string plays them.
 const LIGHTS: Array[StringName] = [&"d_l1", &"d_l2", &"d_l3", &"d_l4"]
+
+## Twin Fang, a dashing double stab, lunges 1.4 m (the spec's table).
+const TWIN_FANG_LUNGE: float = 1.4
+## Fighters this far apart (m, the plan's notes) leave a lunge room to run its
+## whole length: it stops short only 0.25 m from the defender's body.
+const FULL_LUNGE_GAP: float = 4.0
 
 
 func _init() -> void:
@@ -94,11 +104,42 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 	var strings: Array = [
 		[light], [light, light], [light, light, light], [light, light, light, light],
 		[light, heavy], [light, light, heavy], [heavy],
+		[heavy, heavy], [light, heavy, heavy], [light, light, heavy, heavy], [light, light, light, light, heavy],
 	]
 	for presses: Array in strings:
 		var typed: Array[int] = []
 		typed.assign(presses)
 		_assert_stops_after(typed)
+
+
+# ------------------------------------------------------------------ Twin Fang and Spinning Backhand
+
+func test_twin_fang_dashes_about_1_4_m() -> void:
+	var r: PlayedString = _play([Btn.HEAVY], FULL_LUNGE_GAP)
+	var start: int = r.attack.find(&"d_h1")
+	assert_gt(start, -1, "Twin Fang starts")
+	if start < 0:
+		return
+	assert_almost_eq(r.walked(start, r.attack.rfind(&"d_h1") + 1), TWIN_FANG_LUNGE, CLOSE, "a 1.4 m dash")
+
+
+func test_a_heavy_after_twin_fang_or_flurry_finisher_is_spinning_backhand() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	assert_eq(
+		_play([heavy, heavy]).ids(&"hit"),
+		[&"d_h1", &"d_h2"] as Array[StringName],
+		"H-H: Twin Fang, Spinning Backhand",
+	)
+	assert_eq(
+		_play([light, light, light, light, heavy]).ids(&"hit"),
+		[&"d_l1", &"d_l2", &"d_l3", &"d_l4", &"d_h2"] as Array[StringName],
+		"L-L-L-L-H: Flurry Finisher, Spinning Backhand",
+	)
+
+
+func test_spinning_backhand_ends_the_string() -> void:
+	_assert_starts_nothing_in([Btn.HEAVY, Btn.HEAVY], [&"d_h1", &"d_h2"], LIGHT_OR_HEAVY)
 
 
 # ------------------------------------------------------------------ dodge cancels

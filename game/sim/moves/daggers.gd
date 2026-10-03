@@ -39,14 +39,16 @@ const MOVES: Dictionary = {
 		"startup": 11, "active": 3, "recovery": 18, "damage": 7, "posture": 6, "knockback": 0.6, "hitstun": STRING_HITSTUN,
 		"range": 1.9, "arc": 70, "lunge": 0.6, "chain_heavy": &"d_h2", "dodge_cancel_from": 15,
 	},
+	# a dashing double stab
 	&"d_h1": {
 		"id": &"d_h1", "name": "Twin Fang", "kind": &"heavy", "type": &"stab", "anim": &"doubleStab", "hand": &"both", "sound": D,
 		"side_start": &"centre", "side_end": &"centre",
 		"startup": 16, "active": 3, "recovery": 20, "damage": 10, "posture": 9, "knockback": 0.6,
-		"range": 1.9, "arc": 70, "lunge": 0.8, "chargeable": true, "chain_heavy": &"d_h2",
+		"range": 1.9, "arc": 70, "lunge": 1.4, "chargeable": true, "chain_heavy": &"d_h2",
 	},
+	# the heavy string's finisher, after Twin Fang or Flurry Finisher: a spin
 	&"d_h2": {
-		"id": &"d_h2", "name": "Gutting Spiral", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,
+		"id": &"d_h2", "name": "Spinning Backhand", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,
 		"side_start": &"centre", "side_end": &"centre",
 		"startup": 18, "active": 5, "recovery": 22, "damage": 12, "posture": 10, "knockback": 0.9,
 		"range": 1.9, "arc": 360, "lunge": 0.4,

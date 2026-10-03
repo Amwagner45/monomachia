@@ -14,6 +14,8 @@
 //   run                    play the game
 //   dev                    open the editor
 //   build                  export the Windows build to build/windows/
+//   clips                  convert the clip manifest's Iglesias clips into the
+//                          gitignored clip libraries (needs the packs; see findAssetsSrc)
 //
 // Godot is found through the GODOT environment variable, then `godot` or
 // `godot4` on PATH, then a local `.godot-path` file (see findGodot).
@@ -59,6 +61,27 @@ export function findGodot() {
   return null;
 }
 
+/**
+ * The folder the raw asset packs are unzipped in (holding quaternius/ and
+ * kevin_iglesias/), from a one-line `.assets-src-path` file at the repo root
+ * (not committed), or the main checkout's in a linked git worktree. Null when
+ * there is none; the Godot tools then look in `assets_src/` at the repo root
+ * (tools/asset_source.gd). Passed to every Godot run as MONOMACHIA_ASSETS_SRC.
+ */
+export function findAssetsSrc() {
+  if (process.env.MONOMACHIA_ASSETS_SRC) return process.env.MONOMACHIA_ASSETS_SRC;
+  const roots = [ROOT];
+  const common = spawnSync('git', ['rev-parse', '--path-format=absolute', '--git-common-dir'], { cwd: ROOT, encoding: 'utf8' });
+  if (common.status === 0 && common.stdout.trim()) roots.push(dirname(common.stdout.trim()));
+  for (const root of roots) {
+    const file = join(root, '.assets-src-path');
+    if (!existsSync(file)) continue;
+    const p = readFileSync(file, 'utf8').trim();
+    if (p) return p;
+  }
+  return null;
+}
+
 function die(msg) {
   console.error(msg);
   process.exit(1);
@@ -78,7 +101,9 @@ const SHADER_ERROR_PATTERNS = [/SHADER ERROR/];
  */
 function runGodot(godot, args, { timeoutMs = 600000, quiet = false, cwd = PROJECT, env = {} } = {}) {
   return new Promise((res) => {
-    const child = spawn(godot, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...env } });
+    const assets = findAssetsSrc();
+    const assetsEnv = assets ? { MONOMACHIA_ASSETS_SRC: assets } : {};
+    const child = spawn(godot, args, { cwd, stdio: ['ignore', 'pipe', 'pipe'], env: { ...process.env, ...assetsEnv, ...env } });
     let output = '';
     const onData = (stream) => (buf) => {
       const s = buf.toString();
@@ -112,7 +137,7 @@ async function importProject(godot) {
 async function main() {
   const [cmd = 'help', ...rest] = process.argv.slice(2);
   if (cmd === 'help' || cmd === '--help') {
-    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|dev|build');
+    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|dev|build|clips');
     return;
   }
   const godot = findGodot();
@@ -195,6 +220,18 @@ async function main() {
       if (r.code === 0 && hasShaderErrors(r.output)) die('godot.mjs: a shader failed to compile (see SHADER ERROR above).');
       if (r.code === 0 && hasScriptErrors(r.output)) die('godot.mjs: the scene reported script errors.');
       process.exit(r.code);
+      return;
+    }
+    case 'clips': {
+      // Stage the manifest's clips from the packs, import them, then build the
+      // libraries (tools/import_clips.gd).
+      await importProject(godot);
+      const staged = await runGodot(godot, ['--headless', '--path', PROJECT, '--script', 'res://tools/import_clips.gd', '--', '--stage']);
+      if (staged.code === 2) die('godot.mjs: no clips converted: the Iglesias packs were not found (see above).');
+      if (staged.code !== 0 || hasScriptErrors(staged.output)) die('godot.mjs: staging the clips failed.');
+      await importProject(godot);
+      const built = await runGodot(godot, ['--headless', '--path', PROJECT, '--script', 'res://tools/import_clips.gd', '--', '--build']);
+      if (built.code !== 0 || hasScriptErrors(built.output)) die('godot.mjs: building the clip libraries failed.');
       return;
     }
     case 'run':

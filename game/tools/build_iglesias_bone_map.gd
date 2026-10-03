@@ -20,6 +20,8 @@ extends SceneTree
 ## docs/research/retarget-prototype.md for how it was checked.
 
 const OUT_PATH: String = "res://assets/kevin_iglesias/iglesias_bone_map.tres"
+## The rig's bones left unmapped on purpose (see above).
+const UNMAPPED: Array[StringName] = [&"B-handProp.L", &"B-handProp.R", &"B-jaw", &"B-spineProxy"]
 
 
 ## Profile bone name -> Iglesias bone name.

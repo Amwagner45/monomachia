@@ -780,3 +780,80 @@ func test_the_hips_bob_and_the_weapon_rides_it() -> void:
 		bob = shuffle.shown_weapon_bob - v.sink
 		bobs.append(bob)
 	assert_gt(bobs.max() - bobs.min(), 0.005, "and it bobs")
+
+
+# ------------------------------------------------------------ footwork (14.13)
+
+## A light whose lunge eases over `ls` to `le` (UNSET: to the end of the
+## active frames), with startup 11 and 3 active frames.
+static func _lunging(ls: int = 0, le: int = 12) -> AttackDef:
+	var d: AttackDef = AttackDef.new()
+	d.startup = 11
+	d.active = 3
+	d.recovery = 16
+	d.lunge = 0.35
+	d.lunge_start = ls
+	d.lunge_end = le
+	return d
+
+
+## Straight ahead the front (right) foot lifts so that it lands on the first
+## active frame, as far ahead as the lunge has left, and the rear foot lands
+## REAR_FRAMES after; it lifts no earlier than the lunge starts, and swings
+## STRIKE_SWING_LEAST frames at least.
+func test_a_strike_lands_the_front_foot_on_the_first_active_frame() -> void:
+	var plan: GuardShuffle.Strike = GuardShuffle.strike_for(_lunging(), 0.35, Vector3.BACK, 1)
+	assert_eq(plan.lands["Right"], 12, "the front foot lands on the first active frame")
+	assert_eq(plan.lifts["Right"], 12 - GuardShuffle.STRIKE_SWING_MOST, "after a whole swing")
+	assert_eq(plan.lifts["Left"], 12, "the rear foot lifts as it lands")
+	assert_eq(plan.lands["Left"], 12 + GuardShuffle.REAR_FRAMES)
+	assert_almost_eq(plan.ahead["Right"], Vector3.ZERO, Vector3.ONE * 1e-9, "the lunge is over by then: on its spot")
+	var late: GuardShuffle.Strike = GuardShuffle.strike_for(_lunging(8, 20), 0.35, Vector3.BACK, 1)
+	assert_eq(late.lifts["Right"], 8, "not before the lunge starts")
+	assert_gt(late.ahead["Right"].z, 0.1, "ahead by what is left of the lunge")
+	assert_almost_eq(late.ahead["Right"].z, minf(0.35 * (1.0 - SimMath.ease_in_out(4.0 / 12.0)), GuardShuffle.STRIKE_AHEAD_MOST), 1e-6,
+			"ahead by the lunge left, within STRIKE_AHEAD_MOST")
+	var later: GuardShuffle.Strike = GuardShuffle.strike_for(_lunging(10, 20), 0.2, Vector3.BACK, 1)
+	assert_almost_eq(later.ahead["Right"].z, 0.2 * (1.0 - SimMath.ease_in_out(2.0 / 10.0)), 1e-6, "eased as the rules ease it")
+	assert_lte(late.ahead["Left"].z, GuardShuffle.STRIKE_AHEAD_MOST, "within reach")
+	var short: GuardShuffle.Strike = GuardShuffle.strike_for(_lunging(10, 14), 0.35, Vector3.BACK, 1)
+	assert_eq(short.lands["Right"] - short.lifts["Right"], GuardShuffle.STRIKE_SWING_LEAST, "a short swing at least")
+	assert_true(GuardShuffle.strike_for(_lunging(), 0.0, Vector3.BACK, 1).lifts.is_empty(), "no lunge, no steps")
+
+
+## A lunge along a dodge to the left leads with the left foot.
+func test_a_strike_leads_with_the_foot_on_the_lunges_side() -> void:
+	var plan: GuardShuffle.Strike = GuardShuffle.strike_for(_lunging(), 1.2, Vector3.RIGHT, 1)
+	assert_eq(plan.lands["Left"], 12, "the left foot (+X) leads a lunge to the left")
+	assert_eq(plan.lands["Right"], 12 + GuardShuffle.REAR_FRAMES)
+
+
+## In a strike the planted feet stand still on the ground while the fighter
+## lunges over them, and no step is taken but the strike's.
+func test_a_strike_steps_only_its_own_steps() -> void:
+	var g: GuardShuffle = GuardShuffle.new()
+	g.reset(Vector3.ZERO, 0.0)
+	var def: AttackDef = _lunging()
+	var lifted: Dictionary[String, int] = {}
+	var landed: Dictionary[String, int] = {}
+	var was: Dictionary[String, Vector3] = {}
+	for frame: int in range(1, 31):
+		# the lunge's own ease, 0.35 m by frame 12
+		var z: float = 0.35 * SimMath.ease_in_out(clampf(float(frame) / 12.0, 0.0, 1.0))
+		for side: String in SIDES:
+			was[side] = g.feet[side].at
+		g.step(Vector3(0.0, 0.0, z), 0.0, true, GuardShuffle.strike_for(def, 0.35, Vector3.BACK, frame))
+		for side: String in SIDES:
+			var foot: GuardShuffle.Foot = g.feet[side]
+			if foot.swinging and not lifted.has(side):
+				lifted[side] = frame
+			if g.landed.has(side):
+				landed[side] = frame
+			if not foot.swinging and not g.landed.has(side):
+				assert_lt(foot.at.distance_to(was[side]), 1e-9, "frame %d: the %s foot stands planted" % [frame, side])
+	assert_eq(landed, {"Right": 12, "Left": 12 + GuardShuffle.REAR_FRAMES} as Dictionary[String, int], "each lands when planned")
+	assert_eq(lifted["Right"], 2, "the front foot lifts on frame 2, swinging the 10 frames to 12")
+	assert_almost_eq(g.feet["Right"].at, Vector3(GuardStance.FEET["Right"].x, 0.0, 0.35 + GuardStance.FEET["Right"].z), Vector3.ONE * 1e-6,
+			"the front foot on its spot where the lunge ends")
+	assert_almost_eq(g.feet["Left"].at, Vector3(GuardStance.FEET["Left"].x, 0.0, 0.35 + GuardStance.FEET["Left"].z), Vector3.ONE * 1e-6,
+			"and the rear one")

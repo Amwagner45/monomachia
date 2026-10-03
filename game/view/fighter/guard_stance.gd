@@ -15,9 +15,11 @@ extends RefCounted
 ## - the hips turned toward the rear foot's side, the spine turned back so
 ##   the chest faces the opponent and bent a little forward over the hips,
 ##   and the head raised to watch the opponent.
-## The weapon's guard is StickPose's until swings bring their own (plan task
-## 14.10), riding the pelvis's drop and sway (offset()) and the shuffle's bob
-## on its spring.
+## The weapon's guard (its swings' guard, or StickPose's for a weapon without
+## swings: SwingPlayer) rides the pelvis's drop and sway (offset()) and the
+## shuffle's bob on its spring. While a swing plays, its body keys take over
+## the hips' and the spine's turns, the lean and the lowered pelvis from the
+## stance (pose()'s `share`), and the feet stay planted.
 ##
 ## The stance shows as far as the legs are the guard's (Locomotion's idle
 ## weight, which its guard weight holds at 1 unless the fighter runs with its
@@ -82,11 +84,12 @@ static func offset(seconds: float) -> Vector3:
 ## `shuffle` has the feet (for a skeleton turned `spin` from the way the
 ## fighter faces), how far the feet follow them rather than the clip, and
 ## the body's turns and offset with the shuffle's bob, on top of what the
-## body layer already has, then the pelvis sunk as far as the legs need to
-## reach the feet.
+## body layer already has (`share` of them: a swing's body takes the rest,
+## SwingPlayer.Body), then the pelvis sunk as far as the legs need to reach
+## the feet.
 ## Returns how far it sank (m), for the weapon to ride. Call it between
 ## updates, while the skeleton holds the clip's pose.
-static func pose(rig: FighterRig, weight: float, seconds: float, shuffle: GuardShuffle, spin: float = 0.0) -> float:
+static func pose(rig: FighterRig, weight: float, seconds: float, shuffle: GuardShuffle, spin: float = 0.0, share: float = 1.0) -> float:
 	shuffle.place(rig, spin)
 	rig.clip_feet = 1.0 - weight
 	var body: BodyLayer = rig.body
@@ -97,12 +100,13 @@ static func pose(rig: FighterRig, weight: float, seconds: float, shuffle: GuardS
 	var sk: Skeleton3D = rig.skeleton
 	var hips: int = sk.find_bone("Hips")
 	var clip_turn: float = BodyLayer.heading(sk, hips, sk.get_bone_global_pose(hips))
-	body.pelvis_yaw += (deg_to_rad(PELVIS_YAW) - clip_turn) * weight
+	var own: float = weight * share
+	body.pelvis_yaw += deg_to_rad(PELVIS_YAW) * own - clip_turn * weight
 	body.untwist = lerpf(body.untwist, 1.0, weight)
-	body.spine_yaw += deg_to_rad(SPINE_YAW) * weight
-	body.spine_pitch += deg_to_rad(SPINE_PITCH) * weight
-	body.head_pitch += deg_to_rad(HEAD_PITCH) * weight
-	body.hips_offset += (offset(seconds) + Vector3(0.0, shuffle.shown_bob, 0.0)) * weight
+	body.spine_yaw += deg_to_rad(SPINE_YAW) * own
+	body.spine_pitch += deg_to_rad(SPINE_PITCH) * own
+	body.head_pitch += deg_to_rad(HEAD_PITCH) * own
+	body.hips_offset += (offset(seconds) + Vector3(0.0, shuffle.shown_bob, 0.0)) * own
 	var down: float = sink(rig) * weight
 	body.hips_offset.y -= down
 	return down

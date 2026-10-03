@@ -4,13 +4,16 @@ extends CanvasLayer
 ## (24.1): each side's plate (the 赤 or 青 seal, name, weapon and the disarmed
 ## tag), HP with its lag band and low-HP pulse, posture with its hot and full
 ## states, the round pips and the 奥義 badge, as HudState works them out, and
-## the round's kanji between them. Also the round label,
-## centre announcements (Round N, Fight, K.O., the round's winner,
-## Disarmed) and a hint line (ultimate ready, pick up your weapon), shown only
-## while the round is being fought. It hides when the results open.
+## the round's kanji between them. The centre announcements (24.2): a kanji
+## over the words and a subline (第一戦 Round 1, 始め Fight, 一本 K.O., 相打ち
+## Double K.O., 勝 or 敗 for the round's result, 武器喪失 Disarmed), with the
+## demo's entrance (AnnouncementEntrance). And a hint line (ultimate ready, pick up
+## your weapon), shown only while the round is being fought. It hides when
+## the results open.
 ##
-## Announcements are timed on the host's rules steps, not the wall clock, so
-## they slow down with slow motion and freeze with pause. Port of the
+## Announcements, their entrance included, are timed on the host's rules
+## steps, not the wall clock, so they slow down with slow motion and freeze
+## with pause. Port of the
 ## announcement and bar logic of src/ui/hud.ts (its milliseconds become
 ## frames at 60 per second). Its text takes the UI theme's fonts
 ## (ui/theme/ink_wash.tres) and its colours are UiPalette's.
@@ -45,9 +48,10 @@ const GOLD: Color = UiPalette.GOLD
 
 var host: MatchHost
 
-## The announcement on screen: { "text", "sub", "until" } (until is a step).
+## The announcement on screen: { "kanji", "text", "sub", "at", "until" } (at
+## and until are steps).
 var announcement: Dictionary = {}
-## Announcements waiting for their step: [{ "at", "text", "sub", "frames" }].
+## Announcements waiting for their step: [{ "at", "kanji", "text", "sub", "frames" }].
 var _queued: Array[Dictionary] = []
 var _root: Control
 var _plates: Array[Label] = []
@@ -59,6 +63,8 @@ var _pips: Array[HudPips] = []
 var _badges: Array[HudBadge] = []
 var _round_kanji: Label
 var _round_label: Label
+var _announce_box: VBoxContainer
+var _announce_kanji: Label
 var _announce_label: Label
 var _announce_sub: Label
 var _hint: Label
@@ -95,6 +101,32 @@ func bind(p_host: MatchHost) -> void:
 ## The centre text now ("" when none), for tests and screenshots.
 func announcement_text() -> String:
 	return String(announcement.get("text", ""))
+
+
+## The announcement's kanji and subline now ("" when none).
+func announcement_kanji() -> String:
+	return String(announcement.get("kanji", ""))
+
+
+func announcement_sub() -> String:
+	return String(announcement.get("sub", ""))
+
+
+## How far the announcement on screen is into its length, in rules steps
+## (with the part of a step waiting in the host's clock, which a pause and
+## hit-stop leave alone), or -1 with none.
+func announcement_age() -> float:
+	if announcement.is_empty() or host == null:
+		return -1.0
+	return host.step_count - int(announcement["at"]) + minf(host.accumulated() / MatchHost.DT, 1.0)
+
+
+## The announcement's opacity and scale now (Vector2(0, 1) with none).
+func announcement_look() -> Vector2:
+	if announcement.is_empty():
+		return Vector2(0.0, 1.0)
+	var t: float = announcement_age() / float(AnnouncementEntrance.FRAMES)
+	return Vector2(AnnouncementEntrance.alpha(t), AnnouncementEntrance.scale(t))
 
 
 func hint_text() -> String:
@@ -153,33 +185,39 @@ func _on_sim_event(e: Dictionary) -> void:
 			if not training:
 				var wins: Array[int] = host.sim_match.wins
 				var final: bool = wins[0] == SimConst.ROUNDS_TO_WIN - 1 and wins[1] == SimConst.ROUNDS_TO_WIN - 1
-				announce("Round %d" % n, "Final round" if final else "", ROUND_FRAMES)
+				announce("第%s戦" % HudState.round_kanji(n), "Round %d" % n, "Final round" if final else "", ROUND_FRAMES)
 		&"fight":
 			if not training:
-				announce("Fight", "", FIGHT_FRAMES)
+				announce("始め", "Fight", "", FIGHT_FRAMES)
 		&"ko":
 			if not training:
 				if int(e["winner"]) < 0:
-					announce("Double K.O.", "", DOUBLE_KO_FRAMES)
+					announce("相打ち", "Double K.O.", "", DOUBLE_KO_FRAMES)
 				else:
-					announce("K.O.", "", KO_FRAMES)
+					announce("一本", "K.O.", "", KO_FRAMES)
 		&"roundOver":
 			if not training:
 				var winner: int = int(e["winner"])
-				var text: String = "Draw"
-				var sub: String = "The round will be replayed" if winner < 0 else ("Perfect" if e["perfect"] else "")
-				if winner >= 0:
-					if watch:
-						text = "%s wins the round" % host.fighter(winner).name
-					else:
-						text = "You win the round" if winner == _me() else "You lose the round"
-				_queued.append({"at": now + ROUND_RESULT_DELAY, "text": text, "sub": sub, "frames": ROUND_RESULT_FRAMES})
+				var call: Array[String] = _round_result(int(e["winner"]), bool(e["perfect"]), watch)
+				_queued.append({"at": now + ROUND_RESULT_DELAY, "kanji": call[0], "text": call[1], "sub": call[2], "frames": ROUND_RESULT_FRAMES})
 		&"disarm":
 			var victim: int = int(e["victim"])
 			var sub: String = ""
 			if not watch:
 				sub = "Retrieve your weapon or fight bare-handed" if victim == _me() else "Stand between them and their blade"
-			announce("Disarmed", sub, DISARM_FRAMES)
+			announce("武器喪失", "Disarmed", sub, DISARM_FRAMES)
+
+
+## The round's result as [kanji, words, subline]: 勝 for a round won and in
+## Watch, 敗 otherwise (a draw included), as the demo's.
+func _round_result(winner: int, perfect: bool, watch: bool) -> Array[String]:
+	if winner < 0:
+		return ["勝" if watch else "敗", "Draw", "The round will be replayed"]
+	var sub: String = "Perfect" if perfect else ""
+	if watch:
+		return ["勝", "%s wins the round" % host.fighter(winner).name, sub]
+	var won: bool = winner == _me()
+	return ["勝" if won else "敗", "You win the round" if won else "You lose the round", sub]
 
 
 func _on_stepped(_step: int) -> void:
@@ -187,24 +225,39 @@ func _on_stepped(_step: int) -> void:
 	var keep: Array[Dictionary] = []
 	for q: Dictionary in _queued:
 		if now >= int(q["at"]):
-			announce(q["text"], q["sub"], int(q["frames"]))
+			announce(q["kanji"], q["text"], q["sub"], int(q["frames"]))
 		else:
 			keep.append(q)
 	_queued = keep
 	_refresh_announcement()
 
 
-## Shows a centre announcement for this many rules steps.
-func announce(text: String, sub: String, frames: int) -> void:
-	announcement = {"text": text, "sub": sub, "until": host.step_count + frames}
+## Shows a centre announcement (a kanji over the words, and a subline) for
+## this many rules steps, starting its entrance now.
+func announce(kanji: String, text: String, sub: String, frames: int) -> void:
+	announcement = {"kanji": kanji, "text": text, "sub": sub, "at": host.step_count, "until": host.step_count + frames}
 	_refresh_announcement()
 
 
 func _refresh_announcement() -> void:
 	if not announcement.is_empty() and host != null and host.step_count >= int(announcement["until"]):
 		announcement = {}
-	_announce_label.text = String(announcement.get("text", ""))
-	_announce_sub.text = String(announcement.get("sub", ""))
+	_announce_kanji.text = announcement_kanji()
+	_announce_label.text = announcement_text()
+	_announce_sub.text = announcement_sub()
+	# fit the box's height to the new text (it never shrinks by itself),
+	# so the entrance scales about the text's middle
+	_announce_box.size = Vector2(_announce_box.size.x, _announce_box.get_combined_minimum_size().y)
+	_show_announcement()
+
+
+## Puts the announcement's entrance on screen: its opacity and scale about
+## its middle.
+func _show_announcement() -> void:
+	var look: Vector2 = announcement_look()
+	_announce_box.modulate.a = look.x
+	_announce_box.pivot_offset = _announce_box.size * 0.5
+	_announce_box.scale = Vector2(look.y, look.y)
 
 
 # ------------------------------------------------------------------ per frame
@@ -213,6 +266,7 @@ func _process(delta: float) -> void:
 	if host == null or not host.is_started() or not visible:
 		return
 	_blink += delta
+	_show_announcement()
 	var pulse: float = 0.5 - 0.5 * cos(_blink * TAU / LOW_PULSE)
 	var blink_off: bool = fmod(_blink, POSTURE_BLINK) >= POSTURE_BLINK * 0.5
 	for i: int in 2:
@@ -400,23 +454,24 @@ func _build() -> void:
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	round_box.add_child(_round_label)
 
+	# the demo's announcement starts 32% of the way down: the kanji in
+	# lacquer over the words, the subline under them
+	_announce_box = VBoxContainer.new()
+	_announce_box.name = "Announcement"
+	_announce_box.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	_announce_box.anchor_top = 0.32
+	_announce_box.anchor_bottom = 0.32
+	_announce_box.offset_left = -700.0
+	_announce_box.offset_right = 700.0
+	_announce_box.add_theme_constant_override("separation", 4)
+	_announce_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(_announce_box)
+	_announce_kanji = _label("AnnounceKanji", "", UiTheme.KANJI, 52, 8)
 	_announce_label = _label("Announce", "", UiTheme.DISPLAY, 84, 12)
-	_announce_label.set_anchors_preset(Control.PRESET_CENTER)
-	_announce_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_announce_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
-	_announce_label.offset_left = -700.0
-	_announce_label.offset_right = 700.0
-	_announce_label.offset_top = -170.0
-	_announce_label.offset_bottom = -50.0
-	_root.add_child(_announce_label)
-	_announce_sub = _label("AnnounceSub", "", UiTheme.EYEBROW, 24)
-	_announce_sub.set_anchors_preset(Control.PRESET_CENTER)
-	_announce_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_announce_sub.offset_left = -700.0
-	_announce_sub.offset_right = 700.0
-	_announce_sub.offset_top = -50.0
-	_announce_sub.offset_bottom = 0.0
-	_root.add_child(_announce_sub)
+	_announce_sub = _label("AnnounceSub", "", UiTheme.EYEBROW, 0)
+	for l: Label in [_announce_kanji, _announce_label, _announce_sub]:
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		_announce_box.add_child(l)
 
 	_hint = _label("Hint", "", &"", 22)
 	_hint.add_theme_color_override("font_color", GOLD)

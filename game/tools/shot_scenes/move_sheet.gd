@@ -26,7 +26,14 @@ extends Node3D
 ## - --defender=rogue|hunter: the defender, in palette B (default: the same
 ##   fighter as the attacker);
 ## - --spacing=: metres between the fighters (default PoseCheck.SPACING, or
-##   the drive's own for a drive).
+##   the drive's own for a drive);
+## - --swings=<res:// path>: a swing file (SwingFile) put on a fresh copy of
+##   the weapon, so its moves play from those swings (SwingPlayer) rather
+##   than the weapon's own; tools/swings/katana_demo.json holds stand-in
+##   swings for the Katana's four lights, for reviewing swing playback
+##   before the real keys (plan task 7.17). They are not the real keys: they
+##   fail the swing check's wrist limits and run past the arms' reach in
+##   places (scripts/swings/katana-demo.mjs writes them).
 ##
 ## Strips: --drive=<name> plays one of DRIVES instead of a move, scripted
 ## input from rest (rest_to_sprint: still, then running at the opponent, then
@@ -34,7 +41,10 @@ extends Node3D
 ## letting go; strafe_left and strafe_right round the opponent, backpedal and
 ## back_left away from it, each then stopping; the guard_ drives the same
 ## while blocking, in the guard shuffle; tap_steps: a tap step each way;
-## iai_walk: walking in the Iai stance), with the opponent out of the way,
+## iai_walk: walking in the Iai stance; string_l to string_llll: the Katana's
+## light string stopped after one, two, three and four lights, each press
+## made after the move before has passed its startup, so it follows it), with
+## the opponent out of the way,
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -66,9 +76,11 @@ const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"front": "front",
 	&"feet": "feet",
 }
-## The held buttons the guard drives and the Iai walk use.
+## The held buttons the guard drives and the Iai walk use, and the light the
+## string drives press.
 const BLOCK: int = 1 << Btn.BLOCK
 const HEAVY: int = 1 << Btn.HEAVY
+const LIGHT: int = 1 << Btn.LIGHT
 ## Scripted input from rest, by name:
 ## - input: segments of [frames, strafe axis (+ to the right), forward axis,
 ##   held buttons];
@@ -178,6 +190,36 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"spacing": 8.0,
 		"every": 3,
 	},
+	&"string_l": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut alone, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_ll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut into Return Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_lll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0],
+			[1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut, Return Cut and Kesa Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_llll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0],
+			[1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [70, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then the whole L-L-L-L: Right Cut, Return Cut, Kesa Cut and Crown Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
 }
 ## Cells per row of a drive's strip.
 const STRIP_COLUMNS: int = 8
@@ -242,6 +284,8 @@ var out_path: String = ""
 ## frames its strip shows one.
 var drive: StringName = &""
 var every: int = 4
+## A swing file for a fresh copy of the weapon (--swings=), or empty.
+var swings_path: String = ""
 
 var bench: MoveBench
 var defender_view: FighterView
@@ -273,7 +317,8 @@ func _ready() -> void:
 	_overlay.layer = 100
 	_overlay.visible = false
 	add_child(_overlay)
-	bench = MoveBench.new(self, fighter_id, Moves.WEAPONS[weapon_id], spacing)
+	var weapon: WeaponDef = Moves.WEAPONS[weapon_id] if swings_path == "" else with_swings(weapon_id, swings_path)
+	bench = MoveBench.new(self, fighter_id, weapon, spacing)
 	defender_view = FighterView.new()
 	defender_view.name = &"Defender"
 	add_child(defender_view)
@@ -306,7 +351,7 @@ func shot_image() -> Image:
 
 
 ## Reads --fighter=, --weapon=, --move=, --at=, --views=, --defender=,
-## --spacing= and shot.gd's --out=. An unknown fighter, weapon or view, or a
+## --spacing=, --swings= and shot.gd's --out=. An unknown fighter, weapon or view, or a
 ## spacing that isn't a positive number, is an error, so the shot run fails.
 func apply_args(args: PackedStringArray) -> void:
 	for a: String in args:
@@ -336,6 +381,8 @@ func apply_args(args: PackedStringArray) -> void:
 					push_error("move_sheet.gd: --spacing= takes metres, not '%s'" % value)
 			"out":
 				out_path = value
+			"swings":
+				swings_path = value
 			"drive":
 				drive = StringName(value)
 				if not DRIVES.has(drive):
@@ -363,6 +410,23 @@ func apply_args(args: PackedStringArray) -> void:
 	if not Moves.PLAYABLE_WEAPONS.has(weapon_id):
 		push_error("move_sheet.gd: no weapon '%s' (%s)" % [weapon_id, ", ".join(PackedStringArray(Moves.PLAYABLE_WEAPONS))])
 		weapon_id = Moves.PLAYABLE_WEAPONS[0]
+
+
+## A fresh copy of weapon `id` (a playable WeaponDef id) with the swings of
+## the file at `path` on its moves; reported when the file gives none.
+static func with_swings(id: StringName, path: String) -> WeaponDef:
+	var w: WeaponDef
+	match id:
+		&"greatsword":
+			w = GreatswordMoves.build()
+		&"daggers":
+			w = DaggersMoves.build()
+		_:
+			w = KatanaMoves.build()
+	SwingFile.attach(path, w.moves)
+	if not w.moves.values().any(func(m: AttackDef) -> bool: return m.swing != null):
+		push_error("move_sheet.gd: no swings for the %s in '%s'" % [id, path])
+	return w
 
 
 static func _parse_views(text: String) -> Array[StringName]:
@@ -611,6 +675,8 @@ func _title(move_id: StringName, steps: Array[MoveBench.Step]) -> PackedStringAr
 		"against the %s (palette B) at %.1f m" % [defender_view.model.look.display_name, spacing],
 		"views: " + ", ".join(view_names),
 	]
+	if swings_path != "":
+		out[0] += " · swings from " + swings_path
 	if steps.is_empty():
 		out.append(verdict(rows[0].report))
 	else:
@@ -725,6 +791,8 @@ func render_drive(drive_id: StringName) -> Image:
 			continue
 		await bench.frame()
 		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
+		if bench.attacker.state == &"attack":
+			lines[0] += " · %s frame %d" % [bench.attacker.atk.def.id, bench.attacker.atk.frame]
 		strip.append(lines)
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],
@@ -740,7 +808,8 @@ func render_drive(drive_id: StringName) -> Image:
 	for view: StringName in views:
 		view_names.append(VIEW_NAMES[view])
 	title = PackedStringArray([
-		"%s (palette A) with the %s: %s (%s)" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"]],
+		"%s (palette A) with the %s: %s (%s)%s" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"],
+			" · swings from " + swings_path if swings_path != "" else ""],
 		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards; guard: shuffling; weight: the stance's shift, + to the front foot" % [
 			", ".join(view_names), every, bench.spacing],
 		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [

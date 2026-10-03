@@ -146,5 +146,11 @@ static func build() -> WeaponDef:
 		"default_abilities": [&"d_sweep", &"d_shadow"],
 		"ultimate": &"tempest",
 		"reach": 1.6,
+		"duel_distance": 2.0,
 		"blurb": "Fast and slippery. Many quick hits, long dodges, a short parry window.",
+		# each dagger's blade from the guard to the point, 1.3 cm thick at the
+		# guard and 5 mm along the blade
+		"blade": StrikeSegment.make(V3.make(0.0, 0.062, 0.0), V3.make(-0.019, 0.322, 0.0), 0.014),
+		"foot": null,
+		"off_hand_grip": null,
 	})

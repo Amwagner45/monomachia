@@ -52,6 +52,21 @@ static func right(yaw: float) -> V2:
 	return V2.make(-JsMath.cos(yaw), JsMath.sin(yaw))
 
 
+## A point given in a fighter's own space, `local` = (right, up, forward) in
+## metres from their feet, placed in the world for a fighter at `pos` facing
+## `yaw`. Not in math.ts; the swings (task 7) use it.
+##
+## Facing +Z, a fighter's right is -X, so (right, up, forward) is a mirror image
+## of Godot's axes: a cross product taken on (right, up, forward) vectors comes
+## out reversed in the world. Take cross products after converting.
+static func local_to_world(pos: V3, yaw: float, local: V3) -> V3:
+	var f: V2 = fwd(yaw)
+	var r: V2 = right(yaw)
+	return V3.make(pos.x + r.x * local.x + f.x * local.z,
+			pos.y + local.y,
+			pos.z + r.z * local.x + f.z * local.z)
+
+
 static func yaw_to(from: V3, to: V3) -> float:
 	return JsMath.atan2(to.x - from.x, to.z - from.z)
 
@@ -99,3 +114,47 @@ static func ease_in_out(t: float) -> float:
 static func js_round(x: float) -> int:
 	var r: float = floorf(x)
 	return int(r + 1.0) if x - r >= 0.5 else int(r)
+
+
+## The shortest distance between the segment from `a0` to `a1` and the one
+## from `b0` to `b1` (either may be a single point), in 64-bit (task 7.7).
+static func segment_distance(a0: V3, a1: V3, b0: V3, b1: V3) -> float:
+	var p: Array[V3] = segment_closest(a0, a1, b0, b1)
+	return V3.distance(p[0], p[1])
+
+
+## The closest points of the segment from `a0` to `a1` and the one from `b0`
+## to `b1` (either may be a single point), in 64-bit (task 7.8): the point on
+## the first, then the point on the second, each a new V3. Ericson's closest
+## points between segments: the closest points of the two lines, each clamped
+## onto its segment, the other then re-found.
+static func segment_closest(a0: V3, a1: V3, b0: V3, b1: V3) -> Array[V3]:
+	var da: V3 = V3.sub(a1, a0)
+	var db: V3 = V3.sub(b1, b0)
+	var r: V3 = V3.sub(a0, b0)
+	var aa: float = V3.dot(da, da)
+	var bb: float = V3.dot(db, db)
+	var rb: float = V3.dot(db, r)
+	var s: float = 0.0
+	var t: float = 0.0
+	if aa <= 1e-24 and bb <= 1e-24:
+		pass
+	elif aa <= 1e-24:
+		t = clampf(rb / bb, 0.0, 1.0)
+	else:
+		var ra: float = V3.dot(da, r)
+		if bb <= 1e-24:
+			s = clampf(-ra / aa, 0.0, 1.0)
+		else:
+			var ab: float = V3.dot(da, db)
+			var denom: float = aa * bb - ab * ab
+			# parallel segments: any s will do, so start from a0
+			s = clampf((ab * rb - ra * bb) / denom, 0.0, 1.0) if denom > 1e-24 else 0.0
+			t = (ab * s + rb) / bb
+			if t < 0.0:
+				t = 0.0
+				s = clampf(-ra / aa, 0.0, 1.0)
+			elif t > 1.0:
+				t = 1.0
+				s = clampf((ab - ra) / aa, 0.0, 1.0)
+	return [V3.add(a0, V3.scale(da, s)), V3.add(b0, V3.scale(db, t))]

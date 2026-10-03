@@ -34,7 +34,9 @@ extends RefCounted
 ## and "rogue_humanm": true when the Rogue plays the Hunter's clip for it
 ## (task 7), and what it was baked from for the view to play (task 8):
 ## "clips" (clip-manifest ids), "speed", "marks" (the four markers, source
-## frames) and "fallback" (a CC0 clip; see Swing.clips). The bake writes these files with a stable key order and fixed
+## frames, a fifth for a held clip's hold) and "fallback" (a CC0 clip; see
+## Swing.clips), and "sheathed" (the first and last attack frames the blade
+## is in the saya, before the active frames; Swing.sheathed). The bake writes these files with a stable key order and fixed
 ## decimals.
 
 const DIR: String = "res://sim/moves/swings/"
@@ -45,7 +47,7 @@ const LIMB_FIELDS: Dictionary[String, bool] = {"grip": true, "blade": true, "edg
 const BODY_FIELDS: Dictionary[String, bool] = {"torso": true, "pelvis": true, "pelvis_shift": false}
 const KEY_FIELDS: Dictionary[String, bool] = {"frame": true, "ease": false}
 const FILE_FIELDS: Array[String] = ["guard", "swings"]
-const SWING_FIELDS: Array[String] = ["tracks", "reach", "rogue_humanm", "clips", "speed", "marks", "fallback"]
+const SWING_FIELDS: Array[String] = ["tracks", "reach", "rogue_humanm", "clips", "speed", "marks", "fallback", "sheathed"]
 ## The longest reach correction a swing may carry (m; SwingBake).
 const MAX_REACH: float = 0.15
 ## The fields of a baked track: true when required.
@@ -169,8 +171,8 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 	swing.speed = _number(d, "speed", 1.0, where, errors)
 	if d.has("marks"):
 		var m: Variant = d["marks"]
-		if not m is Array or (m as Array).size() != 4 or not (m as Array).all(func(x: Variant) -> bool: return _is_number(x)):
-			errors.append("%s: marks must be four numbers" % where)
+		if not m is Array or not (m as Array).size() in [4, 5] or not (m as Array).all(func(x: Variant) -> bool: return _is_number(x)):
+			errors.append("%s: marks must be four numbers, or five with the hold" % where)
 		else:
 			swing.marks = PackedFloat64Array(m)
 	if d.has("fallback"):
@@ -178,6 +180,13 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 			errors.append("%s: fallback must be a clip name" % where)
 		else:
 			swing.fallback = StringName(d["fallback"])
+	if d.has("sheathed"):
+		var sh: Variant = d["sheathed"]
+		if not sh is Array or (sh as Array).size() != 2 or not (sh as Array).all(func(x: Variant) -> bool: return _is_number(x)) \
+				or int(sh[0]) < 0 or int(sh[1]) < int(sh[0]) or int(sh[1]) >= move.startup:
+			errors.append("%s: sheathed must be two attack frames, the first no later than the second, both before the active frames" % where)
+		else:
+			swing.sheathed = PackedInt32Array([int(sh[0]), int(sh[1])])
 	if d.has("rogue_humanm"):
 		if typeof(d["rogue_humanm"]) != TYPE_BOOL:
 			errors.append("%s: rogue_humanm must be true or false" % where)

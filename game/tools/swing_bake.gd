@@ -36,7 +36,7 @@ const DEGREE_PLACES: int = 2
 ## The order a key's (or a guard pose's) fields are written in.
 const FIELD_ORDER: Array[String] = ["frame", "grip", "blade", "edge", "pole", "torso", "pelvis", "pelvis_shift", "ease"]
 ## A swing's fields after its tracks, in the order they are written.
-const EXTRA_FIELDS: Array[String] = ["clips", "speed", "marks", "fallback", "reach", "rogue_humanm"]
+const EXTRA_FIELDS: Array[String] = ["clips", "speed", "marks", "fallback", "sheathed", "reach", "rogue_humanm"]
 ## The longest reach correction (m): a move that needs more gets another
 ## clip or a lunge in the rules.
 const MAX_REACH: float = SwingFile.MAX_REACH
@@ -74,6 +74,9 @@ class Result:
 	## (Swing.clips): set by the bake command.
 	var clips: Array[StringName] = []
 	var fallback: StringName = &""
+	## The attack frames the blade is in the saya (sheathed_frames()), first
+	## and last; empty for none.
+	var sheathed: PackedInt32Array = PackedInt32Array()
 
 	## The swing as a swing file holds it: {"tracks": {part: {"baked": true,
 	## "keys": [...]}}, "reach": [...], "rogue_humanm": true}, rounded to the
@@ -93,9 +96,11 @@ class Result:
 		if not clips.is_empty():
 			swing["clips"] = clips.map(func(c: StringName) -> String: return String(c))
 			swing["speed"] = timing.speed
-			swing["marks"] = Array(timing.marks)
+			swing["marks"] = timing.all_marks()
 		if fallback != &"":
 			swing["fallback"] = String(fallback)
+		if sheathed.size() == 2:
+			swing["sheathed"] = Array(sheathed)
 		if V3.length(reach_offset) > 0.0:
 			swing["reach"] = SwingBake._round(reach_offset)
 		if rogue_humanm:
@@ -124,6 +129,21 @@ class Reach:
 	## The attack frame of the first touch after the correction (for the
 	## move's lunge end), or -1.
 	var first_touch: int = -1
+
+
+## The attack frames of bake `r` whose clip time falls within source
+## frames `from` to `to` (from the chain's start), first and last: where
+## the blade is in the saya. Empty when none does.
+static func sheathed_frames(r: Result, from: float, to: float) -> PackedInt32Array:
+	var first: int = -1
+	var last: int = -1
+	for f: int in r.times.size():
+		var source: float = r.times[f] * float(ClipManifest.SOURCE_FPS)
+		if source >= from - 1e-6 and source <= to + 1e-6:
+			if first < 0:
+				first = f
+			last = f
+	return PackedInt32Array() if first < 0 else PackedInt32Array([first, last])
 
 
 ## The clip retimed at `speed` by `markers` (ClipTiming.make()): null, with

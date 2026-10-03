@@ -38,9 +38,10 @@ const ATTACK_BRAKE: float = 0.8
 ## Kept from the demo: a lunge stops with the two bodies this far apart.
 const LUNGE_GAP: float = 0.25
 ## The Iai Slash (the Katana's heavy), tapped, from the spec's Katana notes:
-## it lunges 0.4 m over its frames 10 to 25, and its cut lands on frame 24,
-## after 23 frames of startup.
-const IAI_LUNGE: float = 0.4
+## it lunges over its frames 10 to 25, and its cut lands on frame 24, after
+## 23 frames of startup. The lunge is 2.1 m since its clip (authored-animation
+## task 11), from 0.4, so its blade reaches as the old 3.6 m cone did.
+const IAI_LUNGE: float = 2.1
 const IAI_STARTUP: int = 23
 
 
@@ -279,7 +280,7 @@ func test_a_lunge_eases_in_and_out_over_the_same_window_and_distance() -> void:
 			steps.append(s.moved[i])
 			frames.append(s.frame[i])
 	assert_eq(frames, PackedInt32Array(range(10, 26)), "it moves on frames 10 to 25 and no others")
-	assert_almost_eq(_total(steps), IAI_LUNGE, 1e-9, "0.4 m in all")
+	assert_almost_eq(_total(steps), IAI_LUNGE, 1e-9, "2.1 m in all")
 	for k: int in 7:
 		assert_lt(steps[k], steps[k + 1], "the steps rise to the middle (frame %d)" % frames[k + 1])
 		assert_gt(steps[8 + k], steps[9 + k], "then fall (frame %d)" % frames[9 + k])
@@ -289,7 +290,7 @@ func test_a_lunge_eases_in_and_out_over_the_same_window_and_distance() -> void:
 
 
 func test_a_lunge_into_a_defender_still_stops_0_25_m_clear_of_their_body() -> void:
-	# 1.3 m apart, so the Iai's 0.4 m would carry the attacker into the
+	# 1.3 m apart, so the Iai's lunge would carry the attacker into the
 	# defender. The gap is measured until the cut lands, which knocks the
 	# defender back.
 	var s: FighterSteps = _record(Moves.KATANA, 1.3, 30, func(i: int) -> RawInput:

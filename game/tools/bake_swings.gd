@@ -109,8 +109,9 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 		var chain: Array[String] = []
 		var lengths: PackedFloat64Array = PackedFloat64Array()
 		for clip: StringName in e.clips:
-			chain.append("%s/%s" % [SET, clip])
-			lengths.append(model.animation_player.get_animation(chain[-1]).length * ClipManifest.SOURCE_FPS)
+			chain.append(ClipChain.qualified(SET, String(clip)))
+			var whole: String = ClipChain.anim_name(SET, ClipChain.parse(String(clip), [] as Array[String]).id)
+			lengths.append(model.animation_player.get_animation(whole).length * ClipManifest.SOURCE_FPS)
 		var poser: ClipPoser = ClipPoser.new(model, chain)
 		var markers: Dictionary = MoveClips.markers(e, manifest, lengths)
 		var speed: float = e.speed if not is_nan(e.speed) else SwingBake.pick_speed(markers, move.startup)
@@ -124,7 +125,7 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 		# her hand IK closes; what flags a move is her clip moving otherwise
 		var own_chain: Array[String] = []
 		for clip: StringName in e.clips:
-			own_chain.append("%s/%s" % [ROGUE_SET, clip])
+			own_chain.append(ClipChain.qualified(ROGUE_SET, String(clip)))
 		var own: ClipPoser = ClipPoser.new(rogue, own_chain)
 		var hunters: ClipPoser = ClipPoser.new(rogue, chain)
 		var on_her: SwingBake.Result = SwingBake.bake(hunters.pose, hunters.length, markers, speed, SwingBake.parts_for(move, weapon), why)
@@ -143,10 +144,16 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 				reach.distance, _cm(reach.before), _cm(reach.after), V3.length(reach.offset) * 100.0,
 				"  <- needs more than 15 cm: another clip or a lunge" if reach.short else "",
 				"  <- over 20 cm inside" if reach.over else "", reach.first_touch]
+			if reach.short:
+				line += "\n      " + _shortfall(r, move, weapon, reach.distance)
 		line += "\n      Rogue: HumanF %.1f cm off HumanM on her body (%.1f cm off the Hunter's path)%s" % [
 			drift * 100.0, off_path * 100.0, ": she plays HumanM" if r.rogue_humanm else ""]
 		r.clips = e.clips
 		r.fallback = e.fallback
+		if e.sheathed.size() == 2:
+			r.sheathed = SwingBake.sheathed_frames(r, e.sheathed[0], e.sheathed[1])
+			if r.sheathed.size() == 2:
+				line += "\n      sheathed on frames %d-%d" % [r.sheathed[0], r.sheathed[1]]
 		baked[String(id)] = r.record()
 		report.append(line)
 	# the moves in their weapon's order, those not baked now kept as they were
@@ -169,6 +176,20 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 		m.free()
 	var text: String = SwingBake.file_text(SwingBake.guard_record(guard), swings) if not swings.is_empty() else old
 	return {"text": text, "report": report, "errors": errors}
+
+
+## How much further a move that falls short even with the whole push needs
+## to go: the distance it first touches from with it (scanned down in 5 cm
+## steps from `distance`), and so the extra lunge.
+static func _shortfall(r: SwingBake.Result, move: AttackDef, weapon: WeaponDef, distance: float) -> String:
+	# r already carries the whole push (correct_reach())
+	var push: V3 = V3.make()
+	var d: float = distance
+	while d > 0.5:
+		d -= 0.05
+		if (SwingBake._measure(r, move, weapon, d, push)[0] as float) >= 0.0:
+			return "with the push it first touches from %.2f m: about %.0f cm more lunge" % [d, (distance - d) * 100.0]
+	return "it touches from nowhere above 0.5 m"
 
 
 static func _cm(inside: float) -> String:

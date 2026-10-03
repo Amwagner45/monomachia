@@ -90,8 +90,8 @@ func _assert_starts_nothing_in(presses: Array[int], swings: Array[StringName], b
 ## Plays presses (the stick at mx) and checks each one hits, and that the
 ## string then stops: its last move, one of the spec's rows, ends on startup
 ## + active + recovery, leaving the fighter free.
-func _assert_stops_after(presses: Array[int], mx: float = 0.0, gap: float = GAP) -> void:
-	var r: PlayedString = _play(presses, gap, mx)
+func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
+	var r: PlayedString = _play(presses, GAP, mx)
 	var what: String = "%s%s" % [_named(presses), " sideways" if mx != 0.0 else ""]
 	var hits: Array[StringName] = r.ids(&"hit")
 	assert_eq(hits.size(), presses.size(), "every press of %s hits" % what)

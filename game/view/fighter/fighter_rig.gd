@@ -101,6 +101,12 @@ var clip_feet: float = 0.0
 ## rules frame: rules_frame, which the view sets.
 var foot_lock: FootLock = null
 var rules_frame: int = 0
+## The Katana's saya (Saya), carried at the left hip at saya_frame (in the
+## Hips bone's frame); null for none. While sheathed, the katana sits in it
+## and no hand reaches for it on IK (the Iai's sheathe and stance, task 11).
+var saya: Node3D = null
+var saya_frame: Transform3D = Transform3D.IDENTITY
+var sheathed: bool = false
 
 var _arm_ik: Dictionary[String, TwoBoneIK3D] = {}
 var _leg_ik: TwoBoneIK3D
@@ -298,6 +304,8 @@ func holds(side: String) -> bool:
 ## True when the IK places this arm: the hand grips a posed weapon, or it is
 ## the off hand on a fixed two-handed weapon.
 func drives(side: String) -> bool:
+	if sheathed and saya != null:
+		return false
 	var grip: Array = _grip(side)
 	if grip.is_empty():
 		return false
@@ -518,12 +526,19 @@ func _draw_in(sk: Skeleton3D) -> void:
 
 
 ## Puts each carried weapon in its hand's fist, turned by the hold's grip,
-## or each fixed one at its fixed grip (or where it was drawn in to).
+## or each fixed one at its fixed grip (or where it was drawn in to); the
+## saya at the hip, and the katana in it while sheathed.
 func _carry(sk: Skeleton3D, _delta: float) -> void:
 	var grip: Transform3D = _hold.grip_transform() if _hold != null else Transform3D.IDENTITY
+	var in_saya: bool = false
+	if saya != null:
+		saya.transform = sk.get_bone_global_pose(_id("Hips")) * saya_frame
+		in_saya = sheathed and not _weapons.is_empty()
+		if in_saya:
+			_weapons[0].transform = saya.transform
 	for side: String in SIDES:
 		var index: int = _carried_index(side)
-		if index < 0:
+		if index < 0 or (in_saya and index == 0):
 			continue
 		if _fixed and _drawn_in and index == 0:
 			_weapons[0].transform = _poses[0]

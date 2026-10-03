@@ -17,15 +17,23 @@ extends RefCounted
 ##   right, and the hips' travel from their rest (pelvis shift).
 ## Skeleton space is the fighter's frame with +X to the fighter's left
 ## (FighterRig), so x turns round.
+##
+## A chain entry is "<library>/<clip id>", or part of a clip ("@from" or
+## "@from-to" after the id; ClipChain): each part fades in from the one
+## before over ClipChain.BLEND source frames, its bones blended as the
+## clip director's crossfade blends them (task 11).
 
 const SIDES: Dictionary[String, String] = {"right": "Right", "left": "Left"}
 
 var model: FighterModel
-## The clips' names in the model's AnimationPlayer, played in this order.
+## The chain's entries: the clips' names in the model's AnimationPlayer
+## (each maybe a part of one), played in this order.
 var chain: Array[String] = []
 ## The chain's length (s).
 var length: float = 0.0
-var _starts: PackedFloat64Array = PackedFloat64Array()
+var _parts: Array[ClipChain.Part] = []
+## Each part's library ("HumanM/"), by part.
+var _libraries: PackedStringArray = PackedStringArray()
 var _foot_axes: Dictionary[String, Array] = {}
 var _captured: Dictionary[StringName, Swing.Sample] = {}
 var _last_time: float = NAN
@@ -39,9 +47,21 @@ func _init(p_model: FighterModel, p_chain: Array[String], reverse: bool = false)
 	model.skeleton.modifier_callback_mode_process = Skeleton3D.MODIFIER_CALLBACK_MODE_PROCESS_MANUAL
 	if not model.weapons.is_empty():
 		model.fix_weapons(reverse)
-	for clip: String in chain:
-		_starts.append(length)
-		length += model.animation_player.get_animation(clip).length
+	var entries: Array[String] = []
+	var lengths: Dictionary = {}
+	for entry: String in chain:
+		var slash: int = entry.find("/")
+		var library: String = entry.substr(0, slash + 1)
+		var rest: String = entry.substr(slash + 1)
+		_libraries.append(library)
+		entries.append(rest)
+		var id: StringName = ClipChain.parse(rest, [] as Array[String]).id
+		lengths[id] = model.animation_player.get_animation(library + String(id)).length * float(ClipManifest.SOURCE_FPS)
+	var why: Array[String] = []
+	_parts = ClipChain.lay_out(entries, lengths, why)
+	if _parts.is_empty():
+		push_error("ClipPoser: %s" % "; ".join(why))
+	length = ClipChain.length_of(_parts) / float(ClipManifest.SOURCE_FPS)
 	var sk: Skeleton3D = model.skeleton
 	for side: String in SIDES.values():
 		var foot: int = sk.find_bone(side + "Foot")
@@ -59,15 +79,16 @@ func pose(time: float) -> Dictionary[StringName, Swing.Sample]:
 		# the skeleton skips an update that changes nothing
 		return _captured
 	_last_time = time
-	var i: int = _starts.size() - 1
-	while i > 0 and time < _starts[i]:
-		i -= 1
-	var player: AnimationPlayer = model.animation_player
-	player.play(chain[i], 0.0)
-	player.seek(clampf(time - _starts[i], 0.0, player.get_animation(chain[i]).length), true)
-	player.pause()
-	_captured = {}
+	var at: ClipChain.Place = ClipChain.place(_parts, time * float(ClipManifest.SOURCE_FPS))
 	var sk: Skeleton3D = model.skeleton
+	var under: Array = []
+	if at.under >= 0:
+		_apply(at.under, at.under_frame)
+		under = _bone_poses(sk)
+	_apply(at.part, at.frame)
+	if at.under >= 0:
+		_blend(sk, under, at.under_weight)
+	_captured = {}
 	var carry: SkeletonModifier3D = sk.get_node(^"RigCarry")
 	carry.modification_processed.connect(_capture, CONNECT_ONE_SHOT)
 	# advance() only queues the update for the frame's end; the notification
@@ -77,6 +98,36 @@ func pose(time: float) -> Dictionary[StringName, Swing.Sample]:
 		carry.modification_processed.disconnect(_capture)
 		push_error("ClipPoser: the skeleton didn't update")
 	return _captured
+
+
+## Plays part `index` of the chain at source frame `frame` of its clip,
+## posing the bones.
+func _apply(index: int, frame: float) -> void:
+	var player: AnimationPlayer = model.animation_player
+	var anim_name: String = _libraries[index] + String(_parts[index].id)
+	player.play(anim_name, 0.0)
+	player.seek(clampf(frame / float(ClipManifest.SOURCE_FPS), 0.0, player.get_animation(anim_name).length), true)
+	player.pause()
+
+
+## Every bone's local pose: [positions, rotations, scales].
+static func _bone_poses(sk: Skeleton3D) -> Array:
+	var p: PackedVector3Array = PackedVector3Array()
+	var r: Array[Quaternion] = []
+	var s: PackedVector3Array = PackedVector3Array()
+	for b: int in sk.get_bone_count():
+		p.append(sk.get_bone_pose_position(b))
+		r.append(sk.get_bone_pose_rotation(b))
+		s.append(sk.get_bone_pose_scale(b))
+	return [p, r, s]
+
+
+## Blends the bones' poses toward `under` (_bone_poses()) by `weight`.
+static func _blend(sk: Skeleton3D, under: Array, weight: float) -> void:
+	for b: int in sk.get_bone_count():
+		sk.set_bone_pose_position(b, sk.get_bone_pose_position(b).lerp(under[0][b], weight))
+		sk.set_bone_pose_rotation(b, sk.get_bone_pose_rotation(b).slerp(under[1][b], weight))
+		sk.set_bone_pose_scale(b, sk.get_bone_pose_scale(b).lerp(under[2][b], weight))
 
 
 func _capture() -> void:

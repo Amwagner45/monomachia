@@ -121,14 +121,20 @@ var reach_active: int = 0
 var rogue_humanm: bool = false
 ## What a baked swing was baked from, for the view to play the same clip on
 ## the same frames (ClipDirector): the clips (clip-manifest ids, played one
-## after another), the speed (times their 30 fps), the four markers in
-## source frames from the chain's start (ClipManifest.MARKERS' order), and
-## the committed CC0 clip played without the Iglesias packs (empty for
-## none). Empty for a hand-keyed swing.
+## after another, each maybe part of one: ClipChain), the speed (times their
+## 30 fps), the four markers in source frames from the chain's start
+## (ClipManifest.MARKERS' order) and a fifth, the hold, for a move whose
+## clip holds while it charges (ClipTiming), and the committed CC0 clip
+## played without the Iglesias packs (empty for none). Empty for a
+## hand-keyed swing.
 var clips: Array[StringName] = []
 var speed: float = 1.0
 var marks: PackedFloat64Array = PackedFloat64Array()
 var fallback: StringName = &""
+## The attack frames the blade spends in the saya (the Iai's sheathe and
+## stance, task 11), first and last: the view shows it there and no hand
+## holds it; empty for none. Always before the active frames.
+var sheathed: PackedInt32Array = PackedInt32Array()
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
 var _baked: Dictionary[StringName, bool] = {}
@@ -167,6 +173,11 @@ static func held(k: KeyPose) -> Sample:
 	out.pelvis = k.pelvis
 	out.pelvis_shift = k.pelvis_shift
 	return out
+
+
+## Whether the blade is in the saya on attack frame `f` (sheathed).
+func is_sheathed(f: float) -> bool:
+	return sheathed.size() == 2 and f >= float(sheathed[0]) and f <= float(sheathed[1])
 
 
 ## Whether the track for `part` was baked from a clip.

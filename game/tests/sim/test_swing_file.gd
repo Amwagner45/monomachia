@@ -347,3 +347,30 @@ func test_reach_and_rogue_mistakes_are_refused() -> void:
 	d = _baked()
 	d["swings"]["t_cut"]["rogue_humanm"] = 1
 	_assert_refused(d, "t_cut: rogue_humanm must be true or false", "a number for the flag")
+
+
+func test_a_baked_swing_carries_its_sheathed_frames_and_hold() -> void:
+	var d: Dictionary = _baked()
+	d["swings"]["t_cut"]["clips"] = ["Sheathe@3-12", "Cut"]
+	d["swings"]["t_cut"]["marks"] = [0, 18, 21, 36, 9]
+	d["swings"]["t_cut"]["sheathed"] = [1, 3]
+	var cut: Swing = SwingFile.parse(JSON.stringify(d), _moves(), "baked.json")[&"t_cut"]
+	assert_eq(cut.marks, PackedFloat64Array([0, 18, 21, 36, 9]), "the four markers and the hold")
+	assert_eq(cut.sheathed, PackedInt32Array([1, 3]))
+	assert_true(cut.is_sheathed(2.5), "in the saya between them")
+	assert_false(cut.is_sheathed(0.0), "not before")
+	assert_false(cut.is_sheathed(3.5), "nor after")
+	var plain: Swing = SwingFile.parse(JSON.stringify(_baked()), _moves(), "baked.json")[&"t_cut"]
+	assert_false(plain.is_sheathed(1.0), "never sheathed by default")
+
+
+func test_sheathed_mistakes_are_refused() -> void:
+	var d: Dictionary = _baked()
+	d["swings"]["t_cut"]["sheathed"] = [2, 4]
+	_assert_refused(d, "t_cut: sheathed must be two attack frames, the first no later than the second, both before the active frames", "into the active frames")
+	d = _baked()
+	d["swings"]["t_cut"]["sheathed"] = [3, 1]
+	_assert_refused(d, "t_cut: sheathed must be two attack frames", "backwards")
+	d = _baked()
+	d["swings"]["t_cut"]["marks"] = [0, 1, 2]
+	_assert_refused(d, "t_cut: marks must be four numbers, or five with the hold", "three marks")

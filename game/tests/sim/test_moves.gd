@@ -108,6 +108,12 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "k_l2", "field": "lunge", "was": 0.35, "now": 0.45},
 	{"move": "k_l4", "field": "lunge", "was": 0.5, "now": 0.7},
 	{"move": "k_l4", "field": "lunge_end", "was": 16, "now": 15},
+	# authored animation 11: the heavies' clips reach far less than their
+	# cones, so their lunges carry them to a touch from the heavies' test
+	# distance (3.0 m): Rising Heaven (Attack1H05_R) and Heaven Splitter
+	# (Attack2H04)
+	{"move": "k_h1f", "field": "lunge", "was": 0.5, "now": 1.2},
+	{"move": "k_h2", "field": "lunge", "was": 0.7, "now": 0.95},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

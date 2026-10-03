@@ -19,17 +19,22 @@ extends RefCounted
 ## contact, contact end and settle, counted from the chain's start (markers()).
 ## A move may give its own instead ("marks": all four, in source frames from
 ## the chain's start), where one clip serves moves of different timings: a
-## light started from a heavy clip's wound-up pose, say (task 10).
+## light started from a heavy clip's wound-up pose, say (task 10). A chain
+## entry may be part of a clip ("id@from" or "id@from-to", ClipChain), and a
+## chargeable move's marks may add the "hold" its charge holds at
+## (ClipTiming). "sheathed" gives the source frames (from the chain's start)
+## the blade spends in the saya, from going in to coming out (task 11).
 
 const PATH: String = "res://assets/kevin_iglesias/move_clips.json"
 const WEAPON_FIELDS: Array[String] = ["guard", "moves"]
-const MOVE_FIELDS: Array[String] = ["clips", "speed", "fallback", "marks"]
+const MOVE_FIELDS: Array[String] = ["clips", "speed", "fallback", "marks", "sheathed"]
 
 
 ## One move fitted to its clips.
 class Entry:
 	var move: StringName = &""
-	## Played one after another.
+	## Played one after another: ClipChain entries (a clip id, or part of
+	## one).
 	var clips: Array[StringName] = []
 	## Times the clips' 30 fps; NAN to have the bake pick it.
 	var speed: float = NAN
@@ -39,6 +44,9 @@ class Entry:
 	## The move's own markers (ClipManifest.MARKERS, source frames from the
 	## chain's start) in place of the manifest's; empty for the manifest's.
 	var marks: Dictionary = {}
+	## The source frames from the chain's start the blade is in the saya,
+	## first and last; empty for never.
+	var sheathed: PackedFloat64Array = PackedFloat64Array()
 
 
 ## Weapon id -> the clip its guard is read from.
@@ -93,20 +101,27 @@ func of(weapon_id: StringName) -> Dictionary:
 	return moves.get(weapon_id, {})
 
 
-## A move's markers in source frames from its chain's start: the first
-## clip's wind-up start and the last clip's other markers, after the clips
-## before it (`lengths`: each clip's length in source frames).
+## A move's markers in source frames from its chain's start: its own marks,
+## else the first clip's wind-up start and the last clip's other markers, as
+## the chain lays them out (`lengths`: each entry's whole clip's length in
+## source frames).
 static func markers(e: Entry, manifest: ClipManifest, lengths: PackedFloat64Array) -> Dictionary:
 	if not e.marks.is_empty():
 		return e.marks.duplicate()
-	var first: ClipManifest.Clip = manifest.clips[e.clips[0]]
-	var last: ClipManifest.Clip = manifest.clips[e.clips[-1]]
-	var before: float = 0.0
+	var first: ClipChain.Part = ClipChain.parse(String(e.clips[0]), [] as Array[String])
+	var last: ClipChain.Part = ClipChain.parse(String(e.clips[-1]), [] as Array[String])
+	# where the last part starts: the parts before it, each to its end or its
+	# clip's
+	var start: float = 0.0
 	for i: int in e.clips.size() - 1:
-		before += lengths[i]
+		var p: ClipChain.Part = ClipChain.parse(String(e.clips[i]), [] as Array[String])
+		start += (lengths[i] if is_nan(p.to) else p.to) - p.from
 	var out: Dictionary = {}
 	for name: String in ClipManifest.MARKERS:
-		out[name] = float(first.markers[name]) if name == "windup" else before + float(last.markers[name])
+		if name == "windup":
+			out[name] = maxf(0.0, float((manifest.clips[first.id] as ClipManifest.Clip).markers[name]) - first.from)
+		else:
+			out[name] = start + float((manifest.clips[last.id] as ClipManifest.Clip).markers[name]) - last.from
 	return out
 
 
@@ -128,8 +143,17 @@ func _entry(wid: StringName, id: StringName, d: Variant, manifest: ClipManifest)
 		errors.append("%s: needs clips, a list of clip ids" % at)
 		return null
 	for c: Variant in clips:
-		if not manifest.clips.has(StringName(str(c))):
-			errors.append("%s: %s is not in the clip manifest" % [at, c])
+		var why: Array[String] = []
+		var part: ClipChain.Part = ClipChain.parse(str(c), why)
+		if part == null:
+			errors.append("%s: %s" % [at, why[0]])
+			return null
+		if ClipChain.is_cc0(part.id):
+			if not FighterModel.ANIMATION_LIBRARY.has_animation(String(part.id).get_slice("/", 1)):
+				errors.append("%s: %s is not in the CC0 library" % [at, part.id])
+				return null
+		elif not manifest.clips.has(part.id):
+			errors.append("%s: %s is not in the clip manifest" % [at, part.id])
 			return null
 		e.clips.append(StringName(str(c)))
 	if (d as Dictionary).has("speed"):
@@ -146,14 +170,27 @@ func _entry(wid: StringName, id: StringName, d: Variant, manifest: ClipManifest)
 		e.fallback = fb
 	if (d as Dictionary).has("marks"):
 		var m: Variant = d["marks"]
-		var ok: bool = m is Dictionary and (m as Dictionary).size() == ClipManifest.MARKERS.size()
+		var names: Array[String] = ClipManifest.MARKERS.duplicate()
+		if m is Dictionary and (m as Dictionary).has("hold"):
+			names.append("hold")
+		var ok: bool = m is Dictionary and (m as Dictionary).size() == names.size()
 		if ok:
-			for name: String in ClipManifest.MARKERS:
+			for name: String in names:
 				var v: Variant = (m as Dictionary).get(name)
 				ok = ok and (v is float or v is int) and float(v) >= 0.0
 		if not ok:
-			errors.append("%s: marks must give %s, each a frame number" % [at, ", ".join(ClipManifest.MARKERS)])
+			errors.append("%s: marks must give %s (and may give a hold), each a frame number" % [at, ", ".join(ClipManifest.MARKERS)])
 			return null
-		for name: String in ClipManifest.MARKERS:
+		for name: String in names:
 			e.marks[name] = float(m[name])
+	if e.marks.is_empty() and e.clips.any(func(c: StringName) -> bool: return ClipChain.is_cc0(ClipChain.parse(String(c), [] as Array[String]).id)):
+		errors.append("%s: a chain with a CC0 clip needs its own marks (the manifest has none for it)" % at)
+		return null
+	if (d as Dictionary).has("sheathed"):
+		var sh: Variant = d["sheathed"]
+		if not sh is Array or (sh as Array).size() != 2 or not (sh as Array).all(func(x: Variant) -> bool: return x is float or x is int) \
+				or float(sh[0]) < 0.0 or float(sh[1]) <= float(sh[0]):
+			errors.append("%s: sheathed must be two source frames, the first before the second" % at)
+			return null
+		e.sheathed = PackedFloat64Array([float(sh[0]), float(sh[1])])
 	return e

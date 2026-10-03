@@ -83,6 +83,9 @@ const GLOW_COLORS: Dictionary[StringName, Color] = {
 }
 ## The clip a knocked-out fighter falls with.
 const DEATH_CLIP: StringName = &"Death01"
+## Frames the legs take to pass between a held clip and the stance's legs
+## (_legs_free()).
+const LEGS_RAMP: float = 4.0
 ## The stand-in clips a knocked-down fighter falls and rises with (the clip
 ## table's fallback) until task 28 brings the knockdown clips.
 const KNOCKDOWN_FALL_CLIP: StringName = &"Hit_Knockback"
@@ -253,7 +256,26 @@ func _show_authored(f: Fighter, alpha: float) -> void:
 			a_time = lerpf(before.time, a_time, alpha)
 	var b: String = shot.from.name if shot.from != null else ""
 	var b_time: float = shot.from.time if shot.from != null else 0.0
-	locomotion.set_authored(a, a_time, b, b_time, shot.clip_share(), shot.authored())
+	var share: float = shot.clip_share()
+	if shot.from == null and shot.clip != null and shot.clip.under != null:
+		# a chain's part fading in from the one before (ClipChain)
+		b = shot.clip.under.name
+		b_time = shot.clip.under.time
+		share = 1.0 - shot.clip.under_weight
+	locomotion.set_authored(a, a_time, b, b_time, share, shot.authored(), _legs_free(f))
+
+
+## How much the legs are the stance's under a charging attack's held clip
+## (the Iai's stance, stood and walked in at the blocking walk's speed;
+## task 11), the clip then on the upper body alone: all of them through the
+## charge, handed over LEGS_RAMP frames each way, as it starts and once it
+## is let go.
+func _legs_free(f: Fighter) -> float:
+	if f.state != &"attack" or f.atk == null or f.atk.charge_frames <= 0:
+		return 0.0
+	if f.atk.charging:
+		return clampf(float(f.atk.charge_frames) / LEGS_RAMP, 0.0, 1.0)
+	return clampf(1.0 - float(f.atk.frame - Fighter.CHARGE_CHECK_FRAME) / LEGS_RAMP, 0.0, 1.0)
 
 
 ## True when an authored attack clip drives the Hunter's arms and the
@@ -291,8 +313,10 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 		swing_body.weight = 0.0
 	swing_body.apply(rig.body)
 	# the stance as far as the legs are the guard's; the clips' feet as they
-	# run with the guard down
-	stance = locomotion.shown[0] * (1.0 - authored) if _in_guard() else 0.0
+	# run with the guard down. A clip on the upper body alone (the Iai's
+	# stance walked in) leaves the legs to it.
+	var whole_body: float = authored * (1.0 - _legs_free(f))
+	stance = locomotion.shown[0] * (1.0 - whole_body) if _in_guard() else 0.0
 	sway = GuardStance.sway(seconds) * stance
 	sink = 0.0
 	rig.clip_feet = 1.0
@@ -303,11 +327,14 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	# a guard stance
 	rig.foot_lock = foot_lock
 	rig.rules_frame = f.world.frame if f.world != null else 0
-	foot_lock.enabled = authored > 0.0 or (stance <= 0.0 and locomotion.speed < 0.05)
+	# (not once the legs start passing to a stance: they let go over its ramp)
+	foot_lock.enabled = (whole_body > 0.0 and _legs_free(f) <= 0.0) or (stance <= 0.0 and locomotion.speed < 0.05)
 	if driving:
 		# the reach correction carries the body above the hips, and the arms
 		# and weapon with it
 		rig.body.hips_offset += SwingPlayer.to_skeleton(f.atk.def.swing.reach_at(SwingPlayer.swing_frame(f, alpha)))
+	# the blade in the saya through the Iai's sheathe and stance (task 11)
+	rig.sheathed = driving and f.atk.def.swing.is_sheathed(float(f.atk.frame))
 	if model.weapons.is_empty():
 		return
 	if _fixed_on_clip():

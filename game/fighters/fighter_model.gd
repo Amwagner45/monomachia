@@ -216,6 +216,12 @@ func attach_weapon(weapon: WeaponLook) -> Array[Node3D]:
 		weapon_root.add_child(w)
 		weapons.append(w)
 	rig.hold_weapons(weapon, weapons, hold)
+	if weapon.id == &"katana":
+		# the saya at the left hip, whenever the Katana is the weapon
+		var saya: Saya = Saya.build(weapons[0])
+		weapon_root.add_child(saya)
+		rig.saya = saya
+		rig.saya_frame = Saya.frame_for(look.id)
 	return weapons
 
 
@@ -249,6 +255,11 @@ func detach_weapons() -> void:
 	weapon_look = null
 	hold = null
 	if rig != null:
+		if rig.saya != null:
+			rig.saya.get_parent().remove_child(rig.saya)
+			rig.saya.free()
+			rig.saya = null
+		rig.sheathed = false
 		rig.release_weapons()
 
 

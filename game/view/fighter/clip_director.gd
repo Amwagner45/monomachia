@@ -70,6 +70,10 @@ class Context:
 class Clip:
 	var name: String = ""
 	var time: float = 0.0
+	## Inside a chain, while a part fades in (ClipChain): the part before,
+	## held at its end, and how much of it still shows; else null.
+	var under: Clip = null
+	var under_weight: float = 0.0
 
 	static func make(p_name: String, p_time: float) -> Clip:
 		var c: Clip = Clip.new()
@@ -212,20 +216,29 @@ static func timing_of(swing: Swing) -> ClipTiming:
 	var markers: Dictionary = {}
 	for i: int in mini(swing.marks.size(), ClipManifest.MARKERS.size()):
 		markers[ClipManifest.MARKERS[i]] = swing.marks[i]
+	if swing.marks.size() > ClipManifest.MARKERS.size():
+		markers["hold"] = swing.marks[ClipManifest.MARKERS.size()]
 	return ClipTiming.make(markers, swing.speed, [] as Array[String])
 
 
-## The clip of chain `clips` (in set `set_name`) at `time` (s from the
-## chain's start) and the time into it.
+## The clip of chain `clips` (ClipChain entries, in set `set_name`) at
+## `time` (s from the chain's start) and the time into it, with the part
+## before under it while a part fades in; null when a clip is missing.
 static func chain_clip(clips: Array[StringName], set_name: StringName, time: float, ctx: Context) -> Clip:
-	var at: float = time
-	for i: int in clips.size():
-		var anim_name: String = "%s/%s" % [set_name, clips[i]]
-		var length: float = ctx.lengths.get(anim_name, 0.0)
-		if at <= length or i == clips.size() - 1:
-			return Clip.make(anim_name, clampf(at, 0.0, length))
-		at -= length
-	return null
+	var lengths: Dictionary = {}
+	for entry: StringName in clips:
+		var id: StringName = ClipChain.parse(String(entry), [] as Array[String]).id
+		lengths[id] = ctx.lengths.get(ClipChain.anim_name(set_name, id), 0.0) * float(ClipManifest.SOURCE_FPS)
+	var parts: Array[ClipChain.Part] = ClipChain.lay_out(clips, lengths, [] as Array[String])
+	if parts.is_empty():
+		return null
+	var at: ClipChain.Place = ClipChain.place(parts, time * float(ClipManifest.SOURCE_FPS))
+	var fps: float = float(ClipManifest.SOURCE_FPS)
+	var out: Clip = Clip.make(ClipChain.anim_name(set_name, parts[at.part].id), at.frame / fps)
+	if at.under >= 0:
+		out.under = Clip.make(ClipChain.anim_name(set_name, parts[at.under].id), at.under_frame / fps)
+		out.under_weight = at.under_weight
+	return out
 
 
 ## What showed last as an authored clip, held at its pose: the clip when one

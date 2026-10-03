@@ -131,7 +131,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 60. [x] As the developer, I want the rule tests to run from the command line and in CI, so that every change is checked.
 61. [x] As the developer, I want the ported rules checked frame by frame against the original TypeScript rules on recorded inputs, so that I know the port is faithful before changing anything.
 62. [x] As the developer, I want a soak run of computer-vs-computer matches that prints balance numbers, so that tuning rests on data.
-63. [ ] As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry.
+63. [x] As the developer, I want fighters, weapon models, sounds and music referenced by data, so that replacing an asset means replacing a file and one entry. Note: the rules never load a model, so they keep their own copy of each weapon's blade and of the bare fist and foot (task 7.5). Replacing a weapon model or a fighter therefore also means updating those numbers in the weapon files; `tests/content/test_strike_segments.gd` fails and names each mismatch until they match.
 64. [ ] As the developer, I want a Windows build produced by CI and attached to GitHub releases, so that the game is easy to share.
 65. [x] As the developer, I want to capture screenshots of any scene from the command line, so that visual changes can be reviewed without clicking through the game.
 
@@ -192,13 +192,14 @@ Chains stay as they are: each move names at most one light follow-up and one hea
 
 **Sides.** A side is left, right or centre, from the fighter's own point of view. A follow-up starts on the side the move before it ends on, except that a move starting at centre (an overhead, a thrust, a stab, a spin, the crossing cut) may follow any end. Every move in a string has both sides; other moves leave them unset. A release variant stands in for its move, so it is in that move's string. Built for the Katana (task 9): Right Cut, Kesa Cut, Rising Heaven and the horizontal Iai Slash run right to left; Return Cut, Returning Draw, and the vertical Iai Slash drawn from the left hip, left to right; Crown Cut and Heaven Splitter centre to centre. For the Greatsword (task 10): Heavy Swing runs right to left, Backswing left to right, Overhead Strike from centre to the right, and Low Sweep, which follows it, right to left. For the Daggers (task 11): Quick Slice runs right to left and Off-hand Slice left to right, and Twin Rip, Flurry Finisher, Twin Fang and Spinning Backhand centre to centre.
 
-**Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. Each key holds:
+**Weapon swings.** A swing is a short list of key poses in the fighter's own space, covering the whole move: wind-up during startup, strike during the active frames, follow-through during recovery. It has a track of keys for each part it moves: the weapon hand (each hand, for the Daggers), a foot for a kick, and the body. A hand's keys hold:
 - the grip position;
-- the hand frame, from which the blade direction follows, within the wrist limits;
-- the edge direction;
-- the torso and pelvis coil.
+- the blade and edge directions, which set the hand's frame, since the grip is rigid, and so must stay within the wrist limits;
+- an optional tweak of the elbow's pole.
 
-Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own.
+The body's keys hold the torso and pelvis coil and the pelvis shift, so the hips can be keyed to lead the hands, and a swing with two hands still has one coil.
+
+Between keys, the grip travels on an arc around the fighter's body, not in a straight line, and the blade turns with the hands, not on its own. The hands arc around the middle of the shoulder line, 1.44 m up and 6 cm back from the feet (the Rogue's shoulders are at 1.42 m and the Hunter's at 1.46 m), and a foot around the middle of the hips; both points sit on the spine, so a coil doesn't move them. A key with ease 0 holds still, and the grip's distance from the pivot, the coils and the pelvis shift never overshoot their keys.
 
 The early spike (see the plan) proved this works on the Quaternius fighters and set the rules every swing must meet:
 - wrist bend within about ±60° and deviation within ±25°;
@@ -208,14 +209,52 @@ The early spike (see the plan) proved this works on the Quaternius fighters and 
 - each move's end pose is a natural start for its follow-up;
 - slash, overhead, thrust and sweep are told apart from the gameplay camera in the first third of the wind-up.
 
-Swings are stored as sampled data, so a move can later take its path from an authored clip instead of hand keys, with the rules unchanged. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks. Each weapon supplies its grip-to-tip length and blade thickness.
+The body rules are checked headless on a reference body for each fighter, and every swing must pass on both, since the Rogue and the Hunter differ in proportions. A reference body is the fighter at rest, as rules data:
+- the shoulders, and the upper-arm and forearm lengths, for solving the elbows;
+- the spine, from the middle of the hips to the middle of the shoulders;
+- capsules round the torso, the head (with the Rogue's hood or the Hunter's tricorn), the thighs and the arms, each covering the parts of the body its bones move. The Hunter's left upper arm is wider for his pauldron. The head's capsule ends at the crown, so the top of a hood or the back of a hat pokes out of it by up to 4.4 cm, still inside the 5 cm the checks keep a blade from the body.
 
-- The rules layer takes the blade segment at consecutive ticks and tests the swept quad between them against the defender's hurt capsule. The capsule is part of each fighter's rules data: 0.35 m in radius from the feet to 1.75 m for the first two fighters, raised with the fighter when they jump. The hit lands on the first tick the sweep touches the capsule inside the active frames, in the same outcome order as the demo (counters, jumped, flash, evade, parry, block, hit). Hit, block and parry events carry the contact point, where the sparks and the parry rebound start.
-- Reach comes from arm extension and lunge (0.7–0.8 m on lights, with the front foot landing on the contact frame), so that the last 15–20 cm of the blade enters a defender standing 2.5 m away, the demo's duelling distance.
-- Unblockables use a thicker blade for their longer reach.
+The torso coil turns the torso and the shoulders about the spine, and the pelvis coil turns the thighs at the hips. The head keeps facing ahead and the knees stay planted, and the pelvis shift carries everything above the knees. A content test measures both fighters again and keeps the numbers within 1 cm.
+
+The checks look at every quarter frame of a swing, entered from the guard and from each move that chains into it, through the exit:
+- each hand sits on its grip as the fighter rig seats it, turned round the handle so that the hand carries on the line of its forearm, and each elbow bends toward the rig's pole (out, down and back from the shoulder, turning with the chest), plus the key's tweak;
+- so a wrist doesn't bend back or forward, and it may turn ±25° sideways from straight, where straight puts the forearm square to the handle. An elbow at 170° or straighter is locked, and a grip out of the arm's reach fails;
+- a blade keeps 5 cm, beyond half its thickness, from the torso, the head, the thighs and both arms, though not from the fist and forearm that hold it;
+- in the wind-up neither grip passes in front of the face: within 12 cm of a line from the middle of the head, 60 cm straight ahead.
+
+A weapon held in both hands puts the off hand on its off-hand grip, which the rules copy from the model's marker as they do the blade.
+
+Swings are stored as sampled data, so a move can later take its path from an authored clip instead of hand keys, with the rules unchanged. The keys live in one JSON file per weapon, `game/sim/moves/swings/<weapon>.json`, read when the weapon is built, and the rules expand them to per-tick samples. The file also holds the weapon's guard: a pose for each part its swings move. A move enters from the guard, or, as a follow-up, from the last key of the move before it (its hand-off pose), and exits back to the guard on its last frame. Its own keys run from the last frame of the wind-up through the last active frame at least, and are splined on their own, so its hits are the same however it was entered. A follow-up's first key is within 2 cm and 10° of the previous move's hand-off pose, so a string flows from one cut into the next. Positions and directions are (right, up, forward) from the fighter's feet, and every key has an ease (0 holds still there, as in the cocked hold). A file with any mistake (an unknown field, keys out of order, a frame past the move) is refused whole, with an error, so a weapon never plays on half-read swings. The swing editor writes the files back with a stable key order and fixed decimals. Swings are built from a small set of named shapes (right-to-left slash, left-to-right slash, rising and falling diagonals, overhead, thrust, low sweep, spin, stab, plus a few specials) with per-move tweaks.
+
+Each weapon supplies what its swings strike with, a strike segment in its own frame. A blade runs from where its cutting part starts to its point, as the model's BladeBase and BladeTip markers place them; the rules never load a model, so a content test keeps the two within 1 cm. Its thickness is the model's, out of the flat, at its thickest between the markers (within 1 mm, also kept by the content test): 1.5 cm for the Katana and 1.4 cm for a dagger, both at the collar (the blades themselves are 7 and 5 mm), and 2.2 cm for the Greatsword. So a blade that passes more than about a centimetre off the capsule misses, as it visibly does. The edge's width and the Katana's curve lie in the plane of a cut, where the sweep covers them. Bare hands strike with the fist, across the knuckles (7.6 cm thick, enough for either hand of either fighter), and kick with the foot, along the boot from heel to toe with its underside on the sole (10 cm thick). A foot track's grip is the ankle, its blade runs along the foot and its edge out of the sole.
+
+- The rules layer takes the blade segment at consecutive ticks and tests the swept quad between them against the defender's hurt capsule. Each tick, once the fighters have moved and been pushed apart and just before hits are decided, every hand and foot track of the attack's swing is placed in the world from its pose at the attack's frame and the fighter's position and facing. The last tick's place is kept beside it. A charge holds the pose, as do frames past the swing's end and hit-stop, and an attack's first tick sweeps nothing. Between the ticks each end of the blade travels in a straight line; a blade that turns out of the plane it travels in makes a twisted quad, which is taken as two flat triangles. The sweep touches when any part of it comes within the capsule's radius plus half the blade's thickness of the capsule's axis, so even a blade moving 0.6 m in a tick can't pass through unseen. Its contact point is its point nearest the axis, where the blade went deepest; its depth is how far that is inside the capsule's surface, and its length inside is the most blade inside the capsule at any moment of the tick, which the reach tests measure. The capsule is part of each fighter's rules data: 0.35 m in radius from the feet to 1.75 m for the first two fighters, raised with the fighter when they jump. A fighter built without an id (the rule tests, the soak run) gets a default body of the same size. The capsule is separate from the 0.42 m radius that keeps the fighters apart. The hit lands on the first tick the sweep touches the capsule inside the active frames, in the same outcome order as the demo (counters, jumped, flash, evade, parry, block, hit): the touch takes the place of the demo's range-and-arc cone, and a swing that never touches whiffs. A move without a swing keeps the cone until it has one, so the Duel plays as before while swings are authored. Hit, block and parry events carry the contact point, where the sparks and the parry rebound start. Moves without a swing and scripted hits (the ultimates' waves, Impaler, Tempest) keep the demo's point, halfway between the fighters at 1.25 m.
+- Reach comes from arm extension and lunge (0.7–0.8 m on lights, with the front foot landing on the contact frame), so that the last 15–20 cm of the blade enters a defender standing at the weapon's duelling distance: 2.5 m for the Katana (the demo's duelling distance), 3.0 m for the Greatsword, 2.0 m for the Daggers and 1.6 m for bare hands, kept in each weapon's rules data. "The last 15–20 cm" is the most blade inside the defender's capsule at any moment of the active ticks, played from standing at a standing defender. Each light of the string must also end its lunge on the frame it first touches, and whiff from 6 m. Every other move with a swing must touch a standing defender from its distance in the table of test distances below.
+- Unblockables use a thicker blade for their longer reach: their sweeps add 10 cm to half the blade's thickness (`UNBLOCKABLE_SWEEP_BONUS`), so they reach 10 cm further than the same swing would. Presentation reads the same value for the reach shown on the warning mark.
 - The counters (stomp, leap, evade), which the demo made deliberately generous, keep their generous cone checks, now measured from each move's path.
-- Each move's reach and arc, which the computer opponent and the move list use, are computed from its path at load.
+- Each move's reach and arc, which the computer opponent and the move list use, are computed from its path at load. The reach is how far the blade gets across the ground from the fighter's feet through the active frames, plus half the thickness its sweep tests, without the lunge, as the demo's range was. The arc is twice the blade's widest bearing from the facing over those frames, or 360 when it passes behind. The weapon's reach, which the computer keeps to, comes from its light starter's, and the training dummy keeps that distance once the starter has a swing. The rules can also play a move at a standing defender at any distance and bearing, lunge and turning included, for the frame it would first touch and how deep.
 - Ultimate projectiles and scripted hits (the Moonsplitter wave, Impaler, Tempest) keep their own checks.
+- A debug view draws, over the match, each fighter's hurt capsule, the blades where the rules hold them, each active tick's sweep (kept for about a second) and where each hit, block, parry or whiff landed, coloured by outcome. It is turned on by F3 in a debug build or by `npm run godot:run -- --swing-debug`, and the `swing_debug` shot scene shows a hit, a block and a whiff.
+
+**Test distances.** How far apart, centre to centre, each kind of move is tested from, played from standing at a standing defender (task 7.14; `game/tests/sim/reach_table.gd` holds the same table). D is the weapon's duelling distance. A kind's offset is how much further the demo's moves of that kind reached from standing (range, a fighter's radius and the lunge) than their weapon's first light, the median over the four weapons to the half-metre, so each kind keeps its place in its weapon's range as real blades replace the demo's cones. In play, sprint, dodge and backstep attacks start out of movement and reach further.
+
+| Kind of move | Tested from | Katana (D 2.5 m) |
+|---|---|---|
+| Lights of the string | D, with 15–20 cm of blade inside | 2.5 m |
+| Heavies: the heavy string, its variants and follow-ups | D + 0.5 m | 3.0 m |
+| The Iai Slashes (vertical and horizontal) | 3.6 m, their own | 3.6 m |
+| Sprint light | D + 1.5 m | 4.0 m |
+| Sprint heavy | D + 2.5 m | 5.0 m |
+| Dodge attacks, light and heavy | D | 2.5 m |
+| Backstep light | D + 0.5 m | 3.0 m |
+| Backstep heavy | D + 2 m | 4.5 m |
+| Jump attacks, light and heavy | D − 0.5 m | 2.0 m |
+| Counter lunge | D + 2 m | 4.5 m |
+| Unblockable block abilities | D + 1 m | 3.5 m |
+| Other block abilities (Guard Crusher) | D | |
+| Breaker Palm (bare hands' ultimate palm) | D + 2.5 m | |
+
+Zero-damage stances (Flash, Shadow Step) strike nothing and aren't tested. The ultimates' scripted hits keep their own checks.
 
 **Rule changes after the port** (each with tests, then a soak run):
 

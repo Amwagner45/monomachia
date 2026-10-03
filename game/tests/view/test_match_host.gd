@@ -80,6 +80,12 @@ func test_two_computers_play_a_full_match_to_the_results() -> void:
 	assert_eq(_finished_with.size(), 1)
 
 
+func test_each_side_s_fighter_reaches_the_rules() -> void:
+	var host: MatchHost = _host()
+	host.start(_cpu_config())
+	assert_eq([host.fighter(0).body.id, host.fighter(1).body.id], [&"rogue", &"hunter"], "each fighter's body by its id")
+
+
 func test_the_host_plays_exactly_the_soak_loop() -> void:
 	# The same world, match and brains driven by hand as scripts/soak.ts and
 	# the demo do: inputs [ai0.think(), ai1.think()], then Match.step.

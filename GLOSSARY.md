@@ -57,6 +57,26 @@ A slow, telegraphed thrust, sweep or overhead slam. Blocking it doesn't stop it,
 **Ultimate**:
 The once-per-round signature move a fighter can use at 25% HP or less.
 
+## Hits
+
+**Swing**:
+The path a move's weapon travels through the move, in the fighter's own space: key poses of the grip, the blade and the body's coil. The same swing decides hits and drives the animation.
+_Avoid_: Animation (for the path itself), hitbox
+
+**Hurt capsule**:
+The capsule around a fighter's body, from the feet up, that a swing must touch to hit them. It rises with the fighter in a jump.
+_Avoid_: Hurtbox, hitbox
+
+**Strike segment**:
+What a swing strikes with, as a line with a thickness: a weapon's blade, from where its cutting part starts to its point; a bare fist, across the knuckles; or a foot, along the sole from heel to toe.
+_Avoid_: Hitbox
+
+**Sweep**:
+The surface a blade (or another strike segment) covers from one frame to the next. A hit lands on the first active frame whose sweep touches the defender's hurt capsule. Not the low sweep attack that the leap counters: say "blade sweep" where the two could be confused.
+
+**Contact point**:
+Where a sweep first touches the hurt capsule: on the first frame it touches, the point where the blade went deepest, nearest the capsule's axis. Hit, block and parry effects start there.
+
 ## Defending
 
 **Block**:

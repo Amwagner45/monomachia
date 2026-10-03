@@ -19,6 +19,8 @@ extends RefCounted
 ##   and .atan2 (V8's exact results, see js_math.gd); Math.round is
 ##   SimMath.js_round; every TS division of two ints is written as a float
 ##   division.
+## - body and hurt_capsule() are the rebuild's (task 7.5), as are
+##   place_blades() and blade_segments() (task 7.9) and blade_touch() (7.10).
 
 ## FState
 const STATES: Array[StringName] = [
@@ -61,6 +63,8 @@ var weapon: WeaponDef
 var abilities: Array[StringName]
 var name: String
 var armed: bool = true
+## The fighter's body in the rules: its hurt capsule (task 7.5).
+var body: FighterBody
 
 var hp: float = SimConst.HP_MAX
 var posture: float = 0.0
@@ -127,6 +131,7 @@ func _init(p_id: int, cfg: FighterConfig) -> void:
 	weapon = cfg.weapon
 	abilities = cfg.abilities if not cfg.abilities.is_empty() else cfg.weapon.default_abilities
 	name = cfg.name if cfg.name != "" else cfg.weapon.name
+	body = FighterBody.of(cfg.fighter_id)
 
 
 # ------------------------------------------------------------------ queries
@@ -137,6 +142,74 @@ func moveset() -> WeaponDef:
 
 func airborne() -> bool:
 	return pos.y > 0.001 or vel.y > 0.0
+
+
+## The hurt capsule that blades are swept against, where the fighter stands
+## now (risen with them in the air).
+func hurt_capsule() -> SimCapsule:
+	return body.hurt_capsule(pos)
+
+
+## Each striking track of the attack's swing in the world, at this tick and
+## the last (see place_blades()), in the order of the swing's tracks: empty
+## outside an attack and for a move without a swing. Shared: don't change
+## them.
+func blade_segments() -> Array[BladeSegment]:
+	if state != &"attack" or atk == null:
+		return [] as Array[BladeSegment]
+	return atk.blades
+
+
+## The touch of this tick's blade sweeps on `capsule` (task 7.10): the
+## deepest of the striking tracks' (the first on a tie), or null when none
+## touches or the attack has no swing.
+func blade_touch(capsule: SimCapsule) -> BladeSweep:
+	var deepest: BladeSweep = null
+	for b: BladeSegment in blade_segments():
+		var touch: BladeSweep = BladeSweep.touch(b.prev_base, b.prev_tip, b.base, b.tip, b.half_thickness, capsule)
+		if touch != null and (deepest == null or touch.depth > deepest.depth):
+			deepest = touch
+	return deepest
+
+
+## Places each striking track of the attack's swing in the world for this
+## tick, keeping the last tick's beside it: the track's pose at the attack's
+## frame (entered from the move this one follows, if any) at the fighter's
+## position and facing. World calls it once the fighters have moved, just
+## before hits are decided, so each sweep runs between the places hits are
+## decided from. A charge holds the frame, so the pose holds, and frames past
+## the swing's end (a charge's extra recovery) hold its last pose. Hit-stop
+## skips the whole step, so the segments hold through it. On the attack's
+## first tick the last tick's segment is this one's. An unblockable's blades
+## sweep SimConst.UNBLOCKABLE_SWEEP_BONUS thicker on every side (task 7.12).
+func place_blades() -> void:
+	if state != &"attack" or atk == null:
+		return
+	var def: AttackDef = atk.def
+	var last: Array[BladeSegment] = atk.blades
+	atk.blades = []
+	if def.swing == null:
+		return
+	# a fist move can be started while armed (start_attack)
+	var w: WeaponDef = moveset() if moveset().moves.get(def.id) == def else Moves.FISTS
+	var from: Swing = atk.chained_from.swing if atk.chained_from != null else null
+	for part: StringName in def.swing.parts():
+		var segment: StrikeSegment = Swing.strike_segment(part, w)
+		if segment == null:
+			continue
+		var pose: Swing.Sample = def.swing.tick(part, atk.frame, from)
+		var b: BladeSegment = BladeSegment.new()
+		b.part = part
+		b.base = SimMath.local_to_world(pos, yaw, pose.place(segment.base))
+		b.tip = SimMath.local_to_world(pos, yaw, pose.place(segment.tip))
+		b.prev_base = b.base
+		b.prev_tip = b.tip
+		b.half_thickness = BladeSegment.half_thickness_for(segment, def)
+		for before: BladeSegment in last:
+			if before.part == part:
+				b.prev_base = before.base
+				b.prev_tip = before.tip
+		atk.blades.append(b)
 
 
 func hp_frac() -> float:
@@ -569,8 +642,9 @@ func _context_attack(kind: StringName) -> StringName:
 	return w.light_start if L else w.heavy_start
 
 
-## started_by: the Btn that started the move, or -1 (TS null).
-func start_attack(p_id: StringName, started_by: int = -1) -> bool:
+## started_by: the Btn that started the move, or -1 (TS null). chained_from:
+## the move this one follows, for a follow-up (its swing's entry).
+func start_attack(p_id: StringName, started_by: int = -1, chained_from: AttackDef = null) -> bool:
 	var W: World = world
 	var def: AttackDef = moveset().moves.get(p_id, null)
 	if def == null and String(p_id).begins_with("f_"):
@@ -586,13 +660,10 @@ func start_attack(p_id: StringName, started_by: int = -1) -> bool:
 		dodge_was_back = dodge != null and dodge.back
 	set_state(&"attack")
 	blocking = false
-	var lunge_total: float = (
-		SimMath.clamp(SimMath.dist2(pos, opp.pos) - SimConst.FIGHTER_RADIUS * 2.0 - 0.6, 0.0, 7.0)
-		if def.special == &"counterLunge"
-		else def.lunge
-	)
+	var lunge_total: float = def.lunge_from(SimMath.dist2(pos, opp.pos))
 	atk = AttackState.new()
 	atk.def = def
+	atk.chained_from = chained_from
 	atk.frame = 0
 	atk.hit_done = false
 	atk.hits_done = 0
@@ -690,10 +761,8 @@ func _update_attack() -> void:
 	# Lunge along our facing (or on along the last dodge), easing in and out
 	# over its window.
 	var ls: int = def.lunge_start
-	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else S + A
-	if a.lunge_total > 0.0 and f > ls and f <= le:
-		var n: float = float(maxi(1, le - ls))
-		var share: float = SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
+	var share: float = def.lunge_share(f)
+	if a.lunge_total > 0.0 and share > 0.0:
 		if a.lunge_dir != null:
 			_advance_along(a.lunge_dir, a.lunge_total * share)
 		else:
@@ -737,7 +806,7 @@ func _update_attack() -> void:
 			inp.consume(Btn.HEAVY)
 			a.queued = def.chain_heavy
 	if a.queued != &"" and f >= S + A + 2:
-		start_attack(a.queued, -1)
+		start_attack(a.queued, -1, def)
 		return
 
 	# Dodge-cancel the recovery from the move's cancel frame, later by half any

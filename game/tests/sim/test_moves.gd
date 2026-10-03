@@ -140,6 +140,13 @@ const WEAPON_CHANGES: Array[Dictionary] = [
 ## move given one fails here.)
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
+## The swing (task 7), which the swing tests check as moves get one.
+const SWING_FIELDS: Array[String] = ["swing"]
+## Weapon fields the demo didn't have: tests/sim/test_duel_reach.gd checks the
+## duelling distances, and tests/content/test_strike_segments.gd the rest
+## against the models.
+const WEAPON_REBUILD_FIELDS: Array[String] = ["duel_distance", "blade", "foot", "off_hand_grip"]
+
 var _fx: Dictionary
 
 
@@ -217,7 +224,7 @@ func _diff_move(where: String, m: AttackDef, ts: Dictionary) -> Array[String]:
 			if not _same(m.get(snake), want):
 				out.append("%s.%s: got %s, want %s" % [where, snake, m.get(snake), want])
 	for snake: String in AttackDef.KEYS:
-		if seen.has(snake) or REBUILD_FIELDS.has(snake):
+		if seen.has(snake) or REBUILD_FIELDS.has(snake) or SWING_FIELDS.has(snake):
 			continue
 		if not UNSET.has(snake):
 			out.append("%s.%s: unset in TS but finalizeMoves should set it" % [where, snake])
@@ -273,7 +280,7 @@ func test_every_weapon_field_matches_the_typescript() -> void:
 				if not _same(w.get(snake), want):
 					diffs.append("%s.%s: got %s, want %s" % [wid, snake, w.get(snake), want])
 		for snake: String in WeaponDef.KEYS:
-			if not ts.has(snake.to_camel_case()):
+			if not ts.has(snake.to_camel_case()) and not WEAPON_REBUILD_FIELDS.has(snake):
 				diffs.append("%s.%s: not in the TS weapon" % [wid, snake])
 		assert_eq(diffs, [] as Array[String], wid)
 

@@ -16,3 +16,10 @@ var prev_tip: V3 = V3.make()
 ## half the strike segment's thickness, plus SimConst.UNBLOCKABLE_SWEEP_BONUS
 ## for an unblockable (task 7.12): half the thickness its sweep tests
 var half_thickness: float = 0.0
+
+
+## Half the thickness a sweep of `segment` tests on the move `def`: half the
+## segment's own, plus SimConst.UNBLOCKABLE_SWEEP_BONUS for an unblockable
+## (task 7.12).
+static func half_thickness_for(segment: StrikeSegment, def: AttackDef) -> float:
+	return segment.thickness / 2.0 + (SimConst.UNBLOCKABLE_SWEEP_BONUS if def.unblockable else 0.0)

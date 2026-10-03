@@ -232,7 +232,7 @@ Each weapon supplies what its swings strike with, a strike segment in its own fr
 - Reach comes from arm extension and lunge (0.7–0.8 m on lights, with the front foot landing on the contact frame), so that the last 15–20 cm of the blade enters a defender standing 2.5 m away, the demo's duelling distance.
 - Unblockables use a thicker blade for their longer reach: their sweeps add 10 cm to half the blade's thickness (`UNBLOCKABLE_SWEEP_BONUS`), so they reach 10 cm further than the same swing would. Presentation reads the same value for the reach shown on the warning mark.
 - The counters (stomp, leap, evade), which the demo made deliberately generous, keep their generous cone checks, now measured from each move's path.
-- Each move's reach and arc, which the computer opponent and the move list use, are computed from its path at load.
+- Each move's reach and arc, which the computer opponent and the move list use, are computed from its path at load. The reach is how far the blade gets across the ground from the fighter's feet through the active frames, plus half the thickness its sweep tests, without the lunge, as the demo's range was. The arc is twice the blade's widest bearing from the facing over those frames, or 360 when it passes behind. The weapon's reach, which the computer keeps to, comes from its light starter's, and the training dummy keeps that distance once the starter has a swing. The rules can also play a move at a standing defender at any distance and bearing, lunge and turning included, for the frame it would first touch and how deep.
 - Ultimate projectiles and scripted hits (the Moonsplitter wave, Impaler, Tempest) keep their own checks.
 
 **Rule changes after the port** (each with tests, then a soak run):

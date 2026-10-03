@@ -95,6 +95,12 @@ var last_frame: int = 0
 ## The weapon's guard: a pose (frame and ease unused) for each part its swings
 ## move, shared by all of them.
 var guard: Dictionary[StringName, KeyPose] = {}
+## How far the blade reaches and how wide it sweeps through the active
+## frames (m from the feet, without the lunge, and degrees; task 7.13), from
+## SwingReach when the weapon is built; -1 until then. AttackDef.reach() and
+## .reach_arc() read them.
+var reach: float = -1.0
+var arc: float = -1.0
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
 

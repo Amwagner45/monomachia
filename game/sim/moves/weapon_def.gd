@@ -15,6 +15,9 @@ extends RefCounted
 ##   swing file (SwingFile.path_for(id)) when it has one.
 ## - blade and foot are the rebuild's (task 7.5): what the swings strike with;
 ##   off_hand_grip too (task 7.7).
+## - derive_reach() is the rebuild's (task 7.13): from_dict() ends with it, so
+##   each swing carries its reach and arc, and reach comes from the light
+##   starter's swing once it has one.
 
 const WEAPON_IDS: Array[StringName] = [&"katana", &"greatsword", &"daggers", &"fists"]
 const ULTIMATE_IDS: Array[StringName] = [&"moonsplitter", &"impaler", &"tempest", &"disarmed"]
@@ -108,4 +111,17 @@ static func from_dict(d: Dictionary) -> WeaponDef:
 	w.blade = d["blade"]
 	w.foot = d["foot"]
 	w.off_hand_grip = d["off_hand_grip"]
+	w.derive_reach()
 	return w
+
+
+## Works out each swing's reach and arc (SwingReach, task 7.13) and, when the
+## light starter has a swing, takes the weapon's reach from it. from_dict()
+## calls it; call it again after giving a built weapon's moves swings.
+func derive_reach() -> void:
+	for m: AttackDef in moves.values():
+		if m.swing != null:
+			SwingReach.derive(m, self)
+	var starter: AttackDef = moves.get(light_start)
+	if starter != null and starter.swing != null:
+		reach = starter.swing.reach

@@ -24,6 +24,8 @@ extends RefCounted
 ##   inVolume: a move with a swing reaches by its blades' sweeps (task 7.10).
 ##   Their touch's contact rides in HitCtx.contact into apply(), which puts
 ##   it in hit, block and parry events in place of the midpoint (task 7.11).
+## - checks_frame() is the rebuild's (task 7.13): _resolve_combat()'s test of
+##   which frames check for hits, shared with SwingReach.first_contact().
 
 
 ## { chargeF, backstab }: the context an attack carries into apply().
@@ -223,13 +225,10 @@ func _resolve_combat() -> void:
 			continue
 		if at.charging:
 			continue
-		var f: int = at.frame
-		if f <= def.startup or f > def.startup + def.active:
+		if not checks_frame(def, at.frame):
 			continue
 		if def.multi_hit != 0:
-			var interval: int = def.multi_interval if def.multi_interval != AttackDef.UNSET else 3
-			# JS: x % 0 is NaN, and NaN !== 0, so an interval of 0 skips every frame
-			if interval == 0 or (f - def.startup - 1) % interval != 0 or at.hits_done >= def.multi_hit:
+			if at.hits_done >= def.multi_hit:
 				continue
 		elif at.hit_done:
 			continue
@@ -244,6 +243,20 @@ func _resolve_combat() -> void:
 	# trade is fair even though the first application interrupts the second attacker
 	for o: Array in outs:
 		apply(o[0], o[1], o[2], o[3], false, o[4])
+
+
+## Whether an attack `def` checks for a hit on its frame `f`: an active frame,
+## and for a multi-hit move one of every multi_interval of them (3 by
+## default). _resolve_combat() and SwingReach.first_contact() (task 7.13)
+## both use it.
+static func checks_frame(def: AttackDef, f: int) -> bool:
+	if f <= def.startup or f > def.startup + def.active:
+		return false
+	if def.multi_hit != 0:
+		var interval: int = def.multi_interval if def.multi_interval != AttackDef.UNSET else 3
+		# JS: x % 0 is NaN, and NaN !== 0, so an interval of 0 skips every frame
+		return interval != 0 and (f - def.startup - 1) % interval == 0
+	return true
 
 
 ## Decide what an attack does to its target this frame, without changing anything.

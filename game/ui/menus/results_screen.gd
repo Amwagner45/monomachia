@@ -14,8 +14,8 @@ var results: MatchResults
 
 func _init() -> void:
 	super()
-	_title = add_label("Victory", 64, MenuScreen.TEXT_COLOR)
-	_rounds = add_label("", 26, MenuScreen.MUTED)
+	_title = add_heading("Victory", 64)
+	_rounds = add_label("", UiTheme.MUTED, 26)
 	_grid = GridContainer.new()
 	_grid.columns = 3
 	_grid.add_theme_constant_override("h_separation", 36)
@@ -34,28 +34,30 @@ func show_results(r: MatchResults) -> void:
 	results = r
 	_title.text = r.title()
 	if r.winner >= 0 and r.player_side >= 0 and r.mode == MatchConfig.DUEL:
-		_title.add_theme_color_override("font_color", Color(1.0, 0.82, 0.4) if r.winner == r.player_side else Color(0.85, 0.35, 0.3))
+		_title.add_theme_color_override("font_color", UiPalette.GOLD if r.winner == r.player_side else UiPalette.HP_HI)
 	else:
-		_title.add_theme_color_override("font_color", MenuScreen.TEXT_COLOR)
+		_title.remove_theme_color_override("font_color")
 	_rounds.text = "Rounds  %d – %d   ·   %d fought" % [r.wins[0], r.wins[1], r.rounds]
 	for c: Node in _grid.get_children():
 		_grid.remove_child(c)
 		c.queue_free()
-	_cell("", MenuScreen.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	_cell("%s\n%s" % [r.names[0], r.weapons[0]], LookPalette.SIDE_COLORS[0].lightened(0.35), HORIZONTAL_ALIGNMENT_CENTER)
-	_cell("%s\n%s" % [r.names[1], r.weapons[1]], LookPalette.SIDE_COLORS[1].lightened(0.35), HORIZONTAL_ALIGNMENT_CENTER)
-	_cell("Rounds won", MenuScreen.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-	_cell(str(r.wins[0]), MenuScreen.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
-	_cell(str(r.wins[1]), MenuScreen.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
+	_cell("", UiTheme.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	for i: int in 2:
+		var side: Label = _cell("%s\n%s" % [r.names[i], r.weapons[i]], UiTheme.DISPLAY, HORIZONTAL_ALIGNMENT_CENTER)
+		side.add_theme_color_override("font_color", LookPalette.SIDE_COLORS[i].lightened(0.35))
+	_cell("Rounds won", UiTheme.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+	_cell(str(r.wins[0]), &"", HORIZONTAL_ALIGNMENT_CENTER)
+	_cell(str(r.wins[1]), &"", HORIZONTAL_ALIGNMENT_CENTER)
 	for row: Array in MatchResults.STATS:
-		_cell(String(row[1]), MenuScreen.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
-		_cell(r.stat_text(0, row[0]), MenuScreen.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
-		_cell(r.stat_text(1, row[0]), MenuScreen.TEXT_COLOR, HORIZONTAL_ALIGNMENT_CENTER)
+		_cell(String(row[1]), UiTheme.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
+		_cell(r.stat_text(0, row[0]), &"", HORIZONTAL_ALIGNMENT_CENTER)
+		_cell(r.stat_text(1, row[0]), &"", HORIZONTAL_ALIGNMENT_CENTER)
 	open()
 
 
-func _cell(text: String, color: Color, align: HorizontalAlignment) -> void:
-	var l: Label = MenuScreen.make_label(text, 22, color)
+func _cell(text: String, variation: StringName, align: HorizontalAlignment) -> Label:
+	var l: Label = UiTheme.label(text, variation, 22)
 	l.horizontal_alignment = align
 	l.custom_minimum_size = Vector2(150.0, 0.0)
 	_grid.add_child(l)
+	return l

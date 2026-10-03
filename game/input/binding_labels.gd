@@ -4,9 +4,10 @@ extends RefCounted
 ## Xbox or generic controller names. Port of bindingLabel() in
 ## src/input/bindings.ts and the token choice of Game.label() in src/game.ts.
 
-## Indexed by JoyButton (SDL layout).
+## Indexed by JoyButton (SDL layout). Cross is "×", where the demo has "✕":
+## the bundled UI fonts have no "✕" (task 22.1).
 const PS_BUTTONS: Array[String] = [
-	"✕", "○", "□", "△", "Create", "PS", "Options", "L3", "R3", "L1", "R1",
+	"×", "○", "□", "△", "Create", "PS", "Options", "L3", "R3", "L1", "R1",
 	"D-pad ↑", "D-pad ↓", "D-pad ←", "D-pad →", "Mic", "Paddle 1", "Paddle 2", "Paddle 3", "Paddle 4", "Touchpad",
 ]
 const XBOX_BUTTONS: Array[String] = [

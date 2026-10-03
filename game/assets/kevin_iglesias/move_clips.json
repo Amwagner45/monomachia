@@ -33,9 +33,22 @@
 		"g_bl": {"clips": ["Attack1H05_R"], "speed": 1.14, "fallback": "Sword_Regular_A", "marks": {"windup": 0, "contact": 8, "contact_end": 10.3, "settle": 21.7}},
 		"g_bh": {"clips": ["Attack2H04"], "speed": 1.17, "fallback": "Sword_Heavy_A", "marks": {"windup": 0, "contact": 14, "contact_end": 16.9, "settle": 33.3}},
 		"g_jl": {"clips": ["Attack2H01"], "speed": 1.33, "fallback": "Sword_Attack", "marks": {"windup": 8, "contact": 16, "contact_end": 18.7, "settle": 30.7}},
+		"g_h2": {"clips": ["Attack2H03@0-4", "Attack2H03@4*5", "Attack2H03@4"], "speed": 1.08, "fallback": "Sword_Heavy_D", "marks": {"windup": 0, "contact": 14, "contact_end": 16.7, "settle": 35.1}},
+		"g_dh": {"clips": ["AttackPolearm01@0-8", "AttackPolearm01@8*4", "AttackPolearm01@8"], "speed": 1.36, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 15, "contact_end": 17.7, "settle": 36.8}},
+		"g_jh": {"clips": ["ual/Sword_GroundPound@0-3", "ual/Sword_GroundPound@3*2", "ual/Sword_GroundPound@3"], "speed": 1.1, "fallback": "Sword_Attack", "marks": {"windup": 0, "contact": 11, "contact_end": 14.3, "settle": 30.8}},
+		"g_sweep": {"clips": ["AttackPolearm04@0-5", "AttackPolearm04@5*4", "AttackPolearm04@5"], "speed": 1.04, "fallback": "Sword_Heavy_D", "marks": {"windup": 0, "contact": 14.5, "contact_end": 17.6, "settle": 32.2}},
+		"g_slam": {"clips": ["AttackPolearm03@0-6", "AttackPolearm03@6*1", "AttackPolearm03@6"], "speed": 1.0, "fallback": "Sword_Heavy_Combo", "marks": {"windup": 0, "contact": 16, "contact_end": 18.5, "settle": 36.5}},
 		"g_crush": {"clips": ["AttackShield01"], "speed": 1.0, "fallback": "Idle_Shield_Break", "marks": {"windup": 0, "contact": 7, "contact_end": 9.5, "settle": 20.5}},
 		"g_lunge": {"clips": ["AttackPolearm01@4"], "speed": 1.75, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 7, "contact_end": 9.6, "settle": 28.9}}
 	}},
-	"daggers": {"guard": "CombatIdle1H01", "moves": {}},
+	"daggers": {"guard": "CombatIdle1H01", "moves": {
+		"d_l1": {"clips": ["Attack1H01_R"], "speed": 1.86, "fallback": "Punch_Jab", "marks": {"windup": 2, "contact": 8.5, "contact_end": 10.36, "settle": 22.4}},
+		"d_l2": {"clips": ["Attack1H01_L"], "speed": 1.86, "fallback": "Punch_Cross", "marks": {"windup": 2, "contact": 8.5, "contact_end": 10.36, "settle": 22.4}},
+		"d_l3": {"clips": ["AttackDW01"], "speed": 1.67, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 7.5, "contact_end": 10, "settle": 21.7}},
+		"d_l4": {"clips": ["AttackDW02"], "speed": 1.36, "fallback": "Melee_Uppercut", "marks": {"windup": 0, "contact": 7.5, "contact_end": 9.5, "settle": 21.8}},
+		"d_h1": {"clips": ["AttackDW02@0-6", "AttackDW02@6*3", "AttackDW02@6"], "speed": 1.29, "fallback": "Sword_Dash", "marks": {"windup": 0, "hold": 6, "contact": 10.5, "contact_end": 12.45, "settle": 25.4}},
+		"d_h2": {"clips": ["AttackPolearm04"], "speed": 1.22, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 11, "contact_end": 14.05, "settle": 27.5}},
+		"d_dl": {"clips": ["Attack1H03_R@4"], "speed": 1.67, "fallback": "Sword_Regular_A", "marks": {"windup": 0, "contact": 5, "contact_end": 6.7, "settle": 16.7}}
+	}},
 	"fists": {"guard": "CombatIdle01", "moves": {}}
 }

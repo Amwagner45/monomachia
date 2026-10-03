@@ -292,8 +292,42 @@ func test_moonsplitter_holds_its_wind_up_and_cuts_with_the_wave() -> void:
 	c = ClipDirector.ult_clip(f, bare)
 	assert_eq(c.name, "ual/Sword_Heavy_Combo", "without the packs, the fallback")
 	assert_almost_eq(c.time, 2.0 * 18.0 / 70.0, 1e-6, "stretched over the wind-up and release")
-	f.ult.kind = &"impaler"
-	assert_null(ClipDirector.ult_clip(f, ctx), "the other ultimates keep their stand-ins")
+	f.ult.kind = &"tempest"
+	assert_null(ClipDirector.ult_clip(f, ctx), "the Daggers' ultimate keeps its stand-in")
+
+
+func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
+	var W: World = SimHelpers.make_world(Moves.GREATSWORD, Moves.KATANA)
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {"HumanM/AttackPolearm01": 41.0 / 30.0, "ual/Sword_Dash": 1.4}
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	f.state = &"ult"
+	f.ult = UltState.make(&"impaler", &"aim", 0, &"vertical", 0, false)
+	var at: Callable = func(phase: StringName, pf: int) -> float:
+		f.ult.phase = phase
+		f.ult.pf = pf
+		var c: ClipDirector.Clip = ClipDirector.ult_clip(f, ctx)
+		assert_eq(c.name, "HumanM/AttackPolearm01")
+		return c.time * 30.0
+	assert_almost_eq(at.call(&"aim", 8), 4.0, 1e-6, "drawing back at 1.0")
+	assert_almost_eq(at.call(&"aim", 29), ClipDirector.IMPALER_DRAWN, 1e-6, "held drawn back through the aim")
+	assert_almost_eq(at.call(&"dash", 4), ClipDirector.IMPALER_DRAWN + 3.0, 1e-6, "thrusting out as the dash starts")
+	assert_almost_eq(at.call(&"dash", 30), ClipDirector.IMPALER_OUT, 1e-6, "held out through the dash")
+	assert_almost_eq(at.call(&"impale", 20), ClipDirector.IMPALER_OUT, 1e-6, "and the impale")
+	assert_almost_eq(at.call(&"recover", 30), 41.0, 1e-4, "recovering to the clip's end")
+	# a phase change fades as a follow-up
+	f.ult.phase = &"aim"
+	f.ult.pf = 29
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	W.frame += 1
+	f.ult.phase = &"dash"
+	f.ult.pf = 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.drive, shot.move, shot.fade], [ClipDirector.ATTACK, &"impaler", ClipDirector.FADES[&"follow_up"]], "a phase change fades")
+	var bare: ClipDirector.Context = ClipDirector.Context.make(&"hunter", false, lengths)
+	f.ult.phase = &"dash"
+	f.ult.pf = 5
+	assert_almost_eq(ClipDirector.ult_clip(f, bare).time, 1.4 * 35.0 / 70.0, 1e-6, "without the packs the dash stretched over the aim and dash")
 
 
 # ------------------------------------------------------------------ the shoulder carry (task 18)
@@ -437,3 +471,58 @@ func test_a_state_clip_missing_from_the_tree_leaves_the_legs() -> void:
 	assert_not_null(ClipDirector.state_clip(f, ctx))
 	f.set_state(&"free", 0)
 	assert_null(ClipDirector.state_clip(f, ctx), "the free state has no clip of its own")
+
+
+# ------------------------------------------------------------------ the Daggers' grip (task 21)
+
+func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 8.0)
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {}
+	for set_name: StringName in ClipLibraries.SETS:
+		for id: String in ["Attack1H01_R", "Attack1H01_L"]:
+			lengths["%s/%s" % [set_name, id]] = 33.0 / 30.0
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	var poke: Callable = func(move: StringName, frame: int, from: StringName = &"") -> void:
+		W.frame += 1
+		f.state = &"attack"
+		if f.atk == null or f.atk.def.id != move:
+			f.atk = AttackState.new()
+			f.atk.def = Moves.DAGGERS.moves[move]
+			f.atk.chained_from = Moves.DAGGERS.moves[from] if from != &"" else null
+		f.atk.frame = frame
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	assert_eq(shot.grip, 1.0, "the idle holds the reverse grip")
+	var grips: Array[float] = []
+	for i: int in 4:
+		poke.call(&"d_l1", 1 + i)
+		shot = ClipDirector.step(shot, f, ctx)
+		grips.append(shot.grip)
+	assert_eq(shot.fade, ClipDirector.FADES[&"attack"])
+	assert_eq(grips[0], 1.0, "reverse on the attack's first frame")
+	assert_true(grips[1] < 1.0 and grips[1] > 0.0, "turning over the crossfade: %s" % [grips])
+	assert_eq(grips[3], 0.0, "forward once it is done")
+	var total: int = Moves.DAGGERS.moves[&"d_l1"].total_frames()
+	poke.call(&"d_l1", total - ClipDirector.GRIP_BACK)
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 0.0, "forward until the last recovery frames")
+	poke.call(&"d_l1", total - 3)
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_almost_eq(shot.grip, 0.5, 1e-6, "turning back over the last 6")
+	f.atk.queued = &"d_l2"
+	shot = ClipDirector.step(shot, f, ctx)
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 0.0, "not while a follow-up is queued")
+	f.atk.queued = &""
+	poke.call(&"d_l1", total - 3)
+	shot = ClipDirector.step(shot, f, ctx)
+	var from: float = shot.grip
+	poke.call(&"d_l2", 1, &"d_l1")
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip_from, from, "a follow-up turns forward from where the grip stood")
+	W.frame += 1
+	f.state = &"free"
+	f.atk = null
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 1.0, "back to the legs: the reverse grip")

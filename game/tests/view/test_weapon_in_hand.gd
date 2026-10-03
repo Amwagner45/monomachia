@@ -130,6 +130,13 @@ func test_daggers_fill_both_hands_and_turn_into_the_reverse_grip() -> void:
 		var side: String = FighterRig.SIDES[i]
 		assert_lt(_grip_centre(f, poses, side).distance_to(f.weapons[i].transform.origin), NEAR, "the reversed %s dagger stays in its fist" % side)
 		assert_almost_eq(f.weapons[i].transform.basis.y.dot(forward[i]), -1.0, 0.001, "the %s blade points the other way" % side)
+	# halfway through the flip (task 21): square to the forward blade
+	f.rig.set_reverse_turn(0.5)
+	poses = await _posed(f)
+	for i: int in 2:
+		var side: String = FighterRig.SIDES[i]
+		assert_lt(_grip_centre(f, poses, side).distance_to(f.weapons[i].transform.origin), NEAR, "the turning %s dagger stays in its fist" % side)
+		assert_almost_eq(f.weapons[i].transform.basis.y.dot(forward[i]), 0.0, 0.001, "the %s blade halfway round" % side)
 
 
 func test_posing_or_carrying_unfixes_the_weapons() -> void:

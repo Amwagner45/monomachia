@@ -27,7 +27,10 @@ extends RefCounted
 ##   (ClipLibraries.set_for()). Moves without a baked swing keep the
 ##   stand-in poses: nothing drives;
 ## - the ultimate Moonsplitter (task 13; ult_clip()): its clip wound up and
-##   held through the rules' wind-up, released as the wave goes out;
+##   held through the rules' wind-up, released as the wave goes out; and
+##   Impaler (task 20): AttackPolearm01 drawn back through the aim, thrust
+##   out on the dash and held through the impale, then the burst and the
+##   recovery; a change of an ultimate's phase fades as a follow-up does;
 ## - the Greatsword's shoulder carry (task 18; carry_clip()): while the
 ##   fighter is shouldered, CARRY_POSE on the upper body over the legs' blend
 ##   (Shot.legs_free()), faded in as a stance (8 frames); an attack from the
@@ -39,12 +42,18 @@ extends RefCounted
 ##   counter's hand-keyed Mikiri_Stomp, KeyedClips): the clip fitted to the
 ##   state's length, whole body, with or without the packs (the keyed clips
 ##   are committed);
+## - the Daggers' grip (task 21; Shot.grip): the reverse grip under the legs
+##   and the idle, turned forward over an attack's crossfade, and back over
+##   its last GRIP_BACK recovery frames when no follow-up is queued;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
 ##   of the dodge).
 
 ## The crossfades' lengths, in rules frames.
+## The Daggers turn back into the reverse grip over an attack's last this
+## many recovery frames when no follow-up is queued (task 21).
+const GRIP_BACK: int = 6
 const FADES: Dictionary[StringName, int] = {
 	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8, &"state": 2,
 }
@@ -83,6 +92,22 @@ const ULT_FALLBACK: StringName = &"Sword_Heavy_Combo"
 ## Moonsplitter's wind-up and release, in rules frames (Fighter._ult_moonsplitter()).
 const ULT_WINDUP: int = 36
 const ULT_RELEASE: int = 34
+## Impaler's clip (the thrust) and the source frames it plays through
+## (Fighter._ult_impaler()): drawn back to IMPALER_DRAWN at 1.0 through the
+## aim and held; thrust out to IMPALER_OUT at 1.5 as the dash starts, and held
+## there through the dash and the impale (the victim on the blade); the burst
+## plays on at 0.5, and the recovery from IMPALER_RECOVER to the clip's end
+## over its 30 frames. (The clip table's Sprint01 into AttackPolearm03 would
+## swing the arms free through the dash, and Polearm03 is an overhead.)
+const IMPALER_CLIP: StringName = &"AttackPolearm01"
+const IMPALER_DRAWN: float = 8.0
+const IMPALER_OUT: float = 14.0
+const IMPALER_RECOVER: float = 18.0
+const IMPALER_RECOVER_FRAMES: float = 30.0
+## Without the packs: the CC0 dash stretched over the aim and the dash.
+const IMPALER_FALLBACK: StringName = &"Sword_Dash"
+const IMPALER_AIM: int = 30
+const IMPALER_DASH: int = 40
 
 
 ## What a fighter is playing and from what it plays.
@@ -144,6 +169,13 @@ class Shot:
 	## The move the attack's clip came from, and the state the fighter was in.
 	var move: StringName = &""
 	var state: StringName = &""
+	## The ultimate's phase it plays, or empty.
+	var phase: StringName = &""
+	## How far a pair of daggers is turned into the reverse grip (0 forward,
+	## 1 reverse; FighterRig.set_reverse_turn()), and where it stood as the
+	## attack began (task 21).
+	var grip: float = 1.0
+	var grip_from: float = 1.0
 
 	## How far the crossfade is in (0 to 1, smoothed): the share of the new
 	## drive over what it fades in from.
@@ -198,8 +230,11 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		playing = ult_clip(f, ctx)
 	var drive: StringName = ATTACK if playing != null else LEGS
 	var move: StringName = &""
+	var phase: StringName = &""
 	if playing != null:
 		move = f.atk.def.id if f.atk != null else f.ult.kind
+		if f.atk == null:
+			phase = f.ult.phase
 	else:
 		playing = state_clip(f, ctx)
 		if playing != null:
@@ -219,12 +254,16 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		out.since = 0
 		out.from = null
 		out.from_carry = false
+		out.phase = phase
+		out.grip_from = 1.0
+		out.grip = _grip(out, f)
 		return out
-	var changed: bool = drive != prev.drive or (drive == ATTACK and f.atk != prev.attack)
+	var changed: bool = drive != prev.drive or (drive == ATTACK and f.atk != prev.attack) 		or (phase != &"" and prev.phase != &"" and phase != prev.phase)
 	if changed:
 		# what it fades in from: the authored clip shown last, held where it was
 		out.from = _shown(prev)
 		out.from_carry = out.from != null and out.from.name == carry_name(ctx)
+		out.grip_from = prev.grip
 		out.fade = _fade(prev, f, drive)
 		out.since = 0
 		out.clip_before = playing
@@ -242,6 +281,8 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.attack = f.atk if drive == ATTACK else null
 	out.move = move
 	out.state = f.state
+	out.phase = phase
+	out.grip = _grip(out, f)
 	return out
 
 
@@ -257,6 +298,21 @@ static func state_clip(f: Fighter, ctx: Context) -> Clip:
 		return null
 	var share: float = clampf(float(f.sf) / float(maxi(1, f.state_dur)), 0.0, 1.0)
 	return Clip.make(anim_name, share * length)
+
+
+## How far a pair of daggers is turned into the reverse grip in shot `s`
+## for `f`: all of it unless an attack drives; an attack turns it forward
+## from where it stood (grip_from) over its crossfade, and back over its last
+## GRIP_BACK recovery frames unless a follow-up is queued.
+static func _grip(s: Shot, f: Fighter) -> float:
+	if s.drive != ATTACK:
+		return 1.0
+	var t: float = lerpf(s.grip_from, 0.0, s.blend()) if s.fade > 0 else 0.0
+	if f.atk != null and f.atk.queued == &"":
+		var left: int = f.atk.def.total_frames() - f.atk.frame
+		if left < GRIP_BACK:
+			t = maxf(t, 1.0 - float(left) / float(GRIP_BACK))
+	return t
 
 
 ## The shoulder carry's pose for `f` while it is shouldered (held, a pose),
@@ -311,7 +367,11 @@ static func attack_clip(f: Fighter, ctx: Context, t: float) -> Clip:
 ## without the packs the fallback stretched over both. A Greatsword's lift
 ## off the shoulder waits at the clip's start.
 static func ult_clip(f: Fighter, ctx: Context) -> Clip:
-	if f.state != &"ult" or f.ult == null or f.ult.kind != &"moonsplitter":
+	if f.state != &"ult" or f.ult == null:
+		return null
+	if f.ult.kind == &"impaler":
+		return impaler_clip(f.ult, ctx)
+	if f.ult.kind != &"moonsplitter":
 		return null
 	var u: UltState = f.ult
 	var pf: float = float(u.pf)
@@ -324,6 +384,30 @@ static func ult_clip(f: Fighter, ctx: Context) -> Clip:
 	var hold: float = pick[1]
 	var source: float = minf(pf * 0.5, hold) if u.phase == &"windup" else hold + pf
 	var length: float = ctx.lengths.get(anim_name, 0.0)
+	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
+
+
+## Impaler's clip in ultimate state `u` (see IMPALER_CLIP); without the packs
+## the fallback stretched over the aim and the dash, then held.
+static func impaler_clip(u: UltState, ctx: Context) -> Clip:
+	var pf: float = float(u.pf)
+	if not ctx.libraries:
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, IMPALER_FALLBACK]
+		var done: float = pf if u.phase == &"aim" else (float(IMPALER_AIM) + pf if u.phase == &"dash" else float(IMPALER_AIM + IMPALER_DASH))
+		return Clip.make(anim_name, clampf(done / float(IMPALER_AIM + IMPALER_DASH), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
+	var anim_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), IMPALER_CLIP)
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	var source: float = IMPALER_OUT
+	match u.phase:
+		&"aim":
+			source = minf(pf * 0.5, IMPALER_DRAWN)
+		&"dash":
+			source = minf(IMPALER_DRAWN + pf * 0.75, IMPALER_OUT)
+		&"burst":
+			source = IMPALER_OUT + pf * 0.25
+		&"recover":
+			var end: float = length * float(ClipManifest.SOURCE_FPS)
+			source = lerpf(IMPALER_RECOVER, end, clampf(pf / IMPALER_RECOVER_FRAMES, 0.0, 1.0))
 	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
 
 
@@ -379,8 +463,14 @@ static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 	if drive == STATE:
 		return FADES[&"state"]
 	if drive == ATTACK:
+		if prev.drive == ATTACK and f.atk == null and prev.attack == null:
+			# a change of the ultimate's phase
+			return FADES[&"follow_up"]
 		if prev.drive == CARRY and f.atk != null and f.atk.lift > 0:
 			return f.atk.lift
+		if prev.drive == CARRY and f.atk == null:
+			# the ultimate from the shoulder waits out the same lift
+			return SimConst.GS_SHOULDER_LIFT_FRAMES
 		if prev.drive == ATTACK and f.atk != null and f.atk.chained_from != null:
 			return FADES[&"follow_up"]
 		return FADES[&"attack"]

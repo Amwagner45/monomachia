@@ -409,6 +409,23 @@
 				"daggers"
 			]
 		},
+		"AttackPolearm02": {
+			"pack": "Human Melee Animations",
+			"dir": "Combat/Polearm",
+			"source": "AttackPolearm02",
+			"mirror": false,
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 10,
+				"contact_end": 12,
+				"settle": 30
+			},
+			"provisional": true,
+			"groups": [
+				"greatsword"
+			]
+		},
 		"AttackPolearm03": {
 			"pack": "Human Melee Animations",
 			"dir": "Combat/Polearm",
@@ -420,6 +437,23 @@
 				"contact": 15,
 				"contact_end": 16,
 				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"greatsword"
+			]
+		},
+		"AttackPolearm04": {
+			"pack": "Human Melee Animations",
+			"dir": "Combat/Polearm",
+			"source": "AttackPolearm04",
+			"mirror": false,
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 10,
+				"contact_end": 12,
+				"settle": 30
 			},
 			"provisional": true,
 			"groups": [

@@ -177,10 +177,12 @@ func test_moves_without_a_swing_keep_the_stand_in() -> void:
 	assert_true(SwingPlayer.plays(f))
 	assert_almost_eq(v.model.weapons[1].transform.basis.y, v.last_pose.left.dir, Vector3.ONE * 1e-4,
 			"the left dagger, with no track, follows the stand-in")
-	var plain: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 3.0)
+	# the Daggers with their swings taken off (their lights are baked since
+	# authored animation 21)
+	var plain: World = SimHelpers.make_world(SF.without_swings(&"daggers"), Moves.KATANA, 3.0)
 	plain.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
 	plain.step([SimHelpers.idle(), SimHelpers.idle()])
-	assert_false(SwingPlayer.plays(plain.fighters[0]), "the shared Daggers have no swings yet")
+	assert_false(SwingPlayer.plays(plain.fighters[0]), "Daggers without swings keep the stand-in")
 
 
 ## The key's elbow-pole tweak goes on the rig for the hand it moves.

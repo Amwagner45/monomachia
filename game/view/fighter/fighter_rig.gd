@@ -124,9 +124,10 @@ var _weapons: Array[Node3D] = []
 var _posed: Array[bool] = []
 var _poses: Array[Transform3D] = []
 var _hold: WeaponHold
-## Fixed to the hands (see fix_weapons()), and in the reverse grip.
+## Fixed to the hands (see fix_weapons()), and how far turned into the
+## reverse grip (0 forward, 1 reverse; set_reverse_turn()).
 var _fixed: bool = false
-var _reverse: bool = false
+var _reverse: float = 0.0
 ## In this update, a fixed two-handed weapon was drawn in toward the off
 ## shoulder (see _draw_in()), and the main arm reaches for it on IK too.
 var _drawn_in: bool = false
@@ -227,7 +228,7 @@ func hold_weapons(look: WeaponLook, instances: Array[Node3D], hold: WeaponHold) 
 	_posed.clear()
 	_poses.clear()
 	_fixed = false
-	_reverse = false
+	_reverse = 0.0
 	for w: Node3D in _weapons:
 		_posed.append(false)
 		_poses.append(Transform3D.IDENTITY)
@@ -264,7 +265,7 @@ func carry_weapons() -> void:
 ## reverse grip).
 func fix_weapons(reverse: bool = false) -> void:
 	_fixed = true
-	_reverse = reverse
+	_reverse = 1.0 if reverse else 0.0
 	for i: int in _posed.size():
 		_posed[i] = false
 	_update_hands()
@@ -272,6 +273,18 @@ func fix_weapons(reverse: bool = false) -> void:
 
 func is_fixed() -> bool:
 	return _fixed
+
+
+## Turns each fixed weapon part of the way into the reverse grip, `turn`
+## (0 forward to 1 reverse) of the 180° about the knuckles: the Daggers'
+## flip between the reverse-grip idle and their forward-grip attacks
+## (authored-animation task 21; ClipDirector.Shot.grip).
+func set_reverse_turn(turn: float) -> void:
+	_reverse = clampf(turn, 0.0, 1.0)
+
+
+func reverse_turn() -> float:
+	return _reverse
 
 
 ## True when the last update drew a fixed two-handed weapon in toward the
@@ -285,14 +298,14 @@ func is_posed(index: int) -> bool:
 
 
 ## A fixed weapon's transform in its hand's bone space: the fist round the
-## handle, turned by the look's grip offset, and by 180° about the knuckles
-## (+X) in the reverse grip.
+## handle, turned by the look's grip offset, and by up to 180° about the
+## knuckles (+X) toward the reverse grip (set_reverse_turn()).
 func fixed_grip(side: String) -> Transform3D:
 	var grip: Transform3D = hand_grip.fist(side)
 	if _look != null:
 		grip = grip * _look.grip_offset
-	if _reverse:
-		grip = grip * Transform3D(Basis(Vector3.RIGHT, PI), Vector3.ZERO)
+	if _reverse > 0.0:
+		grip = grip * Transform3D(Basis(Vector3.RIGHT, PI * _reverse), Vector3.ZERO)
 	return grip
 
 

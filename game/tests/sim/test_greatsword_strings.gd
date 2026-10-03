@@ -3,8 +3,8 @@ extends WeaponStringsTest
 ## played through the rules. Expected numbers come from the spec, not the
 ## code.
 
-## The spec's Greatsword table, the rows built so far (10.1 and 10.2: the
-## L-L-H and Low Sweep; see WeaponStringsTest.rows).
+## The spec's Greatsword table, all six rows (see WeaponStringsTest.rows):
+## the dodge thrusts are in no string, so they have no sides.
 const ROWS: Dictionary[StringName, Dictionary] = {
 	&"g_l1": {
 		"name": "Heavy Swing", "frames": [14, 4, 22], "damage": 9, "posture": 11,
@@ -22,6 +22,14 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 		"name": "Low Sweep", "frames": [26, 5, 34], "damage": 16, "posture": 22,
 		"light": &"", "heavy": &"", "sides": [&"right", &"left"],
 	},
+	&"g_dl": {
+		"name": "Piercing Lunge", "frames": [12, 3, 20], "damage": 8, "posture": 10,
+		"light": &"", "heavy": &"", "sides": [&"", &""],
+	},
+	&"g_dh": {
+		"name": "Skewer", "frames": [22, 4, 28], "damage": 14, "posture": 18,
+		"light": &"", "heavy": &"", "sides": [&"", &""],
+	},
 }
 
 ## A heavy held past its frame 9 charges, standing still, and releases by
@@ -34,10 +42,51 @@ const CHARGE_MAX: int = 150
 ## cuts (test_combat's jump over Reaping Sweep jumps as early).
 const LEAP_LEAD: int = 9
 
+## A defender who dodges forward 6 steps before a thrust would hit is dodging
+## into it as it strikes (test_combat's dodge into Piercing Thrust comes as
+## early).
+const STOMP_LEAD: int = 6
+
 
 func _init() -> void:
 	weapon = Moves.GREATSWORD
 	rows = ROWS
+
+
+## The step fighter 0's attack id first hits in r (-1 if it never does).
+static func _hit_step(r: PlayedString, id: StringName) -> int:
+	for e: Dictionary in r.by_fighter_0(&"hit"):
+		if e["attack"] == id:
+			return e["step"]
+	return -1
+
+
+## Checks that fighter 0 gives one warning in r, of kind and naming its
+## attack id, on the step id starts.
+func _assert_warns(r: PlayedString, kind: StringName, id: StringName) -> void:
+	var warnings: Array[Dictionary] = r.by_fighter_0(&"telegraph")
+	assert_eq(warnings.size(), 1, "one warning")
+	if warnings.size() != 1:
+		return
+	var e: Dictionary = warnings[0]
+	var move_name: String = rows[id]["name"]
+	assert_eq([e["kind"], e["attack"]], [kind, id], "a %s's, naming %s" % [kind, move_name])
+	assert_eq(e["step"], r.attack.find(id), "on the step %s starts" % move_name)
+
+
+## Checks that the defender counters fighter 0's attack id in r with kind:
+## one counter, by fighter 1 on fighter 0, stunning it out of id, which never
+## hits.
+func _assert_countered(r: PlayedString, kind: StringName, id: StringName) -> void:
+	var move_name: String = rows[id]["name"]
+	var counters: Array[Dictionary] = r.all(&"counter")
+	assert_eq(counters.size(), 1, "one counter")
+	if counters.size() == 1:
+		var c: Dictionary = counters[0]
+		assert_eq([c["kind"], c["by"], c["on"]], [kind, 1, 0], "the defender's %s, on the attacker" % kind)
+		var at: int = c["step"]
+		assert_eq([r.attack[at - 1], r.state[at]], [id, &"stunned"], "stunning it out of %s" % move_name)
+	assert_false(r.ids(&"hit").has(id), "and %s never hits" % move_name)
 
 
 # ------------------------------------------------------------------ the momentum lights
@@ -146,14 +195,7 @@ func test_overhead_strike_goes_on_to_low_sweep() -> void:
 
 
 func test_low_sweep_telegraphs_a_sweep_as_it_starts() -> void:
-	var r: PlayedString = _play([Btn.HEAVY, Btn.HEAVY])
-	var warnings: Array[Dictionary] = r.by_fighter_0(&"telegraph")
-	assert_eq(warnings.size(), 1, "one warning: Low Sweep's")
-	if warnings.size() != 1:
-		return
-	var e: Dictionary = warnings[0]
-	assert_eq([e["kind"], e["attack"]], [&"sweep", &"g_h2"], "a sweep's, naming Low Sweep")
-	assert_eq(e["step"], r.attack.find(&"g_h2"), "on the step Low Sweep starts")
+	_assert_warns(_play([Btn.HEAVY, Btn.HEAVY]), &"sweep", &"g_h2")
 
 
 func test_a_blocking_defender_blocks_overhead_strike_but_not_low_sweep() -> void:
@@ -166,22 +208,11 @@ func test_a_defender_in_the_air_as_low_sweep_cuts_leaps_over_it_as_a_counter() -
 	# the defender jumps LEAP_LEAD steps before the step Low Sweep hits one
 	# who stays put
 	var heavies: Array[int] = [Btn.HEAVY, Btn.HEAVY]
-	var contact: int = -1
-	for e: Dictionary in _play(heavies).by_fighter_0(&"hit"):
-		if e["attack"] == &"g_h2":
-			contact = e["step"]
+	var contact: int = _hit_step(_play(heavies), &"g_h2")
 	assert_gt(contact, LEAP_LEAD, "Low Sweep hits a defender who stays put")
 	if contact <= LEAP_LEAD:
 		return
-	var r: PlayedString = _play_against(heavies, H.tap_at(contact - LEAP_LEAD, Btn.JUMP))
-	var counters: Array[Dictionary] = r.all(&"counter")
-	assert_eq(counters.size(), 1, "one counter")
-	if counters.size() == 1:
-		var c: Dictionary = counters[0]
-		assert_eq([c["kind"], c["by"], c["on"]], [&"leap", 1, 0], "the defender leaps on the attacker")
-		var at: int = c["step"]
-		assert_eq([r.attack[at - 1], r.state[at]], [&"g_h2", &"stunned"], "stunning the attacker out of Low Sweep")
-	assert_eq(r.ids(&"hit"), [&"g_h1"] as Array[StringName], "and Low Sweep never hits")
+	_assert_countered(_play_against(heavies, H.tap_at(contact - LEAP_LEAD, Btn.JUMP)), &"leap", &"g_h2")
 
 
 func test_low_sweep_ends_the_string() -> void:
@@ -227,9 +258,97 @@ func test_low_sweep_is_a_sweep_with_its_interim_cone_and_earthbreakers_lunge() -
 	)
 
 
+# ------------------------------------------------------------------ the dodge thrusts
+
+## Fighter 0 dodges on step 0 with the stick at stick (to the right by
+## default), then presses button on the step the dodge ends (inside the 12
+## frames a dodge attack may follow), against a Katana GAP m away that plays
+## the input p1 gives (idle without one).
+func _out_of_a_dodge(button: int, p1: Callable = Callable(), stick: Vector2 = Vector2(1.0, 0.0)) -> PlayedString:
+	var dodge: Callable = func(i: int) -> RawInput: return H.move(stick.x, stick.y, Btn.DODGE) if i == 0 else H.idle()
+	var ends: int = _run(dodge).state.find(&"free")
+	var p0: Callable = func(i: int) -> RawInput:
+		if i == ends:
+			return H.btn(button)
+		return dodge.call(i)
+	return _run(p0, GAP, STEPS, p1)
+
+
+func test_a_light_out_of_a_dodge_is_piercing_lunge_which_a_block_stops() -> void:
+	assert_eq(_out_of_a_dodge(Btn.LIGHT).ids(&"hit"), [&"g_dl"] as Array[StringName], "Piercing Lunge hits")
+	var blocked: PlayedString = _out_of_a_dodge(Btn.LIGHT, func(_i: int) -> RawInput: return H.btn(Btn.BLOCK))
+	assert_eq(blocked.ids(&"block"), [&"g_dl"] as Array[StringName], "a blocking defender blocks it")
+	assert_eq(blocked.ids(&"hit"), [] as Array[StringName], "and isn't hit")
+	assert_eq(blocked.by_fighter_0(&"telegraph"), [] as Array[Dictionary], "it gives no warning")
+
+
+func test_a_heavy_out_of_a_dodge_is_skewer_which_warns_of_a_thrust_and_goes_through_a_block() -> void:
+	var r: PlayedString = _out_of_a_dodge(Btn.HEAVY, func(_i: int) -> RawInput: return H.btn(Btn.BLOCK))
+	assert_eq(r.ids(&"hit"), [&"g_dh"] as Array[StringName], "Skewer hits a blocking defender")
+	assert_eq(r.ids(&"block"), [] as Array[StringName], "and isn't blocked")
+	_assert_warns(r, &"thrust", &"g_dh")
+
+
+func test_a_forward_dodge_gives_the_thrusts_too_and_a_backward_one_the_back_attacks() -> void:
+	var forward := Vector2(0.0, 1.0)
+	var back := Vector2(0.0, -1.0)
+	var swings: Array[StringName] = []
+	for dodge: Array in [[Btn.LIGHT, forward], [Btn.HEAVY, forward], [Btn.LIGHT, back], [Btn.HEAVY, back]]:
+		swings.append_array(_out_of_a_dodge(dodge[0], Callable(), dodge[1]).ids(&"swing").slice(0, 1))
+	assert_eq(
+		swings,
+		[&"g_dl", &"g_dh", &"g_bl", &"g_bh"] as Array[StringName],
+		"forward: Piercing Lunge and Skewer; back: Rising Edge and Lunge Cleave, the back attacks",
+	)
+
+
+func test_a_defender_dodging_forward_into_skewer_stomps_it() -> void:
+	# the defender dodges forward STOMP_LEAD steps before the step Skewer hits
+	# one who stays put
+	var contact: int = _hit_step(_out_of_a_dodge(Btn.HEAVY), &"g_dh")
+	assert_gt(contact, STOMP_LEAD, "Skewer hits a defender who stays put")
+	if contact <= STOMP_LEAD:
+		return
+	var defender_dodges_in: Callable = func(i: int) -> RawInput:
+		return H.move(0.0, 1.0, Btn.DODGE) if i == contact - STOMP_LEAD else H.idle()
+	_assert_countered(_out_of_a_dodge(Btn.HEAVY, defender_dodges_in), &"stomp", &"g_dh")
+
+
+func test_piercing_lunge_is_a_blockable_stab_with_its_interim_cone() -> void:
+	# until weapon paths decide hits (task 7): a stab (the stand-in's thrust
+	# pose), 3.0 m and 50° after a 0.8 m lunge, with Pommel Strike's
+	# knockback, and blockable
+	var m: AttackDef = Moves.GREATSWORD.moves[&"g_dl"]
+	assert_eq([m.type, m.anim, m.unblockable, m.counter], [&"stab", &"thrust", false, &""], "a blockable stab")
+	assert_eq([m.range, m.arc, m.lunge, m.knockback], [3.0, 50.0, 0.8, 0.8], "range, arc, lunge and knockback")
+
+
+func test_skewer_is_an_unblockable_thrust_reaching_past_the_lights_with_its_interim_cone() -> void:
+	# until weapon paths decide hits (task 7): a thrust, 3.4 m and 36° after a
+	# 1.0 m lunge, past the lights' 3.0 m, turning slowly once it strikes (as
+	# the Katana's Piercing Thrust does), with Cyclone's knockback; as an
+	# unblockable, undodgeable and with the danger trail
+	var moves: Dictionary[StringName, AttackDef] = Moves.GREATSWORD.moves
+	var m: AttackDef = moves[&"g_dh"]
+	assert_eq([m.type, m.anim], [&"thrust", &"thrust"], "a thrust")
+	assert_eq(
+		[m.unblockable, m.undodgeable, m.trail, m.track_startup, m.counter],
+		[true, true, &"danger", 5.0, &"thrust"],
+		"an unblockable (turning slowly as it winds up too), with the thrust counter",
+	)
+	assert_eq(m.dodge_cancel_from, 40, "as a heavy it dodge-cancels from 22 + 4 + 14")
+	assert_eq(
+		[m.range, m.arc, m.lunge, m.track_active, m.knockback],
+		[3.4, 36.0, 1.0, 0.5, 1.4],
+		"range, arc, lunge, turn and knockback",
+	)
+	assert_eq(moves[&"g_l1"].range, 3.0, "the lights' reach")
+	assert_gt(m.range, moves[&"g_l1"].range, "Skewer reaches past the lights, as an unblockable does")
+
+
 # ------------------------------------------------------------------ the spec's table
 
-func test_its_rows_match_the_spec_table() -> void:
+func test_all_six_rows_match_the_spec_table() -> void:
 	_assert_rows_match_the_spec()
 
 

@@ -632,8 +632,12 @@ func test_jump_attacks_and_bashes_dont_slide() -> void:
 		return H.move(0.0, 1.0, Btn.SPRINT, Btn.LIGHT) if i == 20 else (H.move(0.0, 1.0, Btn.SPRINT) if i < 20 else H.idle()))
 	assert_eq(charge.start_of(&"g_sl"), 20)
 	_assert_no_slide(charge, &"g_sl", "Shoulder Charge", 0.01)
-	# Pommel Strike out of a dodge
-	var pommel: FighterSteps = _record(Moves.GREATSWORD, 10.0, 80, func(i: int) -> RawInput:
+
+
+func test_piercing_lunge_out_of_a_dodge_slides_as_a_stab() -> void:
+	# a dodge to the right, then a light: Piercing Lunge, a stab, where the
+	# demo's dodge light, Pommel Strike, was a bash and didn't slide
+	var lunge: FighterSteps = _record(Moves.GREATSWORD, 10.0, 80, func(i: int) -> RawInput:
 		return H.move(1.0, 0.0, Btn.DODGE) if i == 0 else (H.btn(Btn.LIGHT) if i == 26 else H.idle()))
-	assert_gt(pommel.start_of(&"g_dl"), 0)
-	_assert_no_slide(pommel, &"g_dl", "Pommel Strike")
+	assert_gt(lunge.start_of(&"g_dl"), 0)
+	assert_almost_eq(_total(_recovery_steps(lunge, &"g_dl")), SLIDE, 1e-9, "it slides 0.35 m in its recovery")

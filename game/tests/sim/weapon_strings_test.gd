@@ -10,6 +10,10 @@ const H := preload("res://tests/sim/sim_helpers.gd")
 const CLOSE: float = 0.005
 ## The buttons that start a follow-up.
 const LIGHT_OR_HEAVY: Array[int] = [Btn.LIGHT, Btn.HEAVY]
+## How far apart the fighters start (m), and how many steps a string plays
+## for.
+const GAP: float = 2.2
+const STEPS: int = 240
 
 ## The weapon fighter 0 holds.
 var weapon: WeaponDef
@@ -43,7 +47,7 @@ static func _named(presses: Array[int]) -> String:
 ## the step after the attack before it swings; mx the stick's sideways push
 ## throughout; a dodge pressed on attack dodge_in's frame dodge_on).
 func _play(
-	presses: Array[int], gap: float = 2.2, mx: float = 0.0, dodge_in: StringName = &"", dodge_on: int = -1
+	presses: Array[int], gap: float = GAP, mx: float = 0.0, dodge_in: StringName = &"", dodge_on: int = -1
 ) -> PlayedString:
 	return PlayedString.play(weapon, presses, gap, mx, dodge_in, dodge_on)
 
@@ -51,11 +55,11 @@ func _play(
 ## Fighter 0, holding the weapon, plays the input p0 gives each step (step
 ## index -> RawInput) for n steps against a Katana gap m away, which plays
 ## the input p1 gives (idle without one).
-func _run(p0: Callable, gap: float = 2.2, n: int = 240, p1: Callable = Callable()) -> PlayedString:
+func _run(p0: Callable, gap: float = GAP, n: int = STEPS, p1: Callable = Callable()) -> PlayedString:
 	return PlayedString.run(weapon, p0, gap, n, p1)
 
 
-## Plays presses against a Katana 2.2 m away that plays the input p1 gives
+## Plays presses against a Katana GAP m away that plays the input p1 gives
 ## (to block, jump or dodge), each press on the step _play pressed it on
 ## against an idle one.
 func _play_against(presses: Array[int], p1: Callable) -> PlayedString:
@@ -63,7 +67,7 @@ func _play_against(presses: Array[int], p1: Callable) -> PlayedString:
 	var p0: Callable = func(i: int) -> RawInput:
 		var k: int = on.find(i)
 		return H.btn(presses[k]) if k >= 0 else H.idle()
-	return _run(p0, 2.2, 240, p1)
+	return _run(p0, GAP, STEPS, p1)
 
 
 ## Plays presses (the stick at mx), then each of buttons as the last of swings

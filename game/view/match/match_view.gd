@@ -44,6 +44,14 @@ const FOOTFALL_LAG: int = 4
 @export var counter_shake: float = 0.5
 @export var disarm_shake: float = 0.8
 @export var ko_shake: float = 0.7
+## The camera's kick on contact (plan task 14.12): degrees of field of view
+## when a strike lands or is blocked, by the class of the attacker's weapon
+## (its weight), half again for a heavy.
+@export var contact_kick: Dictionary[StringName, float] = {
+	&"fists": 0.6, &"small": 0.8, &"medium": 1.4, &"colossal": 2.4,
+}
+const HEAVY_KICK: float = 1.5
+
 ## Draws blade sweeps and hurt capsules over the match (SwingDebugView, task
 ## 7.15). F3 turns it on and off in a debug build, and --swing-debug on the
 ## command line (npm run godot:run -- --swing-debug) turns it on.
@@ -243,16 +251,28 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ------------------------------------------------------------------ events
 
+## Kicks the camera for a hit or block event `e`, by the weight of the
+## attacker's weapon (contact_kick).
+func _kick_on_contact(e: Dictionary) -> void:
+	if host == null or host.world == null:
+		return
+	var by: Fighter = host.world.fighters[int(e["attacker"])]
+	var kick: float = float(contact_kick.get(by.moveset().cls, 0.0))
+	camera.kick_fov(kick * (HEAVY_KICK if e["heavy"] else 1.0))
+
+
 func _on_sim_event(e: Dictionary) -> void:
 	match e["t"]:
 		&"hit":
 			var heavy: bool = e["heavy"]
 			camera.add_shake(heavy_hit_shake if heavy else light_hit_shake)
+			_kick_on_contact(e)
 			var color: Color = Color(1.0, 0.94, 0.88) if e["sound"] == &"fist" else Color(1.0, 0.38, 0.25)
 			fighters[int(e["target"])].flash(color, 0.55 if heavy else 0.4, host.world.frame)
 			_spawn_flash(e["pos"], Color(1.0, 0.55, 0.3), 0.7 if heavy else 0.45, 10)
 		&"block":
 			camera.add_shake(heavy_block_shake if e["heavy"] else light_block_shake)
+			_kick_on_contact(e)
 			_spawn_flash(e["pos"], Color(1.0, 0.88, 0.6), 0.6 if e["heavy"] else 0.45, 10)
 		&"parry":
 			camera.add_shake(parry_shake)

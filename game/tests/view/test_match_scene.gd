@@ -115,6 +115,23 @@ func test_events_shake_and_kick_the_camera() -> void:
 	assert_eq(view.camera.ko_orbit, 0.0)
 
 
+## A hit or a block kicks the camera by the weight of the attacker's weapon,
+## half again for a heavy (task 14.12): here the Rogue's Katana against the
+## Hunter's Daggers.
+func test_contact_kicks_the_camera_by_the_weapons_weight() -> void:
+	host.start(_cpu())
+	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
+	host.sim_event.emit({"t": &"hit", "attacker": 0, "target": 1, "heavy": false, "sound": &"blade", "pos": at})
+	var katana: float = view.camera.fov_kick
+	assert_almost_eq(katana, view.contact_kick[&"medium"], 1e-6, "a Katana hit")
+	host.sim_event.emit({"t": &"block", "attacker": 1, "target": 0, "heavy": false, "pos": at})
+	var daggers: float = view.camera.fov_kick
+	assert_lt(daggers, katana, "the Daggers kick less")
+	host.sim_event.emit({"t": &"hit", "attacker": 1, "target": 0, "heavy": true, "sound": &"blade", "pos": at})
+	assert_almost_eq(view.camera.fov_kick, daggers * MatchView.HEAVY_KICK, 1e-6, "a heavy half again")
+	assert_lt(view.contact_kick[&"medium"], view.contact_kick[&"colossal"], "the Greatsword the most")
+
+
 func test_the_hud_times_announcements_on_rules_steps() -> void:
 	host.start(_cpu())
 	assert_eq(hud.announcement_text(), "Round 1", "the intro calls the round")

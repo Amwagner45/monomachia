@@ -1,5 +1,5 @@
 {
-	"about": "The Iglesias clips the game uses. No animation data: tools/import_clips.gd converts each clip from the packs (.assets-src-path) into the gitignored libraries. A clip's file is <pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx. Markers are source frames (30 fps): wind-up start, contact start, contact end, settle; for a clip that isn't an attack they mark its main action's start and end. Markers marked provisional are set when the clip is fitted to its move; until then an attack's come from its striking hand or foot's fastest frames, and other clips' split them evenly. Groups name the catalogue pages a clip is a candidate on.",
+	"about": "The Iglesias clips the game uses. No animation data: tools/import_clips.gd converts each clip from the packs (.assets-src-path) into the gitignored libraries. A clip's file is <pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx, or <pack>/Animations/<dir>/<set>@<source>.fbx for a shared one (the masked poses, both sets' files in one folder). Markers are source frames (30 fps): wind-up start, contact start, contact end, settle; for a clip that isn't an attack they mark its main action's start and end. Markers marked provisional are set when the clip is fitted to its move; until then an attack's come from its striking hand or foot's fastest frames, and other clips' split them evenly. Groups name the catalogue pages a clip is a candidate on.",
 	"sets": {
 		"HumanM": "Male",
 		"HumanF": "Female"
@@ -179,6 +179,23 @@
 			"provisional": true,
 			"groups": [
 				"katana",
+				"greatsword"
+			]
+		},
+		"Attack2H01_Mirror": {
+			"pack": "Human Melee Animations",
+			"dir": "Combat/2H",
+			"source": "Attack2H01",
+			"mirror": true,
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 15,
+				"contact_end": 19,
+				"settle": 46
+			},
+			"provisional": true,
+			"groups": [
 				"greatsword"
 			]
 		},
@@ -851,6 +868,42 @@
 			"provisional": true,
 			"groups": [
 				"states"
+			]
+		},
+		"ObjectGripShoulder01_R": {
+			"pack": "Human Crafting Animations",
+			"dir": "Masked Poses",
+			"source": "ObjectGripShoulder01_R",
+			"shared": true,
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 1,
+				"settle": 1
+			},
+			"provisional": true,
+			"groups": [
+				"greatsword"
+			]
+		},
+		"ObjectGripShoulder02_R": {
+			"pack": "Human Crafting Animations",
+			"dir": "Masked Poses",
+			"source": "ObjectGripShoulder02_R",
+			"shared": true,
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 1,
+				"settle": 1
+			},
+			"provisional": true,
+			"groups": [
+				"greatsword"
 			]
 		},
 		"Parry1H01_R_Hit": {

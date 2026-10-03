@@ -11,20 +11,20 @@ const MOVES: Dictionary = {
 		"id": &"g_l1", "name": "Heavy Swing", "kind": &"light", "type": &"slash", "anim": &"slashRL", "sound": C,
 		"side_start": &"right", "side_end": &"left",
 		"startup": 14, "active": 4, "recovery": 22, "damage": 9, "posture": 11, "knockback": 0.8,
-		"range": 3.0, "arc": 120, "lunge": 0.4, "lunge_end": 15, "chain_light": &"g_l2", "chain_heavy": &"g_h1", "dodge_cancel_from": 26,
+		"range": 3.0, "arc": 120, "lunge": 0.45, "lunge_end": 16, "chain_light": &"g_l2", "chain_heavy": &"g_h1", "dodge_cancel_from": 26,
 	},
 	# rides Heavy Swing's momentum back the other way, so it starts sooner
 	&"g_l2": {
 		"id": &"g_l2", "name": "Backswing", "kind": &"light", "type": &"slash", "anim": &"slashLR", "sound": C,
 		"side_start": &"left", "side_end": &"right",
 		"startup": 11, "active": 4, "recovery": 22, "damage": 9, "posture": 11, "knockback": 0.8,
-		"range": 3.0, "arc": 120, "lunge": 0.4, "lunge_end": 12, "chain_heavy": &"g_h1", "dodge_cancel_from": 23,
+		"range": 3.0, "arc": 120, "lunge": 0.55, "lunge_end": 12, "chain_heavy": &"g_h1", "dodge_cancel_from": 23,
 	},
 	&"g_h1": {
 		"id": &"g_h1", "name": "Overhead Strike", "kind": &"heavy", "type": &"overhead", "anim": &"overhead", "sound": C,
 		"side_start": &"centre", "side_end": &"right",
-		"startup": 26, "active": 5, "recovery": 32, "damage": 18, "posture": 22, "knockback": 1.6,
-		"range": 3.1, "arc": 90, "lunge": 0.7, "lunge_start": 10, "lunge_end": 30, "chargeable": true,
+		"startup": 26, "active": 5, "recovery": 29, "damage": 18, "posture": 22, "knockback": 1.6,
+		"range": 3.1, "arc": 90, "lunge": 1.05, "lunge_start": 10, "lunge_end": 30, "chargeable": true,
 		"chain_heavy": &"g_h2", "hitstop": 9,
 	},
 	# the heavy string's finisher, at the feet: unblockable, and a jump over it
@@ -50,7 +50,7 @@ const MOVES: Dictionary = {
 	&"g_dl": {
 		"id": &"g_dl", "name": "Piercing Lunge", "kind": &"light", "type": &"stab", "anim": &"thrust", "sound": C,
 		"startup": 12, "active": 3, "recovery": 20, "damage": 8, "posture": 10, "knockback": 0.8,
-		"range": 3.0, "arc": 50, "lunge": 0.8,
+		"range": 3.0, "arc": 50, "lunge": 1.0,
 	},
 	# Skewer, on heavy out of a dodge: an unblockable thrust, stomped by a dodge
 	# forward into it

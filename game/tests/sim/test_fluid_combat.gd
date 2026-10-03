@@ -554,10 +554,12 @@ func test_a_whiffed_greatsword_swing_slides_into_its_recovery() -> void:
 
 
 func test_the_slide_runs_after_a_hit_and_after_a_block() -> void:
-	# 1.5 m from the defender the swing lands, and the knockback, or the
-	# block's pushback, carries the defender out of the slide's way
+	# 1.6 m from the defender the swing lands, and the knockback, or the
+	# block's pushback, carries the defender out of the slide's way (from
+	# 1.5 m Heavy Swing's longer lunge, authored animation 18, ends 5 cm
+	# nearer, where the block's pushback leaves the slide 1 cm short)
 	for run: Array in [[H.idle(), &"hit"], [H.btn(Btn.BLOCK), &"block"]]:
-		var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 1.5)
+		var W: World = H.make_world(Moves.GREATSWORD, Moves.KATANA, 1.6)
 		var a: Fighter = W.fighters[0]
 		var r: H.Rec = H.Rec.new()
 		var start_z: float = NAN

@@ -23,7 +23,12 @@
 		"k_sweep": {"clips": ["Attack2H03@0-4", "Attack2H03@4*4", "Attack2H03@4"], "speed": 1.0, "fallback": "Sword_Heavy_B", "marks": {"windup": 0, "contact": 13, "contact_end": 15.5, "settle": 27.5}},
 		"k_lunge": {"clips": ["Attack1H04_R@6"], "speed": 1.65, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 5, "contact_end": 7.5, "settle": 22.5}}
 	}},
-	"greatsword": {"guard": "CombatIdle2H01", "moves": {}},
+	"greatsword": {"guard": "CombatIdle2H01", "moves": {
+		"g_l1": {"clips": ["Attack2H01"], "speed": 1.15, "fallback": "Sword_Heavy_A", "marks": {"windup": 8, "contact": 16, "contact_end": 18.3, "settle": 31}},
+		"g_l2": {"clips": ["Attack2H01_Mirror"], "speed": 1.45, "fallback": "Sword_Heavy_B", "marks": {"windup": 8, "contact": 16, "contact_end": 19, "settle": 34.9}},
+		"g_h1": {"clips": ["Attack2H02"], "speed": 1.53, "fallback": "Sword_Heavy_C", "marks": {"windup": 0, "hold": 8, "contact": 21, "contact_end": 24.8, "settle": 47}},
+		"g_dl": {"clips": ["AttackPolearm01"], "speed": 1.83, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 11, "contact_end": 13.5, "settle": 32}}
+	}},
 	"daggers": {"guard": "CombatIdle1H01", "moves": {}},
 	"fists": {"guard": "CombatIdle01", "moves": {}}
 }

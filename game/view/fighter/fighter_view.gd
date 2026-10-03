@@ -265,26 +265,28 @@ func _show_authored(f: Fighter, alpha: float) -> void:
 	locomotion.set_authored(a, a_time, b, b_time, share, shot.authored(), _legs_free(f))
 
 
-## How much the legs are the stance's under a charging attack's held clip
-## (the Iai's stance, stood and walked in at the blocking walk's speed;
-## task 11), the clip then on the upper body alone: all of them through the
-## charge, handed over LEGS_RAMP frames each way, as it starts and once it
-## is let go.
+## How much the legs are the legs' blend's under the authored clips, which
+## then show on the upper body alone: under the Greatsword's shoulder carry
+## as the director says (Shot.legs_free(), task 18), and under a charging
+## attack's held clip (the Iai's stance, stood and walked in at the blocking
+## walk's speed; task 11) all of them through the charge, handed over
+## LEGS_RAMP frames each way, as it starts and once it is let go.
 func _legs_free(f: Fighter) -> float:
+	var carried: float = shot.legs_free() if shot != null else 0.0
 	if f.state != &"attack" or f.atk == null or f.atk.charge_frames <= 0:
-		return 0.0
+		return carried
 	if f.atk.charging:
 		return clampf(float(f.atk.charge_frames) / LEGS_RAMP, 0.0, 1.0)
 	return clampf(1.0 - float(f.atk.frame - Fighter.CHARGE_CHECK_FRAME) / LEGS_RAMP, 0.0, 1.0)
 
 
-## True when an authored attack clip drives the arms and the weapon rides
-## the clip's hand (see the class notes): the Iglesias clips are there, and
+## True when an authored clip drives the arms and the weapon rides the
+## clip's hand (see the class notes): the Iglesias clips are there, and
 ## either the paths were baked on him (the Hunter) or there is no baked
-## weapon path to pose it on (a pose-only swing like Flash's, or the
-## ultimate; task 13), for the Rogue too.
+## weapon path to pose it on (a pose-only swing like Flash's, the ultimate,
+## task 13, or the shoulder carry, task 18), for the Rogue too.
 func _fixed_on_clip(f: Fighter) -> bool:
-	if shot == null or shot.drive != ClipDirector.ATTACK or not director.libraries:
+	if shot == null or shot.drive == ClipDirector.LEGS or not director.libraries:
 		return false
 	if fighter_id == &"hunter":
 		return true

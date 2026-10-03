@@ -129,6 +129,17 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# to a touch from the unblockables' test distance (3.5 m)
 	{"move": "k_thrust", "field": "lunge", "was": 1.0, "now": 1.4},
 	{"move": "k_sweep", "field": "lunge", "was": 0.4, "now": 1.4},
+	# authored animation 18: the Greatsword's lights (Attack2H01 and its
+	# mirror) reach less far than their cones, so their lunges grow so a push
+	# of at most 15 cm puts 17.5 cm into a defender at the duelling distance
+	# (3.0 m), Heavy Swing's ending on its first touch, frame 16; Overhead
+	# Strike (Attack2H02) reaches 3.5 m with a longer lunge, and its clip ends
+	# 3 frames sooner (Piercing Lunge, an added move, is in its strings test)
+	{"move": "g_l1", "field": "lunge", "was": 0.4, "now": 0.45},
+	{"move": "g_l1", "field": "lunge_end", "was": 15, "now": 16},
+	{"move": "g_l2", "field": "lunge", "was": 0.4, "now": 0.55},
+	{"move": "g_h1", "field": "lunge", "was": 0.7, "now": 1.05},
+	{"move": "g_h1", "field": "recovery", "was": 32, "now": 29},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

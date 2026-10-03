@@ -294,3 +294,97 @@ func test_moonsplitter_holds_its_wind_up_and_cuts_with_the_wave() -> void:
 	assert_almost_eq(c.time, 2.0 * 18.0 / 70.0, 1e-6, "stretched over the wind-up and release")
 	f.ult.kind = &"impaler"
 	assert_null(ClipDirector.ult_clip(f, ctx), "the other ultimates keep their stand-ins")
+
+
+# ------------------------------------------------------------------ the shoulder carry (task 18)
+
+## A context for a Greatsword fighter: Heavy Swing's clip and the carry's
+## pose, with their lengths.
+static func _gs_ctx(libraries: bool = true) -> ClipDirector.Context:
+	var lengths: Dictionary[String, float] = {"ual/Sword_Heavy_A": 1.2, "ual/Sword_Idle": 2.0}
+	for set_name: StringName in ClipLibraries.SETS:
+		lengths["%s/Attack2H01" % set_name] = 1.6
+		lengths["%s/%s" % [set_name, ClipDirector.CARRY_POSE]] = 0.33
+	return ClipDirector.Context.make(&"hunter", libraries, lengths)
+
+
+## A Greatsword fighter 8 m from a Katana, walked onto the shoulder: the
+## world, the shot after it and the frames walked.
+func _walk_onto_the_shoulder(ctx: ClipDirector.Context) -> Array:
+	var W: World = SimHelpers.make_world(Moves.GREATSWORD, Moves.KATANA, 8.0)
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	var walked: int = 0
+	while not f.shouldered and walked < 60:
+		shot = _next(W, shot, ctx, [SimHelpers.move(0.0, 1.0), SimHelpers.idle()])
+		walked += 1
+	return [W, shot]
+
+
+func test_the_carry_shows_on_the_upper_body_while_shouldered() -> void:
+	var ctx: ClipDirector.Context = _gs_ctx()
+	var got: Array = _walk_onto_the_shoulder(ctx)
+	var W: World = got[0]
+	var shot: ClipDirector.Shot = got[1]
+	assert_true(W.fighters[0].shouldered, "walked onto the shoulder")
+	assert_eq(shot.drive, ClipDirector.CARRY, "the carry drives")
+	assert_eq(shot.clip.name, "HumanM/" + ClipDirector.CARRY_POSE)
+	assert_eq(shot.fade, ClipDirector.FADES[&"stance"], "faded in as a stance")
+	assert_eq(shot.legs_free(), 1.0, "the legs are the legs' blend's")
+	for i: int in ClipDirector.FADES[&"stance"]:
+		shot = _next(W, shot, ctx, [SimHelpers.move(0.0, 1.0), SimHelpers.idle()])
+	assert_eq(shot.authored(), 1.0, "all of it on the upper body")
+	assert_eq(shot.legs_free(), 1.0, "and the legs still walk")
+	# standing still keeps it
+	for i: int in 10:
+		shot = _next(W, shot, ctx)
+	assert_eq(shot.drive, ClipDirector.CARRY, "standing still keeps it")
+
+
+func test_without_the_packs_nothing_shows_the_carry() -> void:
+	var ctx: ClipDirector.Context = _gs_ctx(false)
+	var got: Array = _walk_onto_the_shoulder(ctx)
+	assert_true((got[0] as World).fighters[0].shouldered)
+	assert_eq((got[1] as ClipDirector.Shot).drive, ClipDirector.LEGS, "no CC0 carry: the legs")
+
+
+func test_an_attack_from_the_shoulder_fades_in_over_the_lift() -> void:
+	var ctx: ClipDirector.Context = _gs_ctx()
+	var got: Array = _walk_onto_the_shoulder(ctx)
+	var W: World = got[0]
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = got[1]
+	for i: int in 10:
+		shot = _next(W, shot, ctx)
+	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	assert_eq([f.state, f.atk.def.id, f.atk.lift], [&"attack", &"g_l1", SimConst.GS_SHOULDER_LIFT_FRAMES], "Heavy Swing from the shoulder")
+	assert_eq(shot.drive, ClipDirector.ATTACK)
+	assert_eq(shot.fade, SimConst.GS_SHOULDER_LIFT_FRAMES, "the lift is the crossfade")
+	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
+	assert_true(shot.from_carry)
+	var first: float = shot.clip.time
+	var legs: Array[float] = [shot.legs_free()]
+	for i: int in SimConst.GS_SHOULDER_LIFT_FRAMES:
+		shot = _next(W, shot, ctx)
+		legs.append(shot.legs_free())
+		if f.atk.lift_left > 0:
+			assert_eq(shot.clip.time, first, "the attack's first frame held through the lift")
+	assert_eq(legs[0], 1.0, "the legs walk as the lift starts")
+	assert_eq(legs[-1], 0.0, "and are the attack's once it ends")
+	for i: int in legs.size() - 1:
+		assert_true(legs[i + 1] <= legs[i], "handed over without going back: %s" % [legs])
+	assert_null(shot.from, "the fade done")
+
+
+func test_a_guard_raised_from_the_shoulder_fades_out_over_the_lift() -> void:
+	var ctx: ClipDirector.Context = _gs_ctx()
+	var got: Array = _walk_onto_the_shoulder(ctx)
+	var W: World = got[0]
+	var shot: ClipDirector.Shot = got[1]
+	for i: int in 10:
+		shot = _next(W, shot, ctx)
+	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
+	assert_false(W.fighters[0].shouldered, "off the shoulder")
+	assert_eq([shot.drive, shot.fade], [ClipDirector.LEGS, SimConst.GS_SHOULDER_LIFT_FRAMES], "back to the legs over the lift")
+	assert_eq(shot.legs_free(), 1.0, "the legs stay the legs' blend's as it fades")
+	assert_eq(shot.authored(), 1.0, "the carry still all there on its first frame")

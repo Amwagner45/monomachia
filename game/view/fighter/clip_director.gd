@@ -28,9 +28,16 @@ extends RefCounted
 ##   stand-in poses: nothing drives;
 ## - the ultimate Moonsplitter (task 13; ult_clip()): its clip wound up and
 ##   held through the rules' wind-up, released as the wave goes out;
+## - the Greatsword's shoulder carry (task 18; carry_clip()): while the
+##   fighter is shouldered, CARRY_POSE on the upper body over the legs' blend
+##   (Shot.legs_free()), faded in as a stance (8 frames); an attack from the
+##   shoulder fades from it into the attack's first frame over the lift
+##   (AttackState.lift, 6 frames), the legs handed over with it, and a guard
+##   raised from it fades back to the legs over the same lift. There is no
+##   CC0 carry, so without the packs nothing shows it;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
-##   the legs, 8 for a stance (task 18 on).
+##   the legs, 8 for a stance.
 
 ## The crossfades' lengths, in rules frames.
 const FADES: Dictionary[StringName, int] = {
@@ -46,9 +53,15 @@ const IDLE: Dictionary[StringName, StringName] = {
 const FALLBACK_IDLE: Dictionary[StringName, StringName] = {
 	&"katana": &"Sword_Idle", &"daggers": &"Sword_Idle", &"greatsword": &"Sword_Idle", &"fists": &"Idle",
 }
-## What drives the body: the legs' blend, or an authored clip.
+## What drives the body: the legs' blend, an authored attack clip, or the
+## shoulder carry's pose on the upper body over the legs.
 const LEGS: StringName = &"legs"
 const ATTACK: StringName = &"attack"
+const CARRY: StringName = &"carry"
+## The Greatsword's shoulder carry: the right hand on the grip at the
+## shoulder, the blade resting back over it (a masked pose of the Crafting
+## pack; ObjectGripShoulder01_R throws the elbow out to the side).
+const CARRY_POSE: StringName = &"ObjectGripShoulder02_R"
 ## Moonsplitter's clip per variant (clip-manifest ids) and the source frame
 ## it holds at through the wind-up: Attack2H01 raised overhead for the
 ## vertical wave, Attack2H03 wound round for the horizontal. The wind-up
@@ -99,7 +112,7 @@ class Clip:
 class Shot:
 	## The world frame it is for; -1 before the first.
 	var frame: int = -1
-	## LEGS or ATTACK.
+	## LEGS, ATTACK or CARRY.
 	var drive: StringName = LEGS
 	## The authored clip driving, at this frame and at the frame before (for
 	## showing between frames); null when the legs drive.
@@ -108,6 +121,9 @@ class Shot:
 	## What it fades in from: an authored clip held at its last pose, or null
 	## for the legs' blend.
 	var from: Clip = null
+	## Whether `from` is the shoulder carry's pose (its legs are the legs'
+	## blend's).
+	var from_carry: bool = false
 	## The crossfade's length and how many rules frames in it is.
 	var fade: int = 0
 	var since: int = 0
@@ -128,9 +144,20 @@ class Shot:
 
 	## How much the authored clips (clip and from) show over the legs' blend.
 	func authored() -> float:
-		if drive == ATTACK:
+		if drive != LEGS:
 			return 1.0 if from != null else blend()
 		return 0.0 if from == null else 1.0 - blend()
+
+	## How much the legs are the legs' blend's under the authored clips,
+	## which then show on the upper body alone (0 to 1): all of them under the
+	## carry and while it fades out to the legs, handed over to an attack
+	## across the lift.
+	func legs_free() -> float:
+		if drive == CARRY:
+			return 1.0
+		if from == null or not from_carry:
+			return 0.0
+		return 1.0 - blend() if drive == ATTACK else 1.0
 
 	## How much of the authored clips is `clip` rather than `from`.
 	func clip_share() -> float:
@@ -163,21 +190,27 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	var move: StringName = &""
 	if playing != null:
 		move = f.atk.def.id if f.atk != null else f.ult.kind
+	else:
+		playing = carry_clip(f, ctx)
+		if playing != null:
+			drive = CARRY
 	if prev == null:
 		out.drive = drive
 		out.clip = playing
 		out.clip_before = playing
-		out.attack = f.atk if playing != null else null
+		out.attack = f.atk if drive == ATTACK else null
 		out.move = move
 		out.state = f.state
 		out.fade = 0
 		out.since = 0
 		out.from = null
+		out.from_carry = false
 		return out
 	var changed: bool = drive != prev.drive or (drive == ATTACK and f.atk != prev.attack)
 	if changed:
 		# what it fades in from: the authored clip shown last, held where it was
 		out.from = _shown(prev)
+		out.from_carry = out.from != null and out.from.name == carry_name(ctx)
 		out.fade = _fade(prev, f, drive)
 		out.since = 0
 		out.clip_before = playing
@@ -188,12 +221,27 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 			out.from = null
 	if out.fade <= 0:
 		out.from = null
+	if out.from == null:
+		out.from_carry = false
 	out.drive = drive
 	out.clip = playing
-	out.attack = f.atk if playing != null else null
+	out.attack = f.atk if drive == ATTACK else null
 	out.move = move
 	out.state = f.state
 	return out
+
+
+## The shoulder carry's pose for `f` while it is shouldered (held, a pose),
+## or null: not shouldered, or without the packs.
+static func carry_clip(f: Fighter, ctx: Context) -> Clip:
+	if not f.shouldered or not ctx.libraries:
+		return null
+	return Clip.make(carry_name(ctx), 0.0)
+
+
+## The carry's pose as a name in the tree, in the fighter's own set.
+static func carry_name(ctx: Context) -> String:
+	return ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), CARRY_POSE)
 
 
 ## The idle under the legs' blend for `f`'s weapon class (bare hands when
@@ -293,14 +341,21 @@ static func _shown(prev: Shot) -> Clip:
 
 ## How long the change from `prev` to `drive` fades: into an attack 3, a
 ## follow-up 4, back to the legs 6; an attack cancelled into a dodge 2;
-## hitstun cuts.
+## hitstun cuts. Onto the shoulder 8 (a stance); off it into an attack or a
+## guard over the lift off the shoulder.
 static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 	if f.state == &"hitstun":
 		return FADES[&"hitstun"]
+	if drive == CARRY:
+		return FADES[&"stance"]
 	if drive == ATTACK:
+		if prev.drive == CARRY and f.atk != null and f.atk.lift > 0:
+			return f.atk.lift
 		if prev.drive == ATTACK and f.atk != null and f.atk.chained_from != null:
 			return FADES[&"follow_up"]
 		return FADES[&"attack"]
+	if prev.drive == CARRY and f.guard_lift_left > 0:
+		return SimConst.GS_SHOULDER_LIFT_FRAMES
 	if prev.drive == ATTACK and (f.state == &"dodge" or f.state == &"backstep"):
 		return FADES[&"dodge_cancel"]
 	return FADES[&"locomotion"]

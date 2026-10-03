@@ -368,16 +368,23 @@ func test_the_brains_impact_estimate_includes_the_lift() -> void:
 	var steps: int = 0
 	var estimate: int = -1
 	var hit: int = -1
+	var active: int = -1
 	for i: int in 60:
 		W.step([H.btn(Btn.LIGHT) if i == 0 else H.idle(), H.idle()])
 		if i == 0:
 			estimate = AIBrain.frames_to_impact(W.fighters[0].atk)
 			steps = i
 		for e: Dictionary in W.drain_events():
+			if active < 0 and e["t"] == &"swing" and e["f"] == 0:
+				# (on its last startup frame)
+				active = i + 1
 			if hit < 0 and e["t"] == &"hit" and e["attacker"] == 0:
 				hit = i
 	assert_true(hit > 0, "Heavy Swing hits")
-	assert_eq(estimate, hit - steps, "on its first frame the estimate is the frames to the hit, lift and all")
+	# (its blade, baked from its clip, first touches on its second active
+	# frame; the estimate is to the first, where a hit can start)
+	assert_eq(estimate, active - steps, "on its first frame the estimate is the frames to its active frames, lift and all")
+	assert_between(hit - active, 0, Moves.GREATSWORD.moves[&"g_l1"].active - 1, "and it hits in them")
 
 
 func test_a_quick_parrying_brain_parries_heavy_swing_from_the_shoulder() -> void:

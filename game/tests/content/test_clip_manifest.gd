@@ -34,7 +34,9 @@ func test_every_clip_names_its_file() -> void:
 	var m: ClipManifest = ClipManifest.read()
 	for clip: ClipManifest.Clip in m.clips.values():
 		var f: String = clip.file(&"HumanM", "Male")
-		assert_true(f.begins_with(clip.pack + "/Animations/Male/"), "%s: %s" % [clip.id, f])
+		# a shared clip's files (the masked poses) sit in one folder for both sets
+		var folder: String = clip.dir if clip.shared else "Male/"
+		assert_true(f.begins_with(clip.pack + "/Animations/" + folder), "%s: %s" % [clip.id, f])
 		assert_true(f.ends_with("HumanM@%s.fbx" % clip.source), "%s: %s" % [clip.id, f])
 
 

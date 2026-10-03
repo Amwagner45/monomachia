@@ -7,7 +7,9 @@ extends RefCounted
 ## clips it names (tools/import_clips.gd).
 ##
 ## A clip's file in the packs is
-## `<pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx`.
+## `<pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx`, or, for a
+## clip marked `shared` (the masked poses, whose files for both sets sit in
+## one folder), `<pack>/Animations/<dir>/<set>@<source>.fbx`.
 
 const PATH: String = "res://assets/kevin_iglesias/clip_manifest.json"
 ## The markers, in the order they fall.
@@ -29,6 +31,8 @@ class Clip:
 	var source: String
 	var mirror: bool = false
 	var loop: bool = false
+	## Its files for every set sit in one folder, not the set's (file()).
+	var shared: bool = false
 	## Source frame of each marker, by MARKERS name.
 	var markers: Dictionary[String, int] = {}
 	var provisional: bool = false
@@ -37,6 +41,8 @@ class Clip:
 
 	## The clip's file for a set, relative to the Iglesias packs' folder.
 	func file(set_name: StringName, set_folder: String) -> String:
+		if shared:
+			return "%s/Animations/%s/%s@%s.fbx" % [pack, dir, set_name, source]
 		return "%s/Animations/%s/%s/%s@%s.fbx" % [pack, set_folder, dir, set_name, source]
 
 
@@ -104,6 +110,7 @@ func _clip(id: StringName, d: Variant) -> Clip:
 	c.source = str(d.get("source", ""))
 	c.mirror = d.get("mirror", false) == true
 	c.loop = d.get("loop", false) == true
+	c.shared = d.get("shared", false) == true
 	c.provisional = d.get("provisional", false) == true
 	var groups: Variant = d.get("groups", [])
 	if not groups is Array or (groups as Array).is_empty():

@@ -15,9 +15,12 @@ extends Node3D
 ## feed (see default_bus_layout.tres): Godot 4.7's Area3D reverb would take a
 ## 3D cue off its own bus, so there is no reverb area.
 ##
-## Footsteps: a FootstepCadence turns each rules step's movement into
-## footfalls, and [method foot_down] plays the footstep cue at the feet. The
-## locomotion clips' foot contacts can call foot_down() in its place later.
+## Footsteps: [method foot_down] plays the footstep cue where a foot comes
+## down. A fighter walking in its guard (the Katana's) steps where its guard
+## shuffle lands its feet, which the view reports ([signal MatchView.footfall]);
+## otherwise a FootstepCadence turns each rules step's movement into a
+## footfall every stride, at the fighter's feet. The running clips' own foot
+## contacts can take the cadence's place later.
 ##
 ## The arena's ambience: a played match fades in the loop its arena's data
 ## names ([method ambience_cue]) on a [FadedLoop]. It plays on through pauses,
@@ -34,10 +37,13 @@ const DEFAULT_AMBIENCE := &"ambience_shrine"
 @export var host_path: NodePath = ^".."
 ## The camera the listener follows: the view's.
 @export var camera_path: NodePath = ^"../View/CameraRig"
+## The view whose guard shuffles report footfalls.
+@export var view_path: NodePath = ^"../View"
 ## Where on a fighter its sounds come from: the chest, above its feet (m).
 @export var chest_height: float = 1.25
 
 var host: MatchHost
+var view: MatchView
 var player: SoundPlayer
 var listener: AudioListener3D
 var camera: Camera3D
@@ -62,6 +68,9 @@ func _ready() -> void:
 	listener.name = "Listener"
 	add_child(listener)
 	camera = get_node_or_null(camera_path) as Camera3D
+	view = get_node_or_null(view_path) as MatchView
+	if view != null:
+		view.footfall.connect(_on_footfall)
 	follow_camera()
 	listener.make_current()
 	if host == null and has_node(host_path):
@@ -163,7 +172,16 @@ func _on_stepped(_step: int) -> void:
 	if host.attract:
 		return
 	for foot: Dictionary in footsteps.update(host.world.fighters, host.world.frame):
+		# a fighter in its guard steps where its shuffle's feet land instead
+		if view != null and view.shuffles(foot["fighter"]):
+			continue
 		foot_down(foot["at"])
+
+
+func _on_footfall(_side: int, at: Vector3) -> void:
+	if host == null or host.attract:
+		return
+	foot_down(at)
 
 
 func _on_pause_changed(paused: bool) -> void:

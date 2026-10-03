@@ -13,8 +13,10 @@ extends RefCounted
 ##
 ## The stride follows the pace, read from the distance covered each step: a
 ## guard walk below [member walk_below], a sprint from [member sprint_from],
-## else a run. The footfalls stand in for the real foot contacts: when the
-## locomotion clips have them, they call MatchAudio.foot_down() instead.
+## else a run. The footfalls stand in for the real foot contacts: a fighter
+## walking in its guard already steps where its guard shuffle lands its feet
+## (MatchAudio skips its footfalls then), and when the running clips have
+## contacts they can call MatchAudio.foot_down() instead.
 
 ## Metres between footfalls at each pace.
 var walk_stride: float = 0.8

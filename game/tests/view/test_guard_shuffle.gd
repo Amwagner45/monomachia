@@ -642,6 +642,88 @@ func test_the_pelvis_sinks_to_reach_a_far_foot_and_the_weapon_with_it() -> void:
 		assert_almost_eq(hip.distance_to(ankle) / rig.leg_length("Left"), GuardStance.REACH_MOST, 0.01, "%s: at 97%% of the leg" % id)
 
 
+## The guard's feet are its footsteps: each landing while the guard's legs
+## show is a footfall where the foot came down. A tap step's own landing
+## makes none (the step has its own scuff), nor does a foot settling while
+## the feet ride with the fighter (a dodge), and on the clips' legs, running
+## with the guard down, the footsteps come from the stride count instead.
+func test_the_shuffle_s_landings_are_its_footfalls() -> void:
+	var block: int = 1 << Btn.BLOCK
+	for walk: Array in [["a guard walk", [[6, 0.0, 0.0, block], [50, -1.0, 0.0, block], [24, 0.0, 0.0, block]]],
+			["a tap step", [[SimConst.MOVE_STEP_FRAMES, 1.0, 0.0, 0], [30, 0.0, 0.0, 0]]],
+			["a dodge out of a guard walk", [[6, 0.0, 0.0, block], [20, -1.0, 0.0, block], [1, -1.0, 0.0, 1 << Btn.DODGE], [40, 0.0, 0.0, 0]]]]:
+		var W: World = _world(3.0)
+		var v: FighterView = _view(&"rogue")
+		var f: Fighter = W.fighters[0]
+		var shuffle: GuardShuffle = v.locomotion.shuffle
+		v.update_from(f, _pos(f), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+		var landings: Array[Vector3] = []
+		var stepping: int = 0
+		var riding: int = 0
+		var footfalls: Array[Vector3] = []
+		var was: Dictionary[String, bool] = {"Right": false, "Left": false}
+		for input: RawInput in _inputs(walk[1]):
+			W.step([input, SimHelpers.idle()])
+			v.update_from(f, _pos(f), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+			assert_true(v.locomotion.shuffles(), "%s: the shuffle's landings are the footsteps" % walk[0])
+			for side: String in SIDES:
+				var foot: GuardShuffle.Foot = shuffle.feet[side]
+				if was[side] and not foot.swinging:
+					if f.state == &"step":
+						stepping += 1
+					elif shuffle.riding:
+						riding += 1
+					else:
+						landings.append(foot.at)
+				was[side] = foot.swinging
+			footfalls.append_array(v.locomotion.footfalls)
+		gut.p("%s: %d landings, %d on the tap step itself, %d riding, %d footfalls" % [walk[0], landings.size() + stepping + riding, stepping, riding, footfalls.size()])
+		assert_gt(landings.size(), 0, "%s: the feet land" % walk[0])
+		assert_eq(footfalls.size(), landings.size(), "%s: a footfall for each landing but the tap step's own" % walk[0])
+		for k: int in mini(footfalls.size(), landings.size()):
+			assert_almost_eq(footfalls[k], landings[k], Vector3.ONE * 1e-6, "%s: footfall %d where the foot came down" % [walk[0], k])
+		if walk[0] == "a tap step":
+			assert_gt(stepping, 0, "the lead foot lands while the rules still step")
+		if walk[0] == "a dodge out of a guard walk":
+			assert_gt(riding, 0, "a foot settles while the feet ride")
+	# breaking into a run with the guard down and stopping again: footfalls
+	# only while the landings are the footsteps, through both hand-overs
+	var W2: World = _world(26.0)
+	var v2: FighterView = _view(&"rogue")
+	var f2: Fighter = W2.fighters[0]
+	v2.update_from(f2, _pos(f2), f2.yaw, 1.0, 1.0 / 60.0, 0.0)
+	var counted: Array[int] = [0, 0]
+	for input: RawInput in _inputs([[40, 0.0, 1.0, 0], [40, 0.0, 0.0, 0]]):
+		W2.step([input, SimHelpers.idle()])
+		v2.update_from(f2, _pos(f2), f2.yaw, 1.0, 1.0 / 60.0, 0.0)
+		var shuffles: bool = v2.locomotion.shuffles()
+		counted[0 if shuffles else 1] += 1
+		if not shuffles:
+			assert_eq(v2.locomotion.footfalls, [] as Array[Vector3], "frame %d: no footfalls while the stride count steps" % W2.frame)
+	assert_gt(counted[1], 20, "running: the stride count's footsteps")
+	assert_true(v2.locomotion.shuffles(), "stopped: the shuffle's again")
+
+
+## A fighter knocked out just after a foot came down doesn't report that
+## footfall again as it falls: the fall moves no feet.
+func test_a_knocked_out_fighter_reports_no_footfalls() -> void:
+	var W: World = _world(3.0)
+	var v: FighterView = _view(&"rogue")
+	var f: Fighter = W.fighters[0]
+	v.update_from(f, _pos(f), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+	for i: int in 60:
+		W.step([RawInput.make(-1.0, 0.0, 1 << Btn.BLOCK), SimHelpers.idle()])
+		v.update_from(f, _pos(f), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+		if not v.locomotion.footfalls.is_empty():
+			break
+	assert_false(v.locomotion.footfalls.is_empty(), "a foot came down")
+	f.set_state(&"ko")
+	for i: int in 3:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, _pos(f), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+		assert_eq(v.locomotion.footfalls, [] as Array[Vector3], "falling, frame %d: no footfalls" % i)
+
+
 ## In hit-stop and while paused the shuffle holds still.
 func test_the_shuffle_holds_in_hit_stop() -> void:
 	var W: World = _world(8.0)

@@ -45,6 +45,8 @@ extends RefCounted
 ##   with the fighter at their offsets, and still step back to their spots.
 ## - It moves once per rules frame (step()), so it holds still in hit-stop
 ##   and pause, and shows between frames by the host's alpha (show()).
+## - The feet that came down on the ground in a frame (landed) are where the
+##   fighter's footsteps fall (see Locomotion.footfalls).
 ##
 ## Positions are in the rules' world, on the ground (y = 0); the fighter's
 ## frame is skeleton space: +Z forward, +X to its left.
@@ -155,6 +157,9 @@ var feet: Dictionary[String, Foot] = {}
 var lead: String = "Right"
 ## The feet ride with the fighter (see step()).
 var riding: bool = false
+## The feet ("Right", "Left") that came down on the ground in the last
+## step(): landed, not riding.
+var landed: Array[String] = []
 ## The pelvis's bob (m, up) and the weapon's, after the last rules frame and
 ## the one before, how fast the weapon's moves, and as shown.
 var bob: float = 0.0
@@ -274,6 +279,7 @@ func step(pos: Vector3, yaw: float, anchored: bool) -> void:
 	prev_body_yaw = body_yaw
 	body = pos
 	body_yaw = yaw
+	landed.clear()
 	var ground: Vector3 = Vector3(pos.x, 0.0, pos.z)
 	var to_frame: Basis = facing(yaw).inverse()
 	var moved: Vector3 = to_frame * (ground - _pos) * float(SimConst.FPS)
@@ -312,6 +318,8 @@ func step(pos: Vector3, yaw: float, anchored: bool) -> void:
 				foot.turn = 0.0
 				foot.steps += 1
 				lift = 0.0
+				if not riding:
+					landed.append(foot.side)
 		elif not riding:
 			# where it stands, seen from the fighter now
 			foot.offset = to_frame * (foot.at - ground) - foot.spot

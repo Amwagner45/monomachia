@@ -243,6 +243,7 @@ Task 8 built the rules above. On them the first 300-match tuning run (12.1) has 
   - One foot steps at a time. The first is the one on the side the fighter travels to, and the other closes after it. Each lands near its spot at the stance's angles and keeps clear of the mid-line. Planted feet stand still on the ground.
   - The cadence follows the speed: about 4 steps a second at 0.5 m/s, and 9 at the guard's 2.34 m/s. The feet lift a few centimetres.
   - The pelvis bobs with the stance's spread, and sinks when a leg would otherwise not reach its planted foot. The weapon follows the bob on a slight spring.
+  - The footsteps fall where the feet come down. Running with the guard down, they fall every stride.
   - Running with the guard down hands the legs to the clips over a few frames, and stopping hands them back.
 - A lean follows acceleration, at most 11°: forward setting off, into a turn when circling the opponent, and back when braking, with the hips dropping into a brace; it settles within about a third of a second once the speed holds, and the weapon rides with the upper body.
 - Attacks, blocks, parries and guard stances are procedural upper-body layers: the weapon follows its swing, both arms reach for the grip with inverse kinematics (the left hand only on two-handed weapons), and the spine and hips turn toward the swing, with the hips leading so the motion ripples from hips to hands. The pelvis dips on impact.

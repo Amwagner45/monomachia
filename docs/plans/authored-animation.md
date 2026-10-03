@@ -8,7 +8,7 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 
 ## Notes
 
-- **One task at a time, with the owner's OK after each.** Before each task, merge `origin/feature/godot-rebuild` in and run the full tests. After each task:
+- **One task at a time.** Since task 1's gate the owner's OK is needed only at the hard gates below (see Decisions, Pacing). Before each task, merge `origin/feature/godot-rebuild` in and run the full tests. After each task:
   - tick it here;
   - update Progress;
   - in the spec, update the status line, any numbers the task changed, and tick each user story the build now fully delivers.
@@ -47,13 +47,15 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 - The Greatsword's recovery slide keeps running along the facing; the retired 7.24 would have taken its direction from the follow-through.
 - The counters (stomp, leap, evade) keep their demo cones; the retired 7.37 would have measured them from the paths.
 - Story 42, the email to Kevin Iglesias, is drafted in the spec's Licence section; the owner sends it. Until he answers, the baked paths are committed.
+- **Task 1 passed** (Oct 3). The owner chose foot locking under every clip, not just locomotion: task 8 builds it, and task 29 reuses it.
+- **Pacing** (owner, Oct 3): tasks run back to back with no OK between them, each still ending with its checks, a commit and a push; work stops only at the hard gates (5, 14, 20, 23, 25, 31, 36).
 - The merge of `origin/feature/godot-rebuild` (PR #11) into this branch was done at the start of task 1, on the owner's go-ahead (Oct 3).
 
 ## Progress
 
 Oct 3, 2026. Plan approved by the owner. Merged `origin/feature/godot-rebuild` (PR #11) in with the owner's go-ahead; tests and typecheck pass.
 
-Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kevin_iglesias/iglesias_bone_map.tres` (52 of the 56 profile bones), the six clips retargeted onto both fighters, and the findings in `docs/research/retarget-prototype.md`. Bends and crossing pass; the off hand sits 7–16 cm from the Greatsword's off-hand grip (for task 4's IK); planted feet creep up to 6 cm in the 2H attack and the roll's getting-up (foot locking, beyond task 29's locomotion, would cure it). One fix made: the hips' travel scaled to the legs (×1.14), which task 2's import tool must repeat. Roll01 [RM]'s root reads cleanly; Dodge01 is a sway, usable as the backstep only as its back half. **Waiting on the owner's pass or fail at the gate.** Nothing after task 1 starts until then.
+Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kevin_iglesias/iglesias_bone_map.tres` (52 of the 56 profile bones), the six clips retargeted onto both fighters, and the findings in `docs/research/retarget-prototype.md`. Bends and crossing pass; the off hand sits 7–16 cm from the Greatsword's off-hand grip (for task 4's IK); planted feet creep up to 6 cm in the 2H attack and the roll's getting-up (foot locking, beyond task 29's locomotion, would cure it). One fix made: the hips' travel scaled to the legs (×1.14), which task 2's import tool must repeat. Roll01 [RM]'s root reads cleanly; Dodge01 is a sway, usable as the backstep only as its back half. The owner passed the gate the same day, choosing to extend foot locking to every clip (task 8 builds it, for the attacks and the roll's getting-up as well as locomotion), and to run the tasks back to back between the hard gates, stopping only at them.
 
 ## Build order
 
@@ -90,7 +92,7 @@ Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kev
 - [ ] **2. The packs' folder, the clip manifest and the import tool.**
   - **The packs' folder.** An untracked `.assets-src-path` names the folder the packs are unzipped in; without it the tools look in `assets_src/`. Both are added to `.gitignore`, and `import_assets.gd` reads the same setting instead of its hard-coded folder.
   - **The clip manifest** is committed and holds no animation data. For each clip it gives the pack, file and set, whether it is mirrored, its loop mode and its four markers in source frames. It starts with task 1's clips.
-  - **The import tool** converts only the manifest's clips, through task 1's bone map, into one animation library per set (HumanM, HumanF), in a gitignored folder inside the Godot project. It is deterministic. Without the packs it exits with a message naming the setting.
+  - **The import tool** converts only the manifest's clips, through task 1's bone map (with the hips' travel scaled to each fighter's legs, as task 1 found), into one animation library per set (HumanM, HumanF), in a gitignored folder inside the Godot project. It is deterministic. Without the packs it exits with a message naming the setting.
   - **The export.** `npm run build` carries the libraries, and `--smoke` plays a match with them.
   - Also, with the owner's OK, remove the clean `add-3d-references-530c11` worktree.
   - Check:
@@ -144,13 +146,15 @@ Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kev
     - an attack's clip time set from its attack frame (wind-up across the startup, strike across the active frames, follow-through across the recovery);
     - a charge holding at the end of its wind-up;
     - hit-stop and pause holding the time;
-    - the crossfades: 3 frames into an attack, 4 for a follow-up, 2 for a dodge-cancel, a cut for hitstun, 6 for locomotion and 8 for stances.
+    - the crossfades: 3 frames into an attack, 4 for a follow-up, 2 for a dodge-cancel, a cut for hitstun, 6 for locomotion and 8 for stances;
+    - foot locking (the owner's choice at task 1's gate): the leg IK holds a planted foot where it landed under every clip, so the retarget's creep of up to 6 cm goes; task 29 reuses it for locomotion.
   - **Without the Iglesias libraries** it plays the fallback table, shows a small "animation packs missing" note in the match, and logs the setting to fix.
   - Moves without a baked swing keep the stand-in poses.
   - Check:
     - director tests on the cases above, and that the fallback is chosen when the libraries are missing;
     - a shot of the note;
-    - a sheet of the idle on both fighters for each weapon class.
+    - a sheet of the idle on both fighters for each weapon class;
+    - planted feet move under 1 cm through task 1's clips on both fighters.
   - Blocked by: 3, 4 · Stories: 3, 4, 6, 7, 40, 43
 
 ### Phase C: the Katana

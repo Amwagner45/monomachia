@@ -1,6 +1,6 @@
 # Spec: Authored animation and the dodge roll
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); task 1, the retargeting prototype, built (`docs/research/retarget-prototype.md`) and waiting on the owner's pass or fail · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); task 1, the retargeting prototype, passed by the owner (Oct 3, `docs/research/retarget-prototype.md`), with foot locking extended to every clip; next is task 2 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
 
 The Godot rebuild's fighters move with procedural animation. Attacks follow hand-keyed weapon paths with arm IK and a torso and hip turn; reactions are a recoil and a lean; movement is hip-turned clips, a lean and a guard shuffle. This feature replaces all of it with authored clips: Kevin Iglesias's Human Melee and Human Basic Motions packs, retargeted onto the Quaternius fighters, with the Quaternius Universal Animation Library 2 as a supplement and as the fallback. It also turns the dodge from a dash into a roll, adds a knockdown rule, and gives the Greatsword a shoulder carry. The rules stay in charge: they decide every hit and every frame at 60 steps a second, and the clips are fitted to them.
 
@@ -131,6 +131,7 @@ The raw Iglesias files and the clips converted from them stay out of the public 
   - reads the Iglesias FBX (binary FBX 7.7, 30 fps, one clip per file, on Kevin's 56-bone `B-` rig) through Godot's FBX importer;
   - retargets it through a new bone map for Kevin's rig onto Godot's humanoid profile, the same way `ual_bone_map.tres` retargets the UAL clips (the bone map is ours and committed);
   - strips the root track, scale tracks and the `B-handProp` and jaw bones;
+  - scales the hips' travel from their rest by the target fighter's leg-to-hips ratio over the source rig's (about ×1.14), because our fighters' legs are longer than Kevin's for their hips height, and Godot alone scales the travel by hips height (found in the retargeting prototype, `docs/research/retarget-prototype.md`);
   - writes one animation library per clip set (HumanM, HumanF) into a gitignored folder inside the Godot project, so the exported game packs it.
 - The **clip manifest** is committed. It names, for every clip the game uses: the source pack, file and set; whether it is mirrored; its loop mode; and its markers in source frames (wind-up start, contact start, contact end, settle). It holds no animation data.
 - Everything the tool writes is deterministic, so two builds from the same packs give identical files, and the bake (below) can be checked by tests.
@@ -176,6 +177,7 @@ All of these get rule tests and a soak run.
   - Sprint01 in its five forward directions at sprint speed;
   - Turn01 Left and Right when the facing changes by more than about 30° while standing.
   The playback rate follows the measured stride of each clip, as the step phase does today. The hip-turn strafing, the reversed cycle, the lean and the guard shuffle are retired; foot locking only keeps planted feet still.
+- **Foot locking under every clip.** The leg IK holds a planted foot where it landed under every clip, not only locomotion: the attacks, the reactions and the roll's getting-up too. The retargeting prototype found planted feet creeping up to 6 cm on our fighters (where the hip joints sit on the pelvis differs between the rigs), and the owner chose at the task 1 gate to lock them everywhere (planted feet move under 1 cm).
 - **Stances.**
   - The free state's idle is the weapon class's combat idle: CombatIdle1H01 for the Katana (two hands on the grip with IK) and the Daggers (in reverse grip), CombatIdle2H01 for the Greatsword, CombatIdle01 for bare hands.
   - The Greatsword carry layers the masked ObjectGripShoulder pose on the upper body over the locomotion. The 6-frame lift is a crossfade from the shoulder pose into the attack clip's first frame.

@@ -274,6 +274,8 @@ func _fall(frames: float) -> void:
 	stance = 0.0
 	sway = 0.0
 	sink = 0.0
+	# the legs stand still while it falls: no footfalls carry over
+	locomotion.footfalls.clear()
 	_play(DEATH_CLIP, frames / float(SimConst.FPS))
 
 

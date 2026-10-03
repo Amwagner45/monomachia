@@ -5,8 +5,8 @@ extends SimHelpers.Rec
 ## step fighter 0's state, the attack it was in (&"" outside one), that
 ## attack's frame (-1), whether it was holding a charge (for the Iai,
 ## sheathed), how far it moved over the ground in the step and how far apart
-## the two fighters' centres stood, and fighter 1's state. play() and run()
-## drive the strings.
+## the two fighters' centres stood, where fighter 0 stood, and fighter 1's
+## state. play() and run() drive the strings.
 
 var state: Array[StringName] = []
 var attack: Array[StringName] = []
@@ -14,6 +14,8 @@ var frame: PackedInt32Array = []
 var charging: Array[bool] = []
 var moved: PackedFloat64Array = []
 var apart: PackedFloat64Array = []
+## Fighter 0's position on the ground (x, z) after each step.
+var position: PackedVector2Array = []
 ## Fighter 1's state after each step.
 var defender_state: Array[StringName] = []
 ## The step play() pressed each of its presses on, one per press (empty
@@ -86,6 +88,7 @@ func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
 	charging.append(attacking and a.atk.charging)
 	moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
 	apart.append(SimMath.dist2(a.pos, W.fighters[1].pos))
+	position.append(Vector2(a.pos.x, a.pos.z))
 	defender_state.append(W.fighters[1].state)
 	return new_events
 
@@ -124,6 +127,28 @@ func ended_on(id: StringName) -> int:
 func state_after(id: StringName) -> StringName:
 	var i: int = attack.rfind(id)
 	return &"?" if i < 0 or i + 1 >= state.size() else state[i + 1]
+
+
+## How far fighter 0's last attack id moved it over the ground (x, z): from
+## where the step before the attack's first left it to where its last step
+## left it (zero if it never started).
+func displacement(id: StringName) -> Vector2:
+	var last: int = attack.rfind(id)
+	if last < 0:
+		return Vector2.ZERO
+	var first: int = last
+	while first > 0 and attack[first - 1] == id:
+		first -= 1
+	return position[last] - position[maxi(first - 1, 0)]
+
+
+## The nearest the two fighters' centres came from step from to step to (not
+## included).
+func closest(from: int, to: int) -> float:
+	var nearest: float = INF
+	for d: float in apart.slice(from, to):
+		nearest = minf(nearest, d)
+	return nearest
 
 
 ## The ids of fighter 0's attacks that made events of type t, in order.

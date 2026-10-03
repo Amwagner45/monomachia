@@ -45,10 +45,11 @@ extends RefCounted
 ##     special: flash shadowStep counterLunge breakerPalm
 ##     trail: normal danger ult
 ##     side_start, side_end: left right centre
-## - side_start, side_end, charge_move and release_variant are the
-##   rebuild's (the demo had none of them): the sides are &"" on moves
-##   outside a string, charge_move is false and release_variant &"" on every
-##   move but the Iai Slash.
+## - side_start, side_end, charge_move, release_variant and
+##   lunge_along_dodge are the rebuild's (the demo had none of them): the
+##   sides are &"" on moves outside a string, charge_move is false and
+##   release_variant &"" on every move but the Iai Slash, and
+##   lunge_along_dodge is false on every move but Passing Cut.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -133,6 +134,9 @@ var charge_move: bool = false
 ## stick held left or right (the horizontal Iai); it must keep this move's
 ## frames and lunge
 var release_variant: StringName = &""
+## a dodge attack that lunges on along the dodge before it, not along the
+## facing (Passing Cut)
+var lunge_along_dodge: bool = false
 ## the path the weapon travels through the move (task 7, the rebuild's), put
 ## on it from the weapon's swing file when the weapon is built
 ## (WeaponDef.from_dict); null until the move has one. A record may also
@@ -147,7 +151,7 @@ const KEYS: Array[String] = [
 	"jumpable", "undodgeable", "power", "chain_light", "chain_heavy", "dodge_cancel_from",
 	"multi_hit", "multi_interval", "airborne", "guard_crush", "special", "chargeable", "sound",
 	"trail", "invuln", "hop", "side_start", "side_end", "charge_move",
-	"release_variant", "swing",
+	"release_variant", "lunge_along_dodge", "swing",
 ]
 
 
@@ -203,6 +207,7 @@ static func from_dict(d: Dictionary) -> AttackDef:
 	m.side_end = StringName(d.get("side_end", &""))
 	m.charge_move = bool(d.get("charge_move", false))
 	m.release_variant = StringName(d.get("release_variant", &""))
+	m.lunge_along_dodge = bool(d.get("lunge_along_dodge", false))
 	m.swing = d.get("swing", null)
 	return m
 

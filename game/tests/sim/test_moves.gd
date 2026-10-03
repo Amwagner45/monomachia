@@ -34,6 +34,7 @@ const UNSET: Dictionary = {
 	"hop": 0.0,
 	"charge_move": false, # the rebuild's, not the TS's (9.3): only the Iai, an added move, has it
 	"release_variant": &"", # the rebuild's, not the TS's (9.4): only the Iai has one
+	"lunge_along_dodge": false, # the rebuild's, not the TS's (11.3): only Passing Cut, an added move, has it
 }
 
 ## The demo's data that the rebuild changed on purpose, one row per rule: a
@@ -109,6 +110,7 @@ const ADDED: Array[StringName] = [
 	&"g_h2", # 10.2: Low Sweep, Overhead Strike's heavy follow-up, under Earthbreaker's id
 	&"g_dl", # 10.3: Piercing Lunge, the light out of a dodge, under Pommel Strike's id
 	&"g_dh", # 10.3: Skewer, the heavy out of a dodge, under Cyclone's id
+	&"d_dl", # 11.3: Passing Cut, the light out of a dodge, under Ghost Cut's id
 ]
 
 ## Demo moves the new strings removed (one whose id a new move took is in
@@ -118,6 +120,7 @@ const REMOVED: Array[StringName] = [
 	&"g_h2", # 10.2: Earthbreaker, whose id Low Sweep took
 	&"g_dl", # 10.3: Pommel Strike, whose id Piercing Lunge took
 	&"g_dh", # 10.3: Cyclone, whose id Skewer took
+	&"d_dl", # 11.3: Ghost Cut, whose id Passing Cut took
 ]
 
 ## Demo moves the new strings gave a new id: their id now -> the demo's.
@@ -132,8 +135,9 @@ const WEAPON_CHANGES: Array[Dictionary] = [
 ]
 
 ## Fields the demo didn't have that its moves now hold: the strings and
-## continuity tests check them. (charge_move and release_variant, which no
-## demo move holds, are in UNSET instead, so a demo move given one fails here.)
+## continuity tests check them. (charge_move, release_variant and
+## lunge_along_dodge, which no demo move holds, are in UNSET instead, so a demo
+## move given one fails here.)
 const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
 ## The swing (task 7), which the swing tests check as moves get one.

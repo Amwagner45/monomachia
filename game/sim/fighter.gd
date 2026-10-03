@@ -95,6 +95,10 @@ var moving: bool = false
 var sprint_frames: int = 0
 var dodge_end_frame: int = -99999
 var dodge_was_back: bool = false
+## the ground direction of the last dodge or backstep (a unit vector, a new
+## one each dodge), for an attack that lunges on along it; null before the
+## first
+var last_dodge_dir: V2 = null
 var air_attack_used: bool = false
 var step_dir: V2 = V2.make(0.0, 0.0)
 
@@ -672,6 +676,7 @@ func start_attack(p_id: StringName, started_by: int = -1, chained_from: AttackDe
 	atk.charge_frac = 0.0
 	atk.queued = &""
 	atk.lunge_total = lunge_total
+	atk.lunge_dir = last_dodge_dir if def.lunge_along_dodge else null
 	atk.extra_recovery = 0
 	atk.backstab = def.kind == &"light" and W.frame <= backstab_until
 	atk.started_by = started_by
@@ -757,13 +762,17 @@ func _update_attack() -> void:
 	var A: int = def.active
 	var R: int = def.recovery + a.extra_recovery
 
-	# Lunge forward along our facing, easing in and out over its window.
+	# Lunge along our facing (or on along the last dodge), easing in and out
+	# over its window.
 	var ls: int = def.lunge_start
 	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else S + A
 	if a.lunge_total > 0.0 and f > ls and f <= le:
 		var n: float = float(maxi(1, le - ls))
 		var share: float = SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
-		_advance(a.lunge_total * share)
+		if a.lunge_dir != null:
+			_advance_along(a.lunge_dir, a.lunge_total * share)
+		else:
+			_advance(a.lunge_total * share)
 	# A colossal swing slides on into its first recovery frames, easing out.
 	var into_recovery: int = f - S - A
 	if into_recovery > 0 and into_recovery <= SimConst.COLOSSAL_SLIDE_FRAMES and _slides(def):
@@ -842,14 +851,32 @@ func _slides(def: AttackDef) -> bool:
 	return moveset().cls == &"colossal" and not def.airborne and def.type != &"bash"
 
 
+## How far we can still close on the opponent before our bodies are 0.25 m
+## apart.
+func _room_to_close() -> float:
+	return maxf(0.0, SimMath.dist2(pos, opp.pos) - (SimConst.FIGHTER_RADIUS * 2.0 + 0.25))
+
+
 ## Advance up to dist along our facing, stopping with our bodies 0.25 m apart.
 func _advance(dist: float) -> void:
-	var d: float = SimMath.dist2(pos, opp.pos)
-	var min_gap: float = SimConst.FIGHTER_RADIUS * 2.0 + 0.25
-	var step: float = minf(dist, maxf(0.0, d - min_gap))
+	var step: float = minf(dist, _room_to_close())
 	var dir: V2 = SimMath.fwd(yaw)
 	pos.x += dir.x * step
 	pos.z += dir.z * step
+
+
+## Advance dist along dir (a unit vector), holding back only the part that
+## closes on the opponent, so that part stops with our bodies 0.25 m apart
+## while the part across the line to them carries on.
+func _advance_along(dir: V2, dist: float) -> void:
+	var to: V2 = SimMath.norm2(opp.pos.x - pos.x, opp.pos.z - pos.z)
+	var closing: float = (dir.x * to.x + dir.z * to.z) * dist
+	var across_x: float = dir.x * dist - to.x * closing
+	var across_z: float = dir.z * dist - to.z * closing
+	if closing > 0.0:
+		closing = minf(closing, _room_to_close())
+	pos.x += across_x + to.x * closing
+	pos.z += across_z + to.z * closing
 
 
 func _update_shadow_step(f: int) -> void:
@@ -902,6 +929,7 @@ func start_dodge() -> void:
 			inp.dir >= 3 and inp.dir <= 5,
 			inp.dir == 0 or inp.dir == 1 or inp.dir == 7,
 		)
+	last_dodge_dir = V2.make(dodge.dir_x, dodge.dir_z)
 	vel.x = 0.0
 	vel.z = 0.0
 	sprint_frames = 0

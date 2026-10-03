@@ -1,7 +1,8 @@
 extends GutTest
 ## SwingCheck (task 7.7) seats a hand on its grip as the fighter rig does
-## (FighterRig.seat()), so the wrists it checks are the wrists the rig draws:
-## for each fighter, both hands of the Katana and a dagger in the left hand,
+## (FighterRig.seat(): the fist turned round the handle to its forearm, task
+## 14.8), so the wrists it checks are the wrists the rig draws: for each
+## fighter at rest, both hands of the Katana and a dagger in the left hand,
 ## the wrist within 5 mm and the hand pointing the same way within 1°. The
 ## rules' (right, up, forward) become Godot's axes with right as -X.
 
@@ -38,8 +39,13 @@ static func _weapon_xf(k: Swing.KeyPose) -> Transform3D:
 	return Transform3D(Basis(x, y, x.cross(y)), _godot(k.grip))
 
 
+## The rig's seat of the hand on `side` at rest: its shoulder where the rest
+## pose has it, the chest unturned.
 func _assert_seated(rig: FighterRig, side: String, weapon_xf: Transform3D, point: Vector3, arm: SwingCheck.Arm, what: String) -> void:
-	var hand: Transform3D = rig.seat(side, weapon_xf, point)
+	var sk: Skeleton3D = rig.skeleton
+	var shoulder: Vector3 = sk.get_bone_global_rest(sk.find_bone(side + "UpperArm")).origin
+	var chest: Basis = sk.get_bone_global_rest(sk.find_bone("UpperChest")).basis.orthonormalized()
+	var hand: Transform3D = rig.seat(side, weapon_xf, point, shoulder, chest)
 	assert_lt(hand.origin.distance_to(_godot(arm.wrist)), 0.005, "%s: the wrist at %s, the rig's %s" % [what, _godot(arm.wrist), hand.origin])
 	var turn: float = rad_to_deg(hand.basis.y.normalized().angle_to(_godot(arm.along)))
 	assert_lt(turn, 1.0, "%s: the hand points along the rig's hand (%.2f° off)" % [what, turn])

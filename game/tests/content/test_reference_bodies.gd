@@ -133,7 +133,7 @@ func _close(got: float, want: float, what: String) -> void:
 	assert_almost_eq(got, want, TOLERANCE, "%s: %.3f measures %.3f" % [what, got, want])
 
 
-func _capsule(got: Capsule, want: Array, what: String) -> void:
+func _capsule(got: SimCapsule, want: Array, what: String) -> void:
 	_near(got.a, want[0], what + " (a)")
 	_near(got.b, want[1], what + " (b)")
 	_close(got.radius, want[2], what + " (radius)")
@@ -193,7 +193,7 @@ func test_the_spine_and_the_proxies_match_the_bodies() -> void:
 ## How far the farthest of `points` (Godot's axes) lies outside `c`; with
 ## `alongside`, only the points beside its axis count (past the joints, the
 ## next proxy covers them).
-static func _poke(points: Array, c: Capsule, alongside: bool) -> float:
+static func _poke(points: Array, c: SimCapsule, alongside: bool) -> float:
 	var a: Vector3 = Vector3(-c.a.x, c.a.y, c.a.z)
 	var b: Vector3 = Vector3(-c.b.x, c.b.y, c.b.z)
 	var ab: Vector3 = b - a

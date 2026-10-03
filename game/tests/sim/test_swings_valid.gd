@@ -39,19 +39,19 @@ func test_a_bad_follow_up_is_reported_from_each_entry_on_each_body() -> void:
 	w.id = &"test_sword"
 	var first: AttackDef = TS._move(TS._cut(ReferenceBody.of(&"rogue")), 8, 3, 14)
 	first.id = &"first"
-	first.chain_light = &"bent"
-	var bent: AttackDef = TS._move(TS._cut_with(ReferenceBody.of(&"rogue"), 8,
-			TS._key(ReferenceBody.of(&"rogue"), &"right", 8, TS._v(0.3, -0.8, 0.5), TS._v(-0.1, 0.2, 0.97), TS._v(1.0, 0.3, 0.0), 75.0)), 8, 3, 14)
-	bent.id = &"bent"
-	w.moves = {&"first": first, &"bent": bent}
-	var bends: Array[String] = []
+	var turned: AttackDef = TS._move(TS._cut_with(ReferenceBody.of(&"rogue"), 8,
+			TS._key(ReferenceBody.of(&"rogue"), &"right", 8, TS._v(0.3, -0.8, 0.5), TS._v(-0.1, 0.2, 0.97), TS._v(1.0, 0.3, 0.0), 0.0, 50.0)), 8, 3, 14)
+	turned.id = &"turned"
+	first.chain_light = &"turned"
+	w.moves = {&"first": first, &"turned": turned}
+	var found: Array[String] = []
 	for p: String in _problems(w):
-		if p.contains("wrist bends"):
-			bends.append(p.get_slice(":", 0))
-	bends.sort()
-	assert_eq(bends, [
-		"test_sword.bent on the hunter, from first",
-		"test_sword.bent on the hunter, from the guard",
-		"test_sword.bent on the rogue, from first",
-		"test_sword.bent on the rogue, from the guard",
+		if p.contains("wrist turns"):
+			found.append(p.get_slice(":", 0))
+	found.sort()
+	assert_eq(found, [
+		"test_sword.turned on the hunter, from first",
+		"test_sword.turned on the hunter, from the guard",
+		"test_sword.turned on the rogue, from first",
+		"test_sword.turned on the rogue, from the guard",
 	] as Array[String])

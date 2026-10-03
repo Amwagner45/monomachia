@@ -70,10 +70,10 @@ var wrist: V3 = V3.make()
 ## middle of the shoulders.
 var spine_base: V3 = V3.make()
 var spine_top: V3 = V3.make()
-var torso: Capsule
-var head: Capsule
+var torso: SimCapsule
+var head: SimCapsule
 ## By side.
-var thighs: Dictionary[StringName, Capsule] = {}
+var thighs: Dictionary[StringName, SimCapsule] = {}
 var upper_arm_radius: Dictionary[StringName, float] = {}
 var forearm_radius: Dictionary[StringName, float] = {}
 
@@ -129,12 +129,12 @@ func posed(torso_coil: float, pelvis_coil: float, pelvis_shift: V3) -> Reference
 	out.wrist = wrist
 	out.spine_base = V3.add(spine_base, pelvis_shift)
 	out.spine_top = V3.add(spine_top, pelvis_shift)
-	out.torso = Capsule.make(_turned(torso.a, chest, pelvis_shift), _turned(torso.b, chest, pelvis_shift), torso.radius)
-	out.head = Capsule.make(V3.add(head.a, pelvis_shift), V3.add(head.b, pelvis_shift), head.radius)
+	out.torso = SimCapsule.make(_turned(torso.a, chest, pelvis_shift), _turned(torso.b, chest, pelvis_shift), torso.radius)
+	out.head = SimCapsule.make(V3.add(head.a, pelvis_shift), V3.add(head.b, pelvis_shift), head.radius)
 	for side: StringName in SIDES:
 		out.shoulders[side] = _turned(shoulders[side], chest, pelvis_shift)
-		var thigh: Capsule = thighs[side]
-		out.thighs[side] = Capsule.make(_turned(thigh.a, hips, pelvis_shift), thigh.b, thigh.radius)
+		var thigh: SimCapsule = thighs[side]
+		out.thighs[side] = SimCapsule.make(_turned(thigh.a, hips, pelvis_shift), thigh.b, thigh.radius)
 	out.upper_arm_radius = upper_arm_radius.duplicate()
 	out.forearm_radius = forearm_radius.duplicate()
 	return out
@@ -149,5 +149,5 @@ static func _v(a: Array) -> V3:
 	return V3.make(float(a[0]), float(a[1]), float(a[2]))
 
 
-static func _capsule(d: Dictionary) -> Capsule:
-	return Capsule.make(_v(d["a"]), _v(d["b"]), float(d["radius"]))
+static func _capsule(d: Dictionary) -> SimCapsule:
+	return SimCapsule.make(_v(d["a"]), _v(d["b"]), float(d["radius"]))

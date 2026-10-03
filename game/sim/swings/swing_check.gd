@@ -4,7 +4,7 @@ extends RefCounted
 ## spike critique's first fix. It poses the reference body (ReferenceBody) as
 ## the swing's body track keys it, solves each arm's elbow, and reports every
 ## stretch of the swing where:
-## - a wrist bends past ±60° or turns sideways past ±25°;
+## - a wrist turns sideways past ±25°;
 ## - an elbow locks (170° or straighter) or the grip is out of the arm's reach;
 ## - a blade comes within 5 cm of the body: the torso, the head (with its hood
 ##   or hat), the thighs or an arm. A blade isn't checked against the fist
@@ -17,20 +17,21 @@ extends RefCounted
 ## will be exempt from the blade checks.
 ##
 ## A hand sits on its grip as the fighter rig seats it (FighterRig.seat()):
-## the fist's frame (ReferenceBody.wrist_in_fist()) turned GRIP_ROLL about
-## the handle, so the knuckles lead toward the edge. A straight wrist puts the
-## forearm along the hand, square to the handle. The elbow bends toward its
-## pole, as the rig's does: ELBOW_POLES (out, down and back from the
-## shoulder, in arm lengths), turned with the torso coil, plus the key's pole
-## tweak, in the fighter's space. The rig also swings the collarbone near full
-## reach, so it straightens an elbow later than the check does.
+## the fist (ReferenceBody.wrist_in_fist()) turned round the handle so that
+## the hand carries on the line of its forearm, refined over ROLL_PASSES as
+## the wrist moves round the handle. So a wrist never bends back or forward;
+## how far it turns sideways (toward the thumb, the handle) is what the swing
+## sets, and what the check limits. The elbow bends toward its pole, as the
+## rig's does: ELBOW_POLES (out, down and back from the shoulder, in arm
+## lengths), turned with the torso coil, plus the key's pole tweak, in the
+## fighter's space. The rig also swings the collarbone near full reach, so it
+## straightens an elbow later than the check does.
 ##
 ## A weapon held in both hands (WeaponDef.off_hand_grip) puts the left hand
 ## on its off-hand grip, seated like the right; such a swing keys no left
 ## hand. Otherwise each hand track holds its own copy of the weapon (the
 ## daggers, or a fist), and a hand with no track isn't posed.
 
-const WRIST_BEND: float = 60.0
 const WRIST_DEVIATION: float = 25.0
 const ELBOW_LOCKED: float = 170.0
 ## How far a blade must stay from every proxy (metres).
@@ -39,8 +40,9 @@ const CLEARANCE: float = 0.05
 ## an arm's reach long, reaching from the chin to the brow.
 const FACE_REACH: float = 0.6
 const FACE_RADIUS: float = 0.12
-## The rig's turn of each hand about the handle (FighterRig.GRIP_ROLL).
-const GRIP_ROLL: float = 25.0
+## How many times a hand's turn round the handle is refined, as the rig's is
+## (FighterRig.ROLL_PASSES).
+const ROLL_PASSES: int = 4
 ## Each elbow's pole from its shoulder (FighterRig.ELBOW_POLE), (right, up,
 ## forward) in arm lengths.
 const ELBOW_POLES: Dictionary[StringName, Array] = {
@@ -68,7 +70,8 @@ class Arm:
 	## How far the grip is past the arm's reach (metres; 0 within it).
 	var short: float = 0.0
 	## The elbow's angle (180 straight) and the wrist's bend toward the flat
-	## and turn toward the thumb, in degrees.
+	## and turn toward the thumb, in degrees. The bend is what's left of the
+	## hand's turn to its forearm after its passes: a degree or so.
 	var elbow_angle: float = 0.0
 	var bend: float = 0.0
 	var deviation: float = 0.0
@@ -88,9 +91,9 @@ class Moment:
 	var body: ReferenceBody
 	var arms: Dictionary[StringName, Arm] = {}
 	var blades: Array[Blade] = []
-	var face: Capsule
+	var face: SimCapsule
 	## The proxies a blade must keep clear of, by name, besides the arms.
-	var proxies: Dictionary[String, Capsule] = {}
+	var proxies: Dictionary[String, SimCapsule] = {}
 
 
 ## Every problem with `move`'s swing on `body`, holding `weapon`, entered
@@ -144,7 +147,7 @@ static func moment(swing: Swing, weapon: WeaponDef, body: ReferenceBody, t: floa
 	m.proxies["right thigh"] = m.body.thighs[&"right"]
 	m.proxies["left thigh"] = m.body.thighs[&"left"]
 	var centre: V3 = V3.lerp(m.body.head.a, m.body.head.b, 0.5)
-	m.face = Capsule.make(centre, V3.add(centre, V3.make(0.0, 0.0, FACE_REACH)), FACE_RADIUS)
+	m.face = SimCapsule.make(centre, V3.add(centre, V3.make(0.0, 0.0, FACE_REACH)), FACE_RADIUS)
 	return m
 
 
@@ -154,21 +157,26 @@ static func _arm(side: StringName, grip: V3, blade: V3, edge: V3, pole: V3, body
 	var a: Arm = Arm.new()
 	a.side = side
 	a.grip = grip
-	# the weapon's flat, out of the plane of blade and edge: X cross Y in
-	# Godot's axes, which is blade cross edge in (right, up, forward)
-	var flat: V3 = V3.cross(blade, edge)
-	var roll: float = GRIP_ROLL * SimMath.DEG * (-1.0 if side == &"right" else 1.0)
-	# turned about the handle as Godot's Basis(UP, roll) turns X and Z
-	var c: float = JsMath.cos(roll)
-	var s: float = JsMath.sin(roll)
-	a.along = V3.sub(V3.scale(edge, c), V3.scale(flat, s))
-	a.flat = V3.add(V3.scale(edge, s), V3.scale(flat, c))
 	a.thumb = blade
-	var w: V3 = body.wrist_in_fist(side)
-	a.wrist = V3.add(grip, V3.add(V3.add(V3.scale(a.along, w.x), V3.scale(a.thumb, w.y)), V3.scale(a.flat, w.z)))
 	a.shoulder = body.shoulders[side]
 	var upper: float = body.upper_arm
 	var fore: float = body.forearm
+	var p: Array = ELBOW_POLES[side]
+	var toward: V3 = V3.add(Quat64.rotate(chest, V3.make(p[0], p[1], p[2])), pole)
+	# The fist turns round the handle so that the hand carries on the line of
+	# its forearm, as the rig's does (FighterRig.seat()): from the grip, each
+	# pass solves the elbow for the last pass's wrist and turns the knuckles
+	# toward that forearm, square to the handle, which moves the wrist round
+	# the handle. The fist's flat is then blade cross knuckles in (right, up,
+	# forward), as the weapon's is blade cross edge.
+	var w: V3 = body.wrist_in_fist(side)
+	a.wrist = grip
+	for i: int in ROLL_PASSES:
+		var forearm: V3 = V3.sub(a.wrist, _elbow_at(a.shoulder, a.wrist, toward, upper, fore))
+		var square: V3 = V3.sub(forearm, V3.scale(blade, V3.dot(forearm, blade)))
+		a.along = V3.normalized(square) if V3.length(square) > 1e-9 else edge
+		a.flat = V3.cross(blade, a.along)
+		a.wrist = V3.add(grip, V3.add(V3.add(V3.scale(a.along, w.x), V3.scale(a.thumb, w.y)), V3.scale(a.flat, w.z)))
 	var reach: V3 = V3.sub(a.wrist, a.shoulder)
 	var d: float = V3.length(reach)
 	if d >= upper + fore:
@@ -179,21 +187,29 @@ static func _arm(side: StringName, grip: V3, blade: V3, edge: V3, pole: V3, body
 		a.elbow_angle = 0.0
 	else:
 		a.elbow_angle = _acos(clampf((upper * upper + fore * fore - d * d) / (2.0 * upper * fore), -1.0, 1.0)) / SimMath.DEG
-		var u: V3 = V3.scale(reach, 1.0 / d)
-		var p: Array = ELBOW_POLES[side]
-		var toward: V3 = V3.add(Quat64.rotate(chest, V3.make(p[0], p[1], p[2])), pole)
-		var v: V3 = V3.sub(toward, V3.scale(u, V3.dot(toward, u)))
-		if V3.length(v) < 1e-9:
-			v = V3.sub(V3.make(0.0, -1.0, 0.0), V3.scale(u, -u.y))
-		v = V3.normalized(v)
-		var at_shoulder: float = _acos(clampf((upper * upper + d * d - fore * fore) / (2.0 * upper * d), -1.0, 1.0))
-		a.elbow = V3.add(a.shoulder, V3.add(V3.scale(u, upper * JsMath.cos(at_shoulder)), V3.scale(v, upper * JsMath.sin(at_shoulder))))
+		a.elbow = _elbow_at(a.shoulder, a.wrist, toward, upper, fore)
 	if a.elbow != null:
 		var forearm: V3 = V3.normalized(V3.sub(a.wrist, a.elbow))
 		var straight: float = V3.dot(forearm, a.along)
 		a.bend = JsMath.atan2(V3.dot(forearm, a.flat), straight) / SimMath.DEG
 		a.deviation = JsMath.atan2(V3.dot(forearm, a.thumb), straight) / SimMath.DEG
 	return a
+
+
+## Where the elbow goes when the wrist reaches `wrist` from `shoulder`, bent
+## toward `toward` (a way from the shoulder), as the rig's arm IK bends it
+## (FighterRig.elbow_at()): in the plane of the shoulder, the wrist and that
+## way, on its side. A wrist out of reach is taken as far as the arm goes.
+static func _elbow_at(shoulder: V3, wrist: V3, toward: V3, upper: float, fore: float) -> V3:
+	var reach: V3 = V3.sub(wrist, shoulder)
+	var d: float = clampf(V3.length(reach), absf(upper - fore) + 1e-4, upper + fore - 1e-4)
+	var u: V3 = V3.normalized(reach)
+	var v: V3 = V3.sub(toward, V3.scale(u, V3.dot(toward, u)))
+	if V3.length(v) < 1e-9:
+		v = V3.sub(V3.make(0.0, -1.0, 0.0), V3.scale(u, -u.y))
+	v = V3.normalized(v)
+	var along: float = (upper * upper + d * d - fore * fore) / (2.0 * d)
+	return V3.add(shoulder, V3.add(V3.scale(u, along), V3.scale(v, sqrt(maxf(upper * upper - along * along, 0.0)))))
 
 
 static func _blade(side: StringName, sample: Swing.Sample, segment: StrikeSegment) -> Blade:
@@ -218,9 +234,6 @@ static func _look(m: Moment, move: AttackDef, found: Dictionary[String, Dictiona
 			if a.elbow_angle >= ELBOW_LOCKED:
 				_note(found, part + " elbow", m.t, a.elbow_angle,
 						"%s: the elbow locks at %.0f° (%.0f° or straighter is locked)" % [part, a.elbow_angle, ELBOW_LOCKED])
-			if absf(a.bend) > WRIST_BEND:
-				_note(found, part + " bend", m.t, absf(a.bend),
-						"%s: the wrist bends %.0f° (the limit is %.0f°)" % [part, absf(a.bend), WRIST_BEND])
 			if absf(a.deviation) > WRIST_DEVIATION:
 				_note(found, part + " deviation", m.t, absf(a.deviation),
 						"%s: the wrist turns %.0f° sideways (the limit is %.0f°)" % [part, absf(a.deviation), WRIST_DEVIATION])
@@ -230,16 +243,16 @@ static func _look(m: Moment, move: AttackDef, found: Dictionary[String, Dictiona
 				_note(found, part + " face", m.t, -inside, "%s: the grip crosses in front of the face in the wind-up" % part)
 	for b: Blade in m.blades:
 		var part: String = String(HANDS[b.side])
-		var near: Dictionary[String, Capsule] = m.proxies.duplicate()
+		var near: Dictionary[String, SimCapsule] = m.proxies.duplicate()
 		for side: StringName in m.arms:
 			var a: Arm = m.arms[side]
 			if a.elbow == null:
 				continue
-			near["%s upper arm" % side] = Capsule.make(a.shoulder, a.elbow, m.body.upper_arm_radius[side])
+			near["%s upper arm" % side] = SimCapsule.make(a.shoulder, a.elbow, m.body.upper_arm_radius[side])
 			if side != b.side:
-				near["%s forearm" % side] = Capsule.make(a.elbow, a.wrist, m.body.forearm_radius[side])
+				near["%s forearm" % side] = SimCapsule.make(a.elbow, a.wrist, m.body.forearm_radius[side])
 		for proxy: String in near:
-			var c: Capsule = near[proxy]
+			var c: SimCapsule = near[proxy]
 			var gap: float = SimMath.segment_distance(b.base, b.tip, c.a, c.b) - c.radius - b.half
 			if gap < CLEARANCE:
 				_note(found, "%s blade %s" % [part, proxy], m.t, -gap,

@@ -34,8 +34,8 @@ static func _v(x: float, y: float, z: float) -> V3:
 	return V3.make(x, y, z)
 
 
-static func _body() -> Capsule:
-	return Capsule.make(_v(0.0, 0.35, 0.0), _v(0.0, 1.4, 0.0), RADIUS)
+static func _body() -> SimCapsule:
+	return SimCapsule.make(_v(0.0, 0.35, 0.0), _v(0.0, 1.4, 0.0), RADIUS)
 
 
 static func _sweep(base0: V3, tip0: V3, base1: V3, tip1: V3, half: float = HALF) -> BladeSweep:
@@ -198,7 +198,7 @@ static func _samples(q: Array[V3], n: int) -> Array[V3]:
 
 ## The most of the blade inside, counted 5 mm at a time along the blade at
 ## each 1% of the tick.
-static func _counted_inside(q: Array[V3], body: Capsule) -> float:
+static func _counted_inside(q: Array[V3], body: SimCapsule) -> float:
 	var most: float = 0.0
 	for i: int in 101:
 		var base: V3 = V3.lerp(q[0], q[2], i / 100.0)
@@ -214,7 +214,7 @@ static func _counted_inside(q: Array[V3], body: Capsule) -> float:
 
 
 func test_contact_points_on_twisted_quads() -> void:
-	var body: Capsule = _body()
+	var body: SimCapsule = _body()
 	var touched: int = 0
 	for corners: Array in TWISTED:
 		var q: Array[V3] = []

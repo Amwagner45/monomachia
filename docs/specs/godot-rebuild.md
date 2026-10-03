@@ -217,8 +217,8 @@ The body rules are checked headless on a reference body for each fighter, and ev
 The torso coil turns the torso and the shoulders about the spine, and the pelvis coil turns the thighs at the hips. The head keeps facing ahead and the knees stay planted, and the pelvis shift carries everything above the knees. A content test measures both fighters again and keeps the numbers within 1 cm.
 
 The checks look at every quarter frame of a swing, entered from the guard and from each move that chains into it, through the exit:
-- each hand sits on its grip as the fighter rig seats it, turned 25° about the handle so the knuckles lead toward the edge, and each elbow bends toward the rig's pole (out, down and back from the shoulder, turning with the chest), plus the key's tweak;
-- a wrist may bend ±60° and turn ±25° sideways from straight, where straight puts the forearm along the hand, square to the handle. An elbow at 170° or straighter is locked, and a grip out of the arm's reach fails;
+- each hand sits on its grip as the fighter rig seats it, turned round the handle so that the hand carries on the line of its forearm, and each elbow bends toward the rig's pole (out, down and back from the shoulder, turning with the chest), plus the key's tweak;
+- so a wrist doesn't bend back or forward, and it may turn ±25° sideways from straight, where straight puts the forearm square to the handle. An elbow at 170° or straighter is locked, and a grip out of the arm's reach fails;
 - a blade keeps 5 cm, beyond half its thickness, from the torso, the head, the thighs and both arms, though not from the fist and forearm that hold it;
 - in the wind-up neither grip passes in front of the face: within 12 cm of a line from the middle of the head, 60 cm straight ahead.
 

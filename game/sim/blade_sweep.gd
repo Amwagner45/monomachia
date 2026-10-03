@@ -47,7 +47,7 @@ class _Nearest:
 ## The touch of a segment moving from `base0` to `tip0` at the last tick to
 ## `base1` to `tip1` at this one, with half its thickness `half_thickness`, on
 ## `capsule`; null when it misses.
-static func touch(base0: V3, tip0: V3, base1: V3, tip1: V3, half_thickness: float, capsule: Capsule) -> BladeSweep:
+static func touch(base0: V3, tip0: V3, base1: V3, tip1: V3, half_thickness: float, capsule: SimCapsule) -> BladeSweep:
 	var reach: float = capsule.radius + half_thickness
 	# The nearest point is where the axis crosses a triangle, or over a
 	# triangle from an end of the axis, or on one of the triangles' edges.
@@ -101,7 +101,7 @@ static func _within(x: V3, p0: V3, p1: V3, p2: V3, n: V3) -> bool:
 ## sections. A moment with none of the segment inside scores how far it is
 ## from reaching the capsule, below 0, so a graze too brief for the steps is
 ## still closed in on.
-static func _most_inside(q: Array[V3], capsule: Capsule, reach: float) -> float:
+static func _most_inside(q: Array[V3], capsule: SimCapsule, reach: float) -> float:
 	var best: float = -INF
 	var at: int = 0
 	for i: int in _STEPS + 1:
@@ -136,7 +136,7 @@ static func _most_inside(q: Array[V3], capsule: Capsule, reach: float) -> float:
 
 ## The length of the segment inside the capsule at `t` through the tick or,
 ## when none of it is, how far it is from reaching it, below 0.
-static func _score(q: Array[V3], capsule: Capsule, reach: float, t: float) -> float:
+static func _score(q: Array[V3], capsule: SimCapsule, reach: float, t: float) -> float:
 	var base: V3 = V3.lerp(q[0], q[2], t)
 	var tip: V3 = V3.lerp(q[1], q[3], t)
 	var inside: float = _inside(base, tip, capsule, reach)
@@ -149,7 +149,7 @@ static func _score(q: Array[V3], capsule: Capsule, reach: float, t: float) -> fl
 ## capsule's axis. The grown capsule is the cylinder round the axis and a
 ## ball at each end, and since it's convex, the stretches of the segment's
 ## line inside the three meet in one.
-static func _inside(base: V3, tip: V3, capsule: Capsule, reach: float) -> float:
+static func _inside(base: V3, tip: V3, capsule: SimCapsule, reach: float) -> float:
 	var d: V3 = V3.sub(tip, base)
 	var lo: float = INF
 	var hi: float = -INF

@@ -33,8 +33,10 @@ static func _v(x: float, y: float, z: float) -> V3:
 ## `body` (turned by `torso` degrees of coil): the upper arm along `upper`,
 ## the forearm along `fore`, the hand straight along the forearm with its
 ## thumb (the blade) as near `thumb` as is square to it, then turned `turn`
-## degrees toward the thumb and bent `bend` degrees toward the flat. The pole
-## tweak puts the elbow where it was built.
+## degrees toward the thumb and bent `bend` degrees toward the flat. The edge
+## runs along the knuckles; the check turns the hand round the handle to its
+## forearm whatever the edge, so a hand built bent is seated straight. The
+## pole tweak puts the elbow where it was built.
 static func _key(body: ReferenceBody, side: StringName, frame: int, upper: V3, fore: V3, thumb: V3,
 		bend: float = 0.0, turn: float = 0.0, torso: float = 0.0) -> Swing.KeyPose:
 	var posed: ReferenceBody = body.posed(torso, 0.0, V3.make())
@@ -51,15 +53,12 @@ static func _key(body: ReferenceBody, side: StringName, frame: int, upper: V3, f
 	q = Quat64.from_axis_angle(t, bend * SimMath.DEG)
 	along = Quat64.rotate(q, along)
 	flat = Quat64.rotate(q, flat)
-	# the weapon's edge: the hand's frame turned back by the rig's roll
-	var roll: float = SwingCheck.GRIP_ROLL * SimMath.DEG * (-1.0 if side == &"right" else 1.0)
-	var edge: V3 = V3.add(V3.scale(along, cos(roll)), V3.scale(flat, sin(roll)))
 	var w: V3 = body.wrist_in_fist(side)
 	var k: Swing.KeyPose = Swing.KeyPose.new()
 	k.frame = frame
 	k.grip = V3.sub(wrist, V3.add(V3.add(V3.scale(along, w.x), V3.scale(t, w.y)), V3.scale(flat, w.z)))
 	k.blade = t
-	k.edge = V3.normalized(V3.sub(edge, V3.scale(t, V3.dot(edge, t))))
+	k.edge = along
 	var chest: Quat64 = Quat64.from_axis_angle(V3.normalized(V3.sub(posed.spine_top, posed.spine_base)), torso * SimMath.DEG)
 	var p: Array = SwingCheck.ELBOW_POLES[side]
 	k.pole = V3.sub(V3.sub(elbow, shoulder), Quat64.rotate(chest, V3.make(p[0], p[1], p[2])))
@@ -148,6 +147,12 @@ func _assert_at(problems: Array[String], words: Array, frame: float, what: Strin
 
 # ------------------------------------------------------------------ the arm
 
+## What the rig's four passes of the hand's turn round the handle leave
+## (FighterRig.seat()): the check lands this near the arm _key() built.
+const PASSES_MM: float = 0.002
+const PASSES_DEG: float = 2.0
+
+
 func test_the_elbow_is_solved_where_the_arm_was_built() -> void:
 	for body: ReferenceBody in [rogue, ReferenceBody.of(&"hunter")]:
 		for arm: Array in [
@@ -160,15 +165,19 @@ func test_the_elbow_is_solved_where_the_arm_was_built() -> void:
 			s.add_track(SwingCheck.HANDS[side], [_key(body, side, 0, arm[1], arm[2], _v(0.0, 1.0, 0.0))] as Array[Swing.KeyPose])
 			var a: SwingCheck.Arm = SwingCheck.moment(s, _sword(), body, 0.0).arms[side]
 			var what: String = "%s %s arm %s" % [body.id, side, arm[1]]
-			assert_almost_eq(V3.distance(a.elbow, _built_elbow(body, side, arm[1])), 0.0, EPS, what + ": the elbow")
+			# the solve is exact for the wrist the passes reach
+			assert_almost_eq(V3.distance(a.shoulder, a.elbow), body.upper_arm, EPS, what + ": the upper arm's length")
+			assert_almost_eq(V3.distance(a.elbow, a.wrist), body.forearm, EPS, what + ": the forearm's length")
+			# and that wrist is where the arm was built, to what the passes leave
+			assert_almost_eq(V3.distance(a.elbow, _built_elbow(body, side, arm[1])), 0.0, PASSES_MM, what + ": the elbow")
 			var open: float = 180.0 - Quat64.angle_between(Quat64.from_to(V3.normalized(arm[1]), V3.normalized(arm[2])), Quat64.identity()) / SimMath.DEG
-			assert_almost_eq(a.elbow_angle, open, 1e-7, what + ": the elbow's angle")
-			assert_almost_eq(a.bend, 0.0, 1e-7, what + ": a straight wrist doesn't bend")
-			assert_almost_eq(a.deviation, 0.0, 1e-7, what + ": nor turn")
+			assert_almost_eq(a.elbow_angle, open, PASSES_DEG, what + ": the elbow's angle")
+			assert_almost_eq(a.bend, 0.0, PASSES_DEG, what + ": a straight wrist doesn't bend")
+			assert_almost_eq(a.deviation, 0.0, PASSES_DEG, what + ": nor turn")
 			assert_eq(a.short, 0.0, what + ": within reach")
 
 
-func test_a_turned_hand_measures_its_bend_and_its_sideways_turn() -> void:
+func test_a_hand_is_seated_straight_on_its_forearm_and_measures_its_sideways_turn() -> void:
 	for side: StringName in [&"right", &"left"]:
 		for hand: Array in [[40.0, 0.0], [-75.0, 0.0], [0.0, 20.0], [0.0, -30.0]]:
 			var s: Swing = Swing.new(10)
@@ -176,8 +185,10 @@ func test_a_turned_hand_measures_its_bend_and_its_sideways_turn() -> void:
 			s.add_track(SwingCheck.HANDS[side], [_key(rogue, side, 0, _v(0.15 * x, -0.9, 0.4), _v(-0.15 * x, 0.35, 0.92),
 					_v(0.0, 1.0, 0.0), hand[0], hand[1])] as Array[Swing.KeyPose])
 			var a: SwingCheck.Arm = SwingCheck.moment(s, _sword(), rogue, 0.0).arms[side]
-			assert_almost_eq(absf(a.bend), absf(hand[0]), 1e-7, "%s hand %s: the bend" % [side, hand])
-			assert_almost_eq(absf(a.deviation), absf(hand[1]), 1e-7, "%s hand %s: the sideways turn" % [side, hand])
+			# a hand built bent is turned round the handle onto its forearm
+			assert_almost_eq(a.bend, 0.0, PASSES_DEG, "%s hand %s: no bend" % [side, hand])
+			if hand[1] != 0.0:
+				assert_almost_eq(absf(a.deviation), absf(hand[1]), 0.1, "%s hand %s: the sideways turn" % [side, hand])
 
 
 func test_without_a_tweak_the_elbow_hangs_out_down_and_back() -> void:
@@ -206,7 +217,7 @@ func test_the_torso_coil_carries_the_shoulders_and_the_poles() -> void:
 	assert_almost_eq(V3.distance(m.arms[&"right"].shoulder, posed.shoulders[&"right"]), 0.0, EPS, "the coiled shoulder")
 	assert_almost_eq(V3.distance(m.proxies["torso"].a, posed.torso.a), 0.0, EPS, "the coiled torso")
 	var built: V3 = V3.add(posed.shoulders[&"right"], V3.scale(V3.normalized(_v(0.3, -0.8, 0.5)), rogue.upper_arm))
-	assert_almost_eq(V3.distance(m.arms[&"right"].elbow, built), 0.0, EPS, "the pole turns with the chest")
+	assert_almost_eq(V3.distance(m.arms[&"right"].elbow, built), 0.0, PASSES_MM, "the pole turns with the chest")
 
 
 func test_a_weapon_held_in_both_hands_puts_the_left_hand_on_its_grip() -> void:
@@ -239,12 +250,15 @@ func test_a_good_cut_passes_on_both_bodies() -> void:
 		assert_eq(SwingCheck.check(_move(cut, 8, 3, 14), _sword(), body, cut), [] as Array[String], "%s: following itself" % body.id)
 
 
-func test_a_75_degree_wrist_fails_and_names_its_frame() -> void:
-	var bent: Swing = _cut_with(rogue, 8, _key(rogue, &"right", 8, _v(0.3, -0.8, 0.5), _v(-0.1, 0.2, 0.97), _v(1.0, 0.3, 0.0), 75.0))
-	var problems: Array[String] = SwingCheck.check(_move(bent, 8, 3, 14), _sword(), rogue)
-	_assert_at(problems, ["right_hand", "wrist bends 75°"], 8.0, "a 75° wrist")
+func test_a_wrist_turned_35_degrees_sideways_fails_and_names_its_frame() -> void:
 	var turned: Swing = _cut_with(rogue, 8, _key(rogue, &"right", 8, _v(0.3, -0.8, 0.5), _v(-0.1, 0.2, 0.97), _v(1.0, 0.3, 0.0), 0.0, 35.0))
-	_assert_at(SwingCheck.check(_move(turned, 8, 3, 14), _sword(), rogue), ["right_hand", "wrist turns 35° sideways"], 8.0, "a wrist turned 35°")
+	var problems: Array[String] = SwingCheck.check(_move(turned, 8, 3, 14), _sword(), rogue)
+	_assert_at(problems, ["right_hand", "sideways"], 8.0, "a wrist turned 35°")
+	for p: String in problems:
+		if p.contains("sideways"):
+			# the worst of it, between the keys round frame 8
+			var worst: float = float(p.get_slice("turns ", 1).get_slice("°", 0))
+			assert_between(worst, 35.0, 37.0, "about 35°: %s" % p)
 
 
 func test_a_blade_through_the_head_fails_and_names_its_frame() -> void:
@@ -303,16 +317,17 @@ func test_a_locked_elbow_and_a_grip_out_of_reach_fail() -> void:
 
 
 func test_the_entry_from_the_guard_and_from_the_move_before_are_both_checked() -> void:
-	# a guard with the wrist bent 70°: the fresh entry starts in it, and every
-	# exit ends in it; a chained entry starts from the move before instead
+	# a guard with the wrist turned 40° sideways: the fresh entry starts in it,
+	# and every exit ends in it; a chained entry starts from the move before
+	# instead
 	var cut: Swing = _cut(rogue)
 	var bad_guard: Dictionary[StringName, Swing.KeyPose] = {
-		RIGHT: _key(rogue, &"right", 0, _v(0.15, -0.9, 0.4), _v(-0.15, 0.35, 0.92), _v(0.0, 1.0, 0.0), 70.0),
+		RIGHT: _key(rogue, &"right", 0, _v(0.15, -0.9, 0.4), _v(-0.15, 0.35, 0.92), _v(0.0, 1.0, 0.0), 0.0, 40.0),
 	}
 	var s: Swing = Swing.new(25, bad_guard)
 	s.add_track(RIGHT, cut.track(RIGHT))
 	var fresh: Array[String] = SwingCheck.check(_move(s, 8, 3, 14), _sword(), rogue)
-	_assert_named(fresh, ["wrist bends 70°", "frames 0 to 25"], "entered from the bad guard")
+	_assert_named(fresh, ["wrist turns 40° sideways", "frames 0 to 25"], "entered from the bad guard")
 	var chained: Array[String] = SwingCheck.check(_move(s, 8, 3, 14), _sword(), rogue, cut)
 	assert_eq(chained.size(), 1, "following a good move, only the exit: %s" % [chained])
 	assert_false(chained[0].contains("frames 0 to"), "the entry is clean: %s" % chained[0])

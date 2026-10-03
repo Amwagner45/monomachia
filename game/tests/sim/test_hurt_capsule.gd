@@ -53,7 +53,7 @@ func test_a_config_with_an_id_gets_that_body() -> void:
 func test_the_capsule_stands_on_the_feet() -> void:
 	var f: Fighter = H.make_world().fighters[0]
 	f.pos = V3.make(1.25, 0.0, -3.5)
-	var c: Capsule = f.hurt_capsule()
+	var c: SimCapsule = f.hurt_capsule()
 	_assert_v3(c.a, V3.make(1.25, 0.35, -3.5), "the axis starts a radius above the feet")
 	_assert_v3(c.b, V3.make(1.25, 1.4, -3.5), "and ends a radius below 1.75 m")
 	assert_eq(c.radius, 0.35)
@@ -66,7 +66,7 @@ func test_the_capsule_follows_a_jump() -> void:
 	var airborne_ticks: int = 0
 	for i: int in 60:
 		W.step([H.btn(Btn.JUMP) if i == 0 else H.idle(), H.idle()])
-		var c: Capsule = f.hurt_capsule()
+		var c: SimCapsule = f.hurt_capsule()
 		assert_eq([c.a.x, c.a.z, c.b.x, c.b.z], [f.pos.x, f.pos.z, f.pos.x, f.pos.z], "over the feet on tick %d" % i)
 		assert_almost_eq(c.a.y, f.pos.y + 0.35, EPS, "the bottom rises with the feet on tick %d" % i)
 		assert_almost_eq(c.b.y, f.pos.y + 1.4, EPS, "and the top on tick %d" % i)

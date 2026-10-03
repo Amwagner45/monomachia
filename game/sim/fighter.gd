@@ -142,7 +142,7 @@ func airborne() -> bool:
 
 ## The hurt capsule that blades are swept against, where the fighter stands
 ## now (risen with them in the air).
-func hurt_capsule() -> Capsule:
+func hurt_capsule() -> SimCapsule:
 	return body.hurt_capsule(pos)
 
 
@@ -159,7 +159,7 @@ func blade_segments() -> Array[BladeSegment]:
 ## The touch of this tick's blade sweeps on `capsule` (task 7.10): the
 ## deepest of the striking tracks' (the first on a tie), or null when none
 ## touches or the attack has no swing.
-func blade_touch(capsule: Capsule) -> BladeSweep:
+func blade_touch(capsule: SimCapsule) -> BladeSweep:
 	var deepest: BladeSweep = null
 	for b: BladeSegment in blade_segments():
 		var touch: BladeSweep = BladeSweep.touch(b.prev_base, b.prev_tip, b.base, b.tip, b.half_thickness, capsule)

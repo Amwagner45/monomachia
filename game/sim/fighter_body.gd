@@ -41,8 +41,8 @@ static func of(fighter_id: StringName) -> FighterBody:
 
 ## The hurt capsule of this body standing at `pos` (its feet; above the
 ## ground while airborne), in world space.
-func hurt_capsule(pos: V3) -> Capsule:
-	return Capsule.make(
+func hurt_capsule(pos: V3) -> SimCapsule:
+	return SimCapsule.make(
 		V3.make(pos.x, pos.y + hurt_radius, pos.z),
 		V3.make(pos.x, pos.y + hurt_height - hurt_radius, pos.z),
 		hurt_radius,

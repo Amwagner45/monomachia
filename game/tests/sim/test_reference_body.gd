@@ -13,7 +13,7 @@ func _assert_v3(got: V3, want: V3, what: String) -> void:
 	assert_almost_eq(V3.distance(got, want), 0.0, EPS, "%s: got (%s, %s, %s)" % [what, got.x, got.y, got.z])
 
 
-func _assert_capsule(got: Capsule, a: V3, b: V3, radius: float, what: String) -> void:
+func _assert_capsule(got: SimCapsule, a: V3, b: V3, radius: float, what: String) -> void:
 	_assert_v3(got.a, a, what + " (a)")
 	_assert_v3(got.b, b, what + " (b)")
 	assert_eq(got.radius, radius, what + " (radius)")

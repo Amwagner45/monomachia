@@ -115,6 +115,13 @@ const MOVE_DODGE_DIST: float = 2.8
 const MOVE_DODGE_FRAMES: int = 16
 const MOVE_DODGE_I_FRAMES: int = 12
 const MOVE_DODGE_RECOVERY: int = 9
+## The roll's travel (authored-animation task 17): the share of its distance
+## covered after each of its 16 frames, from 0 to 1, read from Roll01 [RM]'s
+## root on HumanM by the import tool (tools/import_clips.gd prints it): about
+## even speed with a soft stop. The backstep keeps ease_out_cubic.
+const MOVE_ROLL_CURVE: Array[float] = [
+	0.0, 0.0876, 0.1958, 0.2823, 0.3651, 0.4479, 0.5398, 0.6502, 0.748, 0.8015, 0.8413, 0.8697, 0.912, 0.9585, 0.9709, 0.9899, 1.0,
+]
 const MOVE_BACKSTEP_DIST: float = 2.1
 const MOVE_BACKSTEP_FRAMES: int = 14
 const MOVE_BACKSTEP_I_FRAMES: int = 10

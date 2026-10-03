@@ -35,7 +35,7 @@ Holding block while not being attacked lowers your posture meter. Holding block 
 * **Precision fighter control:** an eight-way run system lets your fighter move smoothly in any direction. Pushing up or down moves you toward and away from the opponent. Pushing left or right (including diagonals) circles the opponent, who stays the focus point.
 * **Step:** tapping the stick in a direction performs a short, precise step instead of a full run.
 * **Sprint:** double-tapping and holding a direction sprints, which opens running-only attacks.
-* **Dodge (update):** holding a direction and pressing dodge rolls that way, in any direction. The roll grants invincibility frames: normal attacks pass through the fighter. It keeps the old dash's distance and timing. Its travel follows the roll: fast while the fighter tumbles, easing as they come up. Tapping dodge with no direction performs a backstep, a quick hop back.
+* **Dodge (update):** holding a direction and pressing dodge rolls that way, in any direction. The roll grants invincibility frames: normal attacks pass through the fighter. It keeps the old dash's distance and timing. Its travel follows the roll: an even pace while the fighter tumbles, easing to a stop as they come up. Tapping dodge with no direction performs a backstep, a quick hop back.
 * **Jump:** opens a light or heavy jumping attack, and clears sweeps.
 * **Blocking movement (update):** players can walk a little faster while blocking than in the original demo.
 

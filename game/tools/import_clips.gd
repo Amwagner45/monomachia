@@ -21,6 +21,12 @@ extends SceneTree
 ##    - mirrors the clips the manifest marks (left and right swapped);
 ##    - sets the loop mode, and names the clip by its manifest id.
 ##
+## Roll01 [RM] is staged and imported beside the clips for its root track
+## alone (ROOT_SOURCES): `--build` prints its ground travel, normalised to
+## 0-1 and resampled to the dodge's frames (roll_curve()), the 17 numbers
+## SimConst.MOVE_ROLL_CURVE holds (authored-animation task 17), and never
+## puts it in a library.
+##
 ## Neither the staged FBX copies nor the libraries are ever committed
 ## (docs/specs/authored-animation.md, Licence). Without the packs the stage
 ## exits with code 2 and says which setting to fix. The output is
@@ -34,6 +40,14 @@ const TARGETS: Dictionary[StringName, String] = {
 	&"HumanF": "res://fighters/rogue/rogue.tscn",
 }
 const SKELETON: String = "%GeneralSkeleton"
+## Clips staged only for their root track: Roll01 [RM], the roll's travel.
+const ROOT_SOURCES: Array[Dictionary] = [
+	{"id": &"Roll01_RM", "pack": "Human Basic Motions", "dir": "Movement", "source": "Roll01 [RM]"},
+]
+## The clip whose root travel is the roll's, and the set it is read from
+## (the paths' set).
+const ROLL_SOURCE: StringName = &"Roll01_RM"
+const ROLL_SET: StringName = &"HumanM"
 const EXIT_NO_PACKS: int = 2
 
 
@@ -65,7 +79,7 @@ func stage(m: ClipManifest) -> int:
 	var missing: PackedStringArray = []
 	var copied: int = 0
 	for set_name: StringName in m.sets:
-		for clip: ClipManifest.Clip in m.clips.values():
+		for clip: ClipManifest.Clip in m.clips.values() + root_clips():
 			var src: String = source_path(m, set_name, clip)
 			var dest: String = staged_path(set_name, clip)
 			wanted[dest.get_file()] = true
@@ -181,7 +195,69 @@ func build(m: ClipManifest) -> int:
 			printerr("import_clips: cannot save %s (%s)" % [path, error_string(err)])
 			return 1
 		print("import_clips: %s: %d clips -> %s" % [set_name, lib.get_animation_list().size(), path])
+	for set_name: StringName in m.sets:
+		var curve: PackedFloat64Array = roll_curve(set_name)
+		if curve.is_empty():
+			return 1
+		print("import_clips: %s Roll01 [RM] travel over %d frames: [%s]%s" % [set_name, SimConst.MOVE_DODGE_FRAMES,
+			", ".join(Array(curve).map(func(v: float) -> String: return "%.4f" % v)),
+			" (SimConst.MOVE_ROLL_CURVE)" if set_name == ROLL_SET else ""])
 	return 0
+
+
+## The clips staged for their root track alone (ROOT_SOURCES).
+static func root_clips() -> Array[ClipManifest.Clip]:
+	var out: Array[ClipManifest.Clip] = []
+	for d: Dictionary in ROOT_SOURCES:
+		var c: ClipManifest.Clip = ClipManifest.Clip.new()
+		c.id = d["id"]
+		c.pack = d["pack"]
+		c.dir = d["dir"]
+		c.source = d["source"]
+		out.append(c)
+	return out
+
+
+## Roll01 [RM]'s root travel for a set (curve_of()), from its staged import;
+## empty, with an error, when it isn't imported.
+static func roll_curve(set_name: StringName) -> PackedFloat64Array:
+	var clip: ClipManifest.Clip = root_clips()[0]
+	var path: String = staged_path(set_name, clip)
+	if not ResourceLoader.exists(path):
+		printerr("import_clips: %s is not imported; run `node scripts/godot.mjs clips`" % path)
+		return PackedFloat64Array()
+	var scene: Node = (load(path) as PackedScene).instantiate()
+	var player: AnimationPlayer = scene.find_children("*", "AnimationPlayer", true, false)[0]
+	var src: AnimationLibrary = player.get_animation_library(&"")
+	var curve: PackedFloat64Array = curve_of(src.get_animation(src.get_animation_list()[0]), SimConst.MOVE_DODGE_FRAMES)
+	scene.free()
+	return curve
+
+
+## A root track's ground travel, normalised to 0-1 and resampled to
+## `frames` even steps (frames + 1 numbers): the root's distance across the
+## ground from where it starts, over the stretch it travels (until it is
+## within 0.1% of where it ends, on a source frame), over its travel by then.
+static func curve_of(anim: Animation, frames: int) -> PackedFloat64Array:
+	var t: int = anim.find_track(NodePath(SKELETON + ":Root"), Animation.TYPE_POSITION_3D)
+	if t < 0:
+		return PackedFloat64Array()
+	var start: Vector3 = anim.position_track_interpolate(t, 0.0)
+	var ground: Callable = func(time: float) -> float:
+		var d: Vector3 = anim.position_track_interpolate(t, time) - start
+		return Vector2(d.x, d.z).length()
+	var total: float = ground.call(anim.length)
+	var source_frames: int = roundi(anim.length * ClipManifest.SOURCE_FPS)
+	var end: int = source_frames
+	for f: int in source_frames + 1:
+		if ground.call(f / float(ClipManifest.SOURCE_FPS)) >= total * 0.999:
+			end = f
+			break
+	var reach: float = ground.call(end / float(ClipManifest.SOURCE_FPS))
+	var out: PackedFloat64Array = PackedFloat64Array()
+	for i: int in frames + 1:
+		out.append(snappedf(minf(1.0, ground.call(end * i / float(frames) / ClipManifest.SOURCE_FPS) / reach), 0.0001))
+	return out
 
 
 ## A set's library from the staged clips, or null if one isn't imported.

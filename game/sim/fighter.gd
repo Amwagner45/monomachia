@@ -1064,8 +1064,10 @@ func _update_dodge() -> void:
 	var dg: DodgeState = dodge
 	var f: int = sf
 	if f <= dg.frames:
-		var t0: float = SimMath.ease_out_cubic(float(f - 1) / float(dg.frames))
-		var t1: float = SimMath.ease_out_cubic(float(f) / float(dg.frames))
+		# a roll travels along Roll01's curve, the backstep eases out
+		var roll: bool = state == &"dodge"
+		var t0: float = SimMath.roll_travel(float(f - 1) / float(dg.frames)) if roll else SimMath.ease_out_cubic(float(f - 1) / float(dg.frames))
+		var t1: float = SimMath.roll_travel(float(f) / float(dg.frames)) if roll else SimMath.ease_out_cubic(float(f) / float(dg.frames))
 		var step: float = (t1 - t0) * dg.dist
 		pos.x += dg.dir_x * step
 		pos.z += dg.dir_z * step

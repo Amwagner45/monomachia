@@ -10,8 +10,9 @@ extends SceneTree
 ##   node scripts/godot.mjs import
 ##
 ## What it does:
-## - copies the two animation GLBs, the two base bodies, the Ranger outfit
-##   parts, the hairstyles in HAIR and the weapons in WEAPONS;
+## - copies the animation GLBs in ANIMATIONS, the two base bodies, the UAL2
+##   female mannequin, the Ranger outfit parts, the hairstyles in HAIR and the
+##   weapons in WEAPONS;
 ## - scales textures with Lanczos: base colour to at most 2048 px, normal,
 ##   ORM and roughness maps to at most 1024 px;
 ## - rewrites each .gltf's image URIs: the bodies point at `*_Normal_png.png`
@@ -28,6 +29,8 @@ const DEFAULT_QUATERNIUS: String = "C:/Users/Win11/Desktop/Monomachia-assets/qua
 
 const UAL1: String = "Universal Animation Library[Standard]/Universal Animation Library[Standard]/Unreal-Godot"
 const UAL2: String = "Universal Animation Library 2[Standard]/Universal Animation Library 2[Standard]/Unreal-Godot"
+## The Source tier unzips without the doubled top folder.
+const UAL2_SOURCE: String = "Universal Animation Library 2[Source]"
 const BODIES: String = "Universal Base Characters[Standard]/Universal Base Characters[Standard]/Base Characters/Godot - UE"
 const HAIRSTYLES: String = "Universal Base Characters[Standard]/Universal Base Characters[Standard]/Hairstyles/Rigged to Head Bone/glTF (Godot -Unreal)"
 const OUTFIT_PARTS: String = "Modular Character Outfits - Fantasy[Standard]/Modular Character Outfits - Fantasy[Standard]/Exports/glTF (Godot-Unreal)/Modular Parts"
@@ -36,7 +39,19 @@ const OUTFIT_TEXTURES: String = "Modular Character Outfits - Fantasy[Standard]/M
 const MAX_BASE_COLOR: int = 2048
 const MAX_DATA_MAP: int = 1024
 
-const ANIMATIONS: Array[String] = ["UAL1_Standard.glb", "UAL2_Standard.glb"]
+## Destination file name -> path in the packs (relative to _quaternius). The
+## _RM files have root motion baked in; the others have it disabled. The
+## Source tier holds the full UAL2 clip set; its files are renamed so they
+## sit beside the Standard ones.
+const ANIMATIONS: Dictionary[String, String] = {
+	"UAL1_Standard.glb": UAL1 + "/UAL1_Standard.glb",
+	"UAL2_Standard.glb": UAL2 + "/UAL2_Standard.glb",
+	"UAL2_Standard_RM.glb": UAL2 + "/UAL2_Standard_RM.glb",
+	"UAL2_Source.glb": UAL2_SOURCE + "/Unreal-Godot/UAL2.glb",
+	"UAL2_Source_RM.glb": UAL2_SOURCE + "/Unreal-Godot/UAL2_RM.glb",
+}
+## The UAL2 female mannequin: same rig as the library, no clips of its own.
+const MANNEQUIN: String = UAL2_SOURCE + "/Female Mannequin/Unreal-Godot/Mannequin_F.glb"
 const BODY_FILES: Array[String] = ["Superhero_Female_FullBody", "Superhero_Male_FullBody"]
 const HAIR: Array[String] = ["Hair_Long", "Hair_Buzzed", "Hair_Beard"]
 const OUTFIT_FILES: Array[String] = [
@@ -78,9 +93,10 @@ func _initialize() -> void:
 	_weapons = _arg("weapons", "")
 	_register_textures()
 	for f: String in ANIMATIONS:
-		var src_dir: String = UAL1 if f.begins_with("UAL1") else UAL2
-		_copy(_quaternius.path_join(src_dir).path_join(f), DEST + "/quaternius/animations/" + f)
+		_copy(_quaternius.path_join(ANIMATIONS[f]), DEST + "/quaternius/animations/" + f)
 		_write_scene_import(DEST + "/quaternius/animations/" + f, true)
+	_copy(_quaternius.path_join(MANNEQUIN), DEST + "/quaternius/characters/Mannequin_F.glb")
+	_write_scene_import(DEST + "/quaternius/characters/Mannequin_F.glb", false)
 	for f: String in BODY_FILES:
 		_copy_gltf(BODIES, f, "characters")
 	for f: String in HAIR:

@@ -1,7 +1,7 @@
 extends GutTest
 ## Size budgets and import hygiene for the art: the files in game/assets plus
 ## the baked textures and meshes in game/fighters and game/weapons stay under
-## 60 MB with no file over 10 MB, textures are scaled down, every texture a
+## 110 MB with no file over 25 MB, textures are scaled down, every texture a
 ## model references exists, and every skinned model is retargeted through the
 ## humanoid bone map. The audio in game/assets/audio has its own budget (under
 ## 40 MB, checked by the Node tests in tests/audio).
@@ -12,8 +12,10 @@ const AUDIO: String = "res://assets/audio"
 const BAKED: Array[String] = ["res://fighters", "res://weapons"]
 ## Binary art in the baked folders; their scenes and scripts aren't counted.
 const BAKED_EXTENSIONS: Array[String] = ["png", "res", "exr"]
-const MAX_TOTAL_BYTES: int = 60 * 1024 * 1024
-const MAX_FILE_BYTES: int = 10 * 1024 * 1024
+## Raised from 60 MB and 10 MB to take the UAL2 Source tier's two ~20 MB
+## clip libraries (UAL2_Source.glb and UAL2_Source_RM.glb).
+const MAX_TOTAL_BYTES: int = 110 * 1024 * 1024
+const MAX_FILE_BYTES: int = 25 * 1024 * 1024
 const MAX_BASE_COLOR: int = 2048
 const MAX_DATA_MAP: int = 1024
 const BONE_MAP: String = "res://assets/quaternius/ual_bone_map.tres"
@@ -53,7 +55,7 @@ static func _png_size(path: String) -> Vector2i:
 	return size
 
 
-func test_the_art_stays_under_60_mb() -> void:
+func test_the_art_stays_under_110_mb() -> void:
 	var total: int = 0
 	for path: String in _art_files():
 		total += FileAccess.get_size(path)
@@ -61,7 +63,7 @@ func test_the_art_stays_under_60_mb() -> void:
 	assert_lt(total, MAX_TOTAL_BYTES)
 
 
-func test_no_art_file_is_over_10_mb() -> void:
+func test_no_art_file_is_over_25_mb() -> void:
 	for path: String in _art_files():
 		assert_lt(FileAccess.get_size(path), MAX_FILE_BYTES, path)
 

@@ -71,6 +71,10 @@ var elbow_pole: Dictionary[String, Vector3] = {
 	"Right": Vector3(-ELBOW_POLE.x, ELBOW_POLE.y, ELBOW_POLE.z),
 	"Left": ELBOW_POLE,
 }
+## A tweak added to each elbow's pole, by side: in skeleton space (not
+## turned with the chest) and in arm lengths, as a swing's key holds it
+## (SwingPlayer). None by default.
+var pole_tweak: Dictionary[String, Vector3] = {"Right": Vector3.ZERO, "Left": Vector3.ZERO}
 ## The foot targets, by side: where the foot bone (the ankle) goes, in
 ## skeleton space, and the foot's turn from straight ahead (radians,
 ## positive to the left). They start where the rest pose has them. Each
@@ -404,10 +408,16 @@ func _carry(sk: Skeleton3D, _delta: float) -> void:
 			_weapons[index].transform = sk.get_bone_global_pose(_id(side + "Hand")) * hand_grip.fist(side) * grip
 
 
+## Sets every elbow's pole tweak back to none.
+func clear_pole_tweaks() -> void:
+	for side: String in SIDES:
+		pole_tweak[side] = Vector3.ZERO
+
+
 ## Where an arm's elbow pole is, for its shoulder at `shoulder` with the
-## chest turned `chest` (see ELBOW_POLE).
+## chest turned `chest` (see ELBOW_POLE), plus its tweak (pole_tweak).
 func _pole(side: String, shoulder: Vector3, chest: Basis) -> Vector3:
-	return shoulder + chest * (elbow_pole[side] * _arm_length[side])
+	return shoulder + (chest * elbow_pole[side] + pole_tweak[side]) * _arm_length[side]
 
 
 ## The turn of a rotation about its own +Y (radians).

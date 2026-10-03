@@ -5,8 +5,11 @@ extends Node3D
 ## host's blended position and yaw (update_from()) and poses it from the
 ## rules' state; it never changes the rules.
 ##
-## Until swings exist (plan task 14.10), the pose comes from StickPose, the
-## stand-in posing from the rules' state:
+## A move with a swing (task 7) plays from it (SwingPlayer, plan task 14.10):
+## the weapon goes exactly where the rules' swing has it at the frame shown,
+## the arms reach for it on IK, and the stand-in's lean, crouch and spin are
+## left out, since the swing's body comes from its own keys. Every other pose
+## comes from StickPose, the stand-in posing from the rules' state:
 ## - its hands and blade directions become the weapons' poses in fighter
 ##   space, and the rig's IK puts the arms on them (the off hand on a
 ##   two-handed weapon's second grip). StickPose's keys were made for a stick
@@ -150,7 +153,7 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	else:
 		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
 		locomotion.update(f, GuardStance.CLIP if _in_guard() else model.idle_clip(), seconds, alpha, _in_guard())
-		_pose(f, p, seconds)
+		_pose(f, p, seconds, alpha)
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
 	var lit: float = flash_left(frame)
@@ -187,13 +190,19 @@ func _in_guard() -> bool:
 	return model.hold != null and model.hold.guard
 
 
-## Poses the body and the weapons, `seconds` into the rules' clock.
-func _pose(f: Fighter, p: StickPose.Pose, seconds: float) -> void:
+## Poses the body and the weapons, `seconds` into the rules' clock, `alpha`
+## of the way from the step before to the last.
+func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var rig: FighterRig = model.rig
+	var swung: bool = SwingPlayer.plays(f) and not model.weapons.is_empty()
+	var lean: float = 0.0 if swung else p.lean
+	var crouch: float = 0.0 if swung else p.crouch
+	var spin: float = 0.0 if swung else p.spin
 	rig.leg_weight = 1.0
+	rig.clear_pole_tweaks()
 	rig.body.clear()
-	rig.body.spine_pitch = p.lean
-	rig.body.hips_offset = Vector3(0.0, -p.crouch, 0.0)
+	rig.body.spine_pitch = lean
+	rig.body.hips_offset = Vector3(0.0, -crouch, 0.0)
 	locomotion.pose_body(rig.body)
 	# the stance as far as the legs are the guard's; the clips' feet as they
 	# run with the guard down
@@ -201,11 +210,14 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float) -> void:
 	sway = GuardStance.sway(seconds) * stance
 	sink = 0.0
 	rig.clip_feet = 1.0
-	model.rotation = Vector3(0.0, p.spin, 0.0)
+	model.rotation = Vector3(0.0, spin, 0.0)
 	if stance > 0.0:
-		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, p.spin)
+		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, spin)
 	if model.weapons.is_empty():
 		return
+	var swing_poses: Dictionary[int, Transform3D] = {}
+	if swung:
+		swing_poses = SwingPlayer.weapon_poses(f, alpha, model.weapons.size(), rig)
 	var sweeps: Array[Vector3] = _strike_sweeps(f)
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
 	# the weapons ride the stance's pelvis, sunk, and the shuffle's bob (on
@@ -214,6 +226,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float) -> void:
 	rides.y -= sink
 	var carry: Transform3D = Transform3D(Basis.IDENTITY, rides) * locomotion.carry(model.skeleton)
 	for i: int in model.weapons.size():
+		if swing_poses.has(i):
+			model.pose_weapon(i, swing_poses[i])
+			continue
 		var hand: StickPose.Hand = hands[i]
 		var xf: Transform3D = carry * FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
 		model.pose_weapon(i, _within_reach(i, xf, rig.body))

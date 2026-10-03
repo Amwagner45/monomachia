@@ -24,6 +24,10 @@ export const ALLOWED = new Set([
   // as the spec's sound section asks for); re-encoding it would change the
   // extractor and the sound bank's checks.
   'game/assets/audio/sfx/amb_shrine_loop.wav',
+  // Quaternius's full UAL2 clip libraries (Source tier), about 20 MB each,
+  // with and without root motion; the art budget test allows up to 25 MB.
+  'game/assets/quaternius/animations/UAL2_Source.glb',
+  'game/assets/quaternius/animations/UAL2_Source_RM.glb',
 ]);
 
 // The folders whose sizes are printed.

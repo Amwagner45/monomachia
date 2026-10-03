@@ -46,6 +46,9 @@ extends RefCounted
 ##   and their feet are GuardShuffle's, stepped on the same rules frames and
 ##   planted where the fighter can stand (plants()). The hand-over to the
 ##   clips and back takes GUARD_RAMP_FRAMES.
+## - While the guard's legs show (shuffles()), the fighter's footsteps fall
+##   where the shuffle's feet come down (footfalls), not by the stride count
+##   (FootstepCadence).
 ##
 ## A KO's fall plays on the model's AnimationPlayer instead: the view stops
 ## updating the tree, and the player's pose stands.
@@ -70,6 +73,9 @@ const GUARD_RAMP_FRAMES: int = 8
 ## before its legs go over to the clips: a tap step with the stick held to
 ## its end runs one, and stays in the guard.
 const RUN_AFTER_FRAMES: int = 3
+## From how far the legs are the guard's (guard) the shuffle's landings are
+## the fighter's footsteps.
+const FOOTFALL_GUARD: float = 0.5
 ## The furthest the legs turn from straight ahead, either way (radians).
 const LEG_TURN_MAX: float = 80.0 * PI / 180.0
 ## Travelling further than this from straight ahead (radians, either way),
@@ -128,6 +134,11 @@ var prev_guard: float = 0.0
 var shown_guard: float = 0.0
 ## The guard's feet.
 var shuffle: GuardShuffle = GuardShuffle.new()
+## Where the guard's feet came down on the ground in the rules frames the
+## last update() moved on, while their landings were the footsteps
+## (shuffles()): the footfalls. A tap step's own landing makes none, since
+## the step has its own scuff.
+var footfalls: Array[Vector3] = []
 
 var _root: AnimationNodeBlendTree
 ## The rules frame the phase is at; -1 before the first update.
@@ -242,6 +253,18 @@ static func spring(x: float, rate: float, target: float, omega: float, dt: float
 	return Vector2(target + (d + c * dt) * e, (rate - omega * c * dt) * e)
 
 
+## The rules frame the legs were last moved on (-1 before the first update).
+func rules_frame() -> int:
+	return _frame
+
+
+## True when the fighter's footsteps fall where the shuffle's feet land
+## (footfalls) rather than by the stride count: while its legs are the
+## guard's, at least FOOTFALL_GUARD of the way.
+func shuffles() -> bool:
+	return guard >= FOOTFALL_GUARD
+
+
 ## The clip the idle shows (the one last passed to update()).
 func idle_clip() -> StringName:
 	return _idle_clip
@@ -264,6 +287,7 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 	sprint_speed = SimConst.MOVE_SPRINT * mult
 	var frame: int = f.world.frame if f.world != null else _frame
 	var pos: Vector3 = Vector3(f.pos.x, f.pos.y, f.pos.z)
+	footfalls.clear()
 	var running: bool = runs_unguarded(f)
 	if _frame < 0 or frame < _frame:
 		_unguarded = RUN_AFTER_FRAMES if running else 0
@@ -311,6 +335,9 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 			# frames missed, the fighter moved evenly
 			var k: float = float(i + 1) / float(frame - _frame)
 			shuffle.step(from.lerp(pos, k), lerp_angle(from_yaw, f.yaw, k), stance and plants(f) and guard > 0.0)
+			if shuffles() and f.state != &"step":
+				for side: String in shuffle.landed:
+					footfalls.append(shuffle.feet[side].at)
 		prev_speed = speed if frame - _frame == 1 else s
 		speed = s
 		_frame = frame

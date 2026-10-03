@@ -13,6 +13,18 @@ extends Node3D
 ## StickPose inside FighterView; the combat effects (task 18) join
 ## _on_sim_event(), where the camera's shake and field-of-view kicks are
 ## already wired.
+##
+## A fighter walking in its guard puts its feet down where its guard shuffle
+## lands them: the view reports each as a footfall, for the match's sound to
+## play its footstep there (MatchAudio).
+
+## A fighter's foot came down on the ground at `at` while its footsteps are
+## its guard shuffle's (shuffles()).
+signal footfall(side: int, at: Vector3)
+
+## The most rules frames the view may be behind a fighter and still give its
+## footsteps: a frame's rules steps come before the view draws them.
+const FOOTFALL_LAG: int = 4
 
 ## The host to follow. The default is the parent (match_host.tscn).
 @export var host_path: NodePath = ^".."
@@ -102,6 +114,23 @@ func update_fighters(delta: float) -> void:
 	var a: float = host.alpha()
 	for i: int in fighters.size():
 		fighters[i].update_from(host.fighter(i), host.display_position(i), host.display_yaw(i), a, delta, _time)
+		for at: Vector3 in fighters[i].locomotion.footfalls:
+			footfall.emit(i, at)
+
+
+## True when side `side`'s footsteps fall where its guard shuffle lands its
+## feet (reported as footfalls) rather than by the stride count: its legs are
+## the guard's, and the view is keeping up with it (drawn within
+## FOOTFALL_LAG rules frames; a match stepped without being drawn keeps the
+## stride count).
+func shuffles(side: int) -> bool:
+	if host == null or side >= fighters.size() or fighters[side].locomotion == null:
+		return false
+	var loco: Locomotion = fighters[side].locomotion
+	var f: Fighter = host.fighter(side)
+	if f == null or f.world == null or not loco.shuffles():
+		return false
+	return f.world.frame - loco.rules_frame() <= FOOTFALL_LAG
 
 
 # ------------------------------------------------------------------ match start

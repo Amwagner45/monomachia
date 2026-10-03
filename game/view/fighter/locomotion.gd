@@ -46,6 +46,11 @@ extends RefCounted
 ##   and their feet are GuardShuffle's, stepped on the same rules frames and
 ##   planted where the fighter can stand (plants()). The hand-over to the
 ##   clips and back takes GUARD_RAMP_FRAMES.
+## - A swing played in the guard (SwingPlayer) is a strike (plan task
+##   14.13): the guard's feet stand planted through it and step in time with
+##   the rules' lunge (GuardShuffle.strike_for(); strike()), the leading foot
+##   landing on the first active frame. Moves without a swing keep the feet
+##   riding, as in the stand-in's attacks. A charge holds the steps.
 ## - While the guard's legs show (shuffles()), the fighter's footsteps fall
 ##   where the shuffle's feet come down (footfalls), not by the stride count
 ##   (FootstepCadence).
@@ -253,6 +258,18 @@ static func spring(x: float, rate: float, target: float, omega: float, dt: float
 	return Vector2(target + (d + c * dt) * e, (rate - omega * c * dt) * e)
 
 
+## The steps of fighter `f`'s strike at attack frame `attack_frame`: its lunge
+## the way it runs (straight ahead, or along the last dodge), in the
+## fighter's frame. None while charging, so the feet hold still then.
+static func strike(f: Fighter, attack_frame: int) -> GuardShuffle.Strike:
+	if f.atk.charging:
+		return GuardShuffle.Strike.new()
+	var way: Vector3 = Vector3.BACK
+	if f.atk.lunge_dir != null:
+		way = GuardShuffle.facing(f.yaw).inverse() * Vector3(f.atk.lunge_dir.x, 0.0, f.atk.lunge_dir.z)
+	return GuardShuffle.strike_for(f.atk.def, f.atk.lunge_total, way, attack_frame)
+
+
 ## The rules frame the legs were last moved on (-1 before the first update).
 func rules_frame() -> int:
 	return _frame
@@ -294,6 +311,7 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 	elif frame > _frame:
 		_unguarded = _unguarded + frame - _frame if running else 0
 	var guarded: float = 1.0 if stance and _unguarded < RUN_AFTER_FRAMES else 0.0
+	var striking: bool = stance and SwingPlayer.plays(f) and not f.airborne()
 	if _frame < 0 or frame < _frame:
 		# the first update, or a new world: start from where the legs are
 		_frame = frame
@@ -334,7 +352,8 @@ func update(f: Fighter, idle_clip: StringName, idle_seconds: float, alpha: float
 			# show, and ride with the fighter while the clips have them; over
 			# frames missed, the fighter moved evenly
 			var k: float = float(i + 1) / float(frame - _frame)
-			shuffle.step(from.lerp(pos, k), lerp_angle(from_yaw, f.yaw, k), stance and plants(f) and guard > 0.0)
+			var plan: GuardShuffle.Strike = strike(f, f.atk.frame - (frame - _frame - 1 - i)) if striking else null
+			shuffle.step(from.lerp(pos, k), lerp_angle(from_yaw, f.yaw, k), (stance and plants(f) or striking) and guard > 0.0, plan)
 			if shuffles() and f.state != &"step":
 				for side: String in shuffle.landed:
 					footfalls.append(shuffle.feet[side].at)

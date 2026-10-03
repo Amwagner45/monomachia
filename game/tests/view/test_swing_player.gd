@@ -619,3 +619,79 @@ func test_the_knees_pass_pose_check_through_a_coiled_cut() -> void:
 			for fail: String in s.report.failures():
 				assert_false(fail.contains("knee"), "%s frame %d: %s" % [id, s.frame, fail])
 	MoveBench.free_all()
+
+
+# ------------------------------------------------------------ footwork (14.13)
+
+## The posed ankles in the world, by side, for a view standing at `pos`
+## facing `yaw`.
+func _ankles(v: FighterView, pos: Vector3, yaw: float) -> Dictionary[String, Vector3]:
+	var poses: Array[Transform3D] = await _posed(v)
+	var place: Transform3D = Transform3D(Basis(Vector3.UP, yaw), pos) * v.model.transform
+	var out: Dictionary[String, Vector3] = {}
+	for side: String in FighterRig.SIDES:
+		out[side] = place * poses[v.model.skeleton.find_bone(side + "Foot")].origin
+	return out
+
+
+## For each of the Katana's lunging lights, played from the guard: the front
+## foot touches down on the first active frame (±1), the rear foot after it,
+## and on the posed skeleton the feet that stand slide less than 1 cm a frame
+## in the world while the fighter lunges over them.
+func test_the_front_foot_lands_on_the_first_active_frame() -> void:
+	var lights: Array[StringName] = [&"k_l1", &"k_l2", &"k_l3", &"k_l4"]
+	var weapon: WeaponDef = _string_weapon(&"katana", lights)
+	for id: StringName in lights:
+		var def: AttackDef = weapon.moves[id]
+		assert_gt(def.lunge, 0.0, "%s lunges" % id)
+		var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+		var f: Fighter = W.fighters[0]
+		var v: FighterView = _view(&"rogue", weapon)
+		var show: Callable = func() -> void:
+			v.update_from(f, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw, 1.0, 1.0 / 60.0, 0.0)
+		for i: int in 6:
+			W.step([SimHelpers.idle(), SimHelpers.idle()])
+			show.call()
+			await _posed(v)
+		var start: float = f.pos.z
+		assert_true(f.start_attack(id), "%s starts" % id)
+		var landed: Dictionary[String, int] = {}
+		var was: Dictionary[String, Vector3] = await _ankles(v, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw)
+		var worst: float = 0.0
+		var planted_frames: int = 0
+		while f.state == &"attack":
+			W.step([SimHelpers.idle(), SimHelpers.idle()])
+			if f.state != &"attack":
+				break
+			show.call()
+			var shuffle: GuardShuffle = v.locomotion.shuffle
+			var now: Dictionary[String, Vector3] = await _ankles(v, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw)
+			for side: String in FighterRig.SIDES:
+				if shuffle.landed.has(side) and not landed.has(side):
+					landed[side] = f.atk.frame
+				var foot: GuardShuffle.Foot = shuffle.feet[side]
+				if not foot.swinging and not shuffle.landed.has(side) and foot.prev_height == 0.0:
+					worst = maxf(worst, Vector2(now[side].x - was[side].x, now[side].z - was[side].z).length())
+					planted_frames += 1
+			was = now
+		assert_gt(f.pos.z - start, 0.2, "%s lunged" % id)
+		assert_true(landed.has("Right"), "%s: the front foot stepped" % id)
+		assert_eq(landed.get("Right", -99), def.startup + 1, "%s: the front foot lands on the first active frame" % id)
+		assert_gt(landed.get("Left", 999), landed.get("Right", -99), "%s: the rear foot after it" % id)
+		assert_gt(planted_frames, 20, "%s: feet stood on most frames" % id)
+		assert_lt(worst, 0.01, "%s: planted feet slide %.1f mm at most" % [id, worst * 1000.0])
+
+
+## A move with no swing keeps the stand-in's attack: the feet ride with the
+## fighter and take no strike steps.
+func test_moves_without_a_swing_keep_the_feet_riding() -> void:
+	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"rogue", Moves.KATANA)
+	for i: int in 4:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	W.step([SimHelpers.idle(), SimHelpers.idle()])
+	v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	assert_true(v.locomotion.shuffle.riding, "riding through the stand-in's attack")

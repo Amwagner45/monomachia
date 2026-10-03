@@ -47,6 +47,13 @@ extends RefCounted
 ##   and pause, and shows between frames by the host's alpha (show()).
 ## - The feet that came down on the ground in a frame (landed) are where the
 ##   fighter's footsteps fall (see Locomotion.footfalls).
+## - A strike (plan task 14.13: a swing played in the guard, see Strike and
+##   strike_for()) plants the feet and steps them in time with the rules'
+##   lunge instead: the foot that leads the lunge's way lifts so that it
+##   lands on the first active frame, ahead of its spot by what is left of
+##   the lunge then, and the other follows, landing REAR_FRAMES later.
+##   Otherwise the feet stand where they are through the strike: no step is
+##   taken to tidy them until it ends.
 ##
 ## Positions are in the rules' world, on the ground (y = 0); the fighter's
 ## frame is skeleton space: +Z forward, +X to its left.
@@ -93,6 +100,14 @@ const PACE_AHEAD: float = 0.05
 const ACROSS: float = 2.0
 ## How much more one foot must lead before it takes over the lead (m).
 const LEAD_HYSTERESIS: float = 0.02
+## A strike's steps: the leading foot's swing takes STRIKE_SWING_MOST frames
+## at most (it lifts no earlier than the lunge starts) and STRIKE_SWING_LEAST
+## at least; the other lands REAR_FRAMES after it; a landing is at most
+## STRIKE_AHEAD_MOST off its spot, whatever is left of the lunge.
+const STRIKE_SWING_MOST: int = 10
+const STRIKE_SWING_LEAST: int = 4
+const REAR_FRAMES: int = 6
+const STRIKE_AHEAD_MOST: float = 0.25
 ## How far the pelvis drops per metre the feet spread past the stance's
 ## (m/m), and the most it moves either way (m).
 const BOB_PER_SPREAD: float = 0.06
@@ -139,6 +154,11 @@ class Foot:
 	var shown_height: float = 0.0
 	## How many steps it has finished.
 	var steps: int = 0
+	## A strike's step (see Strike): how many frames it swings, and where it
+	## lands from its spot, in the fighter's frame; 0 frames for a step of
+	## the shuffle's own.
+	var planned_frames: int = 0
+	var planned_land: Vector3 = Vector3.ZERO
 	## Where its spot was in the world on the last frame.
 	var _spot_was: Vector3 = Vector3.ZERO
 
@@ -150,6 +170,16 @@ class Foot:
 	## Which side of the mid-line it keeps to: -1 right (-X), +1 left.
 	func sign() -> float:
 		return -1.0 if side == "Right" else 1.0
+
+
+## The steps of a strike, by side: the attack frame each foot lifts on and
+## lands on, and where it lands from its spot (in the fighter's frame), and
+## the attack's frame this step. A side not listed stays planted.
+class Strike:
+	var frame: int = 0
+	var lifts: Dictionary[String, int] = {}
+	var lands: Dictionary[String, int] = {}
+	var ahead: Dictionary[String, Vector3] = {}
 
 
 var feet: Dictionary[String, Foot] = {}
@@ -239,6 +269,48 @@ static func ahead(drift: Vector3) -> float:
 	return speed * stand / 2.0
 
 
+## The steps of a strike by move `def` lunging `lunge_total` metres the way
+## `way` (in the fighter's frame, on the ground; straight ahead unless the
+## lunge runs along a dodge), at attack frame `frame`: the foot further that
+## way (across counting ACROSS times over along) lifts so that it lands on
+## the first active frame, ahead of its spot by what the lunge has left to
+## go then (eased as the rules ease it), and the other lands REAR_FRAMES
+## after it, as far ahead as the lunge has left then. No lunge, no steps.
+static func strike_for(def: AttackDef, lunge_total: float, way: Vector3, frame: int) -> Strike:
+	var out: Strike = Strike.new()
+	out.frame = frame
+	if lunge_total <= 0.0 or way.length() < 1e-6:
+		return out
+	way = way.normalized()
+	var score: Dictionary[String, float] = {}
+	for side: String in SIDES:
+		var spot: Vector3 = GuardStance.FEET[side]
+		score[side] = spot.x * ACROSS * way.x + spot.z * way.z
+	var front: String = "Right" if score["Right"] >= score["Left"] else "Left"
+	var rear: String = _other(front)
+	var contact: int = def.startup + 1
+	var lift: int = maxi(maxi(def.lunge_start, contact - STRIKE_SWING_MOST), 1)
+	lift = maxi(mini(lift, contact - STRIKE_SWING_LEAST), 1)
+	out.lifts[front] = lift
+	out.lands[front] = contact
+	out.lifts[rear] = contact
+	out.lands[rear] = contact + REAR_FRAMES
+	for side: String in SIDES:
+		var left: float = _lunge_left(def, lunge_total, out.lands[side])
+		out.ahead[side] = way * minf(left, STRIKE_AHEAD_MOST)
+	return out
+
+
+## How far a lunge of `lunge_total` by move `def` has still to go after attack
+## frame `frame` (m), as the rules ease it (Fighter._update_attack()).
+static func _lunge_left(def: AttackDef, lunge_total: float, frame: int) -> float:
+	var ls: int = def.lunge_start
+	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else def.startup + def.active
+	var n: float = float(maxi(1, le - ls))
+	var done: float = SimMath.ease_in_out(clampf(float(frame - ls) / n, 0.0, 1.0))
+	return lunge_total * (1.0 - done)
+
+
 ## Stands the feet on their spots under a fighter at `pos` facing `yaw`,
 ## planted.
 func reset(pos: Vector3, yaw: float) -> void:
@@ -253,6 +325,7 @@ func reset(pos: Vector3, yaw: float) -> void:
 		foot.offset = Vector3.ZERO
 		foot.turn = 0.0
 		foot.swinging = false
+		foot.planned_frames = 0
 		foot.drift = Vector3.ZERO
 		foot.heading_for = Vector3.ZERO
 		foot.at = _pos + facing(yaw) * foot.spot
@@ -273,8 +346,9 @@ func reset(pos: Vector3, yaw: float) -> void:
 ## Moves on one rules frame, the fighter now at `pos` facing `yaw`: planted
 ## feet stand where they are when `anchored` (the fighter on the ground,
 ## walking or standing) and the fighter is slower than RIDE_SPEED, else
-## they ride with it; swings move on; then a foot that needs to step starts.
-func step(pos: Vector3, yaw: float, anchored: bool) -> void:
+## they ride with it; swings move on; then a foot that needs to step starts,
+## or, in a `strike`, the foot it lifts on this frame.
+func step(pos: Vector3, yaw: float, anchored: bool, strike: Strike = null) -> void:
 	prev_body = body
 	prev_body_yaw = body_yaw
 	body = pos
@@ -302,11 +376,15 @@ func step(pos: Vector3, yaw: float, anchored: bool) -> void:
 		if foot.swinging:
 			# on through the swing at the pace the speed now asks for, so a
 			# step taken setting off keeps up as the fighter speeds up
-			var pace: int = swing_frames(foot.heading_for)
+			var pace: int = foot.planned_frames if foot.planned_frames > 0 else swing_frames(foot.heading_for)
 			foot.frames += 1
-			foot.progress = minf(1.0, foot.progress + 1.0 / float(pace))
+			# a strike's step counts whole frames, so it lands on the one planned
+			if foot.planned_frames > 0:
+				foot.progress = minf(1.0, float(foot.frames) / float(pace))
+			else:
+				foot.progress = minf(1.0, foot.progress + 1.0 / float(pace))
 			var t: float = foot.progress
-			var land: Vector3 = _landing(foot)
+			var land: Vector3 = foot.planned_land if foot.planned_frames > 0 else _landing(foot)
 			var e: float = smoothstep(0.0, 1.0, t)
 			foot.offset = foot.from.lerp(land, e)
 			foot.turn = lerpf(foot.from_turn, 0.0, e)
@@ -314,6 +392,7 @@ func step(pos: Vector3, yaw: float, anchored: bool) -> void:
 			lift = LIFT * clampf(length / LIFT_STEP, 0.3, 1.0) * sin(PI * t)
 			if t >= 1.0:
 				foot.swinging = false
+				foot.planned_frames = 0
 				foot.offset = land
 				foot.turn = 0.0
 				foot.steps += 1
@@ -332,16 +411,28 @@ func step(pos: Vector3, yaw: float, anchored: bool) -> void:
 		foot.height = (pos.y if riding else 0.0) + lift
 	_pos = ground
 	_update_lead(moved)
-	if not feet["Right"].swinging and not feet["Left"].swinging:
+	if strike != null:
+		for side: String in SIDES:
+			var foot: Foot = feet[side]
+			if not foot.swinging and strike.lifts.get(side, -1) == strike.frame:
+				_lift(foot)
+				foot.planned_frames = maxi(1, strike.lands[side] - strike.lifts[side])
+				foot.planned_land = strike.ahead[side]
+	elif not feet["Right"].swinging and not feet["Left"].swinging:
 		var side: String = _next_step()
 		if side != "":
-			var foot: Foot = feet[side]
-			foot.swinging = true
-			foot.from = foot.offset
-			foot.from_turn = foot.turn
-			foot.progress = 0.0
-			foot.frames = 0
+			_lift(feet[side])
 	_step_bob()
+
+
+## Starts `foot`'s swing from where it stands.
+func _lift(foot: Foot) -> void:
+	foot.swinging = true
+	foot.planned_frames = 0
+	foot.from = foot.offset
+	foot.from_turn = foot.turn
+	foot.progress = 0.0
+	foot.frames = 0
 
 
 ## Shows the fighter, the feet and the bob `alpha` of the way from the frame

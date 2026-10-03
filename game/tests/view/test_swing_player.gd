@@ -406,9 +406,11 @@ func test_strings_never_jump_and_a_stopped_string_ends_on_the_guard() -> void:
 		assert_eq(played[last_attack]["frame"], ender.last_frame - 1, "L x%d: the last frame shown" % n)
 		assert_lt((played[last_attack]["grip"] as Vector3).distance_to(guard.origin), short + NEAR_POS,
 				"L x%d: a frame of its exit short of the guard" % n)
+		var settle: float = (played[-1]["grip"] as Vector3).distance_to(played[last_attack]["grip"])
 		for i: int in range(last_attack + 1, played.size()):
 			var moved: float = (played[i]["grip"] as Vector3).distance_to(played[i - 1]["grip"])
-			assert_lt(moved, GuardStance.CROUCH * 0.5, "L x%d: then on to the guard riding the stance, no jump" % n)
+			assert_lt(moved, 0.6 * settle + 0.005, "L x%d: then on to the guard riding the stance over a few frames, no jump (%.1f of %.1f cm)" % [
+					n, moved * 100.0, settle * 100.0])
 		assert_almost_eq((played[-1]["grip"] as Vector3).y, guard.origin.y - GuardStance.CROUCH, 0.04, "L x%d: riding it" % n)
 	assert_gt(played_lights, 1, "the string has follow-ups")
 	assert_gt(largest_gap, 0.008, "some follow-up's entry started away from the shown grip, so the test can fail")
@@ -440,3 +442,180 @@ func test_a_cut_off_swing_blends_out() -> void:
 		W.step([SimHelpers.idle(), SimHelpers.idle()])
 		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
 	assert_true(v.swing_player.settled(), "blended out within BLEND_FRAMES")
+
+
+# ------------------------------------------------------------ the body (14.12)
+
+## A cut for `move` whose hand and body tracks key the same frames: cocked
+## 60° to the right with the chest coiled 45° and the pelvis 25° that way and
+## the weight 6 cm back, the grip 35 cm out (well within reach, so the fist
+## stays on it), held from S - 4 to S - 1 (ease 0), then through
+## -10° at the middle of the cut to -80° three frames after the active ones,
+## the chest at -30° and the weight 6 cm forward, settling there (ease 0).
+## Keyed alike, the hand's and the body's speeds peak together, at the middle.
+static func _coiled_cut(move: AttackDef) -> Swing:
+	var S: int = move.startup
+	var end: int = S + move.active + 3
+	var mid: int = (S - 1 + end) / 2
+	var guard: Dictionary[StringName, Swing.KeyPose] = {SF.RIGHT: SF.slash_guard(), &"body": SF.body_key(0, 0.0, 0.0)}
+	var out: Swing = Swing.new(move.total_frames(), guard)
+	out.add_track(SF.RIGHT, [SF.level_pose(S - 4, 1.2, 60.0, 0.0, 0.35), SF.level_pose(S - 1, 1.2, 60.0, 0.0, 0.35),
+			SF.level_pose(mid, 1.2, -10.0), SF.level_pose(end, 1.2, -80.0, 0.0)] as Array[Swing.KeyPose])
+	var back: V3 = V3.make(0.0, 0.0, -0.06)
+	out.add_track(&"body", [_shifted(SF.body_key(S - 4, 45.0, 25.0, 0.0), back), _shifted(SF.body_key(S - 1, 45.0, 25.0, 0.0), back),
+			SF.body_key(mid, 7.5, 5.0), _shifted(SF.body_key(end, -30.0, -15.0, 0.0), V3.make(0.0, 0.0, 0.06))] as Array[Swing.KeyPose])
+	return out
+
+
+static func _shifted(k: Swing.KeyPose, shift: V3) -> Swing.KeyPose:
+	k.pelvis_shift = shift
+	return k
+
+
+## A copy of weapon `id` whose light start is _coiled_cut().
+static func _coiling(id: StringName) -> WeaponDef:
+	var w: WeaponDef = Moves.WEAPONS[id]
+	return SF.weapon(id, {w.light_start: _coiled_cut(w.moves[w.light_start])} as Dictionary[StringName, Swing])
+
+
+## Plays the light start of `weapon` on `fighter_id` from the guard, showing
+## `per_frame` moments per attack frame on the posed skeleton, and returns
+## one record per moment: "t" (the swing's frame shown), "hips", "chest" and
+## "head" (headings, degrees, + to the fighter's left), "hips_at" (the hips
+## bone's place), "hand" (the right hand bone's) and "blade" (the weapon's).
+func _play_posed(fighter_id: StringName, weapon: WeaponDef, per_frame: int = 1) -> Array[Dictionary]:
+	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(fighter_id, weapon)
+	var sk: Skeleton3D = v.model.skeleton
+	for i: int in 4:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+		await _posed(v)
+	var out: Array[Dictionary] = [await _record(v, f, sk, -1.0)]
+	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	while f.state == &"attack":
+		for j: int in per_frame:
+			var alpha: float = float(j + 1) / float(per_frame)
+			v.update_from(f, Vector3.ZERO, 0.0, alpha, 1.0 / 60.0, 0.0)
+			out.append(await _record(v, f, sk, SwingPlayer.swing_frame(f, alpha)))
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+	return out
+
+
+func _record(v: FighterView, f: Fighter, sk: Skeleton3D, t: float) -> Dictionary:
+	var poses: Array[Transform3D] = await _posed(v)
+	var heading: Callable = func(bone: String) -> float:
+		var id: int = sk.find_bone(bone)
+		return rad_to_deg(BodyLayer.heading(sk, id, poses[id]))
+	return {"t": t, "hips": heading.call("Hips"), "chest": heading.call("UpperChest"), "head": heading.call("Head"),
+			"hips_at": poses[sk.find_bone("Hips")].origin, "hand": poses[sk.find_bone("RightHand")] * v.model.rig.fist("Right").origin,
+			"wrist": poses[sk.find_bone("RightHand")].origin,
+			"blade": v.model.weapons[0].transform.basis.y}
+
+
+## The moment `key` turns fastest at, in the records from frame `from` on.
+static func _peak(rec: Array[Dictionary], key: String, from: float) -> float:
+	var best: float = -1.0
+	var at: float = -1.0
+	for i: int in range(1, rec.size()):
+		if rec[i - 1]["t"] < from:
+			continue
+		var dt: float = rec[i]["t"] - rec[i - 1]["t"]
+		if dt <= 0.0:
+			continue
+		var turn: float
+		if key == "blade":
+			turn = rad_to_deg((rec[i]["blade"] as Vector3).angle_to(rec[i - 1]["blade"]))
+		else:
+			turn = absf(angle_difference(deg_to_rad(rec[i][key]), deg_to_rad(rec[i - 1][key])))
+		if turn / dt > best:
+			best = turn / dt
+			at = (rec[i]["t"] + rec[i - 1]["t"]) / 2.0
+	return at
+
+
+static func _at(rec: Array[Dictionary], t: float) -> Dictionary:
+	for r: Dictionary in rec:
+		if absf(r["t"] - t) < 1e-6:
+			return r
+	return {}
+
+
+## The hips turn first, then the chest, then the blade: on a cut whose hand
+## and body are keyed alike, the hips' turning peaks PELVIS_LEAD frames
+## before the blade's and the chest's CHEST_LEAD before, on the skeleton.
+func test_the_hips_lead_the_chest_lead_the_blade() -> void:
+	var weapon: WeaponDef = _coiling(&"katana")
+	var cut: AttackDef = weapon.moves[weapon.light_start]
+	var rec: Array[Dictionary] = await _play_posed(&"rogue", weapon, 4)
+	var from: float = float(cut.startup - 3)
+	var hips: float = _peak(rec, "hips", from)
+	var chest: float = _peak(rec, "chest", from)
+	var blade: float = _peak(rec, "blade", from)
+	assert_lt(hips, chest, "the hips peak (frame %.2f) before the chest (%.2f)" % [hips, chest])
+	assert_lt(chest, blade, "the chest peaks (frame %.2f) before the blade (%.2f)" % [chest, blade])
+	assert_almost_eq(blade - hips, SwingPlayer.PELVIS_LEAD, 0.75, "the hips about two frames ahead")
+
+
+## The keys' coil shows on the skeleton: cocked, the chest is turned about
+## 45° to the right and the hips about 25°, and the head turns back against
+## the chest to keep watching the opponent.
+func test_the_coil_and_the_head_show_on_the_skeleton() -> void:
+	var weapon: WeaponDef = _coiling(&"greatsword")
+	var cut: AttackDef = weapon.moves[weapon.light_start]
+	var rec: Array[Dictionary] = await _play_posed(&"hunter", weapon)
+	var still: Dictionary = rec[0]
+	var cocked: Dictionary = _at(rec, float(cut.startup - 3))
+	var chest: float = cocked["chest"] - still["chest"]
+	assert_almost_eq(chest, -45.0, 4.0, "the chest coiled 45° to the right (%.1f°)" % chest)
+	assert_almost_eq(cocked["hips"] - still["hips"], -25.0, 4.0, "the hips 25° (%.1f°)" % (cocked["hips"] - still["hips"]))
+	var head: float = cocked["head"] - still["head"]
+	assert_almost_eq(head, chest * 0.15, 3.0, "the head turned back about 85%% of the way (%.1f°)" % head)
+
+
+## The weight goes back over the rear foot in the wind-up and the pelvis
+## dips about 5 cm at contact, on the skeleton.
+func test_the_weight_shifts_back_and_the_pelvis_dips_at_contact() -> void:
+	var weapon: WeaponDef = _coiling(&"greatsword")
+	var cut: AttackDef = weapon.moves[weapon.light_start]
+	var rec: Array[Dictionary] = await _play_posed(&"hunter", weapon)
+	var still: Vector3 = rec[0]["hips_at"]
+	var cocked: Vector3 = _at(rec, float(cut.startup - 3))["hips_at"]
+	assert_almost_eq(cocked.z - still.z, -0.06, 0.01, "6 cm back over the rear foot")
+	var contact: Vector3 = _at(rec, float(cut.startup + 1))["hips_at"]
+	var before: Vector3 = _at(rec, float(cut.startup + 1) - SwingPlayer.DIP_FRAMES)["hips_at"]
+	assert_almost_eq(contact.y - before.y, -0.05, 0.01, "dipped about 5 cm at contact (%.1f cm)" % ((contact.y - before.y) * 100.0))
+
+
+## A 2-4 frame cocked hold shows on the skeleton: the hand stays still while
+## the hips and chest already begin to turn into the cut.
+func test_the_cocked_hold_shows_on_the_skeleton() -> void:
+	var weapon: WeaponDef = _coiling(&"katana")
+	var cut: AttackDef = weapon.moves[weapon.light_start]
+	var rec: Array[Dictionary] = await _play_posed(&"rogue", weapon)
+	var held: int = 0
+	var moves: PackedStringArray = []
+	for t: int in range(cut.startup - 6, cut.startup + 2):
+		var a: Dictionary = _at(rec, float(t - 1))
+		var b: Dictionary = _at(rec, float(t))
+		var moved: float = (b["hand"] as Vector3).distance_to(a["hand"])
+		moves.append("%d: fist %.1f wrist %.1f mm" % [t, moved * 1000.0, (b["wrist"] as Vector3).distance_to(a["wrist"]) * 1000.0])
+		if moved < 0.003:
+			held += 1
+	assert_between(held, 2, 4, "the hand holds still for %d frames before the strike (%s)" % [held, ", ".join(moves)])
+	var hips_then: float = _at(rec, float(cut.startup - 1))["hips"] - _at(rec, float(cut.startup - 2))["hips"]
+	assert_gt(absf(hips_then), 1.0, "while the hips set off")
+
+
+## PoseCheck's knees pass through a coiled cut on both fighters: the feet
+## stay planted and the knees over the toes as the hips turn and shift.
+func test_the_knees_pass_pose_check_through_a_coiled_cut() -> void:
+	for id: StringName in [&"rogue", &"hunter"]:
+		var bench: MoveBench = MoveBench.new(self, id, _coiling(&"katana"))
+		var steps: Array[MoveBench.Step] = await bench.play(&"k_l1")
+		assert_gt(steps.size(), 20, "%s: the cut played" % id)
+		for s: MoveBench.Step in steps:
+			for fail: String in s.report.failures():
+				assert_false(fail.contains("knee"), "%s frame %d: %s" % [id, s.frame, fail])
+	MoveBench.free_all()

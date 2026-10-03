@@ -11,7 +11,9 @@ extends Node3D
 ## left out, since the swing's body comes from its own keys. A weapon with
 ## swings stands in their guard, and a change of what poses the weapons (a
 ## swing starting, a follow-up, a swing ending) blends over a few frames
-## (14.11). Every other pose comes from StickPose, the stand-in posing from
+## (14.11). The swing's body keys turn the hips, the chest and the head, the
+## hips leading, and move and dip the pelvis, taking over from the guard
+## stance's (14.12). Every other pose comes from StickPose, the stand-in posing from
 ## the rules' state:
 ## - its hands and blade directions become the weapons' poses in fighter
 ##   space, and the rig's IK puts the arms on them (the off hand on a
@@ -209,6 +211,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.body.spine_pitch = lean
 	rig.body.hips_offset = Vector3(0.0, -crouch, 0.0)
 	locomotion.pose_body(rig.body)
+	# a swing's body (its coil, shift and dip) takes over from the stance's
+	var swing_body: SwingPlayer.Body = swing_player.body(f, alpha)
+	swing_body.apply(rig.body)
 	# the stance as far as the legs are the guard's; the clips' feet as they
 	# run with the guard down
 	stance = locomotion.shown[0] if _in_guard() else 0.0
@@ -217,7 +222,7 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.clip_feet = 1.0
 	model.rotation = Vector3(0.0, spin, 0.0)
 	if stance > 0.0:
-		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, spin)
+		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, spin, 1.0 - swing_body.weight)
 	if model.weapons.is_empty():
 		return
 	var swing_poses: Dictionary[int, Transform3D] = {}
@@ -230,7 +235,7 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
 	# the weapons ride the stance's pelvis, sunk, and the shuffle's bob (on
 	# its spring), the lean and the brace with the upper body
-	var rides: Vector3 = (GuardStance.offset(seconds) + Vector3(0.0, locomotion.shuffle.shown_weapon_bob, 0.0)) * stance
+	var rides: Vector3 = (GuardStance.offset(seconds) + Vector3(0.0, locomotion.shuffle.shown_weapon_bob, 0.0)) * stance * (1.0 - swing_body.weight)
 	rides.y -= sink
 	var carry: Transform3D = Transform3D(Basis.IDENTITY, rides) * locomotion.carry(model.skeleton)
 	var poses: Dictionary[int, Transform3D] = {}

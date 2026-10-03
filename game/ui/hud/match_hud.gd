@@ -1,7 +1,10 @@
 class_name MatchHud
 extends CanvasLayer
-## The minimal match HUD (task 24 brings the full one): both fighters' HP bars
-## with posture under them, round pips and an ultimate badge, the round label,
+## The match HUD (task 24 builds it out from the minimal one). The top bar
+## (24.1): each side's plate (the 赤 or 青 seal, name, weapon and the disarmed
+## tag), HP with its lag band and low-HP pulse, posture with its hot and full
+## states, the round pips and the 奥義 badge, as HudState works them out, and
+## the round's kanji between them. Also the round label,
 ## centre announcements (Round N, Fight, K.O., the round's winner,
 ## Disarmed) and a hint line (ultimate ready, pick up your weapon), shown only
 ## while the round is being fought. It hides when the results open.
@@ -23,17 +26,22 @@ const DOUBLE_KO_FRAMES: int = 132
 const ROUND_RESULT_DELAY: int = 78
 const ROUND_RESULT_FRAMES: int = 96
 const DISARM_FRAMES: int = 90
-## The white lag band under HP holds this long (s), then drains at LAG_DRAIN/s.
-const LAG_HOLD: float = 0.45
-const LAG_DRAIN: float = 0.6
-
-const HP_COLOR: Color = UiPalette.HP_HI
-const HP_LOW_COLOR: Color = UiPalette.DANGER
-const POSTURE_COLOR: Color = UiPalette.POSTURE
-const POSTURE_HOT_COLOR: Color = UiPalette.POSTURE_HOT
-const POSTURE_FULL_COLOR: Color = UiPalette.DANGER
+## The low-HP pulse: one brightening (by LOW_PULSE_GAIN) every LOW_PULSE
+## seconds; and full posture's blink, half of each POSTURE_BLINK seconds at
+## POSTURE_BLINK_ALPHA (the demo's pulse-hp and blink).
+const LOW_PULSE: float = 0.9
+const LOW_PULSE_GAIN: float = 0.45
+const POSTURE_BLINK: float = 0.35
+const POSTURE_BLINK_ALPHA: float = 0.45
+const POSTURE_COLORS: Dictionary = {
+	HudState.Posture.CALM: UiPalette.POSTURE,
+	HudState.Posture.HOT: UiPalette.POSTURE_HOT,
+	HudState.Posture.FULL: UiPalette.DANGER,
+}
+const SEAL_COLORS: Array[Color] = [UiPalette.LACQUER, UiPalette.INDIGO]
+const SEALS: Array[String] = ["赤", "青"]
+const BAR_WIDTH: float = 560.0
 const GOLD: Color = UiPalette.GOLD
-const DIM: Color = Color(1.0, 1.0, 1.0, 0.25)
 
 var host: MatchHost
 
@@ -43,17 +51,19 @@ var announcement: Dictionary = {}
 var _queued: Array[Dictionary] = []
 var _root: Control
 var _plates: Array[Label] = []
+var _weapons: Array[Label] = []
 var _tags: Array[Label] = []
 var _hp: Array[HudBar] = []
 var _posture: Array[HudBar] = []
-var _pips: Array[Array] = [[], []]
-var _ults: Array[Label] = []
+var _pips: Array[HudPips] = []
+var _badges: Array[HudBadge] = []
+var _round_kanji: Label
 var _round_label: Label
 var _announce_label: Label
 var _announce_sub: Label
 var _hint: Label
-var _lag: Array[float] = [1.0, 1.0]
-var _lag_hold: Array[float] = [0.0, 0.0]
+var _lags: Array[HudLag] = [HudLag.new(), HudLag.new()]
+var _states: Array[HudState] = [HudState.new(), HudState.new()]
 var _blink: float = 0.0
 
 
@@ -97,9 +107,13 @@ func snap_bars() -> void:
 	if host == null or not host.is_started():
 		return
 	for i: int in 2:
-		_lag[i] = maxf(0.0, host.fighter(i).hp / SimConst.HP_MAX)
-		_lag_hold[i] = 0.0
+		_lags[i].reset(HudState.of_fighter(host.fighter(i), 0).hp)
 	_process(0.0)
+
+
+## What side i's top bar shows now (for tests).
+func side_state(i: int) -> HudState:
+	return _states[i]
 
 
 # ------------------------------------------------------------------ host signals
@@ -108,15 +122,12 @@ func _on_match_started(cfg: MatchConfig) -> void:
 	visible = not host.attract
 	announcement = {}
 	_queued.clear()
-	_lag = [1.0, 1.0]
-	_lag_hold = [0.0, 0.0]
 	var me: int = _me()
 	for i: int in 2:
+		_lags[i].reset(1.0)
 		var s: MatchSide = cfg.sides[i]
-		var who: String = s.display_name()
-		if i == me:
-			who += " (You)"
-		_plates[i].text = "%s  ·  %s" % [who, Moves.WEAPONS[s.weapon_id].name] if i == 0 else "%s  ·  %s" % [Moves.WEAPONS[s.weapon_id].name, who]
+		_plates[i].text = s.display_name() + (" (You)" if i == me else "")
+		_weapons[i].text = Moves.WEAPONS[s.weapon_id].name
 	_refresh_announcement()
 
 
@@ -138,6 +149,7 @@ func _on_sim_event(e: Dictionary) -> void:
 		&"roundStart":
 			var n: int = int(e["round"])
 			_round_label.text = "Round %d" % n
+			_round_kanji.text = HudState.round_kanji(n)
 			if not training:
 				var wins: Array[int] = host.sim_match.wins
 				var final: bool = wins[0] == SimConst.ROUNDS_TO_WIN - 1 and wins[1] == SimConst.ROUNDS_TO_WIN - 1
@@ -201,34 +213,23 @@ func _process(delta: float) -> void:
 	if host == null or not host.is_started() or not visible:
 		return
 	_blink += delta
+	var pulse: float = 0.5 - 0.5 * cos(_blink * TAU / LOW_PULSE)
+	var blink_off: bool = fmod(_blink, POSTURE_BLINK) >= POSTURE_BLINK * 0.5
 	for i: int in 2:
-		var f: Fighter = host.fighter(i)
-		var hp: float = maxf(0.0, f.hp / SimConst.HP_MAX)
-		if hp < _lag[i]:
-			_lag_hold[i] += delta
-			if _lag_hold[i] > LAG_HOLD:
-				_lag[i] = maxf(hp, _lag[i] - delta * LAG_DRAIN)
-		else:
-			_lag[i] = hp
-			_lag_hold[i] = 0.0
-		_hp[i].value = hp
-		_hp[i].lag = _lag[i]
-		_hp[i].fill_color = HP_LOW_COLOR if hp <= 0.25 and hp > 0.0 and fmod(_blink, 0.8) < 0.4 else HP_COLOR
-		var p: float = f.posture / SimConst.POSTURE_MAX
-		_posture[i].value = p
-		if p >= 0.999:
-			_posture[i].fill_color = POSTURE_FULL_COLOR if fmod(_blink, 0.3) < 0.15 else POSTURE_HOT_COLOR
-		elif p >= 0.7:
-			_posture[i].fill_color = POSTURE_HOT_COLOR
-		else:
-			_posture[i].fill_color = POSTURE_COLOR
-		_posture[i].queue_redraw()
-		_hp[i].queue_redraw()
-		var pips: Array = _pips[i]
-		for k: int in pips.size():
-			(pips[k] as ColorRect).color = GOLD if host.sim_match.wins[i] > k else DIM
-		_ults[i].modulate = GOLD if f.can_ult() else (Color(1, 1, 1, 0.12) if f.ult_used and f.hp <= SimConst.ULT_HP_THRESHOLD else DIM)
-		_tags[i].visible = not f.armed
+		var s: HudState = HudState.of_fighter(host.fighter(i), host.sim_match.wins[i])
+		_states[i] = s
+		_lags[i].step(s.hp, delta)
+		_hp[i].value = s.hp
+		_hp[i].lag = _lags[i].value
+		_hp[i].brightness = 1.0 + LOW_PULSE_GAIN * pulse if s.low else 1.0
+		_posture[i].value = s.posture
+		var color: Color = POSTURE_COLORS[s.posture_level]
+		if s.posture_level == HudState.Posture.FULL and blink_off:
+			color.a = POSTURE_BLINK_ALPHA
+		_posture[i].set_flat(color)
+		_pips[i].lit = s.pips
+		_badges[i].state = s.badge
+		_tags[i].visible = s.disarmed
 	_hint.text = _hints()
 
 
@@ -260,6 +261,14 @@ func _me() -> int:
 
 
 # ------------------------------------------------------------------ building
+
+## Adds a bar to a side's column or row, kept to its width against the
+## screen's edge.
+func _add_bar(parent: Container, bar: HudBar, right: bool) -> void:
+	bar.size_flags_horizontal = Control.SIZE_SHRINK_END if right else Control.SIZE_SHRINK_BEGIN
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	parent.add_child(bar)
+
 
 ## A label in one of the theme's variations, ink-outlined to read over the
 ## arena.
@@ -302,64 +311,94 @@ func _build() -> void:
 
 		var plate_row: HBoxContainer = HBoxContainer.new()
 		plate_row.alignment = BoxContainer.ALIGNMENT_END if right else BoxContainer.ALIGNMENT_BEGIN
-		plate_row.add_theme_constant_override("separation", 12)
+		plate_row.add_theme_constant_override("separation", 10)
 		box.add_child(plate_row)
-		var plate: Label = _label("Plate%d" % i, "Fighter", UiTheme.DISPLAY, 24)
-		var tag: Label = _label("Tag%d" % i, "Disarmed", UiTheme.EYEBROW, 16)
-		tag.add_theme_color_override("font_color", UiPalette.DANGER)
+		var seal: ColorRect = ColorRect.new()
+		seal.name = "SealBox%d" % i
+		seal.color = SEAL_COLORS[i]
+		seal.custom_minimum_size = Vector2(26.0, 26.0)
+		seal.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var seal_text: Label = UiTheme.label(SEALS[i], UiTheme.DISPLAY, 16)
+		seal_text.name = "Seal%d" % i
+		seal_text.set_anchors_preset(Control.PRESET_FULL_RECT)
+		seal_text.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		seal.add_child(seal_text)
+		var plate: Label = _label("Plate%d" % i, "Fighter", UiTheme.DISPLAY, 26)
+		var weapon: Label = _label("Weapon%d" % i, "", UiTheme.EYEBROW, 15, 4)
+		var tag: Label = _label("Tag%d" % i, "Disarmed", UiTheme.TAG, 0, 3)
 		tag.visible = false
+		var parts: Array[Control] = [seal, plate, weapon, tag]
 		if right:
-			plate_row.add_child(tag)
-			plate_row.add_child(plate)
-		else:
-			plate_row.add_child(plate)
-			plate_row.add_child(tag)
+			parts.reverse()
+		for part: Control in parts:
+			plate_row.add_child(part)
 		_plates.append(plate)
+		_weapons.append(weapon)
 		_tags.append(tag)
 
 		var hp: HudBar = HudBar.new()
-		hp.custom_minimum_size = Vector2(568.0, 22.0)
+		hp.name = "Hp%d" % i
+		hp.custom_minimum_size = Vector2(BAR_WIDTH, 18.0)
 		hp.reversed = right
-		hp.fill_color = HP_COLOR
-		box.add_child(hp)
+		hp.slant = 10.0
+		hp.fill_bottom = UiPalette.HP_LO
+		_add_bar(box, hp, right)
 		_hp.append(hp)
 		var posture: HudBar = HudBar.new()
-		posture.custom_minimum_size = Vector2(568.0, 8.0)
+		posture.name = "Posture%d" % i
+		posture.custom_minimum_size = Vector2(BAR_WIDTH * 0.68, 8.0)
 		posture.reversed = right
 		posture.value = 0.0
-		posture.fill_color = POSTURE_COLOR
 		posture.lag_color = Color(0, 0, 0, 0)
-		box.add_child(posture)
+		posture.edge_color = Color(UiPalette.GOLD, 0.4)
+		var posture_row: HBoxContainer = HBoxContainer.new()
+		posture_row.alignment = BoxContainer.ALIGNMENT_END if right else BoxContainer.ALIGNMENT_BEGIN
+		posture_row.add_theme_constant_override("separation", 8)
+		posture_row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		box.add_child(posture_row)
+		# the caption beside the bar, on its inner side
+		var caption: Label = _label("PostureCaption%d" % i, "Posture", UiTheme.EYEBROW, 12, 3)
+		if right:
+			posture_row.add_child(caption)
+			_add_bar(posture_row, posture, right)
+		else:
+			_add_bar(posture_row, posture, right)
+			posture_row.add_child(caption)
 		_posture.append(posture)
 
 		var meta: HBoxContainer = HBoxContainer.new()
 		meta.alignment = BoxContainer.ALIGNMENT_END if right else BoxContainer.ALIGNMENT_BEGIN
-		meta.add_theme_constant_override("separation", 8)
+		meta.add_theme_constant_override("separation", 10)
 		box.add_child(meta)
-		var pips: Array = []
-		var ult: Label = _label("Ult%d" % i, "ULT", UiTheme.DISPLAY, 18, 4)
-		ult.modulate = DIM
+		var pips: HudPips = HudPips.new()
+		pips.name = "Pips%d" % i
+		var badge: HudBadge = HudBadge.new()
+		badge.name_for_side(i)
 		if right:
-			meta.add_child(ult)
-		for k: int in SimConst.ROUNDS_TO_WIN:
-			var pip: ColorRect = ColorRect.new()
-			pip.custom_minimum_size = Vector2(18.0, 18.0)
-			pip.color = DIM
-			pip.mouse_filter = Control.MOUSE_FILTER_IGNORE
-			meta.add_child(pip)
-			pips.append(pip)
-		if not right:
-			meta.add_child(ult)
-		_pips[i] = pips
-		_ults.append(ult)
+			meta.add_child(badge)
+			meta.add_child(pips)
+		else:
+			meta.add_child(pips)
+			meta.add_child(badge)
+		_pips.append(pips)
+		_badges.append(badge)
 
-	_round_label = _label("RoundLabel", "Round 1", UiTheme.DISPLAY, 24)
-	_round_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	var round_box: VBoxContainer = VBoxContainer.new()
+	round_box.name = "Round"
+	round_box.set_anchors_preset(Control.PRESET_CENTER_TOP)
+	round_box.offset_left = -120.0
+	round_box.offset_right = 120.0
+	round_box.offset_top = 14.0
+	round_box.add_theme_constant_override("separation", 0)
+	round_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_root.add_child(round_box)
+	_round_kanji = _label("RoundKanji", HudState.round_kanji(1), UiTheme.KANJI, 32, 6)
+	_round_kanji.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	_round_kanji.add_theme_color_override("font_color", GOLD)
+	round_box.add_child(_round_kanji)
+	_round_label = _label("RoundLabel", "Round 1", UiTheme.EYEBROW, 14, 4)
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	_round_label.offset_left = -120.0
-	_round_label.offset_right = 120.0
-	_round_label.offset_top = 26.0
-	_root.add_child(_round_label)
+	round_box.add_child(_round_label)
 
 	_announce_label = _label("Announce", "", UiTheme.DISPLAY, 84, 12)
 	_announce_label.set_anchors_preset(Control.PRESET_CENTER)

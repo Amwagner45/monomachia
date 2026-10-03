@@ -271,3 +271,16 @@ func test_the_hud_is_set_in_the_theme() -> void:
 	assert_eq(_font_of(hud.find_child("Announce", true, false) as Control), DISPLAY_FONT)
 	assert_eq(_font_of(hud.find_child("Plate0", true, false) as Control), DISPLAY_FONT)
 	assert_eq(_font_of(hud.find_child("Hint", true, false) as Control), UI_FONT)
+
+
+## The HUD's tags (the demo's .plate .tag): spaced capitals in --danger in a
+## 1 px --danger box.
+func test_tags_are_danger_red_in_a_thin_box() -> void:
+	var tag: Label = UiTheme.label("Disarmed", UiTheme.TAG)
+	add_child_autofree(tag)
+	assert_true(tag.uppercase)
+	_assert_color(tag.get_theme_color(&"font_color"), UiPalette.DANGER)
+	var box: StyleBoxFlat = _flat(tag, &"normal")
+	_assert_color(box.border_color, UiPalette.DANGER)
+	assert_eq(_border(box), [1, 1, 1, 1] as Array[int])
+	assert_false(box.draw_center)

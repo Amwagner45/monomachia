@@ -87,6 +87,18 @@ bg_color = Color(0.70196078, 0.14901961, 0.11764706, 0.35)
 border_width_left = 3
 border_color = Color(0.70196078, 0.14901961, 0.11764706, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_tag"]
+content_margin_left = 7.0
+content_margin_top = 1.0
+content_margin_right = 7.0
+content_margin_bottom = 1.0
+draw_center = false
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(1, 0.23137255, 0.14509804, 1)
+
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_panel"]
 content_margin_left = 44.0
 content_margin_top = 32.0
@@ -126,6 +138,11 @@ EyebrowLabel/base_type = &"Label"
 EyebrowLabel/colors/font_color = Color(0.69019608, 0.63137255, 0.5372549, 1)
 EyebrowLabel/font_sizes/font_size = 17
 EyebrowLabel/fonts/font = SubResource("FontVariation_eyebrow")
+HudTag/base_type = &"Label"
+HudTag/colors/font_color = Color(1, 0.23137255, 0.14509804, 1)
+HudTag/font_sizes/font_size = 14
+HudTag/fonts/font = SubResource("FontVariation_eyebrow")
+HudTag/styles/normal = SubResource("StyleBoxFlat_tag")
 KanjiLabel/base_type = &"Label"
 KanjiLabel/colors/font_color = Color(0.70196078, 0.14901961, 0.11764706, 1)
 KanjiLabel/font_sizes/font_size = 64

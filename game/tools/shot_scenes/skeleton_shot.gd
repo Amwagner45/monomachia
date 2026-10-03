@@ -23,13 +23,20 @@ extends Node
 const SEED: int = 7
 
 @export_enum(
-	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing",
+	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states",
 	"iai_stance", "iai_vertical", "iai_horizontal",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
 ## The Iai draw shots' attack frame.
 @export var iai_frame: int = 16
+## The "hud_states" shot with the two sides' states swapped.
+@export var swap_sides: bool = false
+## The "hud_states" shot's moment in the low-HP pulse and the full posture's
+## blink, before the shot's 0.1 s step (s): 0.25 lands on 0.35 s, the pulse
+## near its brightest with the bar lit; 0.1 on 0.2 s, the pulse lower with
+## the bar dimmed.
+@export var blink_time: float = 0.25
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
 
@@ -102,6 +109,10 @@ func _ready() -> void:
 			_gameplay(MatchConfig.DUEL)
 			host.step(Match.INTRO_FRAMES + 20)
 			_place_apart(spacing)
+		"hud_states":
+			_gameplay(MatchConfig.DUEL)
+			host.step(Match.INTRO_FRAMES + 60)
+			_set_hud_states()
 		"iai_stance", "iai_vertical", "iai_horizontal":
 			_iai(shot)
 	var view: MatchView = host.get_node("View")
@@ -112,9 +123,33 @@ func _ready() -> void:
 		_frame_front(view.camera, 0, shot == "iai_horizontal")
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
+	if shot == "hud_states":
+		# a hit just taken (from the 40 HP _set_hud_states gave): the low
+		# side's lag band held where its HP was; and the pulse and blink at a
+		# chosen moment
+		host.fighter(1 if swap_sides else 0).hp = 18.0
+		hud.set("_blink", blink_time)
+		hud._process(0.1)
 	view.set_process(false)
 	hud.set_process(false)
 	_ready_flag = true
+
+
+## Every top-bar state at once (task 24.1): one side at 40 HP (cut to 18 for
+## the shot, for the lag band), posture hot, the ultimate ready, a round won;
+## the other with posture full, the ultimate used, its weapon lost and two
+## rounds won (all three when swapped, which only a shot can show).
+func _set_hud_states() -> void:
+	var a: Fighter = host.fighter(1 if swap_sides else 0)
+	var b: Fighter = host.fighter(0 if swap_sides else 1)
+	a.hp = 40.0
+	a.posture = 78.0
+	b.hp = 15.0
+	b.posture = SimConst.POSTURE_MAX
+	b.ult_used = true
+	b.armed = false
+	host.sim_match.wins[a.id] = 1
+	host.sim_match.wins[b.id] = 3 if swap_sides else 2
 
 
 func _config(mode: StringName) -> MatchConfig:

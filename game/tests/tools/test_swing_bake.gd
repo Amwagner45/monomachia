@@ -257,7 +257,7 @@ func test_local_a_move_bakes_from_an_iglesias_clip() -> void:
 	for key: Dictionary in track["keys"]:
 		var grip: Array = key["grip"]
 		assert_between(float(grip[1]), 0.3, 2.2, "frame %d: the grip at a hand's height" % key["frame"])
-		assert_lt(Vector2(grip[0], grip[2]).length(), 1.2, "frame %d: the grip within an arm's reach" % key["frame"])
+		assert_lt(Vector2(grip[0], grip[2]).length(), 1.4, "frame %d: the grip within an arm's reach and the clip's step" % key["frame"])
 
 
 # --- task 7: the reach correction and the Rogue's paths -----------------------
@@ -336,7 +336,8 @@ func test_the_visible_blade_follows_the_corrected_path() -> void:
 	var t: ClipTiming = r.timing
 	var sk: Skeleton3D = f.skeleton
 	for frame: int in range(t.startup, t.startup + t.active + 1):
-		f.rig.reach_offset["Right"] = SwingPlayer.to_skeleton(swing.reach_at(float(frame)))
+		# the view carries the body above the hips by the correction
+		f.rig.body.hips_offset = SwingPlayer.to_skeleton(swing.reach_at(float(frame)))
 		var hand: Array[Vector3] = []
 		var grab: Callable = func() -> void:
 			hand.append(sk.get_bone_global_pose(sk.find_bone("RightHand")) * f.rig.fist("Right").origin)
@@ -346,7 +347,7 @@ func test_the_visible_blade_follows_the_corrected_path() -> void:
 		var baked: Vector3 = SwingPlayer.to_skeleton((r.tracks[&"right_hand"][frame] as Swing.Sample).grip)
 		assert_lt(shown.distance_to(baked), 0.01, "frame %d: the blade shown is the baked path's (%.1f cm)" % [frame, shown.distance_to(baked) * 100.0])
 		assert_lt(hand[0].distance_to(shown), 0.01, "frame %d: the hand holds it (%.1f cm)" % [frame, hand[0].distance_to(shown) * 100.0])
-	f.rig.reach_offset["Right"] = Vector3.ZERO
+	f.rig.body.hips_offset = Vector3.ZERO
 
 
 func test_the_rogues_drift_and_a_flagged_move_plays_humanm() -> void:

@@ -118,8 +118,8 @@ func test_local_the_hunter_holds_the_weapon_in_the_clips_hand() -> void:
 		assert_eq(String(clip.animation), "%s/Attack1H01_R" % ClipLibraries.FIGHTER_SETS[id], "%s plays the clip of its own set" % id)
 		if id == &"hunter":
 			assert_true(v.model.rig.is_fixed(), "the Hunter: the weapon rides the clip's hand")
-			assert_eq(v.model.rig.reach_offset["Right"], SwingPlayer.to_skeleton(k.moves[&"k_l1"].swing.reach_at(SwingPlayer.swing_frame(f, 1.0))),
-				"its reach correction on the arm")
+			assert_true(v.model.rig.body.hips_offset.is_equal_approx(SwingPlayer.to_skeleton(k.moves[&"k_l1"].swing.reach_at(SwingPlayer.swing_frame(f, 1.0)))),
+				"its reach correction carries the body")
 			var hand: Vector3 = poses[v.model.skeleton.find_bone("RightHand")] * v.model.rig.fist("Right").origin
 			assert_lt(hand.distance_to(v.model.weapons[0].transform.origin), 0.01, "the hand on the handle")
 		else:

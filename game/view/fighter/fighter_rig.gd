@@ -28,8 +28,7 @@ extends RefCounted
 ##   weapon rides its hand at its grip (the measured fist turned by the
 ##   look's grip_offset, and by 180° about the knuckles for a reverse grip),
 ##   and the off hand of a two-handed weapon reaches its OffHandGrip on IK
-##   over the clip. A baked swing's reach correction (reach_offset) moves
-##   the weapon on from the clip's hand, and that arm reaches it on IK;
+##   over the clip;
 ## - posed (pose_weapon()): its transform in skeleton space is given, and
 ##   the arms reach for it on IK. The main hand grips the weapon's origin;
 ##   the off hand of a two-handed weapon grips its OffHandGrip marker; each
@@ -65,7 +64,7 @@ const CLAVICLE_GAIN: float = 2.2
 const CLAVICLE_MAX: float = 18.0
 ## How far a fixed two-handed weapon's off arm reaches, as a share of its
 ## length, before the weapon is drawn in toward it (see _draw_in()).
-const REACH_SHARE: float = 0.9
+const REACH_SHARE: float = 0.97
 
 var skeleton: Skeleton3D
 var body: BodyLayer
@@ -97,12 +96,6 @@ var foot_yaw: Dictionary[String, float] = {"Right": 0.0, "Left": 0.0}
 ## than on the foot targets (0): the body layer can drop the hips into a
 ## crouch over the clip's planted feet.
 var clip_feet: float = 0.0
-## The reach correction of the playing swing (Swing.reach_at(), authored-
-## animation task 7), by side, in skeleton space: while the weapons are
-## fixed, the weapon in that hand goes this far on from where the clip has
-## it, and the arm reaches it on IK, so the blade shown is the baked path's.
-## None by default.
-var reach_offset: Dictionary[String, Vector3] = {"Right": Vector3.ZERO, "Left": Vector3.ZERO}
 ## Holds planted feet where they landed under the clip (authored-animation
 ## task 8), on top of the leg IK's targets; null for none. It steps once per
 ## rules frame: rules_frame, which the view sets.
@@ -131,8 +124,6 @@ var _reverse: bool = false
 ## In this update, a fixed two-handed weapon was drawn in toward the off
 ## shoulder (see _draw_in()), and the main arm reaches for it on IK too.
 var _drawn_in: bool = false
-## The sides whose fixed weapon the last update moved by reach_offset.
-var _reaching: Dictionary[String, bool] = {}
 ## The hand frames being reached in the current update, by side.
 var _frames: Dictionary[String, Transform3D] = {}
 
@@ -311,7 +302,7 @@ func drives(side: String) -> bool:
 	if grip.is_empty():
 		return false
 	if _fixed:
-		return (side == "Left" and not _look.paired) or (side == "Right" and _drawn_in) or _reaching.get(side, false)
+		return (side == "Left" and not _look.paired) or (side == "Right" and _drawn_in)
 	return _posed[grip[0]]
 
 
@@ -412,7 +403,6 @@ func _update_hands() -> void:
 func _pre(sk: Skeleton3D, _delta: float) -> void:
 	_frames.clear()
 	_drawn_in = false
-	_reaching.clear()
 	if _fixed:
 		# Each fixed weapon where the clip has its hand, so the off hand of a
 		# two-handed one can reach for its grip.
@@ -422,11 +412,6 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 				_poses[index] = sk.get_bone_global_pose(_id(side + "Hand")) * fixed_grip(side)
 		if drives("Left"):
 			_draw_in(sk)
-		for side: String in SIDES:
-			var index: int = _carried_index(side)
-			if index >= 0 and reach_offset[side].length_squared() > 1e-10:
-				_poses[index].origin += reach_offset[side]
-				_reaching[side] = true
 	var chest: Basis = sk.get_bone_global_pose(_id("UpperChest")).basis.orthonormalized()
 	for side: String in SIDES:
 		var ik: TwoBoneIK3D = _arm_ik[side]
@@ -519,26 +504,29 @@ func _draw_in(sk: Skeleton3D) -> void:
 	if off == null:
 		return
 	var shoulder: Vector3 = _origin(sk, "LeftUpperArm")
-	var grip: Vector3 = _poses[0] * off.position
-	var reach: float = _arm_length["Left"] * REACH_SHARE + hand_grip.fist("Left").origin.length()
-	var short: float = shoulder.distance_to(grip) - reach
-	if short <= 0.0:
-		return
-	_poses[0].origin += (shoulder - grip).normalized() * short
-	_drawn_in = true
+	var chest: Basis = sk.get_bone_global_pose(_id("UpperChest")).basis.orthonormalized()
+	var reach: float = _arm_length["Left"] * REACH_SHARE
+	# where the wrist seats on the grip, not the grip itself: the fist puts
+	# the wrist further out on some turns of the handle
+	for attempt: int in 3:
+		var wrist: Vector3 = seat("Left", _poses[0], off.position, shoulder, chest).origin
+		var short: float = shoulder.distance_to(wrist) - reach
+		if short <= 0.001:
+			return
+		_poses[0].origin += (shoulder - wrist).normalized() * short
+		_drawn_in = true
 
 
 ## Puts each carried weapon in its hand's fist, turned by the hold's grip,
-## or each fixed one at its fixed grip (or where it was drawn in or reached
-## to).
+## or each fixed one at its fixed grip (or where it was drawn in to).
 func _carry(sk: Skeleton3D, _delta: float) -> void:
 	var grip: Transform3D = _hold.grip_transform() if _hold != null else Transform3D.IDENTITY
 	for side: String in SIDES:
 		var index: int = _carried_index(side)
 		if index < 0:
 			continue
-		if _fixed and ((_drawn_in and index == 0) or _reaching.get(side, false)):
-			_weapons[index].transform = _poses[index]
+		if _fixed and _drawn_in and index == 0:
+			_weapons[0].transform = _poses[0]
 			continue
 		var hand: Transform3D = sk.get_bone_global_pose(_id(side + "Hand"))
 		_weapons[index].transform = hand * fixed_grip(side) if _fixed else hand * hand_grip.fist(side) * grip

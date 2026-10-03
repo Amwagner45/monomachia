@@ -9,7 +9,7 @@ const MOVES: Dictionary = {
 		"id": &"k_l1", "name": "Right Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL",
 		"side_start": &"right", "side_end": &"left",
 		"startup": 11, "active": 3, "recovery": 16, "damage": 6, "posture": 7, "knockback": 0.35,
-		"range": 2.2, "arc": 110, "lunge": 0.35, "lunge_end": 12, "chain_light": &"k_l2", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
+		"range": 2.2, "arc": 110, "lunge": 0.35, "lunge_end": 13, "chain_light": &"k_l2", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
 	},
 	&"k_l2": {
 		"id": &"k_l2", "name": "Return Cut", "kind": &"light", "type": &"slash", "anim": &"slashLR",

@@ -97,6 +97,10 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# 11.2: Twin Fang dashes 1.4 m, and the spin after it is Spinning Backhand
 	{"move": "d_h1", "field": "lunge", "was": 0.8, "now": 1.4},
 	{"move": "d_h2", "field": "name", "was": "Gutting Spiral", "now": "Spinning Backhand"},
+	# authored animation 9: Right Cut baked from Attack1H01_R first touches a
+	# defender at the duelling distance on frame 13, its last but one active
+	# frame, where its lunge now ends (test_duel_reach)
+	{"move": "k_l1", "field": "lunge_end", "was": 12, "now": 13},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each
@@ -202,6 +206,10 @@ static func _rebuilt(ts: Dictionary, id: StringName) -> Dictionary:
 ## The value a weapon's field should hold: its TS value, or its
 ## WEAPON_CHANGES row's.
 static func _weapon_wanted(wid: String, field: String, ts_value: Variant) -> Variant:
+	# a weapon's reach is its light starter's swing's once it has one (7.13)
+	var w: WeaponDef = Moves.WEAPONS.get(StringName(wid))
+	if field == "reach" and w != null and (w.moves[w.light_start] as AttackDef).swing != null:
+		return (w.moves[w.light_start] as AttackDef).swing.reach
 	for row: Dictionary in WEAPON_CHANGES:
 		if row["weapon"] == wid and row["field"] == field:
 			return row["now"]
@@ -243,7 +251,8 @@ func test_every_attack_def_field_is_a_key() -> void:
 	assert_eq(props, AttackDef.KEYS)
 	var wprops: Array[String] = []
 	for p: Dictionary in WeaponDef.new().get_property_list():
-		if int(p["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE:
+		# authored_reach is the record's reach, kept for derive_reach()
+		if int(p["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE and String(p["name"]) != "authored_reach":
 			wprops.append(String(p["name"]))
 	assert_eq(wprops, WeaponDef.KEYS)
 

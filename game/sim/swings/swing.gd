@@ -110,7 +110,7 @@ var arc: float = -1.0
 ## how far its striking tracks' grips were pushed toward the reach rule
 ## (metres, right, up, forward; at most 15 cm), already in their keys. It
 ## eases in over the startup and out over the recovery (reach_weight()); the
-## view's arm IK plays the same push on a weapon fixed to the clip's hand.
+## view plays the same push, moving the body above the hips.
 var reach_offset: V3 = V3.make()
 ## The startup and the active frames, which reach_weight() eases by (set by
 ## SwingFile from the move).
@@ -148,10 +148,25 @@ func add_track(part: StringName, keys: Array[KeyPose], baked: bool = false) -> v
 	var ticks: Array[Sample] = []
 	for f: int in last_frame + 1:
 		if baked:
-			ticks.append(SwingSampler.held(keys[mini(f, keys.size() - 1)]))
+			ticks.append(held(keys[mini(f, keys.size() - 1)]))
 		else:
 			ticks.append(SwingSampler.sample(keys, part, float(f), guard.get(part), guard.get(part), last_frame))
 	_ticks[part] = ticks
+
+
+## A key's own pose, as a sample: a baked track's frames. (Here rather
+## than SwingSampler's, so building a weapon with baked swings while the
+## scripts load needs no other script.)
+static func held(k: KeyPose) -> Sample:
+	var out: Sample = Sample.new()
+	out.grip = k.grip
+	out.blade = k.blade
+	out.edge = k.edge
+	out.pole = k.pole
+	out.torso = k.torso
+	out.pelvis = k.pelvis
+	out.pelvis_shift = k.pelvis_shift
+	return out
 
 
 ## Whether the track for `part` was baked from a clip.

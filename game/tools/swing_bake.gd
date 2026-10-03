@@ -18,7 +18,8 @@ extends RefCounted
 ## - correct_reach(): where the clip's arm stops short of the reach rule,
 ##   the striking grips are pushed forward (at most MAX_REACH), easing in over
 ##   the wind-up and out over the recovery (Swing.reach_weight()); the push is
-##   written with the swing, and the view's arm IK plays the same push;
+##   written with the swing, and the view plays the same push, moving the
+##   body above the hips (FighterView);
 ## - drift(): how far the Rogue's HumanF clip strays from the path in the
 ##   active frames; past ROGUE_DRIFT she plays the Hunter's HumanM clip.
 ##

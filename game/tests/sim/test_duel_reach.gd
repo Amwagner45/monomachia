@@ -15,6 +15,10 @@ const CUT: StringName = &"k_l1"
 const MIN_INSIDE: float = 0.15
 const MAX_INSIDE: float = 0.20
 const WHIFF_FROM: float = 6.0
+## The synthetic lights below are worked out for Right Cut's lunge ending on
+## frame 12, the demo's; its baked swing ends it on 13 (authored-animation
+## task 9).
+const DEMO_LUNGE_END: int = 12
 
 
 ## What light `id` of `w` gets wrong against the rule, or nothing.
@@ -74,6 +78,7 @@ static func _point(out: float, blade_tip: float = 0.777) -> WeaponDef:
 	var key: Swing.KeyPose = SF.key(0, [0.0, 1.2, out], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0])
 	var w: WeaponDef = SF.weapon(&"katana", {CUT: SF.held(Moves.KATANA.moves[CUT], {SF.RIGHT: key} as Dictionary[StringName, Swing.KeyPose])})
 	w.blade = StrikeSegment.make(V3.make(0.0, 0.09, 0.0), V3.make(0.0, blade_tip, 0.0), 0.015)
+	(w.moves[CUT] as AttackDef).lunge_end = DEMO_LUNGE_END
 	w.derive_reach()
 	return w
 
@@ -128,6 +133,7 @@ func test_the_check_fails_a_lunge_that_ends_before_the_touch_and_a_light_that_re
 	# 12) passes wide of the defender 2.15 m away, and the one across the
 	# front (frame 13) reaches them
 	var w: WeaponDef = SF.weapon(&"katana", {CUT: SF.level_slash(Moves.KATANA.moves[CUT], 1.2, 60.0, -60.0, 1.2)})
+	(w.moves[CUT] as AttackDef).lunge_end = DEMO_LUNGE_END
 	var late: Array[String] = _weapon_problems(w)
 	assert_true(_has(late, "the lunge ends on frame 12, the first touch is on 13"), "%s" % [late])
 	# a blade 6 m long reaches a defender 6 m away

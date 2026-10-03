@@ -690,9 +690,10 @@ func test_the_front_foot_lands_on_the_first_active_frame() -> void:
 ## A move with no swing keeps the stand-in's attack: the feet ride with the
 ## fighter and take no strike steps.
 func test_moves_without_a_swing_keep_the_feet_riding() -> void:
-	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 3.0)
+	var bare: WeaponDef = SF.without_swings(&"katana")
+	var W: World = SimHelpers.make_world(bare, Moves.KATANA, 3.0)
 	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view(&"rogue", Moves.KATANA)
+	var v: FighterView = _view(&"rogue", bare)
 	for i: int in 4:
 		W.step([SimHelpers.idle(), SimHelpers.idle()])
 		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)

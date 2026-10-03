@@ -32,10 +32,10 @@
 			"markers": {
 				"windup": 0,
 				"contact": 8,
-				"contact_end": 11,
-				"settle": 30
+				"contact_end": 10,
+				"settle": 22
 			},
-			"provisional": true,
+			"provisional": false,
 			"groups": [
 				"katana",
 				"daggers"

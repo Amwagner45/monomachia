@@ -48,12 +48,14 @@ extends Node3D
 ##   has a guard stance keeps the stance's relaxed clip until the stance goes
 ##   (task 29);
 ## - an attack whose move has a baked swing plays its clip, timed from the
-##   attack frame, the crossfades the director's. The Hunter holds the weapon
-##   fixed in the clip's hand, its reach correction played by the arm's IK
-##   (FighterRig.reach_offset), so the blade shown is the baked path's; the
-##   Rogue, and either fighter on the fallback clips, has the weapon posed on
-##   the baked path (SwingPlayer) and her hands pulled onto it by IK. The
-##   swing's own body keys, the lean and the guard stance stand aside;
+##   attack frame, the crossfades the director's. Its reach correction
+##   (Swing.reach_at()) moves the whole body above the hips, the planted feet
+##   held, so an arm at full stretch still holds the weapon. The Hunter holds
+##   the weapon fixed in the clip's hand, which the shift carries onto the
+##   baked path; the Rogue, and either fighter on the fallback clips, has the
+##   weapon posed on the baked path (SwingPlayer) and her hands pulled onto
+##   it by IK. The swing's own body keys, the lean and the guard stance stand
+##   aside;
 ## - planted feet are held where they landed under the clips (FootLock)
 ##   while an authored clip shows and while standing out of a guard stance.
 ## Moves without a baked swing keep the stand-in poses below.
@@ -115,6 +117,8 @@ var sink: float = 0.0
 var shot: ClipDirector.Shot = null
 var director: ClipDirector.Context
 var foot_lock: FootLock
+## The world the shot and the foot lock are for: a new one starts them afresh.
+var _shot_world: World = null
 
 var _floor: Node3D
 var _ring_mat: StandardMaterial3D
@@ -196,6 +200,10 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 		_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
 		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
+		if f.world != _shot_world:
+			shot = null
+			foot_lock.clear()
+			_shot_world = f.world
 		shot = ClipDirector.step(shot, f, director)
 		_show_authored(f, alpha)
 		locomotion.update(f, GuardStance.CLIP if _in_guard() else StringName(shot.idle), seconds, alpha, _in_guard())
@@ -296,16 +304,14 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.foot_lock = foot_lock
 	rig.rules_frame = f.world.frame if f.world != null else 0
 	foot_lock.enabled = authored > 0.0 or (stance <= 0.0 and locomotion.speed < 0.05)
-	rig.reach_offset["Right"] = Vector3.ZERO
-	rig.reach_offset["Left"] = Vector3.ZERO
+	if driving:
+		# the reach correction carries the body above the hips, and the arms
+		# and weapon with it
+		rig.body.hips_offset += SwingPlayer.to_skeleton(f.atk.def.swing.reach_at(SwingPlayer.swing_frame(f, alpha)))
 	if model.weapons.is_empty():
 		return
 	if _fixed_on_clip():
-		# the weapon rides the clip's hand, pushed by the reach correction
-		var reach: Vector3 = SwingPlayer.to_skeleton(f.atk.def.swing.reach_at(SwingPlayer.swing_frame(f, alpha)))
-		rig.reach_offset["Right"] = reach
-		if model.weapon_look.paired:
-			rig.reach_offset["Left"] = reach
+		# the weapon rides the clip's hand
 		if not rig.is_fixed():
 			model.fix_weapons()
 		var held: Dictionary[int, Transform3D] = {}

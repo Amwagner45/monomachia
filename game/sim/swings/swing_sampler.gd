@@ -74,11 +74,6 @@ static func sample(keys: Array[Swing.KeyPose], part: StringName, t: float,
 	return _span(keys, part, keys[i], i, float(keys[i].frame), keys[i + 1], i + 1, float(keys[i + 1].frame), t)
 
 
-## A key's own pose, as a sample (a baked track's frames: Swing).
-static func held(k: Swing.KeyPose) -> Swing.Sample:
-	return _held(k)
-
-
 ## A key's own pose.
 static func _held(k: Swing.KeyPose) -> Swing.Sample:
 	var out: Swing.Sample = Swing.Sample.new()

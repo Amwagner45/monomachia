@@ -42,8 +42,8 @@ func test_a_bad_manifest_is_reported() -> void:
 	var path: String = "user://test_clip_manifest_bad.json"
 	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
 	f.store_string(JSON.stringify({"sets": {"HumanM": "Male"}, "clips": {
-		"A": {"pack": "P", "dir": "D", "source": "A", "markers": {"windup": 0, "contact": 9, "contact_end": 4, "settle": 20}},
-		"B": {"pack": "P", "dir": "D", "source": "B", "markers": {"windup": 0, "contact": 1.5, "settle": 20}},
+		"A": {"pack": "P", "dir": "D", "source": "A", "groups": ["katana"], "markers": {"windup": 0, "contact": 9, "contact_end": 4, "settle": 20}},
+		"B": {"pack": "P", "dir": "D", "source": "B", "groups": ["swords"], "markers": {"windup": 0, "contact": 1.5, "settle": 20}},
 		"C": {"dir": "D", "source": "C", "markers": {"windup": 0, "contact": 1, "contact_end": 2, "settle": 3}},
 	}}))
 	f.close()
@@ -53,6 +53,8 @@ func test_a_bad_manifest_is_reported() -> void:
 	assert_string_contains(text, "B: marker contact missing or not a whole frame")
 	assert_string_contains(text, "B: marker contact_end missing")
 	assert_string_contains(text, "C: no pack")
+	assert_string_contains(text, "B: unknown group swords")
+	assert_string_contains(text, "C: no groups")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 
@@ -82,3 +84,14 @@ func test_every_rig_bone_is_mapped_once_or_left_out_on_purpose() -> void:
 		if not mapping.has(profile.get_bone_name(i)):
 			unmapped.append(profile.get_bone_name(i))
 	assert_eq(unmapped, [&"UpperChest", &"LeftEye", &"RightEye", &"Jaw"] as Array[StringName])
+
+
+func test_every_clip_is_on_a_catalogue_page_and_every_page_has_clips() -> void:
+	var m: ClipManifest = ClipManifest.read()
+	var seen: Dictionary[StringName, bool] = {}
+	for group: StringName in ClipManifest.GROUPS:
+		var ids: Array[StringName] = m.in_group(group)
+		assert_false(ids.is_empty(), "the %s page has clips" % group)
+		for id: StringName in ids:
+			seen[id] = true
+	assert_eq(seen.size(), m.clips.size(), "every clip is on a page")

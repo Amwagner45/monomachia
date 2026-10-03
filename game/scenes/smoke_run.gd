@@ -140,7 +140,8 @@ func report() -> String:
 
 
 ## Plays every clip of the Iglesias libraries on a Hunter under `parent`
-## and checks each moves the body: the exported pack holds the libraries and
+## and checks each poses the body away from its rest pose (a held pose, like
+## lying on the ground, counts): the exported pack holds the libraries and
 ## they play. A clip that doesn't move the body is logged as an error, which
 ## fails the run. Without the libraries (a build from a fresh clone) it says
 ## so and passes. Returns a line for the report.
@@ -158,11 +159,10 @@ static func check_clips(parent: Node) -> String:
 		for clip: StringName in lib.get_animation_list():
 			var anim_name: String = "%s/%s" % [set_name, clip]
 			model.animation_player.play(anim_name, 0.0)
-			model.animation_player.seek(0.0, true)
-			var start: Vector3 = model.skeleton.get_bone_global_pose(hand).origin
+			var start: Vector3 = model.skeleton.get_bone_global_rest(hand).origin
 			var moved: float = 0.0
-			for i: int in 8:
-				model.animation_player.seek(lib.get_animation(clip).length * (i + 1) / 8.0, true)
+			for i: int in 9:
+				model.animation_player.seek(lib.get_animation(clip).length * i / 8.0, true)
 				moved = maxf(moved, model.skeleton.get_bone_global_pose(hand).origin.distance_to(start))
 			if moved < 0.01:
 				push_error("SmokeRun: clip %s doesn't move the body" % anim_name)

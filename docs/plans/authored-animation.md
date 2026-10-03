@@ -65,6 +65,10 @@ Oct 3, 2026. Task 3 done in a parallel lane and merged: the CC0 library gains th
 
 Oct 3, 2026. Task 4 done. `FighterModel.fix_weapons(reverse)`: while a clip drives the arms each weapon rides its hand at its grip (the measured fist turned by the new `WeaponLook.grip_offset`, identity for all three weapons), the Daggers one in each hand and turned 180° about the knuckles in the reverse grip, and a two-handed weapon's off hand reaches its `OffHandGrip` on IK over the clip. Where the clip puts that grip past 90% of the off arm's reach (a one-handed clip, the death fall, Dodge01: up to 33 cm out), the weapon is drawn in toward the off shoulder by the shortfall and the main arm follows on IK. The off hand stays within 1 cm of the grip through task 1's clips on both fighters with the Katana and the Greatsword. Sheets: the new `tools/shot_scenes/clip_sheet.tscn` (every manifest clip on both fighters at its four markers, one sheet per weapon; task 5's catalogue builds on it).
 
+Oct 3, 2026. Tasks 16 (knockdown) and 15 (the shoulder carry) done in parallel lanes and merged (conflicts only in two header notes); the decisions each made are in the spec. With both, a 40-match soak is clean (rounds 41.3 s, 1.88 knockdowns and 0.96 disarms per round). Their 300-match runs, each against the baseline: knockdown alone Greatsword 41.7% (−4.4), Katana 53.8%, Daggers 53.5%; the carry alone Greatsword 36.5% (−9.6; the 6-frame lift costs about 6 points and the computer opponent's shorter attack reach about 3.5), Katana 51.5%, Daggers 60.5%. The Greatsword's review (task 20) has to win this back.
+
+Oct 3, 2026. Task 5 done. The manifest names 71 clips: every Iglesias first candidate in the clip table (two of them mirrored: Attack2H02 and AttackDW01), each tagged with its catalogue pages (`groups`), with provisional markers estimated from the striking hand or foot's fastest frames. `clip_sheet.tscn` renders a page per weapon, one for bare hands and one for the states: each clip a row, the Hunter then the Rogue at its four markers, the page's weapon in hand; a test counts the pages against the manifest. Found: Kevin's `_L` clips (Attack1H01_L and the rest) swing with the left hand, a whole-body mirror of the `_R` ones, so the table's "the other side" cuts can't use them for a right-handed backswing as they stand. **Waiting on the owner: the catalogue review, which gates task 9.**
+
 ## Build order
 
 1. **The gate:** 1.
@@ -121,7 +125,7 @@ Oct 3, 2026. Task 4 done. `FighterModel.fix_weapons(reverse)`: while a clip driv
     - the off hand lands within 1 cm of the off-hand grip through task 1's clips;
     - sheets of the five clips with each weapon in hand.
   - Blocked by: 2 · Stories: 2, 11
-- [ ] **5. The catalogue sheet.** The manifest grows to every first candidate in the spec's clip table, with provisional markers, and the import tool converts them. A shot scene renders every candidate on both fighters at four phases with its weapon in hand, grouped by weapon, and captioned with the clip's name, length and set.
+- [x] **5. The catalogue sheet.** The manifest grows to every first candidate in the spec's clip table, with provisional markers, and the import tool converts them. A shot scene renders every candidate on both fighters at four phases with its weapon in hand, grouped by weapon, and captioned with the clip's name, length and set.
   - Check: one page per weapon and one for the states, with no candidate missing (a test counts them against the manifest).
   - **Owner:** reviews the catalogue and swaps any clip. Swaps go into the spec's clip table. This review gates task 9.
   - Blocked by: 4 · Stories: 45

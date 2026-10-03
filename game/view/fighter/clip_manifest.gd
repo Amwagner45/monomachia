@@ -14,6 +14,9 @@ const PATH: String = "res://assets/kevin_iglesias/clip_manifest.json"
 const MARKERS: Array[String] = ["windup", "contact", "contact_end", "settle"]
 ## Source clips are keyed at 30 frames a second.
 const SOURCE_FPS: float = 30.0
+## The catalogue's pages a clip can be on: a weapon's moves, bare hands,
+## or the states shared by every weapon (tools/shot_scenes/clip_sheet.gd).
+const GROUPS: Array[StringName] = [&"katana", &"greatsword", &"daggers", &"bare", &"states"]
 
 
 ## One clip of the manifest.
@@ -29,6 +32,8 @@ class Clip:
 	## Source frame of each marker, by MARKERS name.
 	var markers: Dictionary[String, int] = {}
 	var provisional: bool = false
+	## The catalogue pages it is a candidate on (GROUPS).
+	var groups: Array[StringName] = []
 
 	## The clip's file for a set, relative to the Iglesias packs' folder.
 	func file(set_name: StringName, set_folder: String) -> String:
@@ -69,6 +74,15 @@ static func read(path: String = PATH) -> ClipManifest:
 	return m
 
 
+## The ids of the clips on a catalogue page, in order.
+func in_group(group: StringName) -> Array[StringName]:
+	var out: Array[StringName] = []
+	for c: Clip in clips.values():
+		if c.groups.has(group):
+			out.append(c.id)
+	return out
+
+
 ## The clips' ids, in order.
 func ids() -> Array[StringName]:
 	var out: Array[StringName] = []
@@ -91,6 +105,15 @@ func _clip(id: StringName, d: Variant) -> Clip:
 	c.mirror = d.get("mirror", false) == true
 	c.loop = d.get("loop", false) == true
 	c.provisional = d.get("provisional", false) == true
+	var groups: Variant = d.get("groups", [])
+	if not groups is Array or (groups as Array).is_empty():
+		errors.append("%s: no groups" % id)
+	else:
+		for g: Variant in groups:
+			if not GROUPS.has(StringName(str(g))):
+				errors.append("%s: unknown group %s" % [id, g])
+			else:
+				c.groups.append(StringName(str(g)))
 	var marks: Variant = d.get("markers")
 	if not marks is Dictionary:
 		errors.append("%s: no markers" % id)

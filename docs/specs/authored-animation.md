@@ -1,6 +1,6 @@
 # Spec: Authored animation and the dodge roll
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); task 1, the retargeting prototype, passed by the owner (Oct 3, `docs/research/retarget-prototype.md`), with foot locking extended to every clip; next is task 2 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); tasks 1–5, 15 and 16 done; the clip catalogue (task 5) waits on the owner's review, which gates task 9 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
 
 The Godot rebuild's fighters move with procedural animation. Attacks follow hand-keyed weapon paths with arm IK and a torso and hip turn; reactions are a recoil and a lean; movement is hip-turned clips, a lean and a guard shuffle. This feature replaces all of it with authored clips: Kevin Iglesias's Human Melee and Human Basic Motions packs, retargeted onto the Quaternius fighters, with the Quaternius Universal Animation Library 2 as a supplement and as the fallback. It also turns the dodge from a dash into a roll, adds a knockdown rule, and gives the Greatsword a shoulder carry. The rules stay in charge: they decide every hit and every frame at 60 steps a second, and the clips are fitted to them.
 

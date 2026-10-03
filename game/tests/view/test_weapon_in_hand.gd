@@ -9,6 +9,9 @@ extends GutTest
 const NEAR: float = 0.01
 ## A one-handed CC0 sword clip whose off hand wanders well off the handle.
 const CLIP: StringName = &"Sword_Regular_A"
+## Task 1's Iglesias clips, the ones the off hand must hold the grip through
+## (the catalogue's punches and kicks are bare-handed).
+const TASK1_CLIPS: Array[StringName] = [&"CombatIdle1H01", &"Attack1H01_R", &"Attack2H01", &"Roll01", &"CombatDeath01", &"Dodge01"]
 
 
 func _fighter(id: StringName, weapon: StringName, reverse: bool = false) -> FighterModel:
@@ -151,7 +154,7 @@ func test_local_the_off_hand_holds_the_grip_through_the_iglesias_clips() -> void
 			f.animation_player.add_animation_library(pair[1], lib)
 			var worst: float = 0.0
 			var where: String = ""
-			for clip: StringName in lib.get_animation_list():
+			for clip: StringName in TASK1_CLIPS:
 				var length: float = lib.get_animation(clip).length
 				for i: int in 9:
 					_at(f, "%s/%s" % [pair[1], clip], length * i / 8.0)

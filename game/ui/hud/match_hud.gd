@@ -9,7 +9,8 @@ extends CanvasLayer
 ## Announcements are timed on the host's rules steps, not the wall clock, so
 ## they slow down with slow motion and freeze with pause. Port of the
 ## announcement and bar logic of src/ui/hud.ts (its milliseconds become
-## frames at 60 per second).
+## frames at 60 per second). Its text takes the UI theme's fonts
+## (ui/theme/ink_wash.tres) and its colours are UiPalette's.
 
 ## The host to follow. The default is the parent (match_host.tscn).
 @export var host_path: NodePath = ^".."
@@ -26,12 +27,12 @@ const DISARM_FRAMES: int = 90
 const LAG_HOLD: float = 0.45
 const LAG_DRAIN: float = 0.6
 
-const HP_COLOR: Color = Color(0.82, 0.2, 0.16)
-const HP_LOW_COLOR: Color = Color(1.0, 0.3, 0.2)
-const POSTURE_COLOR: Color = Color(0.92, 0.66, 0.22)
-const POSTURE_HOT_COLOR: Color = Color(1.0, 0.42, 0.12)
-const POSTURE_FULL_COLOR: Color = Color(1.0, 0.12, 0.08)
-const GOLD: Color = Color(1.0, 0.8, 0.35)
+const HP_COLOR: Color = UiPalette.HP_HI
+const HP_LOW_COLOR: Color = UiPalette.DANGER
+const POSTURE_COLOR: Color = UiPalette.POSTURE
+const POSTURE_HOT_COLOR: Color = UiPalette.POSTURE_HOT
+const POSTURE_FULL_COLOR: Color = UiPalette.DANGER
+const GOLD: Color = UiPalette.GOLD
 const DIM: Color = Color(1.0, 1.0, 1.0, 0.25)
 
 var host: MatchHost
@@ -260,12 +261,13 @@ func _me() -> int:
 
 # ------------------------------------------------------------------ building
 
-func _label(text: String, font_size: int, color: Color = Color.WHITE, outline: int = 6) -> Label:
-	var l: Label = Label.new()
-	l.text = text
-	l.add_theme_font_size_override("font_size", font_size)
-	l.add_theme_color_override("font_color", color)
-	l.add_theme_color_override("font_outline_color", Color(0.0, 0.0, 0.0, 0.85))
+## A label in one of the theme's variations, ink-outlined to read over the
+## arena.
+func _label(node_name: String, text: String, variation: StringName, font_size: int, outline: int = 6) -> Label:
+	var l: Label = UiTheme.label(text, variation, font_size)
+	l.name = node_name
+	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+	l.add_theme_color_override("font_outline_color", Color(UiPalette.INK, 0.85))
 	l.add_theme_constant_override("outline_size", outline)
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	return l
@@ -302,8 +304,9 @@ func _build() -> void:
 		plate_row.alignment = BoxContainer.ALIGNMENT_END if right else BoxContainer.ALIGNMENT_BEGIN
 		plate_row.add_theme_constant_override("separation", 12)
 		box.add_child(plate_row)
-		var plate: Label = _label("Fighter", 22)
-		var tag: Label = _label("Disarmed", 18, Color(1.0, 0.45, 0.35))
+		var plate: Label = _label("Plate%d" % i, "Fighter", UiTheme.DISPLAY, 24)
+		var tag: Label = _label("Tag%d" % i, "Disarmed", UiTheme.EYEBROW, 16)
+		tag.add_theme_color_override("font_color", UiPalette.DANGER)
 		tag.visible = false
 		if right:
 			plate_row.add_child(tag)
@@ -334,7 +337,7 @@ func _build() -> void:
 		meta.add_theme_constant_override("separation", 8)
 		box.add_child(meta)
 		var pips: Array = []
-		var ult: Label = _label("ULT", 16, Color.WHITE, 4)
+		var ult: Label = _label("Ult%d" % i, "ULT", UiTheme.DISPLAY, 18, 4)
 		ult.modulate = DIM
 		if right:
 			meta.add_child(ult)
@@ -350,7 +353,7 @@ func _build() -> void:
 		_pips[i] = pips
 		_ults.append(ult)
 
-	_round_label = _label("Round 1", 22)
+	_round_label = _label("RoundLabel", "Round 1", UiTheme.DISPLAY, 24)
 	_round_label.set_anchors_preset(Control.PRESET_CENTER_TOP)
 	_round_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_round_label.offset_left = -120.0
@@ -358,7 +361,7 @@ func _build() -> void:
 	_round_label.offset_top = 26.0
 	_root.add_child(_round_label)
 
-	_announce_label = _label("", 84, Color(1.0, 0.93, 0.8), 12)
+	_announce_label = _label("Announce", "", UiTheme.DISPLAY, 84, 12)
 	_announce_label.set_anchors_preset(Control.PRESET_CENTER)
 	_announce_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_announce_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -367,7 +370,7 @@ func _build() -> void:
 	_announce_label.offset_top = -170.0
 	_announce_label.offset_bottom = -50.0
 	_root.add_child(_announce_label)
-	_announce_sub = _label("", 28, Color(1.0, 1.0, 1.0, 0.9))
+	_announce_sub = _label("AnnounceSub", "", UiTheme.EYEBROW, 24)
 	_announce_sub.set_anchors_preset(Control.PRESET_CENTER)
 	_announce_sub.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_announce_sub.offset_left = -700.0
@@ -376,7 +379,8 @@ func _build() -> void:
 	_announce_sub.offset_bottom = 0.0
 	_root.add_child(_announce_sub)
 
-	_hint = _label("", 22, GOLD)
+	_hint = _label("Hint", "", &"", 22)
+	_hint.add_theme_color_override("font_color", GOLD)
 	_hint.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	_hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	_hint.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM

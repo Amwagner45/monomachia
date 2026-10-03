@@ -49,7 +49,7 @@ func _ready() -> void:
 
 	main_menu = MenuScreen.new()
 	main_menu.name = "MainMenu"
-	main_menu.add_label("MONOMACHIA", 52)
+	main_menu.add_heading("MONOMACHIA")
 	main_menu.add_button("Duel", "against the computer", start_duel)
 	main_menu.add_button("Watch", "computer against computer", start_watch)
 	main_menu.add_button("Quit", "", quit_game)
@@ -58,7 +58,7 @@ func _ready() -> void:
 
 	pause_menu = MenuScreen.new()
 	pause_menu.name = "Pause"
-	pause_menu.add_label("Paused", 52)
+	pause_menu.add_heading("Paused")
 	pause_menu.add_button("Resume", "", resume)
 	pause_menu.add_button("Main menu", "", quit_to_menu)
 	pause_menu.back_requested.connect(resume)

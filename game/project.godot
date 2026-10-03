@@ -36,6 +36,10 @@ window/stretch/aspect="expand"
 
 enabled=PackedStringArray("res://addons/gut/plugin.cfg")
 
+[gui]
+
+theme/custom="res://ui/theme/ink_wash.tres"
+
 [physics]
 
 3d/physics_engine="Jolt Physics"

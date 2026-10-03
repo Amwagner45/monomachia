@@ -305,6 +305,12 @@ func fighter(i: int) -> Fighter:
 	return world.fighters[i]
 
 
+## The brain playing side `i`: an AIBrain, a TrainingBrain (the dummy, whose
+## behaviour the swing debug shot sets), or null for a human side.
+func brain(i: int) -> RefCounted:
+	return _brains[i]
+
+
 ## Where to draw a fighter now: blended between the last two steps.
 func display_position(i: int) -> Vector3:
 	return _prev_pos[i].lerp(_cur_pos[i], alpha())

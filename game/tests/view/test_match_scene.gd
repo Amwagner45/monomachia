@@ -228,7 +228,7 @@ func test_the_ultimate_hint_shows_only_while_the_round_is_fought() -> void:
 func test_the_hud_clears_and_hides_when_the_results_open() -> void:
 	host.start(_with_standin(MatchConfig.default_duel()))
 	host.step(Match.INTRO_FRAMES + 1)
-	hud.announce("Disarmed", "Retrieve your weapon", 300)
+	hud.announce("武器喪失", "Disarmed", "Retrieve your weapon", 300)
 	assert_true(hud.visible)
 	host.match_finished.emit(host.results())
 	assert_eq(hud.announcement_text(), "")

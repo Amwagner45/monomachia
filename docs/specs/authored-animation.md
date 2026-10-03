@@ -55,8 +55,8 @@ The raw Iglesias files and the clips converted from them stay out of the public 
 16. As a player, I want a parry to show my fighter's parry motion and the attacker's weapon rebounding back along its own swing into a stagger, so that parries feel cinematic, as in Sekiro.
 17. As a player, I want long stuns (stomp, leap, disarm, redirect) to show a dazed stun clip, so that I can see I'm open.
 18. As a player hit by an unblockable, a fully charged heavy or a slam, I want to be knocked down, so that the biggest hits feel big.
-19. As a knocked-down player, I want to be invulnerable while down and to stand up on a fixed timer, so that a knockdown can't be abused into an endless loop.
-20. As a knocked-down player, I want to be able to block or parry during the last part of my stand-up, so that the attacker can't time a guaranteed hit on my wake-up.
+19. As a knocked-down player, I want to be invulnerable while down and to stand up on a fixed timer, so that a knockdown can't be abused into an endless loop. *(Delivered by task 16.)*
+20. As a knocked-down player, I want to be able to block or parry during the last part of my stand-up, so that the attacker can't time a guaranteed hit on my wake-up. *(Delivered by task 16.)*
 21. As a player, I want a knock-out to play a death clip chosen by the direction and strength of the final blow, slowed by the final-blow slow motion, so that rounds end dramatically.
 
 ### Movement and dodge
@@ -158,6 +158,13 @@ All of these get rule tests and a soak run.
   - The fighter is invulnerable from the first frame of the fall until frame 10 of the stand-up. For its last 15 frames the fighter can't attack, dodge or move but can block or parry (rising in guard), so a hit timed on the wake-up isn't guaranteed.
   - Knockdown replaces the hitstun of those hits; damage, posture and knockback distance are unchanged. A `knockdown` event marks the fall, and a `standup` event its end.
   - The stomp keeps its 70-frame stun (the thrust counter's reward is a punish string), and the leap's and redirect's stuns are unchanged.
+  - Settled in task 16 (`SimConst.KNOCKDOWN_*`, `Fighter.enter_knockdown()`, `World.knocks_down()`):
+    - the ultimates' hits don't knock down, though their move data marks them unblockable (a Tempest spin would otherwise end the ultimate on its first hit);
+    - a bare-handed defender whose posture breaks on the hit is dazed (the stagger), as before, rather than knocked down;
+    - "invulnerable" here means nothing can hit the downed fighter, undodgeable moves included (unlike dodge invincibility);
+    - the downed fighter doesn't turn while down, and turns to face the attacker at the free turn rate during the guard window;
+    - a block or parry in the guard window ends the knockdown there (into blockstun or the parry's recovery), without a `standup` event; `standup` marks only the timer running out;
+    - the computer opponent presses no attack while its opponent is down, even one planned before the fall, and closes in to meet the rise.
 - **Greatsword shoulder carry.** A new flag on an armed Greatsword fighter.
   - On: after 20 consecutive frames of moving in the free state (walking, running, sprinting or stepping), and at the start of every round.
   - Off at once on any attack, block, parry, dodge, backstep, hitstun, blockstun, knockdown, disarm or pick-up. Standing still and jumping leave it as it is.

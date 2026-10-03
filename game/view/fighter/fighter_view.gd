@@ -35,7 +35,9 @@ extends Node3D
 ##   stepping in the guard shuffle (GuardShuffle) as it walks, the pelvis
 ##   lowered, swaying and bobbing, the weapon riding the pelvis;
 ## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
-##   timed on the rules' frames from the KO;
+##   timed on the rules' frames from the KO; a knocked-down one (task 16)
+##   falls with KNOCKDOWN_FALL_CLIP and rises with KNOCKDOWN_RISE_CLIP, fitted
+##   to the knockdown's phases;
 ## - a disarmed fighter holds nothing, its arms on the clip.
 ##
 ## A body flash (hit, disarm, KO) and a blade's glow (an unblockable winding
@@ -61,6 +63,10 @@ const GLOW_COLORS: Dictionary[StringName, Color] = {
 }
 ## The clip a knocked-out fighter falls with.
 const DEATH_CLIP: StringName = &"Death01"
+## The stand-in clips a knocked-down fighter falls and rises with (the clip
+## table's fallback) until task 28 brings the knockdown clips.
+const KNOCKDOWN_FALL_CLIP: StringName = &"Hit_Knockback"
+const KNOCKDOWN_RISE_CLIP: StringName = &"LayToIdle"
 ## The furthest a stand-in pose may stretch an arm, as a share of its length
 ## from the shoulder to the wrist: the elbows stay bent.
 const REACH: float = 0.96
@@ -157,6 +163,8 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	var frame: int = f.world.frame if f.world != null else _flash_frame
 	if f.state == &"ko":
 		_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
+	elif f.state == &"knockdown":
+		_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
 		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
 		locomotion.update(f, GuardStance.CLIP if _in_guard() else model.idle_clip(), seconds, alpha, _in_guard())
@@ -300,6 +308,33 @@ func _clip_pose(bone: String) -> Transform3D:
 
 ## Lets go of the pose and plays the fall, `frames` rules frames after the KO.
 func _fall(frames: float) -> void:
+	_let_go()
+	_play(DEATH_CLIP, frames / float(SimConst.FPS))
+
+
+## A knocked-down fighter (task 16), `frames` rules frames into the
+## knockdown: until task 28's clips, the fallback's stand-in. The fall plays
+## KNOCKDOWN_FALL_CLIP over the fall's frames, then the fighter lies in
+## KNOCKDOWN_RISE_CLIP's first pose and rises with it over the stand-up.
+func _knocked_down(frames: float) -> void:
+	_let_go()
+	var fall: float = float(SimConst.KNOCKDOWN_FALL_FRAMES)
+	var standup_from: float = fall + float(SimConst.KNOCKDOWN_GROUND_FRAMES)
+	if frames < fall:
+		_play_share(KNOCKDOWN_FALL_CLIP, frames / fall)
+	else:
+		_play_share(KNOCKDOWN_RISE_CLIP, maxf(0.0, frames - standup_from) / float(SimConst.KNOCKDOWN_STANDUP_FRAMES))
+
+
+## Shows the share `t` (0 to 1) of clip `clip`.
+func _play_share(clip: StringName, t: float) -> void:
+	var anim: Animation = model.animation_player.get_animation(String(FighterModel.LIBRARY) + "/" + String(clip))
+	_play(clip, clampf(t, 0.0, 1.0) * anim.length)
+
+
+## Lets go of the pose for a whole-body clip: the weapons carried in the
+## hands, the body layer and leg IK off, the legs still.
+func _let_go() -> void:
 	model.carry_weapons()
 	model.rig.body.clear()
 	model.rig.leg_weight = 0.0
@@ -309,7 +344,6 @@ func _fall(frames: float) -> void:
 	sink = 0.0
 	# the legs stand still while it falls: no footfalls carry over
 	locomotion.footfalls.clear()
-	_play(DEATH_CLIP, frames / float(SimConst.FPS))
 
 
 ## Shows clip `clip` at `seconds` into it (looping round if it loops, held

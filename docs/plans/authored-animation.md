@@ -226,7 +226,7 @@ Oct 3, 2026. Task 4 done. `FighterModel.fix_weapons(reverse)`: while a clip driv
 
 ### Phase D: the rule changes
 
-- [ ] **15. The Greatsword's shoulder carry.**
+- [x] **15. The Greatsword's shoulder carry.**
   - A shouldered flag on an armed Greatsword fighter. It turns on after 20 frames of moving in the free state, and at every round start. It turns off on any attack, block, parry, dodge, backstep, hitstun, blockstun, knockdown, disarm or pick-up.
   - An attack from the shoulder adds `GS_SHOULDER_LIFT_FRAMES` (6) to its startup, and its dodge cancel opens 6 frames later.
   - The computer opponent's timing and reach estimates include the lift.

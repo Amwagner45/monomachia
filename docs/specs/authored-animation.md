@@ -322,7 +322,7 @@ Two-handed weapons on one-handed clips (the Katana) put the off hand on the grip
 | Dodge (roll) | Roll01 | UAL Roll |
 | Backstep, evade's back-dash | Dodge01 | UAL Roll, reversed |
 | Jump, land | Jump01 Begin, Jump01, Jump01 Land | UAL Jump_Start, Jump, Jump_Land |
-| Stomp (stepping on a thrust) | AttackKick02 (downward) | UAL Melee_Hook |
+| Stomp (stepping on a thrust) | Mikiri_Stomp: hand-keyed, CC0 (KeyedClips), after Sekiro's mikiri counter; plays with or without the packs. Changed from AttackKick02 on Oct 3, 2026, at the owner's request | none needed (committed) |
 | Leap (off a sweep) | Jump01 Begin into Fall01 | UAL NinjaJump_Start |
 | Evade lunge | Attack1H04, or the weapon's counter lunge | UAL Sword_Dash |
 | Block (held), blockstun, parry | Parry Loop and Parry Hit per weapon class | UAL Sword_Block |

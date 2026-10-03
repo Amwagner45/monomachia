@@ -424,6 +424,55 @@ func test_a_guard_raised_from_the_shoulder_fades_out_over_the_lift() -> void:
 	assert_eq(shot.authored(), 1.0, "the carry still all there on its first frame")
 
 
+func test_the_stomp_plays_its_keyed_clip_fitted_to_the_state() -> void:
+	var stomp: String = KeyedClips.anim_name(KeyedClips.STOMP)
+	for libraries: bool in [true, false]:
+		var ctx: ClipDirector.Context = _ctx(&"hunter", libraries)
+		ctx.lengths[stomp] = 26.0 / 60.0
+		# the attacker (fighter 0) thrusts its unblockable; the defender dodges into it
+		var W: World = SimHelpers.make_world()
+		var b: Fighter = W.fighters[1]
+		var shot: ClipDirector.Shot = null
+		var stomped: int = 0
+		var last_time: float = -1.0
+		var after: ClipDirector.Shot = null
+		for i: int in 80:
+			var a_in: RawInput = SimHelpers.btn(Btn.BLOCK, Btn.HEAVY) if i == 0 else SimHelpers.idle()
+			var b_in: RawInput = SimHelpers.move(0.0, 1.0, Btn.DODGE) if i == 20 else SimHelpers.idle()
+			W.step([a_in, b_in])
+			var was: StringName = shot.drive if shot != null else &""
+			shot = ClipDirector.step(shot, b, ctx)
+			if b.state == &"stomp":
+				assert_eq(shot.drive, ClipDirector.STATE, "the stomp's own clip drives (packs: %s)" % libraries)
+				assert_eq(shot.clip.name, stomp, "the keyed Mikiri_Stomp")
+				assert_almost_eq(shot.clip.time, float(b.sf) / float(b.state_dur) * ctx.lengths[stomp], 0.0001, "fitted to the stomp's length")
+				assert_gte(shot.clip.time, last_time, "it runs forward")
+				if was != ClipDirector.STATE:
+					assert_eq(shot.fade, ClipDirector.FADES[&"state"], "it springs out of the dodge over 2 frames")
+				last_time = shot.clip.time
+				stomped += 1
+			elif stomped > 0 and after == null:
+				after = shot
+		assert_gt(stomped, 0, "the defender stomped the thrust (packs: %s)" % libraries)
+		assert_not_null(after, "the stomp ended")
+		if after != null:
+			assert_eq(after.drive, ClipDirector.LEGS, "the legs take over after it")
+			assert_eq(after.fade, ClipDirector.FADES[&"locomotion"], "over the fade back to the legs")
+		SimHelpers.dispose_all()
+
+
+func test_a_state_clip_missing_from_the_tree_leaves_the_legs() -> void:
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	f.set_state(&"stomp", 26)
+	assert_null(ClipDirector.state_clip(f, _ctx()), "no keyed clip in the tree: nothing to play")
+	var ctx: ClipDirector.Context = _ctx()
+	ctx.lengths[KeyedClips.anim_name(KeyedClips.STOMP)] = 26.0 / 60.0
+	assert_not_null(ClipDirector.state_clip(f, ctx))
+	f.set_state(&"free", 0)
+	assert_null(ClipDirector.state_clip(f, ctx), "the free state has no clip of its own")
+
+
 # ------------------------------------------------------------------ the Daggers' grip (task 21)
 
 func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:

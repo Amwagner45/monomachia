@@ -38,19 +38,24 @@ extends RefCounted
 ##   (AttackState.lift, 6 frames), the legs handed over with it, and a guard
 ##   raised from it fades back to the legs over the same lift. There is no
 ##   CC0 carry, so without the packs nothing shows it;
+## - the states with a clip of their own (STATE_CLIPS; so far the stomp
+##   counter's hand-keyed Mikiri_Stomp, KeyedClips): the clip fitted to the
+##   state's length, whole body, with or without the packs (the keyed clips
+##   are committed);
 ## - the Daggers' grip (task 21; Shot.grip): the reverse grip under the legs
 ##   and the idle, turned forward over an attack's crossfade, and back over
 ##   its last GRIP_BACK recovery frames when no follow-up is queued;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
-##   the legs, 8 for a stance.
+##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
+##   of the dodge).
 
 ## The crossfades' lengths, in rules frames.
 ## The Daggers turn back into the reverse grip over an attack's last this
 ## many recovery frames when no follow-up is queued (task 21).
 const GRIP_BACK: int = 6
 const FADES: Dictionary[StringName, int] = {
-	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8,
+	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8, &"state": 2,
 }
 ## The free state's idle per weapon (a WeaponDef id; bare hands and a
 ## disarmed fighter are fists): clip-manifest ids.
@@ -62,11 +67,16 @@ const IDLE: Dictionary[StringName, StringName] = {
 const FALLBACK_IDLE: Dictionary[StringName, StringName] = {
 	&"katana": &"Sword_Idle", &"daggers": &"Sword_Idle", &"greatsword": &"Sword_Idle", &"fists": &"Idle",
 }
-## What drives the body: the legs' blend, an authored attack clip, or the
-## shoulder carry's pose on the upper body over the legs.
+## What drives the body: the legs' blend, an authored attack clip, the
+## shoulder carry's pose on the upper body over the legs, or a state's own
+## clip (STATE_CLIPS).
 const LEGS: StringName = &"legs"
 const ATTACK: StringName = &"attack"
 const CARRY: StringName = &"carry"
+const STATE: StringName = &"state"
+## The rules states that play a clip of their own, fitted to the state's
+## length: hand-keyed clips (KeyedClips).
+const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.STOMP}
 ## The Greatsword's shoulder carry: the right hand on the grip at the
 ## shoulder, the blade resting back over it (a masked pose of the Crafting
 ## pack; ObjectGripShoulder01_R throws the elbow out to the side).
@@ -137,7 +147,7 @@ class Clip:
 class Shot:
 	## The world frame it is for; -1 before the first.
 	var frame: int = -1
-	## LEGS, ATTACK or CARRY.
+	## LEGS, ATTACK, CARRY or STATE.
 	var drive: StringName = LEGS
 	## The authored clip driving, at this frame and at the frame before (for
 	## showing between frames); null when the legs drive.
@@ -189,7 +199,7 @@ class Shot:
 			return 1.0
 		if from == null or not from_carry:
 			return 0.0
-		return 1.0 - blend() if drive == ATTACK else 1.0
+		return 1.0 if drive == LEGS else 1.0 - blend()
 
 	## How much of the authored clips is `clip` rather than `from`.
 	func clip_share() -> float:
@@ -226,9 +236,13 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		if f.atk == null:
 			phase = f.ult.phase
 	else:
-		playing = carry_clip(f, ctx)
+		playing = state_clip(f, ctx)
 		if playing != null:
-			drive = CARRY
+			drive = STATE
+		else:
+			playing = carry_clip(f, ctx)
+			if playing != null:
+				drive = CARRY
 	if prev == null:
 		out.drive = drive
 		out.clip = playing
@@ -270,6 +284,20 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.phase = phase
 	out.grip = _grip(out, f)
 	return out
+
+
+## The clip of `f`'s state when it has one of its own (STATE_CLIPS), fitted
+## to the state's length; null otherwise, or when the clip isn't in the
+## tree. Keyed clips are committed, so it plays without the packs too.
+static func state_clip(f: Fighter, ctx: Context) -> Clip:
+	if not STATE_CLIPS.has(f.state):
+		return null
+	var anim_name: String = KeyedClips.anim_name(STATE_CLIPS[f.state])
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	if length <= 0.0:
+		return null
+	var share: float = clampf(float(f.sf) / float(maxi(1, f.state_dur)), 0.0, 1.0)
+	return Clip.make(anim_name, share * length)
 
 
 ## How far a pair of daggers is turned into the reverse grip in shot `s`
@@ -432,6 +460,8 @@ static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 		return FADES[&"hitstun"]
 	if drive == CARRY:
 		return FADES[&"stance"]
+	if drive == STATE:
+		return FADES[&"state"]
 	if drive == ATTACK:
 		if prev.drive == ATTACK and f.atk == null and prev.attack == null:
 			# a change of the ultimate's phase

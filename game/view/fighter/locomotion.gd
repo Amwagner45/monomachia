@@ -428,6 +428,9 @@ func _build() -> void:
 	tree.name = &"Locomotion"
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	tree.add_animation_library(FighterModel.LIBRARY, FighterModel.ANIMATION_LIBRARY)
+	var keyed: AnimationLibrary = KeyedClips.load_library()
+	if keyed != null:
+		tree.add_animation_library(KeyedClips.LIBRARY, keyed)
 	if ClipLibraries.available():
 		for set_name: StringName in ClipLibraries.SETS:
 			tree.add_animation_library(set_name, ClipLibraries.load_set(set_name))

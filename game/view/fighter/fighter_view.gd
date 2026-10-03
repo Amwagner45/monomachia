@@ -47,6 +47,9 @@ extends Node3D
 ##   fallback's without the packs), under the legs' blend; a weapon whose hold
 ##   has a guard stance keeps the stance's relaxed clip until the stance goes
 ##   (task 29);
+## - a state with a clip of its own (the stomp's hand-keyed Mikiri_Stomp)
+##   plays it whole body, the weapon fixed in the clip's hand, the stand-in's
+##   crouch and lean giving way as it fades in;
 ## - an attack whose move has a baked swing plays its clip, timed from the
 ##   attack frame, the crossfades the director's. Its reach correction
 ##   (Swing.reach_at()) moves the whole body above the hips, the planted feet
@@ -281,11 +284,15 @@ func _legs_free(f: Fighter) -> float:
 
 
 ## True when an authored clip drives the arms and the weapon rides the
-## clip's hand (see the class notes): the Iglesias clips are there, and
+## clip's hand (see the class notes): a state's own clip (the stomp's keyed
+## clip, which has no weapon path; with or without the packs), or the
+## Iglesias clips are there, and
 ## either the paths were baked on him (the Hunter) or there is no baked
 ## weapon path to pose it on (a pose-only swing like Flash's, the ultimate,
 ## task 13, or the shoulder carry, task 18), for the Rogue too.
 func _fixed_on_clip(f: Fighter) -> bool:
+	if shot != null and shot.drive == ClipDirector.STATE:
+		return true
 	if shot == null or shot.drive == ClipDirector.LEGS or not director.libraries:
 		return false
 	if fighter_id == &"hunter":
@@ -311,9 +318,12 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var rig: FighterRig = model.rig
 	var swung: bool = SwingPlayer.plays(f) and not model.weapons.is_empty()
 	var authored: float = shot.authored() if shot != null else 0.0
-	var driving: bool = shot != null and shot.drive == ClipDirector.ATTACK
-	var lean: float = 0.0 if swung else p.lean
-	var crouch: float = 0.0 if swung else p.crouch
+	var driving: bool = shot != null and (shot.drive == ClipDirector.ATTACK or shot.drive == ClipDirector.STATE)
+	# a state's own clip crouches and leans itself: the stand-in's give way
+	# as it fades in
+	var own: float = 1.0 - authored if shot != null and shot.drive == ClipDirector.STATE else 1.0
+	var lean: float = 0.0 if swung else p.lean * own
+	var crouch: float = 0.0 if swung else p.crouch * own
 	var spin: float = 0.0 if swung else p.spin
 	rig.leg_weight = 1.0
 	rig.clear_pole_tweaks()

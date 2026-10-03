@@ -142,9 +142,10 @@ const REBUILD_FIELDS: Array[String] = ["side_start", "side_end"]
 
 ## The swing (task 7), which the swing tests check as moves get one.
 const SWING_FIELDS: Array[String] = ["swing"]
-## Weapon fields the demo didn't have: tests/content/test_strike_segments.gd
-## checks them against the models.
-const WEAPON_REBUILD_FIELDS: Array[String] = ["blade", "foot", "off_hand_grip"]
+## Weapon fields the demo didn't have: tests/sim/test_duel_reach.gd checks the
+## duelling distances, and tests/content/test_strike_segments.gd the rest
+## against the models.
+const WEAPON_REBUILD_FIELDS: Array[String] = ["duel_distance", "blade", "foot", "off_hand_grip"]
 
 var _fx: Dictionary
 

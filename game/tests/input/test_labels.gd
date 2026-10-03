@@ -70,7 +70,7 @@ func test_playstation_and_xbox_labels_for_each_action() -> void:
 		"heavy": ["R2", "RT"],
 		"block": ["L1", "LB"],
 		"dodge": ["○", "B"],
-		"jump": ["✕", "A"],
+		"jump": ["×", "A"],
 		"interact": ["□", "X"],
 		"ultimate": ["△", "Y"],
 		"sprint": ["L3", "LS"],
@@ -126,7 +126,7 @@ func test_single_player_labels_follow_the_last_device_used() -> void:
 	assert_eq(input.last_used, InputDevices.LastUsed.KEYBOARD, "a small stick drift doesn't count")
 	motion.axis_value = -0.7
 	input.note_event(motion)
-	assert_eq(input.label("jump"), "✕")
+	assert_eq(input.label("jump"), "×")
 	fake.unplug_pad(0)
 	assert_eq(input.label("jump"), "F", "keyboard names once no controller is connected")
 
@@ -185,7 +185,7 @@ func test_mouse_names() -> void:
 
 func test_controller_names_by_style() -> void:
 	var a: String = InputToken.joy_button(JOY_BUTTON_A)
-	assert_eq(BindingLabels.token_label(a, PadStyle.PLAYSTATION), "✕")
+	assert_eq(BindingLabels.token_label(a, PadStyle.PLAYSTATION), "×")
 	assert_eq(BindingLabels.token_label(a, PadStyle.XBOX), "A")
 	assert_eq(BindingLabels.token_label(a, PadStyle.GENERIC), "Button 0")
 	var back: String = InputToken.joy_button(JOY_BUTTON_BACK)

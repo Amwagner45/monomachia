@@ -23,7 +23,7 @@ extends Node
 const SEED: int = 7
 
 @export_enum(
-	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "mirror", "spacing",
+	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing",
 	"iai_stance", "iai_vertical", "iai_horizontal",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
@@ -86,6 +86,9 @@ func _ready() -> void:
 		"main_menu":
 			_main()
 			main.call("show_main_menu")
+			host.step(420)
+		"title":
+			_main()
 			host.step(420)
 		"mirror":
 			_gameplay(MatchConfig.DUEL, MatchConfig.make(

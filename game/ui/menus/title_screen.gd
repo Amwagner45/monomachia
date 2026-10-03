@@ -23,12 +23,17 @@ func _init() -> void:
 	column.offset_bottom = -110.0
 	column.add_theme_constant_override("separation", 10)
 	add_child(column)
-	column.add_child(MenuScreen.make_label("MONOMACHIA", 104, MenuScreen.TEXT_COLOR, 14))
-	column.add_child(MenuScreen.make_label("Single combat", 30, MenuScreen.ACCENT.lightened(0.25), 6))
+	# the demo's logo is gold, its tagline and prompt spaced-out capitals
+	var name_label: Label = UiTheme.label("MONOMACHIA", UiTheme.DISPLAY, 104)
+	name_label.add_theme_color_override("font_color", UiPalette.GOLD)
+	name_label.add_theme_constant_override("shadow_outline_size", 16)
+	column.add_child(name_label)
+	column.add_child(UiTheme.label("Single combat", UiTheme.EYEBROW, 24))
 	var gap: Control = Control.new()
 	gap.custom_minimum_size = Vector2(0.0, 40.0)
 	column.add_child(gap)
-	_prompt = MenuScreen.make_label("Press any key or button", 26, MenuScreen.MUTED, 6)
+	_prompt = UiTheme.label("Press any key or button", UiTheme.EYEBROW, 22)
+	_prompt.add_theme_color_override("font_color", UiPalette.PAPER)
 	column.add_child(_prompt)
 
 

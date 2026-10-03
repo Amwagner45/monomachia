@@ -111,6 +111,7 @@ static func build() -> WeaponDef:
 		"default_abilities": [&"", &""],
 		"ultimate": &"disarmed",
 		"reach": 1.2,
+		"duel_distance": 1.6,
 		"blurb": "Punches and kicks: little damage, heavy posture damage, big knockback.",
 		# the fist across the knuckles, from the little finger's to the index
 		# finger's, thick enough to cover them on either hand of either fighter

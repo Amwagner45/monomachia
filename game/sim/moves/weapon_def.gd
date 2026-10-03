@@ -15,6 +15,11 @@ extends RefCounted
 ##   swing file (SwingFile.path_for(id)) when it has one.
 ## - blade and foot are the rebuild's (task 7.5): what the swings strike with;
 ##   off_hand_grip too (task 7.7).
+## - derive_reach() is the rebuild's (task 7.13): from_dict() ends with it, so
+##   each swing carries its reach and arc, and reach comes from the light
+##   starter's swing once it has one.
+## - duel_distance is the rebuild's (task 7.14): Katana 2.5 m, Greatsword 3.0,
+##   Daggers 2.0, bare hands 1.6.
 
 const WEAPON_IDS: Array[StringName] = [&"katana", &"greatsword", &"daggers", &"fists"]
 const ULTIMATE_IDS: Array[StringName] = [&"moonsplitter", &"impaler", &"tempest", &"disarmed"]
@@ -49,6 +54,11 @@ var default_abilities: Array[StringName] = []
 var ultimate: StringName = &""
 ## preferred fighting distance for the AI
 var reach: float = 0.0
+## How far apart (m, centre to centre) the weapon duels: its string's lights
+## put the last 15-20 cm of blade into a defender standing there, and its
+## other moves are tested from distances measured from it (task 7.14; the
+## spec's table of test distances)
+var duel_distance: float = 0.0
 ## blurb for menus
 var blurb: String = ""
 ## What a hand track sweeps (task 7.5): the blade, between the weapon model's
@@ -66,7 +76,7 @@ const KEYS: Array[String] = [
 	"id", "name", "cls", "speed_mult", "dodge_mult", "parry_window", "block_mitigation", "moves",
 	"light_start", "heavy_start", "sprint_light", "sprint_heavy", "dodge_light", "dodge_heavy",
 	"back_light", "back_heavy", "jump_light", "jump_heavy", "abilities", "default_abilities",
-	"ultimate", "reach", "blurb", "blade", "foot", "off_hand_grip",
+	"ultimate", "reach", "duel_distance", "blurb", "blade", "foot", "off_hand_grip",
 ]
 
 
@@ -104,8 +114,22 @@ static func from_dict(d: Dictionary) -> WeaponDef:
 	w.default_abilities.assign(d["default_abilities"])
 	w.ultimate = StringName(d["ultimate"])
 	w.reach = float(d["reach"])
+	w.duel_distance = float(d["duel_distance"])
 	w.blurb = String(d["blurb"])
 	w.blade = d["blade"]
 	w.foot = d["foot"]
 	w.off_hand_grip = d["off_hand_grip"]
+	w.derive_reach()
 	return w
+
+
+## Works out each swing's reach and arc (SwingReach, task 7.13) and, when the
+## light starter has a swing, takes the weapon's reach from it. from_dict()
+## calls it; call it again after giving a built weapon's moves swings.
+func derive_reach() -> void:
+	for m: AttackDef in moves.values():
+		if m.swing != null:
+			SwingReach.derive(m, self)
+	var starter: AttackDef = moves.get(light_start)
+	if starter != null and starter.swing != null:
+		reach = starter.swing.reach

@@ -19,6 +19,9 @@ extends RefCounted
 ## - Math.round is SimMath.js_round; Math.hypot(x, z) is JsMath.hypot(x, z).
 ## - dispose() is new: it breaks the reference to the fighter (me), which
 ##   points back through the world. Call it when the brain is no longer needed.
+## - threatens() is the rebuild's (task 7.13): the reach test _respond_to()
+##   made inline, now reading AttackDef.reach(), a swing's reach once a move
+##   has one.
 
 
 ## Difficulty: &"easy" | &"normal" | &"hard"
@@ -361,6 +364,14 @@ func _parry_tap(window: int, frame: int, impact: int) -> void:
 	_set_plan(&"parry", impact + 4)
 
 
+## Whether the computer answers an attack `def` started `d` m away (centre to
+## centre): within its reach (AttackDef.reach(), its swing's once it has one;
+## task 7.13), a fighter's radius, its lunge and 0.6 m, or at any distance for
+## an unblockable, whose counter it may try.
+static func threatens(def: AttackDef, d: float) -> bool:
+	return d <= def.reach() + SimConst.FIGHTER_RADIUS + def.lunge + 0.6 or def.counter != &""
+
+
 func _respond_to(def: AttackDef, atk_frame: int, frame: int) -> void:
 	var opp: Fighter = me.opp
 	var P: AIParams = params
@@ -369,9 +380,7 @@ func _respond_to(def: AttackDef, atk_frame: int, frame: int) -> void:
 	var impact: int = frame + (def.startup + 1 - atk_frame)
 	if impact < frame:
 		return # too late
-	var d: float = SimMath.dist2(me.pos, opp.pos)
-	var reach: float = def.range + SimConst.FIGHTER_RADIUS + def.lunge + 0.6
-	if d > reach and def.counter == &"":
+	if not threatens(def, SimMath.dist2(me.pos, opp.pos)):
 		return
 	if me.state == &"attack" or me.state == &"hitstun" or me.state == &"stunned":
 		return

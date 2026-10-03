@@ -17,6 +17,10 @@ extends Node3D
 ## A fighter walking in its guard puts its feet down where its guard shuffle
 ## lands them: the view reports each as a footfall, for the match's sound to
 ## play its footstep there (MatchAudio).
+##
+## With swing_debug on (F3 in a debug build, or --swing-debug), a
+## SwingDebugView draws the hurt capsules, the blades' sweeps and where each
+## outcome landed over the match (task 7.15).
 
 ## A fighter's foot came down on the ground at `at` while its footsteps are
 ## its guard shuffle's (shuffles()).
@@ -48,6 +52,11 @@ const FOOTFALL_LAG: int = 4
 }
 const HEAVY_KICK: float = 1.5
 
+## Draws blade sweeps and hurt capsules over the match (SwingDebugView, task
+## 7.15). F3 turns it on and off in a debug build, and --swing-debug on the
+## command line (npm run godot:run -- --swing-debug) turns it on.
+@export var swing_debug: bool = false
+
 var host: MatchHost
 var camera: CameraRig
 var arena: Node3D
@@ -55,6 +64,8 @@ var arena_id: StringName = &""
 ## The two fighters, kept across matches: each rebuilds its model only when
 ## its fighter changes.
 var fighters: Array[FighterView] = []
+## The swing debug view while swing_debug is on, else null.
+var swing_debug_view: SwingDebugView
 
 ## owner side -> Node3D: the dropped weapon stand-ins.
 var _dropped: Dictionary[int, Node3D] = {}
@@ -77,6 +88,8 @@ func _ready() -> void:
 		var h: Node = get_node(host_path)
 		if h is MatchHost:
 			bind(h as MatchHost)
+	if swing_debug or wants_swing_debug(OS.get_cmdline_args()) or wants_swing_debug(OS.get_cmdline_user_args()):
+		set_swing_debug(true)
 
 
 func bind(p_host: MatchHost) -> void:
@@ -86,6 +99,8 @@ func bind(p_host: MatchHost) -> void:
 	host = p_host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
+	if swing_debug_view != null:
+		swing_debug_view.bind(host)
 	if host.is_started():
 		_on_match_started(host.config)
 
@@ -202,6 +217,36 @@ static func arena_camera_data(node: Node) -> Dictionary:
 		if f is float or f is int:
 			out["far"] = float(f)
 	return out
+
+
+# ------------------------------------------------------------------ swing debug
+
+## Turns the swing debug view (SwingDebugView, task 7.15) on or off: on, it is
+## added as a child following the host; off, it is freed.
+func set_swing_debug(on: bool) -> void:
+	swing_debug = on
+	if on and swing_debug_view == null:
+		swing_debug_view = SwingDebugView.new()
+		add_child(swing_debug_view)
+		if host != null:
+			swing_debug_view.bind(host)
+	elif not on and swing_debug_view != null:
+		swing_debug_view.queue_free()
+		swing_debug_view = null
+
+
+## Whether command-line arguments `args` ask for the swing debug view.
+static func wants_swing_debug(args: PackedStringArray) -> bool:
+	return args.has("--swing-debug")
+
+
+## F3 turns the swing debug view on and off in a debug build.
+func _unhandled_input(event: InputEvent) -> void:
+	var key: InputEventKey = event as InputEventKey
+	if key == null or not key.pressed or key.echo or key.keycode != KEY_F3 or not OS.is_debug_build():
+		return
+	set_swing_debug(not swing_debug)
+	get_viewport().set_input_as_handled()
 
 
 # ------------------------------------------------------------------ events

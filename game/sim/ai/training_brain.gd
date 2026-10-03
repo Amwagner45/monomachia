@@ -11,6 +11,8 @@ extends RefCounted
 ## - Fighter.abilities is always replaced with a new array, never changed in
 ##   place: by default it is the weapon's own default_abilities array.
 ## - dispose() is new: it disposes the sparring brain and drops the fighter.
+## - practice_distance() is the rebuild's (task 7.13): the demo's distances
+##   until the weapon's light starter has a swing, then the weapon's reach.
 ##
 ## Since the port (plan task 8.10), two demo bugs are fixed:
 ## - random picks its drill from a tally of its own. The demo shared one with
@@ -101,6 +103,16 @@ func _tap(btn: int, at: int, length: int = 2) -> void:
 	_taps.append(t)
 
 
+## The distance the dummy keeps from the player with weapon `w` (centre to
+## centre): the weapon's reach once that comes from its light starter's
+## swing (task 7.13), and the demo's distances until then.
+static func practice_distance(w: WeaponDef) -> float:
+	var starter: AttackDef = w.moves.get(w.light_start)
+	if starter != null and starter.swing != null:
+		return w.reach
+	return 2.6 if w.id == &"greatsword" else (1.8 if w.id == &"daggers" else 2.2)
+
+
 func think() -> RawInput:
 	if behaviour == &"fight":
 		return _spar.think()
@@ -109,7 +121,7 @@ func think() -> RawInput:
 	var my: float = 0.0
 	var buttons: int = _hold
 	var d: float = SimMath.dist2(me.pos, me.opp.pos)
-	var want: float = 2.6 if me.weapon.id == &"greatsword" else (1.8 if me.weapon.id == &"daggers" else 2.2)
+	var want: float = practice_distance(me.weapon)
 	var free: bool = me.state == &"free" or me.state == &"step"
 
 	if behaviour == &"block":

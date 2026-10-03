@@ -50,6 +50,9 @@ extends RefCounted
 ##   sides are &"" on moves outside a string, charge_move is false and
 ##   release_variant &"" on every move but the Iai Slash, and
 ##   lunge_along_dodge is false on every move but Passing Cut.
+## - lunge_from(), lunge_share(), reach() and reach_arc() are the rebuild's
+##   (task 7.13): the first two are Fighter's lunge sums, shared with
+##   SwingReach.first_contact(); the others give a swing's reach and arc.
 
 const ATTACK_TYPES: Array[StringName] = [
 	&"slash", &"overhead", &"thrust", &"sweep", &"slam", &"spin", &"bash", &"stab", &"punch", &"kick",
@@ -254,3 +257,38 @@ static func finalize_moves(moves: Dictionary) -> Dictionary[StringName, AttackDe
 ## totalFrames(m)
 func total_frames() -> int:
 	return startup + active + recovery
+
+
+## The lunge the move covers when started `distance` m from its target
+## (centre to centre): a counter lunge closes the gap to 0.6 m between the
+## bodies (7 m at most), any other move covers its own lunge. Fighter's
+## start_attack() and SwingReach.first_contact() (task 7.13) both use it.
+func lunge_from(distance: float) -> float:
+	if special == &"counterLunge":
+		return SimMath.clamp(distance - SimConst.FIGHTER_RADIUS * 2.0 - 0.6, 0.0, 7.0)
+	return lunge
+
+
+## The share of its lunge the move covers on attack frame `f`: easing in and
+## out from lunge_start to lunge_end (the end of the active frames when
+## unset), and 0 outside them. Fighter's _update_attack() and
+## SwingReach.first_contact() (task 7.13) both use it.
+func lunge_share(f: int) -> float:
+	var ls: int = lunge_start
+	var le: int = lunge_end if lunge_end != UNSET else startup + active
+	if f <= ls or f > le:
+		return 0.0
+	var n: float = float(maxi(1, le - ls))
+	return SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
+
+
+## The move's reach (m from the attacker's centre to the target's surface,
+## without the lunge) and arc (degrees) for the computer opponent and the
+## move list: its swing's (task 7.13) when it has one, else the authored
+## range and arc. The counters' cones and in_volume() keep the authored ones.
+func reach() -> float:
+	return swing.reach if swing != null else range
+
+
+func reach_arc() -> float:
+	return swing.arc if swing != null else arc

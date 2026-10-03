@@ -204,7 +204,7 @@ func place_blades() -> void:
 		b.tip = SimMath.local_to_world(pos, yaw, pose.place(segment.tip))
 		b.prev_base = b.base
 		b.prev_tip = b.tip
-		b.half_thickness = segment.thickness / 2.0 + (SimConst.UNBLOCKABLE_SWEEP_BONUS if def.unblockable else 0.0)
+		b.half_thickness = BladeSegment.half_thickness_for(segment, def)
 		for before: BladeSegment in last:
 			if before.part == part:
 				b.prev_base = before.base
@@ -660,11 +660,7 @@ func start_attack(p_id: StringName, started_by: int = -1, chained_from: AttackDe
 		dodge_was_back = dodge != null and dodge.back
 	set_state(&"attack")
 	blocking = false
-	var lunge_total: float = (
-		SimMath.clamp(SimMath.dist2(pos, opp.pos) - SimConst.FIGHTER_RADIUS * 2.0 - 0.6, 0.0, 7.0)
-		if def.special == &"counterLunge"
-		else def.lunge
-	)
+	var lunge_total: float = def.lunge_from(SimMath.dist2(pos, opp.pos))
 	atk = AttackState.new()
 	atk.def = def
 	atk.chained_from = chained_from
@@ -765,10 +761,8 @@ func _update_attack() -> void:
 	# Lunge along our facing (or on along the last dodge), easing in and out
 	# over its window.
 	var ls: int = def.lunge_start
-	var le: int = def.lunge_end if def.lunge_end != AttackDef.UNSET else S + A
-	if a.lunge_total > 0.0 and f > ls and f <= le:
-		var n: float = float(maxi(1, le - ls))
-		var share: float = SimMath.ease_in_out(float(f - ls) / n) - SimMath.ease_in_out(float(f - 1 - ls) / n)
+	var share: float = def.lunge_share(f)
+	if a.lunge_total > 0.0 and share > 0.0:
 		if a.lunge_dir != null:
 			_advance_along(a.lunge_dir, a.lunge_total * share)
 		else:

@@ -11,6 +11,9 @@ const KANJI: StringName = &"KanjiLabel"
 const EYEBROW: StringName = &"EyebrowLabel"
 ## Quieter text in the dimmed paper.
 const MUTED: StringName = &"MutedLabel"
+## A boxed warning in the HUD (the plate's Disarmed tag): small spaced
+## capitals in danger red in a thin danger-red box.
+const TAG: StringName = &"HudTag"
 ## A main-menu button: no box until focused, then a lacquer wash and bar.
 const MENU_ENTRY: StringName = &"MenuEntry"
 
@@ -22,7 +25,7 @@ static func label(text: String, variation: StringName = &"", font_size: int = 0)
 	var l: Label = Label.new()
 	l.text = text
 	l.theme_type_variation = variation
-	l.uppercase = variation == EYEBROW
+	l.uppercase = variation == EYEBROW or variation == TAG
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	if font_size > 0:
 		l.add_theme_font_size_override("font_size", font_size)

@@ -23,13 +23,25 @@ extends Node
 const SEED: int = 7
 
 @export_enum(
-	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing",
+	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
 	"iai_stance", "iai_vertical", "iai_horizontal",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
 ## The Iai draw shots' attack frame.
 @export var iai_frame: int = 16
+## The "call" shot's announcement (24.2), from the player's side: final_round,
+## fight, double_ko, round_won (Perfect) or disarmed (--call= sets it too).
+@export var call: String = "final_round"
+## The "ko" shot's steps after the K.O. (--frame= sets it too).
+@export var steps_after: int = 16
+## The "hud_states" shot with the two sides' states swapped.
+@export var swap_sides: bool = false
+## The "hud_states" shot's moment in the low-HP pulse and the full posture's
+## blink, before the shot's 0.1 s step (s): 0.25 lands on 0.35 s, the pulse
+## near its brightest with the bar lit; 0.1 on 0.2 s, the pulse lower with
+## the bar dimmed.
+@export var blink_time: float = 0.25
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
 
@@ -38,6 +50,7 @@ var main: Node
 var _ready_flag: bool = false
 var _parried: bool = false
 var _katana_hit: bool = false
+var _ko: bool = false
 
 
 func shot_frames() -> int:
@@ -54,6 +67,9 @@ func _ready() -> void:
 			spacing = float(a.trim_prefix("--spacing="))
 		elif a.begins_with("--frame="):
 			iai_frame = int(a.trim_prefix("--frame="))
+			steps_after = iai_frame
+		elif a.begins_with("--call="):
+			call = a.trim_prefix("--call=")
 	match shot:
 		"round_start":
 			_gameplay(MatchConfig.DUEL)
@@ -102,6 +118,19 @@ func _ready() -> void:
 			_gameplay(MatchConfig.DUEL)
 			host.step(Match.INTRO_FRAMES + 20)
 			_place_apart(spacing)
+		"ko":
+			# the first round's K.O. call (24.2), its entrance over: --frame=
+			# steps after the K.O.
+			_gameplay(MatchConfig.WATCH)
+			host.sim_event.connect(_on_event)
+			_step_until(func() -> bool: return _ko, 200000, 0)
+			host.step(steps_after)
+		"call":
+			_call_shot()
+		"hud_states":
+			_gameplay(MatchConfig.DUEL)
+			host.step(Match.INTRO_FRAMES + 60)
+			_set_hud_states()
 		"iai_stance", "iai_vertical", "iai_horizontal":
 			_iai(shot)
 	var view: MatchView = host.get_node("View")
@@ -112,9 +141,62 @@ func _ready() -> void:
 		_frame_front(view.camera, 0, shot == "iai_horizontal")
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
+	if shot == "hud_states":
+		# a hit just taken (from the 40 HP _set_hud_states gave): the low
+		# side's lag band held where its HP was; and the pulse and blink at a
+		# chosen moment
+		host.fighter(1 if swap_sides else 0).hp = 18.0
+		hud.set("_blink", blink_time)
+		hud._process(0.1)
 	view.set_process(false)
 	hud.set_process(false)
 	_ready_flag = true
+
+
+## Every top-bar state at once (task 24.1): one side at 40 HP (cut to 18 for
+## the shot, for the lag band), posture hot, the ultimate ready, a round won;
+## the other with posture full, the ultimate used, its weapon lost and two
+## rounds won (all three when swapped, which only a shot can show).
+func _set_hud_states() -> void:
+	var a: Fighter = host.fighter(1 if swap_sides else 0)
+	var b: Fighter = host.fighter(0 if swap_sides else 1)
+	a.hp = 40.0
+	a.posture = 78.0
+	b.hp = 15.0
+	b.posture = SimConst.POSTURE_MAX
+	b.ult_used = true
+	b.armed = false
+	host.sim_match.wins[a.id] = 1
+	host.sim_match.wins[b.id] = 3 if swap_sides else 2
+
+
+## A duel with the player on side 0, a few steps past the intro, then the
+## chosen call, held 20 steps into its run (past the entrance).
+func _call_shot() -> void:
+	var cfg: MatchConfig = MatchConfig.make(
+		MatchConfig.DUEL,
+		MatchSide.human(&"rogue", &"katana", 0),
+		MatchSide.computer(&"hunter", &"greatsword", 1, &"hard"),
+		SEED,
+	)
+	_gameplay(MatchConfig.DUEL, cfg, InputDevices.new(FakeDeviceState.new()))
+	host.step(Match.INTRO_FRAMES + 10)
+	var hud: MatchHud = host.get_node("Hud")
+	match call:
+		"final_round":
+			host.sim_match.wins[0] = 2
+			host.sim_match.wins[1] = 2
+			hud._on_sim_event({"t": &"roundStart", "round": 5})
+		"fight":
+			hud._on_sim_event({"t": &"fight"})
+		"double_ko":
+			hud._on_sim_event({"t": &"ko", "winner": -1})
+		"round_won":
+			hud._on_sim_event({"t": &"roundOver", "winner": 0, "perfect": true})
+			host.step(MatchHud.ROUND_RESULT_DELAY)
+		"disarmed":
+			hud._on_sim_event({"t": &"disarm", "victim": 0})
+	host.step(20)
 
 
 func _config(mode: StringName) -> MatchConfig:
@@ -246,5 +328,7 @@ func _weapon_down() -> bool:
 func _on_event(e: Dictionary) -> void:
 	if e["t"] == &"parry":
 		_parried = true
+	elif e["t"] == &"ko":
+		_ko = true
 	elif e["t"] == &"hit" and int(e["attacker"]) == 0 and not _katana_hit:
 		_katana_hit = true

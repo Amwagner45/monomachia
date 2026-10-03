@@ -278,11 +278,24 @@ func _legs_free(f: Fighter) -> float:
 	return clampf(1.0 - float(f.atk.frame - Fighter.CHARGE_CHECK_FRAME) / LEGS_RAMP, 0.0, 1.0)
 
 
-## True when an authored attack clip drives the Hunter's arms and the
-## weapon rides the clip's hand (see the class notes): the Iglesias clips
-## are there and the paths were baked on him.
-func _fixed_on_clip() -> bool:
-	return shot != null and shot.drive == ClipDirector.ATTACK and director.libraries and fighter_id == &"hunter"
+## True when an authored attack clip drives the arms and the weapon rides
+## the clip's hand (see the class notes): the Iglesias clips are there, and
+## either the paths were baked on him (the Hunter) or there is no baked
+## weapon path to pose it on (a pose-only swing like Flash's, or the
+## ultimate; task 13), for the Rogue too.
+func _fixed_on_clip(f: Fighter) -> bool:
+	if shot == null or shot.drive != ClipDirector.ATTACK or not director.libraries:
+		return false
+	if fighter_id == &"hunter":
+		return true
+	var swing: Swing = _playing_swing(f)
+	return swing == null or not swing.parts().has(&"right_hand")
+
+
+## The baked swing of the attack `f` plays, or null (not attacking, a move
+## without one, the ultimate).
+static func _playing_swing(f: Fighter) -> Swing:
+	return f.atk.def.swing if f.state == &"attack" and f.atk != null else null
 
 
 ## True when the held weapon's hold stands in the guard stance.
@@ -329,15 +342,16 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.rules_frame = f.world.frame if f.world != null else 0
 	# (not once the legs start passing to a stance: they let go over its ramp)
 	foot_lock.enabled = (whole_body > 0.0 and _legs_free(f) <= 0.0) or (stance <= 0.0 and locomotion.speed < 0.05)
-	if driving:
+	var playing: Swing = _playing_swing(f) if driving else null
+	if playing != null:
 		# the reach correction carries the body above the hips, and the arms
 		# and weapon with it
-		rig.body.hips_offset += SwingPlayer.to_skeleton(f.atk.def.swing.reach_at(SwingPlayer.swing_frame(f, alpha)))
+		rig.body.hips_offset += SwingPlayer.to_skeleton(playing.reach_at(SwingPlayer.swing_frame(f, alpha)))
 	# the blade in the saya through the Iai's sheathe and stance (task 11)
-	rig.sheathed = driving and f.atk.def.swing.is_sheathed(float(f.atk.frame))
+	rig.sheathed = playing != null and playing.is_sheathed(float(f.atk.frame))
 	if model.weapons.is_empty():
 		return
-	if _fixed_on_clip():
+	if _fixed_on_clip(f):
 		# the weapon rides the clip's hand
 		if not rig.is_fixed():
 			model.fix_weapons()

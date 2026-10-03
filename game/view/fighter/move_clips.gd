@@ -115,7 +115,7 @@ static func markers(e: Entry, manifest: ClipManifest, lengths: PackedFloat64Arra
 	var start: float = 0.0
 	for i: int in e.clips.size() - 1:
 		var p: ClipChain.Part = ClipChain.parse(String(e.clips[i]), [] as Array[String])
-		start += (lengths[i] if is_nan(p.to) else p.to) - p.from
+		start += p.hold if p.hold > 0.0 else (lengths[i] if is_nan(p.to) else p.to) - p.from
 	var out: Dictionary = {}
 	for name: String in ClipManifest.MARKERS:
 		if name == "windup":

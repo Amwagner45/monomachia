@@ -124,6 +124,11 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "k_dh", "field": "lunge", "was": 0.3, "now": 0.5},
 	{"move": "k_bl", "field": "lunge", "was": 0.8, "now": 1.25},
 	{"move": "k_bh", "field": "lunge", "was": 2.2, "now": 2.3},
+	# authored animation 13: the unblockables' clips (AttackPolearm01 and
+	# Attack2H03) reach less far than their cones, so their lunges carry them
+	# to a touch from the unblockables' test distance (3.5 m)
+	{"move": "k_thrust", "field": "lunge", "was": 1.0, "now": 1.4},
+	{"move": "k_sweep", "field": "lunge", "was": 0.4, "now": 1.4},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

@@ -362,6 +362,11 @@ static func _measure(r: Result, move: AttackDef, weapon: WeaponDef, distance: fl
 ## hands (both hands for a move with both); the main hand otherwise.
 static func parts_for(move: AttackDef, weapon: WeaponDef) -> Array[StringName]:
 	var out: Array[StringName] = []
+	if move.damage <= 0.0 and move.posture <= 0.0:
+		# a pose-only move (Flash, task 13): the body alone, so no blade is
+		# placed and it never strikes; the weapon rides the clip's hand
+		out.append(&"body")
+		return out
 	if weapon.id == &"daggers":
 		out.assign([&"right_hand", &"left_hand"])
 	elif weapon.id == &"fists":

@@ -117,13 +117,13 @@ const MOVES: Dictionary = {
 	&"k_thrust": {
 		"id": &"k_thrust", "name": "Piercing Thrust", "kind": &"ability", "type": &"thrust", "anim": &"thrust",
 		"startup": 26, "active": 4, "recovery": 24, "damage": 12, "posture": 16, "knockback": 0.8,
-		"range": 3.1, "arc": 36, "lunge": 1.0, "lunge_start": 18, "lunge_end": 30,
+		"range": 3.1, "arc": 36, "lunge": 1.4, "lunge_start": 18, "lunge_end": 30,
 		"unblockable": true, "counter": &"thrust", "track_startup": 5, "track_active": 0.5,
 	},
 	&"k_sweep": {
 		"id": &"k_sweep", "name": "Swallow Sweep", "kind": &"ability", "type": &"sweep", "anim": &"sweep",
 		"startup": 26, "active": 5, "recovery": 24, "damage": 11, "posture": 16, "knockback": 0.8,
-		"range": 2.6, "arc": 150, "lunge": 0.4, "unblockable": true, "jumpable": true, "counter": &"sweep",
+		"range": 2.6, "arc": 150, "lunge": 1.4, "unblockable": true, "jumpable": true, "counter": &"sweep",
 	},
 	# --- counter follow-up ---
 	&"k_lunge": {

@@ -184,6 +184,26 @@ func test_the_iai_enters_a_defender_at_3_6_m_and_misses_at_4_2_m() -> void:
 		assert_null(SwingReach.first_contact(m, Moves.KATANA, 4.2, 0.0, FighterBody.of(&"")), "%s misses at 4.2 m" % id)
 
 
+## The unblockables' clips (authored-animation task 13), with their thicker
+## sweep, reach a defender 3.5 m away, where Right Cut whiffs.
+func test_an_unblockable_hits_where_the_light_misses() -> void:
+	var body: FighterBody = FighterBody.of(&"")
+	assert_null(SwingReach.first_contact(Moves.KATANA.moves[&"k_l1"], Moves.KATANA, 3.5, 0.0, body), "Right Cut misses at 3.5 m")
+	for id: StringName in [&"k_thrust", &"k_sweep"]:
+		var m: AttackDef = Moves.KATANA.moves[id]
+		assert_true(m.unblockable, "%s is unblockable" % id)
+		assert_not_null(SwingReach.first_contact(m, Moves.KATANA, 3.5, 0.0, body), "%s hits at 3.5 m" % id)
+
+
+## Flash (task 13) is a pose-only clip: its swing moves the body alone, so it
+## places no blade and never strikes.
+func test_flash_plays_a_clip_but_strikes_nothing() -> void:
+	var flash: AttackDef = Moves.KATANA.moves[&"k_flash"]
+	assert_not_null(flash.swing, "a baked swing")
+	assert_false(flash.swing.clips.is_empty(), "played from its clips")
+	assert_eq(flash.swing.parts(), [&"body"] as Array[StringName], "the body alone")
+
+
 func test_a_sheathed_fighter_cannot_block() -> void:
 	# fighter 0 holds heavy to stay sheathed, and holds block too from step
 	# 12; the opponent's Right Cut lands while it is sheathed

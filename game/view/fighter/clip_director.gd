@@ -26,6 +26,8 @@ extends RefCounted
 ##   The Rogue plays the Hunter's set for a move whose HumanF clip strays
 ##   (ClipLibraries.set_for()). Moves without a baked swing keep the
 ##   stand-in poses: nothing drives;
+## - the ultimate Moonsplitter (task 13; ult_clip()): its clip wound up and
+##   held through the rules' wind-up, released as the wave goes out;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance (task 18 on).
@@ -47,6 +49,17 @@ const FALLBACK_IDLE: Dictionary[StringName, StringName] = {
 ## What drives the body: the legs' blend, or an authored clip.
 const LEGS: StringName = &"legs"
 const ATTACK: StringName = &"attack"
+## Moonsplitter's clip per variant (clip-manifest ids) and the source frame
+## it holds at through the wind-up: Attack2H01 raised overhead for the
+## vertical wave, Attack2H03 wound round for the horizontal. The wind-up
+## plays at 1.0 to the hold and waits there; the release plays at 2.0 from
+## it, its cut landing as the rules send the wave.
+const ULT_CLIPS: Dictionary[StringName, Array] = {&"vertical": [&"Attack2H01", 12.0], &"horizontal": [&"Attack2H03", 7.0]}
+## Without the packs: the CC0 clip stretched over the wind-up and release.
+const ULT_FALLBACK: StringName = &"Sword_Heavy_Combo"
+## Moonsplitter's wind-up and release, in rules frames (Fighter._ult_moonsplitter()).
+const ULT_WINDUP: int = 36
+const ULT_RELEASE: int = 34
 
 
 ## What a fighter is playing and from what it plays.
@@ -144,13 +157,18 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.frame = frame
 	out.idle = idle_clip(f, ctx)
 	var playing: Clip = attack_clip(f, ctx, float(f.atk.frame) if f.atk != null else 0.0)
+	if playing == null:
+		playing = ult_clip(f, ctx)
 	var drive: StringName = ATTACK if playing != null else LEGS
+	var move: StringName = &""
+	if playing != null:
+		move = f.atk.def.id if f.atk != null else f.ult.kind
 	if prev == null:
 		out.drive = drive
 		out.clip = playing
 		out.clip_before = playing
 		out.attack = f.atk if playing != null else null
-		out.move = f.atk.def.id if playing != null else &""
+		out.move = move
 		out.state = f.state
 		out.fade = 0
 		out.since = 0
@@ -173,7 +191,7 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.drive = drive
 	out.clip = playing
 	out.attack = f.atk if playing != null else null
-	out.move = f.atk.def.id if playing != null else &""
+	out.move = move
 	out.state = f.state
 	return out
 
@@ -209,6 +227,28 @@ static func attack_clip(f: Fighter, ctx: Context, t: float) -> Clip:
 		return null
 	var set_name: StringName = ClipLibraries.set_for(ctx.fighter_id, swing)
 	return chain_clip(swing.clips, set_name, timing.clip_time(t), ctx)
+
+
+## Moonsplitter's clip for `f` in the ultimate's state, or null when it
+## isn't playing it: the wind-up raising the blade (1.0) to the hold and
+## waiting there, the release cutting from it (2.0) as the wave goes out;
+## without the packs the fallback stretched over both. A Greatsword's lift
+## off the shoulder waits at the clip's start.
+static func ult_clip(f: Fighter, ctx: Context) -> Clip:
+	if f.state != &"ult" or f.ult == null or f.ult.kind != &"moonsplitter":
+		return null
+	var u: UltState = f.ult
+	var pf: float = float(u.pf)
+	if not ctx.libraries:
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, ULT_FALLBACK]
+		var done: float = pf if u.phase == &"windup" else float(ULT_WINDUP) + pf
+		return Clip.make(anim_name, clampf(done / float(ULT_WINDUP + ULT_RELEASE), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
+	var pick: Array = ULT_CLIPS.get(u.variant, ULT_CLIPS[&"vertical"])
+	var anim_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), pick[0])
+	var hold: float = pick[1]
+	var source: float = minf(pf * 0.5, hold) if u.phase == &"windup" else hold + pf
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
 
 
 ## The timing a baked swing was baked on (its markers and speed), or null.
@@ -258,7 +298,7 @@ static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 	if f.state == &"hitstun":
 		return FADES[&"hitstun"]
 	if drive == ATTACK:
-		if prev.drive == ATTACK and f.atk.chained_from != null:
+		if prev.drive == ATTACK and f.atk != null and f.atk.chained_from != null:
 			return FADES[&"follow_up"]
 		return FADES[&"attack"]
 	if prev.drive == ATTACK and (f.state == &"dodge" or f.state == &"backstep"):

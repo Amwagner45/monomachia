@@ -32,6 +32,16 @@ func test_a_chain_lays_out_its_parts_end_to_end() -> void:
 	assert_eq(why.size(), 1)
 
 
+func test_a_held_part_holds_its_frame() -> void:
+	var parts: Array[ClipChain.Part] = _parts(["Cut@0-4", "Cut@4*4", "Cut@4"])
+	assert_eq([parts[1].start, parts[1].length, parts[2].start], [4.0, 4.0, 8.0], "held 4 frames between")
+	assert_eq(ClipChain.place(parts, 6.0).frame, 4.0, "the frame held")
+	assert_eq(ClipChain.place(parts, 9.0).frame, 5.0, "then on from it")
+	var why: Array[String] = []
+	assert_null(ClipChain.parse("Cut@4*0", why), "a hold of no frames")
+	assert_eq(why.size(), 1)
+
+
 func test_each_part_fades_in_from_the_one_before_held_at_its_end() -> void:
 	var parts: Array[ClipChain.Part] = _parts(["Sheathe@3-12", "Cut@2"])
 	var at: ClipChain.Place = ClipChain.place(parts, 4.0)

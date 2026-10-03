@@ -262,3 +262,35 @@ func test_a_chain_plays_its_clips_in_turn() -> void:
 	var b: ClipDirector.Clip = ClipDirector.chain_clip(chain, &"HumanM", LENGTH + 0.25, ctx)
 	assert_eq(b.name, "HumanM/Chain_B")
 	assert_almost_eq(b.time, 0.25, 1e-9)
+
+
+## Moonsplitter (task 13): wound up and held through the rules' 36-frame
+## wind-up, released from the hold as the wave goes out, by its variant.
+func test_moonsplitter_holds_its_wind_up_and_cuts_with_the_wave() -> void:
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {"HumanM/Attack2H01": 1.6, "HumanM/Attack2H03": 1.53, "ual/Sword_Heavy_Combo": 2.0}
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	f.state = &"ult"
+	f.ult = UltState.make(&"moonsplitter", &"windup", 0, &"vertical", 0, false)
+	f.ult.pf = 10
+	var c: ClipDirector.Clip = ClipDirector.ult_clip(f, ctx)
+	assert_eq(c.name, "HumanM/Attack2H01", "the vertical wave's clip")
+	assert_almost_eq(c.time * 30.0, 5.0, 1e-6, "raised at 1.0")
+	f.ult.pf = 30
+	assert_almost_eq(ClipDirector.ult_clip(f, ctx).time * 30.0, 12.0, 1e-6, "held at the top")
+	f.ult.phase = &"release"
+	f.ult.pf = 3
+	assert_almost_eq(ClipDirector.ult_clip(f, ctx).time * 30.0, 15.0, 1e-6, "cutting at 2.0 as the wave goes out")
+	f.ult.variant = &"horizontal"
+	assert_eq(ClipDirector.ult_clip(f, ctx).name, "HumanM/Attack2H03", "the horizontal wave's clip")
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	assert_eq([shot.drive, shot.move], [ClipDirector.ATTACK, &"moonsplitter"], "it drives")
+	var bare: ClipDirector.Context = ClipDirector.Context.make(&"hunter", false, lengths)
+	f.ult.phase = &"windup"
+	f.ult.pf = 18
+	c = ClipDirector.ult_clip(f, bare)
+	assert_eq(c.name, "ual/Sword_Heavy_Combo", "without the packs, the fallback")
+	assert_almost_eq(c.time, 2.0 * 18.0 / 70.0, 1e-6, "stretched over the wind-up and release")
+	f.ult.kind = &"impaler"
+	assert_null(ClipDirector.ult_clip(f, ctx), "the other ultimates keep their stand-ins")

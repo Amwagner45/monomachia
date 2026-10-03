@@ -3,7 +3,9 @@ extends RefCounted
 ## A move's chain of clips (the move-clip table's "clips", Swing.clips),
 ## played one after another (authored-animation task 11). Each entry is a
 ## clip id, or part of one: "id@from" plays it from source frame `from`,
-## "id@from-to" from `from` to `to`. Each part after the first fades in from
+## "id@from-to" from `from` to `to`, and "id@frame*n" holds source frame
+## `frame` for `n` source frames (an unblockable's wound-up pose shown
+## early, task 13). Each part after the first fades in from
 ## the one before, held at its last pose, over its first BLEND source frames,
 ## so a sheathe's end can lead into a cut's wind-up without a pop. The bake
 ## (ClipPoser) and the clip director (chain_clip()) lay the chain out the same
@@ -23,6 +25,8 @@ class Part:
 	var from: float = 0.0
 	## NAN for the clip's end.
 	var to: float = NAN
+	## Source frames it holds `from` for (a held part, "id@frame*n"), or 0.
+	var hold: float = 0.0
 	## Laid out (lay_out()): where it starts in the chain and how long it
 	## plays (source frames).
 	var start: float = 0.0
@@ -61,13 +65,23 @@ static func qualified(set_name: StringName, entry: String) -> String:
 
 
 ## The part entry `entry` names, or null with a line in `errors` when it
-## doesn't read ("id", "id@from" or "id@from-to", from before to).
+## doesn't read ("id", "id@from", "id@from-to" from before to, or
+## "id@frame*n").
 static func parse(entry: String, errors: Array[String]) -> Part:
 	var p: Part = Part.new()
 	var at: int = entry.find("@")
 	p.id = StringName(entry if at < 0 else entry.substr(0, at))
 	if at < 0:
 		return p
+	var held: PackedStringArray = entry.substr(at + 1).split("*")
+	if held.size() == 2:
+		if held[0].is_valid_float() and held[1].is_valid_float() and float(held[0]) >= 0.0 and float(held[1]) > 0.0 and p.id != &"":
+			p.from = float(held[0])
+			p.to = p.from
+			p.hold = float(held[1])
+			return p
+		errors.append("%s: a held part is \"id@frame*n\" (hold source frame `frame` for n source frames)" % entry)
+		return null
 	var span: PackedStringArray = entry.substr(at + 1).split("-")
 	var ok: bool = span.size() <= 2 and span[0].is_valid_float() and (span.size() == 1 or span[1].is_valid_float())
 	if ok:
@@ -93,12 +107,12 @@ static func lay_out(entries: Array, lengths: Dictionary, errors: Array[String]) 
 			return [] as Array[Part]
 		var full: float = float(lengths.get(p.id, 0.0))
 		var to: float = full if is_nan(p.to) else p.to
-		if to > full + 1e-6 or p.from >= to:
+		if to > full + 1e-6 or (p.from >= to and p.hold <= 0.0):
 			errors.append("%s: past the clip's end (frame %s)" % [e, ClipTiming.frame_text(snappedf(full, 0.01))])
 			return [] as Array[Part]
 		p.to = to
 		p.start = start
-		p.length = to - p.from
+		p.length = p.hold if p.hold > 0.0 else to - p.from
 		start += p.length
 		out.append(p)
 	return out
@@ -117,7 +131,7 @@ static func place(parts: Array[Part], t: float) -> Place:
 	while i > 0 and at < parts[i].start:
 		i -= 1
 	out.part = i
-	out.frame = parts[i].from + (at - parts[i].start)
+	out.frame = parts[i].from + (0.0 if parts[i].hold > 0.0 else at - parts[i].start)
 	var into: float = at - parts[i].start
 	if i > 0 and into < BLEND:
 		out.under = i - 1

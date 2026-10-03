@@ -145,8 +145,8 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 | Where the code lives | A Godot project in a `game/` folder of this repo, beside the web version until the Godot build matches it; then the web code is deleted (tag `v0.1-web-mvp` keeps it) | The web rules act as the reference while porting | The repo briefly holds both |
 | Rules layer | Ported line for line to GDScript first, proven identical on recorded inputs, and only then changed | A faithful port gives a safety net; changes are then deliberate and tested | The port is done twice over: once faithful, then changed |
 | What decides a hit | The weapon's path: each attack says where the weapon travels, frame by frame, and a hit lands only when the blade's sweep touches the opponent's body | "Hitboxes as tight as possible to the weapon"; what you see is what hits | Every move needs a path; ranges and arcs change a little, so tuning follows |
-| How attacks are animated | The same weapon path moves the weapon on screen; the arms reach for the grip, and the torso and hips turn and lean with it | The free animation packs have no two-handed or weapon-specific attacks; one path for both hits and visuals keeps them in sync | Procedural animation is less expressive than hand-keyed animation; it can be replaced move by move with authored clips later |
-| Movement animation | Walk, jog, sprint, idle, jump, flinch, knockdown and death clips from the Quaternius packs, with procedural strafing, backpedalling, leaning and dodge poses on top | The packs cover forward movement only | Strafing is an approximation until strafe clips are added |
+| How attacks are animated | **Superseded by `docs/specs/authored-animation.md`:** authored clips (Kevin Iglesias, with UAL2 as a supplement), retimed to each move, and the hit path baked from the same clip. Was: the same weapon path moves the weapon on screen; the arms reach for the grip, and the torso and hips turn and lean with it | Procedural swings read as procedural (the spike's critique); the Iglesias packs have one- and two-handed, dual-wield and unarmed attacks | Frame data retuned to the clips; the converted clips can't be committed |
+| Movement animation | **Superseded by `docs/specs/authored-animation.md`:** Iglesias directional walk, run, strafe, sprint and turn sets, combat idles, and a roll for the dodge; all procedural movement retired. Was: Quaternius walk, jog, sprint, idle, jump, flinch, knockdown and death clips, with procedural strafing, backpedalling, leaning and dodge poses on top | Real directional clips are now available | The guard shuffle and lean go |
 | Fighters | Two of the eight to start: the Rogue (female Ranger outfit without the pauldrons, dark colours, hood, a cloth mask over the lower face, idling with her daggers in a reverse grip, though her attacks use a forward grip) and the Hunter (male Ranger outfit, dark brown with muted ochre, a tricorn hat and neck scarf instead of the hood, a scar). The mask, scarf and hat are built in code, since the packs have none. Any fighter can wield any weapon | They are the two fighters the free packs can dress convincingly; the tricorn is the Hunter's strongest Bloodborne cue and stops the two reading as the same hooded figure | The other six wait for their own bodies and outfits. Nothing flows yet: the packs have no capes or coats |
 | Weapon models | Quaternius Medieval Weapons for the Greatsword (rebuilt at 1.72 m with a broader blade) and the Daggers, and a Katana built in code (curved single edge, round guard). Every blade has a dark body and a bright edge band, so it reads at any angle and at gameplay distance | The pack has no katana | Flat-colour weapons next to painted characters, softened by the shared toon shader |
 | Look | Toon lighting in three bands, ink outlines, and an ink-wash finish (paper grain, soft edge darkening, muted palette with red accents) | The art direction in the design doc | Shader work up front |
@@ -268,7 +268,12 @@ Zero-damage stances (Flash, Shadow Step) strike nothing and aren't tested. The u
 
 Task 8 built the rules above. On them the first 300-match tuning run (12.1) has rounds of 39.9 s, 0.74 disarms per round, and win rates against the other weapons of 48.5% for the Katana, 37.4% for the Greatsword and 62.8% for the Daggers. So disarms and the Greatsword's and the Daggers' win rates are outside the targets under Testing Decisions; task 12 tunes toward them (the plan's Progress has the numbers).
 
-**Presentation of fighters.**
+**Presentation of fighters.** The authored-animation feature (`docs/specs/authored-animation.md`) replaces most of what follows:
+- authored clips replace the procedural swings, the guard shuffle, the hip-turn strafing, the lean and the dodge poses;
+- the weapon is fixed to the main hand;
+- the swing editor, blade lag, the procedural parry bounce and the ghost trail are retired.
+
+The bullets below describe the build up to that feature.
 
 - Each fighter is a scene built from the Quaternius base body (head only, cut from the full body at import), the outfit parts, hair, headwear built in code and palette, all on the shared 65-bone skeleton. Animations are retargeted through Godot's humanoid bone map.
 - The two palettes differ over a large area seen from every side (the Rogue's second palette swaps dark for ash on the hood and sleeves), not just in trim. The outfit textures are baked with wear: ambient occlusion, dust up the boots and trouser hems, scuffed knees and cuffs, worn leather edges and grime. Faces get soot and shadowed eyes.
@@ -439,7 +444,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 
 - The other six weapons (Odachi, Giant Hammer, Staff, Sword & Shield, Bladed Whip, Scythe) and their ultimates.
 - The other six fighters (Knight, Samurai, Orc, Aristocrat, Monk, Skeleton Knight), per-fighter bare-hand moves and per-fighter computer personalities.
-- The character select screen of the design doc (model on the right, loadout on the left, lock-in, gate opening), the match intro with gates and fighter intros, and victory poses. The rebuild ships a simpler fighter and loadout select.
+- The character select screen of the design doc (model on the right, loadout on the left, lock-in, gate opening), the match intro with gates and fighter intros, and victory poses. The rebuild ships a simpler fighter and loadout select. (The authored-animation feature adds the weapon draw at the round intro and each weapon's victory pose.)
 - Arenas other than the floating Moonlit Shrine, and stage select.
 - Real music (placeholders only), voices and announcers.
 - Online play, accounts, progression and cosmetics.
@@ -469,7 +474,7 @@ The demo spec's block-posture figures (60, 50 and 70%) and speed figures don't m
 
 **Risks, and how they're handled:**
 
-- Procedural attack animation may not look good enough. An early animation spike on one fighter and the Katana is judged from screenshots before all moves are built. Authored clips can replace any move later, because the swing path stays the hit authority.
+- Procedural attack animation may not look good enough. An early animation spike on one fighter and the Katana is judged from screenshots before all moves are built. Authored clips can replace any move later, because the swing path stays the hit authority. (Oct 3: it didn't look good enough, and `docs/specs/authored-animation.md` replaces it with authored clips.)
 - Swing-based hits change balance. Handled by soak runs after the change, with ranges tuned per move.
 - The body and outfit rest poses differ slightly, which risks clipping. Handled by cutting the body down to the head and checking screenshots.
 - Asset licences:

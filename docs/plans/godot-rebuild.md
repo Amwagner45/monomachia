@@ -198,6 +198,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
+  - 3 Oct 2026: the art budget was raised to 110 MB in all and 25 MB per file to add Quaternius's UAL2 Standard root-motion library, the UAL2 Source tier's full clip libraries (about 20 MB each, allow-listed in `check-sizes.mjs`) and the female mannequin; the art now comes to 104.5 MB. The Kevin Iglesias animation packs stay outside the repo (their licence forbids redistribution; see `game/assets/CREDITS.md`).
   - stage 5, checked at its merge with everything above (9.1 included): 757 Godot tests and 85 web tests pass, the typecheck loads 179 scripts, `--smoke` plays a Watch match to the results with its sound in a window, the sound check plays through in a window with no errors, and the committed audio is 30.4 MB of its 40 MB budget.
   - 9.1's review fixes, rebased on stage 5's merge: 759 Godot tests (73 s) and 85 web tests pass, and the typecheck loads 179 scripts;
   - after 9.2 and its review fixes: 767 Godot tests (70 s) and 85 web tests pass, and the typecheck loads 179 scripts;

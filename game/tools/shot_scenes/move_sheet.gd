@@ -47,7 +47,8 @@ extends Node3D
 ## (task 18); string_l to string_llll: the Katana's
 ## light string stopped after one, two, three and four lights, each press
 ## made after the move before has passed its startup, so it follows it), with
-## the opponent out of the way,
+## the opponent out of the way (but for stomp: the opponent thrusts its
+## unblockable and the fighter dodges into it, the stomp counter),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -93,7 +94,9 @@ const LIGHT: int = 1 << Btn.LIGHT
 ##   strafe near enough (under 9 m) that the rules keep the distance, so the
 ##   fighter circles it;
 ## - every (optional): every how many frames the strip shows one, when
-##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames.
+##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames;
+## - defender (optional): the opponent's input, segments as for input
+##   (otherwise it takes none).
 const DRIVES: Dictionary[StringName, Dictionary] = {
 	&"rest_to_sprint": {
 		"input": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
@@ -242,6 +245,14 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"notes": "still for 12 frames, then the whole L-L-L-L: Right Cut, Return Cut, Kesa Cut and Crown Cut, recovering to the guard",
 		"views": [&"three_quarter", &"hands"],
 		"spacing": 4.0,
+		"every": 2,
+	},
+	&"stomp": {
+		"input": [[32, 0.0, 0.0, 0], [1, 0.0, 1.0, 1 << Btn.DODGE], [52, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | HEAVY], [72, 0.0, 0.0, 0]],
+		"notes": "the opponent thrusts its unblockable after 12 frames; 20 frames later the fighter dodges into it and stomps it (the keyed Mikiri_Stomp)",
+		"views": [&"side", &"three_quarter"],
+		"spacing": 2.2,
 		"every": 2,
 	},
 }
@@ -770,10 +781,11 @@ func batch() -> Image:
 	return compose(header, index)
 
 
-## Drive `drive_id`'s input, a RawInput per frame.
-static func drive_inputs(drive_id: StringName) -> Array[RawInput]:
+## Drive `drive_id`'s input, a RawInput per frame: the fighter's, or with
+## `field` "defender" the opponent's (empty when it takes none).
+static func drive_inputs(drive_id: StringName, field: String = "input") -> Array[RawInput]:
 	var out: Array[RawInput] = []
-	for segment: Array in DRIVES[drive_id]["input"]:
+	for segment: Array in DRIVES[drive_id].get(field, []):
 		for i: int in int(segment[0]):
 			out.append(RawInput.make(segment[1], segment[2], segment[3]))
 	return out
@@ -804,12 +816,13 @@ func render_drive(drive_id: StringName) -> Image:
 	strip.clear()
 	var loco: Locomotion = bench.view.locomotion
 	var inputs: Array[RawInput] = drive_inputs(drive_id)
+	var opponent: Array[RawInput] = drive_inputs(drive_id, "defender")
 	var chosen: Array[int] = drive_frames(inputs.size(), every)
 	var cells: Dictionary[StringName, Array] = {}
 	for view: StringName in views:
 		cells[view] = []
 	for i: int in inputs.size():
-		bench.drive(inputs[i])
+		bench.drive(inputs[i], opponent[i] if i < opponent.size() else null)
 		_show_defender()
 		if not chosen.has(i + 1):
 			continue
@@ -817,6 +830,8 @@ func render_drive(drive_id: StringName) -> Image:
 		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
 		if bench.attacker.state == &"attack":
 			lines[0] += " · %s frame %d" % [bench.attacker.atk.def.id, bench.attacker.atk.frame]
+		elif bench.attacker.state != &"free":
+			lines[0] += " · %s %d" % [bench.attacker.state, bench.attacker.sf]
 		strip.append(lines)
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],

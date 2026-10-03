@@ -392,7 +392,7 @@ Oct 3, 2026. Task 19 done: the Greatsword's movement attacks, Guard Crusher and 
   - **The roll** plays Roll01 with the body turned toward the roll's direction. The body turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames.
   - **The backstep** plays Dodge01.
   - **A new roll sound** (cloth and a thump) plays on a dodge that isn't a backstep.
-  - **The other states:** jump and land, the stomp, the leap, the evade lunge, the pick-up (Loot01) and the recall. On a disarm the weapon leaves the hand (its model on the ground is godot-rebuild 18.10's), and it returns on the pick-up or the recall.
+  - **The other states:** jump and land, the stomp (done early, Oct 3, 2026: the hand-keyed Mikiri_Stomp, KeyedClips, played by ClipDirector.state_clip(); the stomp drive in move_sheet shows it), the leap, the evade lunge, the pick-up (Loot01) and the recall. On a disarm the weapon leaves the hand (its model on the ground is godot-rebuild 18.10's), and it returns on the pick-up or the recall.
   - Check:
     - director tests for the roll's turn and each state's clip;
     - a sound test that the roll and the backstep play different cues;

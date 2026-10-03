@@ -101,8 +101,8 @@ func stand() -> void:
 
 ## Steps the rules once with `input` for the fighter (none for the
 ## defender) and shows it.
-func drive(input: RawInput) -> void:
-	world.step([input, RawInput.empty()])
+func drive(input: RawInput, defender_input: RawInput = null) -> void:
+	world.step([input, defender_input if defender_input != null else RawInput.empty()])
 	_show()
 
 

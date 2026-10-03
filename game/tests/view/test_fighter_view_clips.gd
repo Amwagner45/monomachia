@@ -126,6 +126,34 @@ func test_local_the_hunter_holds_the_weapon_in_the_clips_hand() -> void:
 			assert_false(v.model.rig.is_fixed(), "the Rogue: the weapon posed on the shared path")
 
 
+func test_the_stomp_plays_its_keyed_clip_with_the_weapon_in_hand() -> void:
+	# both fighters, with and without the packs: the keyed clip is committed
+	for missing: bool in [true, false]:
+		ClipLibraries.force_missing = missing
+		for id: StringName in FighterLook.IDS:
+			var W: World = SimHelpers.make_world()
+			var b: Fighter = W.fighters[1]
+			var v: FighterView = _view(id, Moves.KATANA)
+			var seen: int = 0
+			for i: int in 60:
+				var a_in: RawInput = SimHelpers.btn(Btn.BLOCK, Btn.HEAVY) if i == 0 else SimHelpers.idle()
+				var b_in: RawInput = SimHelpers.move(0.0, 1.0, Btn.DODGE) if i == 20 else SimHelpers.idle()
+				W.step([a_in, b_in])
+				var poses: Array[Transform3D] = _show(v, b)
+				if b.state != &"stomp" or b.sf < 4:
+					continue
+				seen += 1
+				var clip: AnimationNodeAnimation = (v.locomotion.tree.tree_root as AnimationNodeBlendTree).get_node(&"clip_a")
+				assert_eq(String(clip.animation), KeyedClips.anim_name(KeyedClips.STOMP), "%s plays the keyed stomp (packs missing: %s)" % [id, missing])
+				assert_almost_eq(_authored(v), 1.0, 0.001, "the whole body on the clip")
+				assert_true(v.model.rig.is_fixed(), "the weapon rides the clip's hand")
+				assert_almost_eq(v.model.rig.body.hips_offset.y, 0.0, 0.001, "the stand-in's crouch gives way")
+				var hand: Vector3 = poses[v.model.skeleton.find_bone("RightHand")] * v.model.rig.fist("Right").origin
+				assert_lt(hand.distance_to(v.model.weapons[0].transform.origin), 0.01, "the hand on the handle")
+			assert_gt(seen, 0, "%s stomped the thrust" % id)
+			SimHelpers.dispose_all()
+
+
 func test_the_hud_notes_the_missing_packs() -> void:
 	ClipLibraries.force_missing = true
 	var host: MatchHost = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()

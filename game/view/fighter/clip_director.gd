@@ -38,11 +38,17 @@ extends RefCounted
 ##   (AttackState.lift, 6 frames), the legs handed over with it, and a guard
 ##   raised from it fades back to the legs over the same lift. There is no
 ##   CC0 carry, so without the packs nothing shows it;
+## - the Daggers' grip (task 21; Shot.grip): the reverse grip under the legs
+##   and the idle, turned forward over an attack's crossfade, and back over
+##   its last GRIP_BACK recovery frames when no follow-up is queued;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance.
 
 ## The crossfades' lengths, in rules frames.
+## The Daggers turn back into the reverse grip over an attack's last this
+## many recovery frames when no follow-up is queued (task 21).
+const GRIP_BACK: int = 6
 const FADES: Dictionary[StringName, int] = {
 	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8,
 }
@@ -155,6 +161,11 @@ class Shot:
 	var state: StringName = &""
 	## The ultimate's phase it plays, or empty.
 	var phase: StringName = &""
+	## How far a pair of daggers is turned into the reverse grip (0 forward,
+	## 1 reverse; FighterRig.set_reverse_turn()), and where it stood as the
+	## attack began (task 21).
+	var grip: float = 1.0
+	var grip_from: float = 1.0
 
 	## How far the crossfade is in (0 to 1, smoothed): the share of the new
 	## drive over what it fades in from.
@@ -230,12 +241,15 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		out.from = null
 		out.from_carry = false
 		out.phase = phase
+		out.grip_from = 1.0
+		out.grip = _grip(out, f)
 		return out
 	var changed: bool = drive != prev.drive or (drive == ATTACK and f.atk != prev.attack) 		or (phase != &"" and prev.phase != &"" and phase != prev.phase)
 	if changed:
 		# what it fades in from: the authored clip shown last, held where it was
 		out.from = _shown(prev)
 		out.from_carry = out.from != null and out.from.name == carry_name(ctx)
+		out.grip_from = prev.grip
 		out.fade = _fade(prev, f, drive)
 		out.since = 0
 		out.clip_before = playing
@@ -254,7 +268,23 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.move = move
 	out.state = f.state
 	out.phase = phase
+	out.grip = _grip(out, f)
 	return out
+
+
+## How far a pair of daggers is turned into the reverse grip in shot `s`
+## for `f`: all of it unless an attack drives; an attack turns it forward
+## from where it stood (grip_from) over its crossfade, and back over its last
+## GRIP_BACK recovery frames unless a follow-up is queued.
+static func _grip(s: Shot, f: Fighter) -> float:
+	if s.drive != ATTACK:
+		return 1.0
+	var t: float = lerpf(s.grip_from, 0.0, s.blend()) if s.fade > 0 else 0.0
+	if f.atk != null and f.atk.queued == &"":
+		var left: int = f.atk.def.total_frames() - f.atk.frame
+		if left < GRIP_BACK:
+			t = maxf(t, 1.0 - float(left) / float(GRIP_BACK))
+	return t
 
 
 ## The shoulder carry's pose for `f` while it is shouldered (held, a pose),

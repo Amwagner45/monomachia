@@ -156,6 +156,21 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# (4.0 m; Low Sweep, an added move, is in its strings test)
 	{"move": "g_sweep", "field": "lunge", "was": 0.3, "now": 1.65},
 	{"move": "g_slam", "field": "lunge", "was": 0.6, "now": 1.35},
+	# authored animation 21: the Daggers' lights (Attack1H01_R and _L,
+	# AttackDW01 and 02) reach further on their clips than their cones put
+	# them, the whole dagger inside a defender at the duelling distance (2.0
+	# m), so their lunges shorten to put 17.5 cm in, each ending on its first
+	# touch; Spinning Backhand's spin (AttackPolearm04) falls short of 2.5 m,
+	# so its lunge grows
+	{"move": "d_l1", "field": "lunge", "was": 0.3, "now": 0.15},
+	{"move": "d_l1", "field": "lunge_end", "was": AttackDef.UNSET, "now": 8},
+	{"move": "d_l2", "field": "lunge", "was": 0.3, "now": 0.17},
+	{"move": "d_l2", "field": "lunge_end", "was": AttackDef.UNSET, "now": 8},
+	{"move": "d_l3", "field": "lunge", "was": 0.4, "now": 0.38},
+	{"move": "d_l3", "field": "lunge_end", "was": AttackDef.UNSET, "now": 11},
+	{"move": "d_l4", "field": "lunge", "was": 0.6, "now": 0.35},
+	{"move": "d_l4", "field": "lunge_end", "was": AttackDef.UNSET, "now": 13},
+	{"move": "d_h2", "field": "lunge", "was": 0.4, "now": 1.1},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

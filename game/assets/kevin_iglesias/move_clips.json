@@ -41,6 +41,14 @@
 		"g_crush": {"clips": ["AttackShield01"], "speed": 1.0, "fallback": "Idle_Shield_Break", "marks": {"windup": 0, "contact": 7, "contact_end": 9.5, "settle": 20.5}},
 		"g_lunge": {"clips": ["AttackPolearm01@4"], "speed": 1.75, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 7, "contact_end": 9.6, "settle": 28.9}}
 	}},
-	"daggers": {"guard": "CombatIdle1H01", "moves": {}},
+	"daggers": {"guard": "CombatIdle1H01", "moves": {
+		"d_l1": {"clips": ["Attack1H01_R"], "speed": 1.86, "fallback": "Punch_Jab", "marks": {"windup": 2, "contact": 8.5, "contact_end": 10.36, "settle": 22.4}},
+		"d_l2": {"clips": ["Attack1H01_L"], "speed": 1.86, "fallback": "Punch_Cross", "marks": {"windup": 2, "contact": 8.5, "contact_end": 10.36, "settle": 22.4}},
+		"d_l3": {"clips": ["AttackDW01"], "speed": 1.67, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 7.5, "contact_end": 10, "settle": 21.7}},
+		"d_l4": {"clips": ["AttackDW02"], "speed": 1.36, "fallback": "Melee_Uppercut", "marks": {"windup": 0, "contact": 7.5, "contact_end": 9.5, "settle": 21.8}},
+		"d_h1": {"clips": ["AttackDW02@0-6", "AttackDW02@6*3", "AttackDW02@6"], "speed": 1.29, "fallback": "Sword_Dash", "marks": {"windup": 0, "hold": 6, "contact": 10.5, "contact_end": 12.45, "settle": 25.4}},
+		"d_h2": {"clips": ["AttackPolearm04"], "speed": 1.22, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 11, "contact_end": 14.05, "settle": 27.5}},
+		"d_dl": {"clips": ["Attack1H03_R@4"], "speed": 1.67, "fallback": "Sword_Regular_A", "marks": {"windup": 0, "contact": 5, "contact_end": 6.7, "settle": 16.7}}
+	}},
 	"fists": {"guard": "CombatIdle01", "moves": {}}
 }

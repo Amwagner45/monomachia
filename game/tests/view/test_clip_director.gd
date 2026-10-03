@@ -422,3 +422,58 @@ func test_a_guard_raised_from_the_shoulder_fades_out_over_the_lift() -> void:
 	assert_eq([shot.drive, shot.fade], [ClipDirector.LEGS, SimConst.GS_SHOULDER_LIFT_FRAMES], "back to the legs over the lift")
 	assert_eq(shot.legs_free(), 1.0, "the legs stay the legs' blend's as it fades")
 	assert_eq(shot.authored(), 1.0, "the carry still all there on its first frame")
+
+
+# ------------------------------------------------------------------ the Daggers' grip (task 21)
+
+func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 8.0)
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {}
+	for set_name: StringName in ClipLibraries.SETS:
+		for id: String in ["Attack1H01_R", "Attack1H01_L"]:
+			lengths["%s/%s" % [set_name, id]] = 33.0 / 30.0
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	var poke: Callable = func(move: StringName, frame: int, from: StringName = &"") -> void:
+		W.frame += 1
+		f.state = &"attack"
+		if f.atk == null or f.atk.def.id != move:
+			f.atk = AttackState.new()
+			f.atk.def = Moves.DAGGERS.moves[move]
+			f.atk.chained_from = Moves.DAGGERS.moves[from] if from != &"" else null
+		f.atk.frame = frame
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	assert_eq(shot.grip, 1.0, "the idle holds the reverse grip")
+	var grips: Array[float] = []
+	for i: int in 4:
+		poke.call(&"d_l1", 1 + i)
+		shot = ClipDirector.step(shot, f, ctx)
+		grips.append(shot.grip)
+	assert_eq(shot.fade, ClipDirector.FADES[&"attack"])
+	assert_eq(grips[0], 1.0, "reverse on the attack's first frame")
+	assert_true(grips[1] < 1.0 and grips[1] > 0.0, "turning over the crossfade: %s" % [grips])
+	assert_eq(grips[3], 0.0, "forward once it is done")
+	var total: int = Moves.DAGGERS.moves[&"d_l1"].total_frames()
+	poke.call(&"d_l1", total - ClipDirector.GRIP_BACK)
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 0.0, "forward until the last recovery frames")
+	poke.call(&"d_l1", total - 3)
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_almost_eq(shot.grip, 0.5, 1e-6, "turning back over the last 6")
+	f.atk.queued = &"d_l2"
+	shot = ClipDirector.step(shot, f, ctx)
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 0.0, "not while a follow-up is queued")
+	f.atk.queued = &""
+	poke.call(&"d_l1", total - 3)
+	shot = ClipDirector.step(shot, f, ctx)
+	var from: float = shot.grip
+	poke.call(&"d_l2", 1, &"d_l1")
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip_from, from, "a follow-up turns forward from where the grip stood")
+	W.frame += 1
+	f.state = &"free"
+	f.atk = null
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.grip, 1.0, "back to the legs: the reverse grip")

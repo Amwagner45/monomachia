@@ -357,6 +357,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 		# the weapon rides the clip's hand
 		if not rig.is_fixed():
 			model.fix_weapons()
+		# a pair of daggers flips between the idle's reverse grip and the
+		# attack's forward one (task 21)
+		rig.set_reverse_turn(shot.grip if model.weapon_look.paired else 0.0)
 		var held: Dictionary[int, Transform3D] = {}
 		for i: int in model.weapons.size():
 			held[i] = model.weapons[i].transform

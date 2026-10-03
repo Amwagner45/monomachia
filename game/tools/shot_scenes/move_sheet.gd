@@ -41,7 +41,10 @@ extends Node3D
 ## letting go; strafe_left and strafe_right round the opponent, backpedal and
 ## back_left away from it, each then stopping; the guard_ drives the same
 ## while blocking, in the guard shuffle; tap_steps: a tap step each way;
-## iai_walk: walking in the Iai stance), with the opponent out of the way,
+## iai_walk: walking in the Iai stance; string_l to string_llll: the Katana's
+## light string stopped after one, two, three and four lights, each press
+## made after the move before has passed its startup, so it follows it), with
+## the opponent out of the way,
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -73,9 +76,11 @@ const VIEW_NAMES: Dictionary[StringName, String] = {
 	&"front": "front",
 	&"feet": "feet",
 }
-## The held buttons the guard drives and the Iai walk use.
+## The held buttons the guard drives and the Iai walk use, and the light the
+## string drives press.
 const BLOCK: int = 1 << Btn.BLOCK
 const HEAVY: int = 1 << Btn.HEAVY
+const LIGHT: int = 1 << Btn.LIGHT
 ## Scripted input from rest, by name:
 ## - input: segments of [frames, strafe axis (+ to the right), forward axis,
 ##   held buttons];
@@ -184,6 +189,36 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"views": [&"side", &"feet"],
 		"spacing": 8.0,
 		"every": 3,
+	},
+	&"string_l": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut alone, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_ll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut into Return Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_lll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0],
+			[1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then Right Cut, Return Cut and Kesa Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"string_llll": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [11, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0],
+			[1, 0.0, 0.0, LIGHT], [15, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [70, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then the whole L-L-L-L: Right Cut, Return Cut, Kesa Cut and Crown Cut, recovering to the guard",
+		"views": [&"three_quarter", &"hands"],
+		"spacing": 4.0,
+		"every": 2,
 	},
 }
 ## Cells per row of a drive's strip.
@@ -756,6 +791,8 @@ func render_drive(drive_id: StringName) -> Image:
 			continue
 		await bench.frame()
 		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
+		if bench.attacker.state == &"attack":
+			lines[0] += " · %s frame %d" % [bench.attacker.atk.def.id, bench.attacker.atk.frame]
 		strip.append(lines)
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],

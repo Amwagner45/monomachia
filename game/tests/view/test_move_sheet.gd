@@ -550,3 +550,25 @@ func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:
 		assert_eq(out.get_pixel(29, y + MoveSheet.CAPTION_HEIGHT + 19), Color.GREEN)
 		assert_eq(out.get_pixel(30 + MoveSheet.GAP, y + MoveSheet.CAPTION_HEIGHT), Color.YELLOW, "row %d's second cell after a gap" % i)
 		assert_eq(out.get_pixel(30, y + MoveSheet.CAPTION_HEIGHT), MoveSheet.BACKGROUND, "the gap")
+
+
+## Each string drive plays the Katana's string as far as it says: each press
+## follows the move before, and the string then recovers to the guard.
+func test_the_string_drives_play_that_many_lights() -> void:
+	var expected: Dictionary[StringName, Array] = {
+		&"string_l": [&"k_l1"],
+		&"string_ll": [&"k_l1", &"k_l2"],
+		&"string_lll": [&"k_l1", &"k_l2", &"k_l3"],
+		&"string_llll": [&"k_l1", &"k_l2", &"k_l3", &"k_l4"],
+	}
+	for id: StringName in expected:
+		var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, MoveSheet.DRIVES[id]["spacing"])
+		var f: Fighter = W.fighters[0]
+		var played: Array[StringName] = []
+		for input: RawInput in MoveSheet.drive_inputs(id):
+			W.step([input, SimHelpers.idle()])
+			if f.state == &"attack" and (played.is_empty() or played[-1] != f.atk.def.id):
+				played.append(f.atk.def.id)
+		assert_eq(played, expected[id] as Array[StringName], "%s plays its lights" % id)
+		assert_eq(f.state, &"free", "%s ends back in the guard" % id)
+	SimHelpers.dispose_all()

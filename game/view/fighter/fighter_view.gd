@@ -8,8 +8,11 @@ extends Node3D
 ## A move with a swing (task 7) plays from it (SwingPlayer, plan task 14.10):
 ## the weapon goes exactly where the rules' swing has it at the frame shown,
 ## the arms reach for it on IK, and the stand-in's lean, crouch and spin are
-## left out, since the swing's body comes from its own keys. Every other pose
-## comes from StickPose, the stand-in posing from the rules' state:
+## left out, since the swing's body comes from its own keys. A weapon with
+## swings stands in their guard, and a change of what poses the weapons (a
+## swing starting, a follow-up, a swing ending) blends over a few frames
+## (14.11). Every other pose comes from StickPose, the stand-in posing from
+## the rules' state:
 ## - its hands and blade directions become the weapons' poses in fighter
 ##   space, and the rig's IK puts the arms on them (the off hand on a
 ##   two-handed weapon's second grip). StickPose's keys were made for a stick
@@ -73,6 +76,8 @@ var model: FighterModel
 var locomotion: Locomotion
 ## The last pose applied, for tests and debugging.
 var last_pose: StickPose.Pose
+## Plays swings, and blends the weapons between what poses them.
+var swing_player: SwingPlayer = SwingPlayer.new()
 ## How far the guard stance showed in the last pose (0 to 1), how far its
 ## weight had shifted toward the front foot (m), and how far its pelvis sank
 ## for the legs to reach the feet (m), for tests and tools.
@@ -218,6 +223,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var swing_poses: Dictionary[int, Transform3D] = {}
 	if swung:
 		swing_poses = SwingPlayer.weapon_poses(f, alpha, model.weapons.size(), rig)
+	elif p.phase == &"guard":
+		# a weapon with swings stands in their guard, riding as the stand-in's
+		swing_poses = SwingPlayer.guard_poses(f.moveset(), model.weapons.size())
 	var sweeps: Array[Vector3] = _strike_sweeps(f)
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
 	# the weapons ride the stance's pelvis, sunk, and the shuffle's bob (on
@@ -225,13 +233,18 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var rides: Vector3 = (GuardStance.offset(seconds) + Vector3(0.0, locomotion.shuffle.shown_weapon_bob, 0.0)) * stance
 	rides.y -= sink
 	var carry: Transform3D = Transform3D(Basis.IDENTITY, rides) * locomotion.carry(model.skeleton)
+	var poses: Dictionary[int, Transform3D] = {}
 	for i: int in model.weapons.size():
 		if swing_poses.has(i):
-			model.pose_weapon(i, swing_poses[i])
+			poses[i] = swing_poses[i] if swung else carry * swing_poses[i]
 			continue
 		var hand: StickPose.Hand = hands[i]
 		var xf: Transform3D = carry * FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
-		model.pose_weapon(i, _within_reach(i, xf, rig.body))
+		poses[i] = _within_reach(i, xf, rig.body)
+	# a change of what poses the weapons blends rather than jumps
+	var shown: Dictionary[int, Transform3D] = swing_player.show(f, alpha, poses)
+	for i: int in shown:
+		model.pose_weapon(i, shown[i])
 
 
 ## How each hand's blade tip moves from the attack's wind-up to its impact

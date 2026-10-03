@@ -228,3 +228,215 @@ func _posed(v: FighterView) -> Array[Transform3D]:
 	if poses.is_empty():
 		await wait_process_frames(1)
 	return poses
+
+
+# ------------------------------------------------------------ chains (14.11)
+
+## A copy of weapon `id` whose lights `moves` have level slashes, each the
+## other way from the one before, the third lower.
+static func _string_weapon(id: StringName, moves: Array[StringName]) -> WeaponDef:
+	var w: WeaponDef = Moves.WEAPONS[id]
+	var swings: Dictionary[StringName, Swing] = {}
+	for i: int in moves.size():
+		var move: AttackDef = w.moves[moves[i]]
+		var height: float = 1.0 if i == 2 else 1.2
+		swings[moves[i]] = SF.level_slash(move, height) if i % 2 == 0 else SF.level_slash(move, height, -60.0, 60.0)
+	return SF.weapon(id, swings)
+
+
+## Plays `lights` lights of fighter 0's string from the guard (pressing the
+## light until that many moves have started), showing the fighter at alpha 1
+## after every step, `before` steps of standing in the guard first, and
+## `after` steps once the string is over. One record per step: "move" (the
+## move id, or &"" out of an attack), "frame" and "grip" (the shown grip).
+func _play_string(v: FighterView, W: World, lights: int, before: int = 6, after: int = 12) -> Array[Dictionary]:
+	var f: Fighter = W.fighters[0]
+	var out: Array[Dictionary] = []
+	var started: Array[AttackState] = []
+	var idle_after: int = 0
+	var steps: int = 0
+	while steps < 400:
+		var press: bool = steps >= before and started.size() < lights and steps % 2 == 0
+		W.step([SimHelpers.btn(Btn.LIGHT) if press else SimHelpers.idle(), SimHelpers.idle()])
+		steps += 1
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+		var attacking: bool = f.state == &"attack"
+		if attacking and not started.has(f.atk):
+			started.append(f.atk)
+		out.append({"move": f.atk.def.id if attacking else &"", "frame": f.atk.frame if attacking else 0,
+				"grip": v.model.weapons[0].transform.origin})
+		if not attacking and not started.is_empty():
+			idle_after += 1
+			if idle_after > after:
+				break
+	assert_eq(started.size(), lights, "%d lights played" % lights)
+	return out
+
+
+## The most a swing's own right-hand grip moves in a frame between frames
+## `from` and `to`, entered from `chained_from`.
+static func _own_speed(swing: Swing, from: int, to: int, chained_from: Swing = null) -> float:
+	var most: float = 0.0
+	for t: int in range(maxi(from, 0), mini(to, swing.last_frame)):
+		var a: V3 = swing.sample(SF.RIGHT, float(t), chained_from).grip
+		var b: V3 = swing.sample(SF.RIGHT, float(t + 1), chained_from).grip
+		most = maxf(most, V3.length(V3.sub(b, a)))
+	return most
+
+
+static func _skeleton(v: V3) -> Vector3:
+	return Vector3(-v.x, v.y, v.z)
+
+
+## A weapon with swings stands in their guard. Without a stance under it
+## (the Greatsword) that is the guard exactly, so an opener plays exactly
+## from its first frame: there is no gap to blend.
+func test_an_opener_starts_from_the_guard_it_stands_in() -> void:
+	var weapon: WeaponDef = _slashing(&"greatsword")
+	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"hunter", weapon)
+	var guard: Swing.KeyPose = SF.slash_guard()
+	for i: int in 4:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	var held: Swing.Sample = Swing.Sample.new()
+	held.grip = guard.grip
+	held.blade = guard.blade
+	held.edge = guard.edge
+	var miss: Vector2 = _miss(v, 0, held)
+	assert_lt(miss.x, NEAR_POS, "in the swings' guard")
+	assert_lt(miss.y, NEAR_DEG, "turned as the guard is")
+	var swing: Swing = (weapon.moves[weapon.light_start] as AttackDef).swing
+	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	while f.state == &"attack":
+		for alpha: float in [0.5, 1.0]:
+			v.update_from(f, Vector3.ZERO, 0.0, alpha, 1.0 / 60.0, 0.0)
+			var at: Vector2 = _miss(v, 0, swing.sample(SF.RIGHT, SwingPlayer.swing_frame(f, alpha)))
+			assert_lt(at.x, NEAR_POS, "frame %d alpha %.1f: the swing exactly" % [f.atk.frame, alpha])
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+
+
+## Under the Katana's stance the guard rides the lowered pelvis (the
+## stand-in's guard is gone); the opener blends from it into the swing over
+## at most BLEND_FRAMES frames, then plays it exactly.
+func test_the_guard_rides_the_stance_and_the_opener_blends_from_it() -> void:
+	var weapon: WeaponDef = _slashing(&"katana")
+	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"rogue", weapon)
+	for i: int in 4:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	var guard: Transform3D = SwingPlayer.guard_poses(weapon, 1)[0]
+	var shown: Transform3D = v.model.weapons[0].transform
+	assert_lt(rad_to_deg(shown.basis.y.angle_to(guard.basis.y)), NEAR_DEG, "the guard's blade")
+	assert_gt(shown.origin.distance_to(guard.origin), 0.05, "riding the stance's lowered pelvis")
+	assert_almost_eq(shown.origin.y, guard.origin.y - GuardStance.CROUCH, 0.04, "about as low as the stance")
+	var swing: Swing = (weapon.moves[weapon.light_start] as AttackDef).swing
+	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	var before: Vector3 = shown.origin
+	var exact_from: int = -1
+	while f.state == &"attack":
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+		var now: Vector3 = v.model.weapons[0].transform.origin
+		var own: float = _own_speed(swing, f.atk.frame - 2, f.atk.frame)
+		assert_lt(now.distance_to(before), own + GuardStance.CROUCH * 0.5,
+				"frame %d: no jump (moved %.1f cm)" % [f.atk.frame, now.distance_to(before) * 100.0])
+		before = now
+		var miss: Vector2 = _miss(v, 0, swing.sample(SF.RIGHT, float(f.atk.frame)))
+		if exact_from < 0 and miss.x < NEAR_POS and miss.y < NEAR_DEG:
+			exact_from = f.atk.frame
+		elif exact_from >= 0:
+			assert_lt(miss.x, NEAR_POS, "frame %d: the swing exactly once blended" % f.atk.frame)
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+	assert_between(exact_from, 2, int(SwingPlayer.BLEND_FRAMES) + 1, "blended over the first frames only")
+
+
+## Through the Katana's L-L-L-L and the strings stopped after one, two and
+## three lights, the shown grip moves no more in a frame at a chain point
+## than the swings around it move on their own, though a follow-up's entry
+## starts from the hand-off key, which the move before had not reached (the
+## opener also closes the gap from the guard riding the stance); a stopped
+## string runs its exit to the guard, then blends to the guard as it rides
+## the stance, without a jump. The exit reaches the guard on the move's last
+## frame, which the rules never show: the attack ends on the step that
+## reaches it, so the last frame shown is a frame short of the guard.
+func test_strings_never_jump_and_a_stopped_string_ends_on_the_guard() -> void:
+	var lights: Array[StringName] = [&"k_l1", &"k_l2", &"k_l3", &"k_l4"]
+	var largest_gap: float = 0.0
+	var played_lights: int = 0
+	for n: int in [1, 2, 3, 4]:
+		var weapon: WeaponDef = _string_weapon(&"katana", lights)
+		var chain: Array[StringName] = []
+		var id: StringName = weapon.light_start
+		while id != &"" and weapon.moves.has(id) and chain.size() < n:
+			chain.append(id)
+			id = (weapon.moves[id] as AttackDef).chain_light
+		if chain.size() < n:
+			continue
+		played_lights = n
+		var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+		var v: FighterView = _view(&"rogue", weapon)
+		var played: Array[Dictionary] = _play_string(v, W, n)
+		for i: int in range(1, played.size()):
+			var was: Dictionary = played[i - 1]
+			var now: Dictionary = played[i]
+			if now["move"] == &"" or now["move"] == was["move"]:
+				continue
+			var swing: Swing = (weapon.moves[now["move"]] as AttackDef).swing
+			var from: Swing = (weapon.moves[was["move"]] as AttackDef).swing if was["move"] != &"" else null
+			var at: int = now["frame"]
+			var own: float = _own_speed(swing, at - 1, at, from)
+			var allow: float = 0.005 if from != null else 0.005 + GuardStance.CROUCH * 0.5
+			if from != null:
+				var last: int = was["frame"]
+				own = maxf(own, _own_speed(from, last - 1, last))
+				var raw: float = (was["grip"] as Vector3).distance_to(_skeleton(swing.sample(SF.RIGHT, float(now["frame"]), from).grip))
+				largest_gap = maxf(largest_gap, raw - own)
+			var moved: float = (now["grip"] as Vector3).distance_to(was["grip"])
+			assert_lt(moved, own + allow, "L x%d, into %s: moved %.1f cm, its swings %.1f cm a frame" % [n, now["move"], moved * 100.0, own * 100.0])
+		var guard: Transform3D = SwingPlayer.guard_poses(weapon, 1)[0]
+		var last_attack: int = -1
+		for i: int in played.size():
+			if played[i]["move"] != &"":
+				last_attack = i
+		var ender: Swing = (weapon.moves[played[last_attack]["move"]] as AttackDef).swing
+		var short: float = _own_speed(ender, ender.last_frame - 1, ender.last_frame)
+		assert_eq(played[last_attack]["frame"], ender.last_frame - 1, "L x%d: the last frame shown" % n)
+		assert_lt((played[last_attack]["grip"] as Vector3).distance_to(guard.origin), short + NEAR_POS,
+				"L x%d: a frame of its exit short of the guard" % n)
+		for i: int in range(last_attack + 1, played.size()):
+			var moved: float = (played[i]["grip"] as Vector3).distance_to(played[i - 1]["grip"])
+			assert_lt(moved, GuardStance.CROUCH * 0.5, "L x%d: then on to the guard riding the stance, no jump" % n)
+		assert_almost_eq((played[-1]["grip"] as Vector3).y, guard.origin.y - GuardStance.CROUCH, 0.04, "L x%d: riding it" % n)
+	assert_gt(played_lights, 1, "the string has follow-ups")
+	assert_gt(largest_gap, 0.008, "some follow-up's entry started away from the shown grip, so the test can fail")
+
+
+## A swing cut off by a dodge (the stand-in's pose takes over) blends out
+## rather than jumping to the stand-in.
+func test_a_cut_off_swing_blends_out() -> void:
+	var weapon: WeaponDef = _slashing(&"katana")
+	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"rogue", weapon)
+	var cut: AttackDef = weapon.moves[weapon.light_start]
+	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	while f.state == &"attack" and f.atk.frame < cut.dodge_cancel_from + 1:
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+	v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	var before: Vector3 = v.model.weapons[0].transform.origin
+	W.step([SimHelpers.move(1.0, 0.0, Btn.DODGE), SimHelpers.idle()])
+	assert_ne(f.state, &"attack", "the dodge cut the swing off")
+	v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	var after: Vector3 = v.model.weapons[0].transform.origin
+	var gap: float = before.distance_to(v.last_pose.right.pos)
+	assert_gt(gap, 0.1, "the stand-in's pose is far from the swing's")
+	assert_lt(after.distance_to(before), 0.2 * gap, "the first frame closes a fifth of the gap at most (%.1f of %.1f cm)" % [
+			after.distance_to(before) * 100.0, gap * 100.0])
+	for i: int in int(SwingPlayer.BLEND_FRAMES) + 1:
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
+	assert_true(v.swing_player.settled(), "blended out within BLEND_FRAMES")

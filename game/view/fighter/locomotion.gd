@@ -55,6 +55,14 @@ extends RefCounted
 ##   where the shuffle's feet come down (footfalls), not by the stride count
 ##   (FootstepCadence).
 ##
+## The same tree plays the clip director's authored clips over the legs'
+## blend (authored-animation task 8; set_authored()): the clip that drives
+## and the one it fades in from, at the times the director gives, blended
+## between them and over the legs. The tree holds the Iglesias clip
+## libraries as well as the CC0 one when they are there, so a clip is named
+## by its library ("HumanM/CombatIdle1H01", "ual/Sword_Idle"); a bare name is
+## the CC0 library's.
+##
 ## A KO's fall plays on the model's AnimationPlayer instead: the view stops
 ## updating the tree, and the player's pose stands.
 
@@ -151,6 +159,12 @@ var _frame: int = -1
 ## How many rules frames in a row the fighter has run with its guard down.
 var _unguarded: int = 0
 var _idle_clip: StringName = &""
+## The authored clips to show (set_authored()): each slot's animation and
+## time, how much of them is the driving clip (a) rather than the one fading
+## out (b), and how much they show over the legs' blend.
+var _authored: Array = ["", 0.0, "", 0.0]
+var _clip_share: float = 0.0
+var _authored_amount: float = 0.0
 
 
 func _init(p_model: FighterModel, fighter_id: StringName) -> void:
@@ -404,6 +418,9 @@ func _build() -> void:
 	tree.name = &"Locomotion"
 	tree.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	tree.add_animation_library(FighterModel.LIBRARY, FighterModel.ANIMATION_LIBRARY)
+	if ClipLibraries.available():
+		for set_name: StringName in ClipLibraries.SETS:
+			tree.add_animation_library(set_name, ClipLibraries.load_set(set_name))
 	_root = AnimationNodeBlendTree.new()
 	var clips: Array[StringName] = [model.idle_clip()]
 	clips.append_array(CLIPS)
@@ -423,7 +440,20 @@ func _build() -> void:
 	_root.add_node(&"move", AnimationNodeBlend2.new())
 	_root.connect_node(&"move", 0, _seek(&"idle"))
 	_root.connect_node(&"move", 1, &"to_sprint")
-	_root.connect_node(&"output", 0, &"move")
+	# the director's clips: a (driving) over b (fading out), over the legs
+	for slot: StringName in [&"clip_a", &"clip_b"]:
+		var clip: AnimationNodeAnimation = AnimationNodeAnimation.new()
+		clip.animation = _anim_name(clips[0])
+		_root.add_node(slot, clip)
+		_root.add_node(_seek(slot), AnimationNodeTimeSeek.new())
+		_root.connect_node(_seek(slot), 0, slot)
+	_root.add_node(&"ab", AnimationNodeBlend2.new())
+	_root.connect_node(&"ab", 0, _seek(&"clip_b"))
+	_root.connect_node(&"ab", 1, _seek(&"clip_a"))
+	_root.add_node(&"authored", AnimationNodeBlend2.new())
+	_root.connect_node(&"authored", 0, &"move")
+	_root.connect_node(&"authored", 1, &"ab")
+	_root.connect_node(&"output", 0, &"authored")
 	tree.tree_root = _root
 	model.add_child(tree)
 	tree.active = true
@@ -443,7 +473,34 @@ func _show(idle_clip: StringName, idle_seconds: float) -> void:
 	tree.set("parameters/move/blend_amount", moving)
 	tree.set("parameters/to_sprint/blend_amount", w[3] / moving if moving > 0.0 else 0.0)
 	tree.set("parameters/walk_jog/blend_amount", w[2] / (w[1] + w[2]) if w[1] + w[2] > 0.0 else 1.0)
+	tree.set("parameters/authored/blend_amount", _authored_amount)
+	if _authored_amount > 0.0:
+		for i: int in 2:
+			var slot: StringName = [&"clip_a", &"clip_b"][i]
+			var node: AnimationNodeAnimation = _root.get_node(slot)
+			if node.animation != StringName(_authored[i * 2]):
+				node.animation = StringName(_authored[i * 2])
+			tree.set("parameters/%s/seek_request" % _seek(slot), _authored[i * 2 + 1])
+		tree.set("parameters/ab/blend_amount", _clip_share)
 	tree.advance(0.0)
+
+
+## The director's authored clips to show at the next update: a driving (an
+## animation name in the tree and its time, s) over b fading out ("" for
+## none), share of them a, and amount of them over the legs' blend (0: the
+## legs alone). With only b (the legs taking over from a clip), b shows.
+func set_authored(a: String, a_time: float, b: String, b_time: float, share: float, amount: float) -> void:
+	if a == "":
+		a = b
+		a_time = b_time
+		share = 1.0
+	if b == "":
+		b = a
+		b_time = a_time
+		share = 1.0
+	_authored = [a, a_time, b, b_time]
+	_clip_share = share
+	_authored_amount = amount if a != "" else 0.0
 
 
 static func _seek(node: StringName) -> StringName:
@@ -451,4 +508,6 @@ static func _seek(node: StringName) -> StringName:
 
 
 static func _anim_name(clip: StringName) -> String:
+	if String(clip).contains("/"):
+		return String(clip)
 	return String(FighterModel.LIBRARY) + "/" + String(clip)

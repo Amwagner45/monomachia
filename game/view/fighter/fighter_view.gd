@@ -40,6 +40,24 @@ extends Node3D
 ##   to the knockdown's phases;
 ## - a disarmed fighter holds nothing, its arms on the clip.
 ##
+## The clip director (ClipDirector, authored-animation task 8) picks the
+## authored clips on each rules frame, and the legs' tree plays them over its
+## blend (Locomotion.set_authored()):
+## - the free state's idle is its weapon class's combat idle (the CC0
+##   fallback's without the packs), under the legs' blend; a weapon whose hold
+##   has a guard stance keeps the stance's relaxed clip until the stance goes
+##   (task 29);
+## - an attack whose move has a baked swing plays its clip, timed from the
+##   attack frame, the crossfades the director's. The Hunter holds the weapon
+##   fixed in the clip's hand, its reach correction played by the arm's IK
+##   (FighterRig.reach_offset), so the blade shown is the baked path's; the
+##   Rogue, and either fighter on the fallback clips, has the weapon posed on
+##   the baked path (SwingPlayer) and her hands pulled onto it by IK. The
+##   swing's own body keys, the lean and the guard stance stand aside;
+## - planted feet are held where they landed under the clips (FootLock)
+##   while an authored clip shows and while standing out of a guard stance.
+## Moves without a baked swing keep the stand-in poses below.
+##
 ## A body flash (hit, disarm, KO) and a blade's glow (an unblockable winding
 ## up, a charging heavy, an ultimate) are material overlays, timed on the
 ## rules' frames: the toon materials underneath are left alone. A floor ring
@@ -92,6 +110,11 @@ var swing_player: SwingPlayer = SwingPlayer.new()
 var stance: float = 0.0
 var sway: float = 0.0
 var sink: float = 0.0
+## The clip director's last answer (null before the first frame), what it
+## plays from, and the foot lock under the clips.
+var shot: ClipDirector.Shot = null
+var director: ClipDirector.Context
+var foot_lock: FootLock
 
 var _floor: Node3D
 var _ring_mat: StandardMaterial3D
@@ -126,6 +149,8 @@ func setup(p_fighter: StringName, p_palette: int, p_weapon: StringName, p_side: 
 	model.apply_palette(p_palette)
 	_ring_mat.albedo_color = side_color().lightened(0.2)
 	_hold(p_weapon)
+	shot = null
+	foot_lock.clear()
 	_flash_strength = 0.0
 	_light_body(Color(0.0, 0.0, 0.0, 0.0))
 	_light_weapons(Color.BLACK)
@@ -161,13 +186,19 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	last_pose = p
 	_hold(StickPose.weapon_key(f))
 	var frame: int = f.world.frame if f.world != null else _flash_frame
+	if f.state == &"ko" or f.state == &"knockdown":
+		shot = null
+		model.rig.foot_lock = null
+		foot_lock.clear()
 	if f.state == &"ko":
 		_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	elif f.state == &"knockdown":
 		_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
 		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
-		locomotion.update(f, GuardStance.CLIP if _in_guard() else model.idle_clip(), seconds, alpha, _in_guard())
+		shot = ClipDirector.step(shot, f, director)
+		_show_authored(f, alpha)
+		locomotion.update(f, GuardStance.CLIP if _in_guard() else StringName(shot.idle), seconds, alpha, _in_guard())
 		_pose(f, p, seconds, alpha)
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
@@ -200,6 +231,30 @@ static func edge_for(blade: Vector3, sweep: Vector3) -> Vector3:
 
 # ------------------------------------------------------------------ posing
 
+## Hands the director's clips to the legs' tree: the driving clip shown
+## alpha of the way from the frame before (held while charging), over the
+## clip it fades in from.
+func _show_authored(f: Fighter, alpha: float) -> void:
+	var a: String = ""
+	var a_time: float = 0.0
+	if shot.clip != null:
+		a = shot.clip.name
+		a_time = shot.clip.time
+		var before: ClipDirector.Clip = shot.clip_before
+		if before != null and before.name == a and not (f.atk != null and f.atk.charging):
+			a_time = lerpf(before.time, a_time, alpha)
+	var b: String = shot.from.name if shot.from != null else ""
+	var b_time: float = shot.from.time if shot.from != null else 0.0
+	locomotion.set_authored(a, a_time, b, b_time, shot.clip_share(), shot.authored())
+
+
+## True when an authored attack clip drives the Hunter's arms and the
+## weapon rides the clip's hand (see the class notes): the Iglesias clips
+## are there and the paths were baked on him.
+func _fixed_on_clip() -> bool:
+	return shot != null and shot.drive == ClipDirector.ATTACK and director.libraries and fighter_id == &"hunter"
+
+
 ## True when the held weapon's hold stands in the guard stance.
 func _in_guard() -> bool:
 	return model.hold != null and model.hold.guard
@@ -210,6 +265,8 @@ func _in_guard() -> bool:
 func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var rig: FighterRig = model.rig
 	var swung: bool = SwingPlayer.plays(f) and not model.weapons.is_empty()
+	var authored: float = shot.authored() if shot != null else 0.0
+	var driving: bool = shot != null and shot.drive == ClipDirector.ATTACK
 	var lean: float = 0.0 if swung else p.lean
 	var crouch: float = 0.0 if swung else p.crouch
 	var spin: float = 0.0 if swung else p.spin
@@ -221,17 +278,40 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	locomotion.pose_body(rig.body)
 	# a swing's body (its coil, shift and dip) takes over from the stance's
 	var swing_body: SwingPlayer.Body = swing_player.body(f, alpha)
+	if driving:
+		# the clip turns the body itself
+		swing_body.weight = 0.0
 	swing_body.apply(rig.body)
 	# the stance as far as the legs are the guard's; the clips' feet as they
 	# run with the guard down
-	stance = locomotion.shown[0] if _in_guard() else 0.0
+	stance = locomotion.shown[0] * (1.0 - authored) if _in_guard() else 0.0
 	sway = GuardStance.sway(seconds) * stance
 	sink = 0.0
 	rig.clip_feet = 1.0
 	model.rotation = Vector3(0.0, spin, 0.0)
 	if stance > 0.0:
 		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, spin, 1.0 - swing_body.weight)
+	# planted feet held under the clips: an authored one, or the idle out of
+	# a guard stance
+	rig.foot_lock = foot_lock
+	rig.rules_frame = f.world.frame if f.world != null else 0
+	foot_lock.enabled = authored > 0.0 or (stance <= 0.0 and locomotion.speed < 0.05)
+	rig.reach_offset["Right"] = Vector3.ZERO
+	rig.reach_offset["Left"] = Vector3.ZERO
 	if model.weapons.is_empty():
+		return
+	if _fixed_on_clip():
+		# the weapon rides the clip's hand, pushed by the reach correction
+		var reach: Vector3 = SwingPlayer.to_skeleton(f.atk.def.swing.reach_at(SwingPlayer.swing_frame(f, alpha)))
+		rig.reach_offset["Right"] = reach
+		if model.weapon_look.paired:
+			rig.reach_offset["Left"] = reach
+		if not rig.is_fixed():
+			model.fix_weapons()
+		var held: Dictionary[int, Transform3D] = {}
+		for i: int in model.weapons.size():
+			held[i] = model.weapons[i].transform
+		swing_player.show(f, alpha, held)
 		return
 	var swing_poses: Dictionary[int, Transform3D] = {}
 	if swung:
@@ -412,6 +492,9 @@ func _build_model(id: StringName) -> void:
 	add_child(model)
 	model.animation_player.callback_mode_process = AnimationMixer.ANIMATION_CALLBACK_MODE_PROCESS_MANUAL
 	locomotion = Locomotion.new(model, id)
+	director = ClipDirector.Context.make(id, ClipLibraries.available(), _lengths(locomotion.tree))
+	foot_lock = model.rig.new_foot_lock()
+	shot = null
 	_body_meshes.clear()
 	for node: Node in model.skeleton.find_children("*", "MeshInstance3D", true, false):
 		_body_meshes.append(node as MeshInstance3D)
@@ -427,6 +510,16 @@ func _build_model(id: StringName) -> void:
 		_glow_overlay.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_glow_overlay.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
 	GraphicsApplier.apply_to_tree(GameServices.graphics_preset(), model)
+
+
+## Each animation's length in the tree, by its name there.
+static func _lengths(tree: AnimationMixer) -> Dictionary[String, float]:
+	var out: Dictionary[String, float] = {}
+	for lib_name: StringName in tree.get_animation_library_list():
+		var lib: AnimationLibrary = tree.get_animation_library(lib_name)
+		for anim: StringName in lib.get_animation_list():
+			out["%s/%s" % [lib_name, anim]] = lib.get_animation(anim).length
+	return out
 
 
 func _build_floor() -> void:

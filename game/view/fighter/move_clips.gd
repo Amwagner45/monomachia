@@ -10,7 +10,8 @@ extends RefCounted
 ## is committed.
 ##
 ##   {"katana": {"guard": "CombatIdle1H01",
-##               "moves": {"k_l1": {"clips": ["Attack1H01_R"], "speed": 1.4}}}}
+##               "moves": {"k_l1": {"clips": ["Attack1H01_R"], "speed": 1.4,
+##                                  "fallback": "Sword_Light_A"}}}}
 ##
 ## An "about" field may say what the file is.
 ##
@@ -19,7 +20,7 @@ extends RefCounted
 
 const PATH: String = "res://assets/kevin_iglesias/move_clips.json"
 const WEAPON_FIELDS: Array[String] = ["guard", "moves"]
-const MOVE_FIELDS: Array[String] = ["clips", "speed"]
+const MOVE_FIELDS: Array[String] = ["clips", "speed", "fallback"]
 
 
 ## One move fitted to its clips.
@@ -29,6 +30,9 @@ class Entry:
 	var clips: Array[StringName] = []
 	## Times the clips' 30 fps; NAN to have the bake pick it.
 	var speed: float = NAN
+	## The committed CC0 clip (in FighterModel.LIBRARY) played without the
+	## Iglesias packs, the clip table's fallback; empty for none.
+	var fallback: StringName = &""
 
 
 ## Weapon id -> the clip its guard is read from.
@@ -126,4 +130,10 @@ func _entry(wid: StringName, id: StringName, d: Variant, manifest: ClipManifest)
 			errors.append("%s: speed must be a number from %.1f to %.1f" % [at, ClipTiming.MIN_SPEED, ClipTiming.MAX_SPEED])
 			return null
 		e.speed = float(s)
+	if (d as Dictionary).has("fallback"):
+		var fb := StringName(str(d["fallback"]))
+		if not FighterModel.ANIMATION_LIBRARY.has_animation(fb):
+			errors.append("%s: the fallback %s is not in the CC0 library" % [at, fb])
+			return null
+		e.fallback = fb
 	return e

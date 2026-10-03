@@ -145,6 +145,8 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 				"  <- over 20 cm inside" if reach.over else "", reach.first_touch]
 		line += "\n      Rogue: HumanF %.1f cm off HumanM on her body (%.1f cm off the Hunter's path)%s" % [
 			drift * 100.0, off_path * 100.0, ": she plays HumanM" if r.rogue_humanm else ""]
+		r.clips = e.clips
+		r.fallback = e.fallback
 		baked[String(id)] = r.record()
 		report.append(line)
 	# the moves in their weapon's order, those not baked now kept as they were

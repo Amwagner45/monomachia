@@ -34,6 +34,8 @@ const PLACES: int = 4
 const DEGREE_PLACES: int = 2
 ## The order a key's (or a guard pose's) fields are written in.
 const FIELD_ORDER: Array[String] = ["frame", "grip", "blade", "edge", "pole", "torso", "pelvis", "pelvis_shift", "ease"]
+## A swing's fields after its tracks, in the order they are written.
+const EXTRA_FIELDS: Array[String] = ["clips", "speed", "marks", "fallback", "reach", "rogue_humanm"]
 ## The longest reach correction (m): a move that needs more gets another
 ## clip or a lunge in the rules.
 const MAX_REACH: float = SwingFile.MAX_REACH
@@ -67,6 +69,10 @@ class Result:
 	var reach_offset: V3 = V3.make()
 	## The Rogue plays HumanM for this move (drift()).
 	var rogue_humanm: bool = false
+	## What it was baked from, written with the swing for the view
+	## (Swing.clips): set by the bake command.
+	var clips: Array[StringName] = []
+	var fallback: StringName = &""
 
 	## The swing as a swing file holds it: {"tracks": {part: {"baked": true,
 	## "keys": [...]}}, "reach": [...], "rogue_humanm": true}, rounded to the
@@ -83,6 +89,12 @@ class Result:
 				keys.append(key)
 			out[String(part)] = {"baked": true, "keys": keys}
 		var swing: Dictionary = {"tracks": out}
+		if not clips.is_empty():
+			swing["clips"] = clips.map(func(c: StringName) -> String: return String(c))
+			swing["speed"] = timing.speed
+			swing["marks"] = Array(timing.marks)
+		if fallback != &"":
+			swing["fallback"] = String(fallback)
 		if V3.length(reach_offset) > 0.0:
 			swing["reach"] = SwingBake._round(reach_offset)
 		if rogue_humanm:
@@ -399,7 +411,7 @@ static func file_text(guard: Dictionary, swings: Dictionary) -> String:
 			var comma: String = "," if j < names.size() - 1 else ""
 			lines.append("\t\t\t\t]}%s" % comma if track is Dictionary else "\t\t\t\t]%s" % comma)
 		var record: Dictionary = swings[ids[i]]
-		var extras: Array = ["reach", "rogue_humanm"].filter(func(k: String) -> bool: return record.has(k))
+		var extras: Array = EXTRA_FIELDS.filter(func(k: String) -> bool: return record.has(k))
 		lines.append("\t\t\t}%s" % ("," if not extras.is_empty() else ""))
 		for k: int in extras.size():
 			lines.append("\t\t\t\"%s\": %s%s" % [extras[k], _value(extras[k], record[extras[k]]), "," if k < extras.size() - 1 else ""])
@@ -437,6 +449,8 @@ static func _value(field: String, v: Variant) -> String:
 		return "[%s]" % ", ".join((v as Array).map(func(x: Variant) -> String: return _value(field, x)))
 	if typeof(v) == TYPE_BOOL:
 		return "true" if v else "false"
+	if v is String or v is StringName:
+		return JSON.stringify(str(v))
 	if field == "frame":
 		return str(int(v))
 	return _num(float(v), DEGREE_PLACES if field == "torso" or field == "pelvis" else PLACES)

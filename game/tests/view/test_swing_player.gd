@@ -482,7 +482,9 @@ static func _coiling(id: StringName) -> WeaponDef:
 ## `per_frame` moments per attack frame on the posed skeleton, and returns
 ## one record per moment: "t" (the swing's frame shown), "hips", "chest" and
 ## "head" (headings, degrees, + to the fighter's left), "hips_at" (the hips
-## bone's place), "hand" (the right hand bone's) and "blade" (the weapon's).
+## bone's place), "clip_hips" (the middle of the clip's hip joints, before
+## the body layer moves them), "hand" (the right hand bone's) and "blade"
+## (the weapon's).
 func _play_posed(fighter_id: StringName, weapon: WeaponDef, per_frame: int = 1) -> Array[Dictionary]:
 	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
 	var f: Fighter = W.fighters[0]
@@ -509,7 +511,7 @@ func _record(v: FighterView, f: Fighter, sk: Skeleton3D, t: float) -> Dictionary
 		var id: int = sk.find_bone(bone)
 		return rad_to_deg(BodyLayer.heading(sk, id, poses[id]))
 	return {"t": t, "hips": heading.call("Hips"), "chest": heading.call("UpperChest"), "head": heading.call("Head"),
-			"hips_at": poses[sk.find_bone("Hips")].origin, "hand": poses[sk.find_bone("RightHand")] * v.model.rig.fist("Right").origin,
+			"hips_at": poses[sk.find_bone("Hips")].origin, "clip_hips": (v.model.rig.body.clip_hips["Right"] + v.model.rig.body.clip_hips["Left"]) * 0.5, "hand": poses[sk.find_bone("RightHand")] * v.model.rig.fist("Right").origin,
 			"wrist": poses[sk.find_bone("RightHand")].origin,
 			"blade": v.model.weapons[0].transform.basis.y}
 
@@ -580,11 +582,14 @@ func test_the_weight_shifts_back_and_the_pelvis_dips_at_contact() -> void:
 	var weapon: WeaponDef = _coiling(&"greatsword")
 	var cut: AttackDef = weapon.moves[weapon.light_start]
 	var rec: Array[Dictionary] = await _play_posed(&"hunter", weapon)
-	var still: Vector3 = rec[0]["hips_at"]
-	var cocked: Vector3 = _at(rec, float(cut.startup - 3))["hips_at"]
+	# the swing's own shift: the hips from where the idle clip under it has
+	# them, which breathes on its own
+	var shift: Callable = func(r: Dictionary) -> Vector3: return (r["hips_at"] as Vector3) - (r["clip_hips"] as Vector3)
+	var still: Vector3 = shift.call(rec[0])
+	var cocked: Vector3 = shift.call(_at(rec, float(cut.startup - 3)))
 	assert_almost_eq(cocked.z - still.z, -0.06, 0.01, "6 cm back over the rear foot")
-	var contact: Vector3 = _at(rec, float(cut.startup + 1))["hips_at"]
-	var before: Vector3 = _at(rec, float(cut.startup + 1) - SwingPlayer.DIP_FRAMES)["hips_at"]
+	var contact: Vector3 = shift.call(_at(rec, float(cut.startup + 1)))
+	var before: Vector3 = shift.call(_at(rec, float(cut.startup + 1) - SwingPlayer.DIP_FRAMES))
 	assert_almost_eq(contact.y - before.y, -0.05, 0.01, "dipped about 5 cm at contact (%.1f cm)" % ((contact.y - before.y) * 100.0))
 
 

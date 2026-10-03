@@ -119,6 +119,16 @@ var reach_active: int = 0
 ## True when the Rogue's HumanF clip strays more than 5 cm from this path in
 ## the active frames, so she plays the Hunter's HumanM clip for it.
 var rogue_humanm: bool = false
+## What a baked swing was baked from, for the view to play the same clip on
+## the same frames (ClipDirector): the clips (clip-manifest ids, played one
+## after another), the speed (times their 30 fps), the four markers in
+## source frames from the chain's start (ClipManifest.MARKERS' order), and
+## the committed CC0 clip played without the Iglesias packs (empty for
+## none). Empty for a hand-keyed swing.
+var clips: Array[StringName] = []
+var speed: float = 1.0
+var marks: PackedFloat64Array = PackedFloat64Array()
+var fallback: StringName = &""
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
 var _baked: Dictionary[StringName, bool] = {}

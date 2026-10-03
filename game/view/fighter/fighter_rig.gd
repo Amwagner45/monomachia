@@ -12,7 +12,8 @@ extends RefCounted
 ##    knee poles (the knees over the toes);
 ## 3. RightArmIK and LeftArmIK (TwoBoneIK3D: upper arm, forearm, hand), one
 ##    per arm so that each can be on or off;
-## 4. LegIK (TwoBoneIK3D, both legs: thigh, shin, foot);
+## 4. LegIK (TwoBoneIK3D, both legs: thigh, shin, foot), planted feet held
+##    where they landed when there is a foot lock (FootLock);
 ## 5. RigPost: each gripping hand turned to its frame, with part of the turn
 ##    taken by the forearm, and the feet laid flat at their yaw;
 ## 6. HandGrip: closes the holding hands' fingers, and sets the wrists of
@@ -102,6 +103,11 @@ var clip_feet: float = 0.0
 ## it, and the arm reaches it on IK, so the blade shown is the baked path's.
 ## None by default.
 var reach_offset: Dictionary[String, Vector3] = {"Right": Vector3.ZERO, "Left": Vector3.ZERO}
+## Holds planted feet where they landed under the clip (authored-animation
+## task 8), on top of the leg IK's targets; null for none. It steps once per
+## rules frame: rules_frame, which the view sets.
+var foot_lock: FootLock = null
+var rules_frame: int = 0
 
 var _arm_ik: Dictionary[String, TwoBoneIK3D] = {}
 var _leg_ik: TwoBoneIK3D
@@ -203,6 +209,14 @@ func leg_length(side: String) -> float:
 ## Where a foot bone (the ankle) is in the rest pose.
 func rest_foot(side: String) -> Vector3:
 	return _rest_origin(side + "Foot")
+
+
+## A foot lock for this skeleton, its ankles' rest heights measured.
+func new_foot_lock() -> FootLock:
+	var heights: Dictionary[String, float] = {}
+	for side: String in SIDES:
+		heights[side] = rest_foot(side).y
+	return FootLock.new(heights)
 
 
 ## Puts a weapon's instances in the hands (one, or two for a pair, made from
@@ -440,6 +454,14 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 	if not _leg_ik.active:
 		return
 	var from_clip: float = clampf(clip_feet, 0.0, 1.0)
+	var to_world: Transform3D = sk.global_transform
+	if foot_lock != null:
+		var feet: Dictionary[String, Vector3] = {}
+		var hips: Dictionary[String, Vector3] = {}
+		for side: String in SIDES:
+			feet[side] = to_world * body.clip_feet[side].origin
+			hips[side] = to_world * _origin(sk, side + "UpperLeg")
+		foot_lock.update(rules_frame, feet, hips, _leg_length)
 	for side: String in SIDES:
 		# The knee over the toes: its pole ahead of the leg, on the plane
 		# through the hip, the ankle and the way the toes point.
@@ -456,6 +478,8 @@ func _pre(sk: Skeleton3D, _delta: float) -> void:
 				bend = body.clip_feet[side].basis.y
 			at = at.lerp(foot, from_clip)
 			pole = pole.lerp(knee + bend.normalized() * _leg_length[side], from_clip)
+		if foot_lock != null:
+			at = to_world.affine_inverse() * foot_lock.target(side, to_world * at)
 		_markers[side + "FootTarget"].position = at
 		_markers[side + "KneePole"].position = pole
 

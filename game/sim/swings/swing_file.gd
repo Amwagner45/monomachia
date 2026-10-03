@@ -32,7 +32,9 @@ extends RefCounted
 ## frame missing is refused. A baked swing may also carry "reach", its reach
 ## correction ([right, up, forward] metres, at most 15 cm; Swing.reach_offset),
 ## and "rogue_humanm": true when the Rogue plays the Hunter's clip for it
-## (task 7). The bake writes these files with a stable key order and fixed
+## (task 7), and what it was baked from for the view to play (task 8):
+## "clips" (clip-manifest ids), "speed", "marks" (the four markers, source
+## frames) and "fallback" (a CC0 clip; see Swing.clips). The bake writes these files with a stable key order and fixed
 ## decimals.
 
 const DIR: String = "res://sim/moves/swings/"
@@ -43,7 +45,7 @@ const LIMB_FIELDS: Dictionary[String, bool] = {"grip": true, "blade": true, "edg
 const BODY_FIELDS: Dictionary[String, bool] = {"torso": true, "pelvis": true, "pelvis_shift": false}
 const KEY_FIELDS: Dictionary[String, bool] = {"frame": true, "ease": false}
 const FILE_FIELDS: Array[String] = ["guard", "swings"]
-const SWING_FIELDS: Array[String] = ["tracks", "reach", "rogue_humanm"]
+const SWING_FIELDS: Array[String] = ["tracks", "reach", "rogue_humanm", "clips", "speed", "marks", "fallback"]
 ## The longest reach correction a swing may carry (m; SwingBake).
 const MAX_REACH: float = 0.15
 ## The fields of a baked track: true when required.
@@ -159,6 +161,23 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 		swing.reach_offset = _vector(d, "reach", where, errors)
 		if V3.length(swing.reach_offset) > MAX_REACH + 1e-6:
 			errors.append("%s: the reach correction is %.1f cm; at most %.0f" % [where, V3.length(swing.reach_offset) * 100.0, MAX_REACH * 100.0])
+	if d.has("clips"):
+		if not d["clips"] is Array or (d["clips"] as Array).is_empty() or not (d["clips"] as Array).all(func(c: Variant) -> bool: return c is String):
+			errors.append("%s: clips must be a list of clip names" % where)
+		else:
+			swing.clips.assign((d["clips"] as Array).map(func(c: Variant) -> StringName: return StringName(c)))
+	swing.speed = _number(d, "speed", 1.0, where, errors)
+	if d.has("marks"):
+		var m: Variant = d["marks"]
+		if not m is Array or (m as Array).size() != 4 or not (m as Array).all(func(x: Variant) -> bool: return _is_number(x)):
+			errors.append("%s: marks must be four numbers" % where)
+		else:
+			swing.marks = PackedFloat64Array(m)
+	if d.has("fallback"):
+		if not d["fallback"] is String:
+			errors.append("%s: fallback must be a clip name" % where)
+		else:
+			swing.fallback = StringName(d["fallback"])
 	if d.has("rogue_humanm"):
 		if typeof(d["rogue_humanm"]) != TYPE_BOOL:
 			errors.append("%s: rogue_humanm must be true or false" % where)

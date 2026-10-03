@@ -160,8 +160,8 @@ func test_unknown_fields_are_refused() -> void:
 	d["swings"]["t_cut"]["tracks"]["tail"] = d["swings"]["t_cut"]["tracks"]["body"]
 	_assert_refused(d, "t_cut.tail: unknown part", "an unknown part")
 	d = _good()
-	d["swings"]["t_cut"]["speed"] = 2
-	_assert_refused(d, "t_cut: unknown field speed", "an unknown swing field")
+	d["swings"]["t_cut"]["tempo"] = 2
+	_assert_refused(d, "t_cut: unknown field tempo", "an unknown swing field")
 	d = _good()
 	d["swings"]["t_nope"] = d["swings"]["t_cut"]
 	_assert_refused(d, "t_nope: not a move of this weapon", "an unknown move")

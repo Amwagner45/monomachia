@@ -45,6 +45,9 @@ extends RefCounted
 ## - the Daggers' grip (task 21; Shot.grip): the reverse grip under the legs
 ##   and the idle, turned forward over an attack's crossfade, and back over
 ##   its last GRIP_BACK recovery frames when no follow-up is queued;
+## - Shadow Step (task 22): Roll01 sped up as any baked move plays, the body
+##   hidden through the blink, the active frames that carry it round the
+##   opponent (blinks());
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
@@ -298,6 +301,16 @@ static func state_clip(f: Fighter, ctx: Context) -> Clip:
 		return null
 	var share: float = clampf(float(f.sf) / float(maxi(1, f.state_dur)), 0.0, 1.0)
 	return Clip.make(anim_name, share * length)
+
+
+## Whether `f` is in Shadow Step's blink (task 22): its active frames,
+## which carry it round to the opponent's back (Fighter._update_shadow_step())
+## with its body hidden.
+static func blinks(f: Fighter) -> bool:
+	if f.state != &"attack" or f.atk == null or f.atk.def.special != &"shadowStep":
+		return false
+	var def: AttackDef = f.atk.def
+	return f.atk.frame > def.startup and f.atk.frame <= def.startup + def.active
 
 
 ## How far a pair of daggers is turned into the reverse grip in shot `s`

@@ -171,6 +171,14 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "d_l4", "field": "lunge", "was": 0.6, "now": 0.35},
 	{"move": "d_l4", "field": "lunge_end", "was": AttackDef.UNSET, "now": 13},
 	{"move": "d_h2", "field": "lunge", "was": 0.4, "now": 1.1},
+	# authored animation 22: Slide Slash (Attack1H01_R's cut over
+	# RunSlide01), Reverse Spin (AttackPolearm04 mirrored) and Flick
+	# (AttackPunch02_L) reach less far than their cones, so their lunges carry
+	# them to a touch from their test distances (sprint 3.5 m, dodge 2.0, back
+	# 2.5)
+	{"move": "d_sl", "field": "lunge", "was": 2.0, "now": 2.2},
+	{"move": "d_dh", "field": "lunge", "was": 0.0, "now": 0.45},
+	{"move": "d_bl", "field": "lunge", "was": 0.5, "now": 0.95},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

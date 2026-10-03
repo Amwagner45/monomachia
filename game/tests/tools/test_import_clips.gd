@@ -108,6 +108,69 @@ func test_mirroring_twice_gives_the_clip_back() -> void:
 			assert_eq(twice.track_get_key_value(t, i), original.track_get_key_value(t, i))
 
 
+## A clip keyed on 12 source frames: each [bone, type, Callable(k) -> value].
+static func _clip(tracks: Array) -> Animation:
+	var a: Animation = Animation.new()
+	a.length = 11.0 / ClipManifest.SOURCE_FPS
+	for spec: Array in tracks:
+		var t: int = a.add_track(spec[1])
+		a.track_set_path(t, NodePath("%GeneralSkeleton:" + spec[0]))
+		for k: int in 12:
+			a.track_insert_key(t, k / ClipManifest.SOURCE_FPS, (spec[2] as Callable).call(k))
+	return a
+
+
+func test_a_composed_clip_takes_the_upper_body_and_the_legs_from_each_clip() -> void:
+	var R: int = Animation.TYPE_ROTATION_3D
+	var P: int = Animation.TYPE_POSITION_3D
+	var upper: Animation = _clip([
+		["Hips", P, func(k: int) -> Vector3: return Vector3(0.0, 1.0, 0.0)],
+		["Hips", R, func(k: int) -> Quaternion: return Quaternion(Vector3.UP, 0.3 + 0.05 * k) * Quaternion(Vector3.RIGHT, 0.1)],
+		["Spine", R, func(k: int) -> Quaternion: return Quaternion(Vector3.RIGHT, 0.2) * Quaternion(Vector3.UP, 0.1)],
+		["LeftHand", R, func(k: int) -> Quaternion: return Quaternion(Vector3.BACK, 0.05 * k)],
+		["LeftUpperLeg", R, func(k: int) -> Quaternion: return Quaternion(Vector3.RIGHT, 0.4)],
+	])
+	var legs: Animation = _clip([
+		["Hips", P, func(k: int) -> Vector3: return Vector3(0.0, 0.5, 0.01 * k)],
+		["Hips", R, func(k: int) -> Quaternion: return Quaternion(Vector3.UP, -0.8) * Quaternion(Vector3.RIGHT, -0.3 - 0.02 * k)],
+		["Spine", R, func(k: int) -> Quaternion: return Quaternion(Vector3.RIGHT, 0.5)],
+		["LeftHand", R, func(k: int) -> Quaternion: return Quaternion(Vector3.BACK, 1.0)],
+		["LeftUpperLeg", R, func(k: int) -> Quaternion: return Quaternion(Vector3.RIGHT, 1.2 - 0.02 * k)],
+	])
+	var c: Animation = ImportClips.compose(upper, legs, 2, 1)
+	var fps: float = ClipManifest.SOURCE_FPS
+	assert_almost_eq(c.length, 9.0 / fps, 1e-5, "as long as the upper clip runs on from its frame")
+	var from: Array[String] = []
+	for t: int in c.get_track_count():
+		var path: NodePath = c.track_get_path(t)
+		var bone: String = path.get_concatenated_subnames()
+		var src: Animation = legs if Locomotion.is_leg_bone(bone) else upper
+		from.append("%s/%d %s" % [bone, c.track_get_type(t), "legs" if src == legs else "upper"])
+		if bone == "Spine":
+			continue
+		var st: int = src.find_track(path, c.track_get_type(t))
+		for k: int in [0, 5, 9]:
+			var at: float = (k + (1 if src == legs else 2)) / fps
+			if c.track_get_type(t) == R:
+				var got: Quaternion = c.rotation_track_interpolate(t, k / fps)
+				var want: Quaternion = src.rotation_track_interpolate(st, at)
+				assert_lt(Vector4(got.x - want.x, got.y - want.y, got.z - want.z, got.w - want.w).length(), 1e-5, "%s at frame %d" % [path, k])
+			else:
+				assert_almost_eq(c.position_track_interpolate(t, k / fps), src.position_track_interpolate(st, at), Vector3.ONE * 1e-5, "%s at frame %d" % [path, k])
+	from.sort()
+	assert_eq(from, ["Hips/1 legs", "Hips/2 legs", "LeftHand/2 upper", "LeftUpperLeg/2 legs", "Spine/2 upper"] as Array[String], "each bone from its clip")
+	# the upper body stands as in its own clip, on the legs' hips
+	var spine: int = c.find_track(^"%GeneralSkeleton:Spine", R)
+	for k: int in [0, 4, 9]:
+		var ha: Quaternion = upper.rotation_track_interpolate(1, (k + 2) / fps)
+		var sa: Quaternion = upper.rotation_track_interpolate(2, (k + 2) / fps)
+		var hs: Quaternion = legs.rotation_track_interpolate(1, (k + 1) / fps)
+		var sc: Quaternion = c.rotation_track_interpolate(spine, k / fps)
+		var got: Quaternion = hs * sc
+		var want: Quaternion = ha * sa
+		assert_lt(Vector4(got.x - want.x, got.y - want.y, got.z - want.z, got.w - want.w).length(), 1e-5, "frame %d: the chest as in the upper clip" % k)
+
+
 func test_staged_names_keep_only_safe_characters() -> void:
 	var clip: ClipManifest.Clip = ClipManifest.Clip.new()
 	clip.source = "Roll01 [RM]"
@@ -122,20 +185,20 @@ func test_local_the_packs_hold_every_manifest_clip() -> void:
 		return
 	var m: ClipManifest = ClipManifest.read()
 	for set_name: StringName in m.sets:
-		for clip: ClipManifest.Clip in m.clips.values():
+		for clip: ClipManifest.Clip in m.sourced():
 			var path: String = ImportClips.source_path(m, set_name, clip)
 			assert_true(FileAccess.file_exists(path), "found %s" % path)
 
 
 func test_local_the_bone_map_maps_every_bone_the_tool_uses() -> void:
 	var m: ClipManifest = ClipManifest.read()
-	var path: String = ImportClips.staged_path(&"HumanM", m.clips.values()[0])
+	var path: String = ImportClips.staged_path(&"HumanM", m.sourced()[0])
 	if not ResourceLoader.exists(path):
 		pending("local-only: no clips imported (node scripts/godot.mjs clips)")
 		return
 	var profile: SkeletonProfileHumanoid = SkeletonProfileHumanoid.new()
 	for set_name: StringName in m.sets:
-		for clip: ClipManifest.Clip in m.clips.values():
+		for clip: ClipManifest.Clip in m.sourced():
 			var scene: Node = (load(ImportClips.staged_path(set_name, clip)) as PackedScene).instantiate()
 			var sk: Skeleton3D = scene.find_children("*", "Skeleton3D", true, false)[0]
 			for i: int in sk.get_bone_count():
@@ -147,7 +210,7 @@ func test_local_the_bone_map_maps_every_bone_the_tool_uses() -> void:
 
 func test_local_two_builds_write_identical_libraries() -> void:
 	var m: ClipManifest = ClipManifest.read()
-	if not ResourceLoader.exists(ImportClips.staged_path(&"HumanM", m.clips.values()[0])):
+	if not ResourceLoader.exists(ImportClips.staged_path(&"HumanM", m.sourced()[0])):
 		pending("local-only: no clips imported (node scripts/godot.mjs clips)")
 		return
 	var path: String = "user://test_import_clips_determinism.res"

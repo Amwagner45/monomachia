@@ -56,7 +56,7 @@ const MOVES: Dictionary = {
 	&"d_sl": {
 		"id": &"d_sl", "name": "Slide Slash", "kind": &"light", "type": &"slash", "anim": &"slideSlash", "hand": &"R", "sound": D,
 		"startup": 8, "active": 3, "recovery": 14, "damage": 6, "posture": 5, "knockback": 0.4,
-		"range": 1.9, "arc": 110, "lunge": 2.0, "lunge_end": 11,
+		"range": 1.9, "arc": 110, "lunge": 2.2, "lunge_end": 11,
 	},
 	&"d_sh": {
 		"id": &"d_sh", "name": "Pounce", "kind": &"heavy", "type": &"stab", "anim": &"pounce", "hand": &"both", "sound": D,
@@ -73,12 +73,12 @@ const MOVES: Dictionary = {
 	&"d_dh": {
 		"id": &"d_dh", "name": "Reverse Spin", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,
 		"startup": 12, "active": 4, "recovery": 16, "damage": 9, "posture": 7, "knockback": 0.6,
-		"range": 1.9, "arc": 360,
+		"range": 1.9, "arc": 360, "lunge": 0.45,
 	},
 	&"d_bl": {
 		"id": &"d_bl", "name": "Flick", "kind": &"light", "type": &"slash", "anim": &"slashLR", "hand": &"L", "sound": D,
 		"startup": 7, "active": 2, "recovery": 12, "damage": 4, "posture": 4, "knockback": 0.2,
-		"range": 1.8, "arc": 110, "lunge": 0.5,
+		"range": 1.8, "arc": 110, "lunge": 0.95,
 	},
 	&"d_bh": {
 		"id": &"d_bh", "name": "Rebound Lunge", "kind": &"heavy", "type": &"stab", "anim": &"doubleStab", "hand": &"both", "sound": D,

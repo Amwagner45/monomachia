@@ -526,3 +526,26 @@ func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:
 	f.atk = null
 	shot = ClipDirector.step(shot, f, ctx)
 	assert_eq(shot.grip, 1.0, "back to the legs: the reverse grip")
+
+
+func test_shadow_step_plays_the_roll_and_blinks_through_its_active_frames() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 2.0)
+	var f: Fighter = W.fighters[0]
+	var def: AttackDef = Moves.DAGGERS.moves[&"d_shadow"]
+	assert_eq(def.swing.clips, [&"Roll01"] as Array[StringName], "played from Roll01")
+	assert_eq(def.swing.speed, 2.0, "sped up")
+	var lengths: Dictionary[String, float] = {}
+	for set_name: StringName in ClipLibraries.SETS:
+		lengths["%s/Roll01" % set_name] = 39.0 / 30.0
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.BLOCK, Btn.HEAVY), SimHelpers.idle()])
+	var blinked: Array[int] = []
+	while f.state == &"attack":
+		assert_eq(shot.drive, ClipDirector.ATTACK, "frame %d: the roll drives" % f.atk.frame)
+		assert_eq(shot.clip.name, "HumanM/Roll01")
+		if ClipDirector.blinks(f):
+			blinked.append(f.atk.frame)
+		shot = _next(W, shot, ctx)
+	assert_eq(blinked.size(), def.active, "hidden through the active frames")
+	assert_eq(blinked[0], def.startup + 1, "from the first")
+	assert_false(ClipDirector.blinks(f), "shown again after it")

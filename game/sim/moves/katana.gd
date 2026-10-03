@@ -71,32 +71,32 @@ const MOVES: Dictionary = {
 	&"k_sl": {
 		"id": &"k_sl", "name": "Running Draw", "kind": &"light", "type": &"slash", "anim": &"drawCut",
 		"startup": 12, "active": 4, "recovery": 18, "damage": 8, "posture": 9, "knockback": 0.5,
-		"range": 2.3, "arc": 100, "lunge": 1.6, "lunge_end": 15,
+		"range": 2.3, "arc": 100, "lunge": 1.7, "lunge_end": 15,
 	},
 	&"k_sh": {
 		"id": &"k_sh", "name": "Leaping Cleave", "kind": &"heavy", "type": &"overhead", "anim": &"leapCleave",
 		"startup": 20, "active": 5, "recovery": 26, "damage": 15, "posture": 18, "knockback": 1.2,
-		"range": 2.4, "arc": 70, "lunge": 2.6, "lunge_start": 4, "lunge_end": 22, "hop": 5,
+		"range": 2.4, "arc": 70, "lunge": 2.9, "lunge_start": 4, "lunge_end": 22, "hop": 5,
 	},
 	&"k_dl": {
 		"id": &"k_dl", "name": "Wind Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL",
 		"startup": 9, "active": 3, "recovery": 16, "damage": 6, "posture": 7, "knockback": 0.4,
-		"range": 2.2, "arc": 120, "lunge": 0.4, "dodge_cancel_from": 18,
+		"range": 2.2, "arc": 120, "lunge": 0.5, "dodge_cancel_from": 18,
 	},
 	&"k_dh": {
 		"id": &"k_dh", "name": "Whirl Cut", "kind": &"heavy", "type": &"spin", "anim": &"spin",
 		"startup": 18, "active": 6, "recovery": 24, "damage": 12, "posture": 14, "knockback": 1.0,
-		"range": 2.3, "arc": 360, "lunge": 0.3,
+		"range": 2.3, "arc": 360, "lunge": 0.5,
 	},
 	&"k_bl": {
 		"id": &"k_bl", "name": "Rising Cut", "kind": &"light", "type": &"slash", "anim": &"diagUp",
 		"startup": 10, "active": 3, "recovery": 18, "damage": 6, "posture": 8, "knockback": 0.4,
-		"range": 2.2, "arc": 100, "lunge": 0.8,
+		"range": 2.2, "arc": 100, "lunge": 1.25,
 	},
 	&"k_bh": {
 		"id": &"k_bh", "name": "Lunging Cut", "kind": &"heavy", "type": &"slash", "anim": &"diagDown",
 		"startup": 18, "active": 4, "recovery": 24, "damage": 12, "posture": 14, "knockback": 1.0,
-		"range": 2.4, "arc": 80, "lunge": 2.2, "lunge_start": 4, "lunge_end": 20,
+		"range": 2.4, "arc": 80, "lunge": 2.3, "lunge_start": 4, "lunge_end": 20,
 	},
 	&"k_jl": {
 		"id": &"k_jl", "name": "Aerial Cut", "kind": &"light", "type": &"slash", "anim": &"airSlash",

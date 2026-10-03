@@ -43,9 +43,10 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 	},
 }
 
-## Wind Cut, the dodge light, lunges 0.4 m, as the demo's did (the spec
-## leaves the Katana's dodge attacks unchanged).
-const WIND_CUT_LUNGE: float = 0.4
+## Wind Cut, the dodge light, lunged 0.4 m, as the demo's did (the spec
+## leaves the Katana's dodge attacks unchanged); 0.5 m since its clip
+## (authored-animation task 12), to reach the duelling distance.
+const WIND_CUT_LUNGE: float = 0.5
 
 ## Kesa Cut dodge-cancels from frame 20 (the plan's decisions: startup +
 ## active + 6, as Right Cut and Return Cut).
@@ -122,7 +123,7 @@ func test_wind_cut_out_of_a_dodge_still_lunges_toward_the_defender() -> void:
 	assert_gt(start, 0, "Wind Cut starts")
 	if start <= 0:
 		return
-	assert_almost_eq(r.displacement(&"k_dl").length(), WIND_CUT_LUNGE, CLOSE, "its 0.4 m lunge")
+	assert_almost_eq(r.displacement(&"k_dl").length(), WIND_CUT_LUNGE, CLOSE, "its 0.5 m lunge")
 	var closed: float = r.apart[start - 1] - r.apart[r.attack.rfind(&"k_dl")]
 	assert_almost_eq(closed, WIND_CUT_LUNGE, CLOSE, "straight at the defender: the gap shrinks by all of it")
 

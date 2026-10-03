@@ -114,6 +114,16 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# (Attack2H04)
 	{"move": "k_h1f", "field": "lunge", "was": 0.5, "now": 1.2},
 	{"move": "k_h2", "field": "lunge", "was": 0.7, "now": 0.95},
+	# authored animation 12: the movement attacks' clips reach less far than
+	# their cones, so their lunges carry them to a touch from their test
+	# distances (the sprint attacks 4.0 and 5.0 m, the dodge attacks 2.5, the
+	# back attacks 3.0 and 4.5)
+	{"move": "k_sl", "field": "lunge", "was": 1.6, "now": 1.7},
+	{"move": "k_sh", "field": "lunge", "was": 2.6, "now": 2.9},
+	{"move": "k_dl", "field": "lunge", "was": 0.4, "now": 0.5},
+	{"move": "k_dh", "field": "lunge", "was": 0.3, "now": 0.5},
+	{"move": "k_bl", "field": "lunge", "was": 0.8, "now": 1.25},
+	{"move": "k_bh", "field": "lunge", "was": 2.2, "now": 2.3},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

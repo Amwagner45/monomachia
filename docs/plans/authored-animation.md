@@ -37,9 +37,9 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
   - 14.14 (blade lag) and 14.15 (the parry-bounce prototype);
   - all of task 15 (full fighter animation), 15.9's ghost trails included. The owner chose on Oct 3 to retire 15.1–15.16 as well as 15.9, since this plan covers them.
 
-  14.16 (the saya) and 14.17 (the review sheets) stay. The godot-rebuild tasks that waited on a retired one now wait on this plan:
-  - 14.16 waits on 14.9 only;
-  - 14.17 on task 14;
+  - 14.16 (the saya) goes into task 11, and 14.17 (the review sheets) into task 14 (the owner's choice, Oct 3, at task 1).
+
+  The godot-rebuild tasks that waited on a retired one now wait on this plan:
   - 12.2 on task 25;
   - 18.12 on task 36;
   - 25.7 no longer waits on the swing editor.
@@ -47,11 +47,13 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 - The Greatsword's recovery slide keeps running along the facing; the retired 7.24 would have taken its direction from the follow-through.
 - The counters (stomp, leap, evade) keep their demo cones; the retired 7.37 would have measured them from the paths.
 - Story 42, the email to Kevin Iglesias, is drafted in the spec's Licence section; the owner sends it. Until he answers, the baked paths are committed.
-- The merge of `origin/feature/godot-rebuild` (PR #11) into this branch happens at the start of task 1, on the owner's go-ahead.
+- The merge of `origin/feature/godot-rebuild` (PR #11) into this branch was done at the start of task 1, on the owner's go-ahead (Oct 3).
 
 ## Progress
 
-Oct 3, 2026. Plan approved by the owner. Next: task 1, the retargeting prototype.
+Oct 3, 2026. Plan approved by the owner. Merged `origin/feature/godot-rebuild` (PR #11) in with the owner's go-ahead; tests and typecheck pass.
+
+Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kevin_iglesias/iglesias_bone_map.tres` (52 of the 56 profile bones), the six clips retargeted onto both fighters, and the findings in `docs/research/retarget-prototype.md`. Bends and crossing pass; the off hand sits 7–16 cm from the Greatsword's off-hand grip (for task 4's IK); planted feet creep up to 6 cm in the 2H attack and the roll's getting-up (foot locking, beyond task 29's locomotion, would cure it). One fix made: the hips' travel scaled to the legs (×1.14), which task 2's import tool must repeat. Roll01 [RM]'s root reads cleanly; Dodge01 is a sway, usable as the backstep only as its back half. **Waiting on the owner's pass or fail at the gate.** Nothing after task 1 starts until then.
 
 ## Build order
 
@@ -70,7 +72,7 @@ Oct 3, 2026. Plan approved by the owner. Next: task 1, the retargeting prototype
 
 ### Phase A: the gate
 
-- [ ] **1. The retargeting prototype on five clips.** A bone map for Kevin's 56-bone `B-` rig onto Godot's humanoid profile, made the way `ual_bone_map.tres` is. Five clips are read through Godot's FBX importer from both HumanM and HumanF and retargeted: CombatIdle1H01, Attack1H01_R, Attack2H01, Roll01 and CombatDeath01, plus Dodge01 to settle the backstep. The root, scale, `B-handProp` and jaw tracks are stripped. The Hunter plays HumanM and the Rogue HumanF, with the Katana or the Greatsword roughly fixed in the main hand.
+- [x] **1. The retargeting prototype on five clips.** A bone map for Kevin's 56-bone `B-` rig onto Godot's humanoid profile, made the way `ual_bone_map.tres` is. Five clips are read through Godot's FBX importer from both HumanM and HumanF and retargeted: CombatIdle1H01, Attack1H01_R, Attack2H01, Roll01 and CombatDeath01, plus Dodge01 to settle the backstep. The root, scale, `B-handProp` and jaw tracks are stripped. The Hunter plays HumanM and the Rogue HumanF, with the Katana or the Greatsword roughly fixed in the main hand.
   - Throwaway apart from the bone map and a short findings note in `docs/research/retarget-prototype.md`. The converted clips go only to a gitignored scratch folder.
   - Check: contact sheets of each clip on both fighters at four phases, from the gameplay camera, three-quarter and close. The note also answers:
     - whether Roll01 [RM]'s root track can be read for the roll's travel;
@@ -176,7 +178,7 @@ Oct 3, 2026. Plan approved by the owner. Next: task 1, the retargeting prototype
     - sheets of the L-L-L-L string with each stop;
     - a 40-match soak is clean.
   - Blocked by: 9 · Stories: 1, 4, 5
-- [ ] **11. The Katana's heavies.** Both Iai Slashes (Sheathe Hips01_R chained into Attack1H04 or Attack1H05), Rising Heaven, Returning Draw and Heaven Splitter. The manifest and the bake learn chained clips here. The Iai needs the saya: if godot-rebuild 14.16 hasn't built it by then, this task builds the saya part (14.16's blocker, 7.19, is retired).
+- [ ] **11. The Katana's heavies.** Both Iai Slashes (Sheathe Hips01_R chained into Attack1H04 or Attack1H05), Rising Heaven, Returning Draw and Heaven Splitter. The manifest and the bake learn chained clips here. The Iai needs the saya, so this task builds it: a saya made in code at the left hip whenever the Katana is the weapon (godot-rebuild 14.16, retired into this task). The sheathe, the sheathed hold kept while walking and strafing at block speed, and the dodge cancel out of it play from clips.
   - Check:
     - the swing checks, with the sheathed frames carrying no blade;
     - the Iai enters a defender at 3.6 m and misses at 4.2 m;
@@ -204,6 +206,7 @@ Oct 3, 2026. Plan approved by the owner. Next: task 1, the retargeting prototype
     - the video;
     - contact sheets of every Katana move on both fighters;
     - a list of moves that share or mirror a clip;
+    - sheets of the guard and the trails, and a checklist mapping each of the animation spike critique's fixes and conditions that still applies to its sheet or test (from godot-rebuild 14.17, folded in here; godot-rebuild task 14 is ticked when this review passes);
     - a 300-match `soak:tune`, with the Katana's win rate within ±5 points of the baseline and rounds and disarms in their targets.
   - Check: the package is committed (the video stays local under `shots/`) and sent to the owner.
   - **Owner:** OKs the Katana. This gates task 18.

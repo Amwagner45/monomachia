@@ -18,3 +18,6 @@ Sonniss*.zip
 # Temporary git worktrees made by Claude Code workflows
 .claude/worktrees/
 .godot-path
+
+# Scratch for prototypes; may hold converted Iglesias clips, which must never be committed
+game/_scratch/

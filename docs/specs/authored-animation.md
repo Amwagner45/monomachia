@@ -1,6 +1,6 @@
 # Spec: Authored animation and the dodge roll
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); the plan comes next · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10)
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan written (`docs/plans/authored-animation.md`), waiting for the owner's OK · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10)
 
 The Godot rebuild's fighters move with procedural animation. Attacks follow hand-keyed weapon paths with arm IK and a torso and hip turn; reactions are a recoil and a lean; movement is hip-turned clips, a lean and a guard shuffle. This feature replaces all of it with authored clips: Kevin Iglesias's Human Melee and Human Basic Motions packs, retargeted onto the Quaternius fighters, with the Quaternius Universal Animation Library 2 as a supplement and as the fallback. It also turns the dodge from a dash into a roll, adds a knockdown rule, and gives the Greatsword a shoulder carry. The rules stay in charge: they decide every hit and every frame at 60 steps a second, and the clips are fitted to them.
 
@@ -126,7 +126,7 @@ The raw Iglesias files and the clips converted from them stay out of the public 
 ### Source assets and the import tool
 
 - The raw packs are never copied into the repo. An untracked `.assets-src-path` file at the repo root holds the folder they are unzipped in (on the owner's PC, `Desktop/Monomachia-assets`, which already holds all four Iglesias packs, UAL1, and UAL2 Standard and Source); without it the tools look in a gitignored `assets_src/` folder at the repo root. This mirrors `.godot-path`. Both names are added to `.gitignore`, and the existing Quaternius import tool, which has the folder hard-coded, reads the same setting.
-- The uncommitted UAL2 Source, UAL2 root-motion and female-mannequin files in the `assets/ual2-source-and-iglesias-refs` worktree are not committed as they are. The plan's first task brings over only what the game uses: the UAL2 Source clips the clip table names, folded into the committed CC0 clip library (not the whole 134-clip GLB), and the CREDITS note listing the Iglesias packs as "not in the repo". That branch is then retired.
+- PR #11 (merged into `feature/godot-rebuild` on Oct 3) committed the UAL2 Source, UAL2 root-motion and female-mannequin files whole, with the CREDITS note listing the Iglesias packs as "not in the repo", and raised the art budget to 110 MB. So the UAL2 Source clips the clip table names are folded into the committed CC0 clip library from the GLB already in the repo (plan task 3), and the `assets/ual2-source-and-iglesias-refs` worktree is retired.
 - A new import tool converts only the clips the **clip manifest** names. For each one it:
   - reads the Iglesias FBX (binary FBX 7.7, 30 fps, one clip per file, on Kevin's 56-bone `B-` rig) through Godot's FBX importer;
   - retargets it through a new bone map for Kevin's rig onto Godot's humanoid profile, the same way `ual_bone_map.tres` retargets the UAL clips (the bone map is ours and committed);

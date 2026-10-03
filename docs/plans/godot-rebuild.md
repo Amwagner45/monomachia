@@ -38,6 +38,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - Phase C is reordered: the new strings come before weapon swings, so swing paths are authored once, for the final moves.
 - The 4.7.2 export templates are installed on the owner's PC, so `npm run build` can export locally; CI exports too.
 - The match host owns the input host (one set of devices for the whole game, pause on focus loss, profiles picked up on resume), so task 6 did that part of task 22.
+- Oct 3, 2026: the authored-animation spec (`docs/specs/authored-animation.md`, plan `docs/plans/authored-animation.md`) replaces the procedural swings, reactions and movement with authored clips and baked hit paths. It retires 7.16–7.38, 14.14, 14.15, 14b and 15.9, which are struck through below (`[-]`) with what replaces each. 14.16 (the saya) and 14.17 (the review sheets) stay.
 
 ### Decisions from the task breakdown (Oct 1, 2026)
 
@@ -328,7 +329,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 
 ## Build order
 
-One task at a time, top to bottom. Each stage names its tasks in order.
+One task at a time, top to bottom. Each stage names its tasks in order. The retired tasks in stages 9, 10, 11 and 13 (7.16–7.38, 14.14, 14.15, 14b and 15.9) are done by the authored-animation plan instead.
 
 1. **Resume and safety nets:** 13.1, 25.1, 25.2, 25.3.
 2. **The look, and the real fighters in the match:** 16.1–16.7, 14.1, 14.2.
@@ -911,7 +912,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - `test_swing_debug_view.gd`: on Right Cut's level slash, a hit keeps a quad for each active tick (12, 13 and 14, on through the hit), each from the blade at the last tick to this one, and one hit marker at the event's point; a parry on frame 13 keeps 12 and 13 though the attack ended in the parried step; a block and a whiff (the slash over the head) each leave their marker, the whiff's at the blade's tip; the cone draws no quads and marks its midpoint flash; markers and quads go a second after they came, the frame-14 quad after the hit-stop; a new round clears them; it draws two triangles a quad and, as lines, both capsules, the quads' edges, the blade and a cross per marker; `MatchView` turns it on and off with F3, it follows the host's world, and `--swing-debug` is read from the arguments. Mutation-checked (10).
       - `game/tools/shot_scenes/swing_debug.tscn` (`swing_shot.gd`, `--moment=hit|block|whiff`): the player's Rogue cuts at a training dummy 1.6 m away with Right Cut on the tests' level slash (this process only gives Right Cut a swing), held two steps after the outcome, from above beside the fighters. Reviewed by eye: the hit and the block put the flash inside the Hunter's capsule at the end of the sweeps, at the cut's height, and the whiff's sweeps pass over both capsules with the whiff's cross at the blade's tip. The stand-in's katana doesn't follow the swing yet (stand-ins follow swings in a later task).
     - Blocked by: 7.11 · Stories: 21, 65
-  - [ ] **7.16 Named swing shapes: the cuts.** `SwingShapes` builders for the right-to-left and left-to-right slashes, the falling and rising diagonals and the overhead. Each builder gives:
+  - [-] ~~**7.16 Named swing shapes: the cuts.**~~ `SwingShapes` builders for the right-to-left and left-to-right slashes, the falling and rising diagonals and the overhead. Each builder gives:
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - both entries;
     - a 40–60° coil with the pelvis shifted back over the rear foot;
     - a 2–4 frame cocked hold;
@@ -921,71 +923,93 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     The hands travel from shoulder to opposite hip and never cross the face. Each shape is judged on the real fighters.
     - Check: each shape passes `SwingCheck` on both reference bodies with the Katana and the Greatsword, and PoseCheck on the rig; it has the hold and the coil; a slash at contact is more than 45° off the facing; contact sheets from the gameplay camera tell slash from overhead in the first third of the wind-up.
     - Blocked by: 7.7, 14.13 · Stories: 16, 19, 21
-  - [ ] **7.17 The Katana's four-light string on swings.** Right Cut, Return Cut, Kesa Cut and Crown Cut, keyed to the spike critique's fixes 2–5. Right Cut loads out to the right early. Return Cut winds up from the left hip. Strong hand-off poses: each move ends on the next one's start. Lunges are 0.7–0.8 m and end on contact.
+  - [-] ~~**7.17 The Katana's four-light string on swings.**~~ Right Cut, Return Cut, Kesa Cut and Crown Cut, keyed to the spike critique's fixes 2–5. Right Cut loads out to the right early. Return Cut winds up from the left hip. Strong hand-off poses: each move ends on the next one's start. Lunges are 0.7–0.8 m and end on contact.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: `SwingCheck` and PoseCheck (wrists, 5 cm, elbows on the first active frame, knees over toes) on both fighters; continuity; `test_duel_reach.gd` for the four lights; the Katana combat tests pass or are updated with the reason; debug-view shots and contact sheets reviewed; a 40-match soak is clean.
     - Blocked by: 7.14, 7.15, 7.16 · Stories: 16, 18, 21, 25
-  - [ ] **7.18 Named swing shapes: thrust, stab and slam.**
+  - [-] ~~**7.18 Named swing shapes: thrust, stab and slam.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: each passes both checks; a thrust's contact is within 15° of facing; a slam ends at the ground; sheets tell thrust from overhead in the first third of the wind-up.
     - Blocked by: 7.17 · Stories: 19, 21
-  - [ ] **7.19 Named swing shapes: low sweep, spin, draw cut and the Iai sheathe-and-draw.** A `sheathed` key flag carries no blade.
+  - [-] ~~**7.19 Named swing shapes: low sweep, spin, draw cut and the Iai sheathe-and-draw.**~~ A `sheathed` key flag carries no blade.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: each passes both checks; a low sweep stays under 0.5 m while active; a spin's arc is 360; sheets tell sweep from slash early.
     - Note from 7.7: `SwingCheck` has no sheathed exemption yet. When the flag exists, a sheathed sample gets no blade in `SwingCheck.moment()`, so the blade checks skip it while the arms are still checked.
     - Blocked by: 7.18 · Stories: 19, 21, 26
-  - [ ] **7.20 The Katana's heavies on swings.** Both Iai Slashes (the sheathed hold at the saya, then the draw), Rising Heaven, Returning Draw and Heaven Splitter.
+  - [-] ~~**7.20 The Katana's heavies on swings.**~~ Both Iai Slashes (the sheathed hold at the saya, then the draw), Rising Heaven, Returning Draw and Heaven Splitter.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: both checks, with sheathed keys exempt; continuity for every Katana heavy chain; the Iai enters a defender at 3.6 m and misses at 4.2 m; task 9's tests pass; sheets reviewed; a 40-match soak is clean.
     - Blocked by: 7.19, 14.16 · Stories: 16, 18, 26, 27, 28, 29
-  - [ ] **7.21 The Katana's sprint and dodge attacks.** Running Draw, Leaping Cleave, Wind Cut and Whirl Cut.
+  - [-] ~~**7.21 The Katana's sprint and dodge attacks.**~~ Running Draw, Leaping Cleave, Wind Cut and Whirl Cut.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: both checks and continuity; each hits from its table distance; sheets reviewed; a 40-match soak is clean.
     - Blocked by: 7.20 · Stories: 21, 30
-  - [ ] **7.22 The Katana's backstep and jump attacks, Counter Lunge and Flash.** Rising Cut, Lunging Cut, Aerial Cut, Falling Crown and Counter Lunge, with Flash as a pose-only swing.
+  - [-] ~~**7.22 The Katana's backstep and jump attacks, Counter Lunge and Flash.**~~ Rising Cut, Lunging Cut, Aerial Cut, Falling Crown and Counter Lunge, with Flash as a pose-only swing.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: both checks and continuity; each hits from its table distance; the evade counter's lunge test passes; sheets reviewed; a 40-match soak is clean.
     - Blocked by: 7.21 · Stories: 21, 30, 41
-  - [ ] **7.23 The Katana's unblockables: Piercing Thrust and Swallow Sweep.** With the thick-blade bonus. The four attack types (slash, overhead, thrust, sweep) now all exist on the Katana.
+  - [-] ~~**7.23 The Katana's unblockables: Piercing Thrust and Swallow Sweep.**~~ With the thick-blade bonus. The four attack types (slash, overhead, thrust, sweep) now all exist on the Katana.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 9–13.
     - Check: both checks; the unblockable combat tests pass; an unblockable hits where the Katana light misses; sheets of the four types side by side tell them apart in the first third of the wind-up; a 40-match soak is clean.
     - Blocked by: 7.22 · Stories: 22, 30, 42
-  - [ ] **7.24 The Greatsword's string and Piercing Lunge on swings.** Two-handed swings for Heavy Swing, Backswing, Overhead Strike and Piercing Lunge, at the Greatsword's duelling distance. The colossal slide's direction now comes from the follow-through.
+  - [-] ~~**7.24 The Greatsword's string and Piercing Lunge on swings.**~~ Two-handed swings for Heavy Swing, Backswing, Overhead Strike and Piercing Lunge, at the Greatsword's duelling distance. The colossal slide's direction now comes from the follow-through.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 18–20.
     - Check: both checks; continuity for L-L-H; the duel reach test; task 10's tests; a test that a Heavy Swing slides along its follow-through rather than its facing; sheets; a 40-match soak is clean.
     - Blocked by: 14b.6, 15.1 · Stories: 18, 20, 31, 33
-  - [ ] **7.25 The Greatsword's sprint attacks, Guard Crusher and Counter Lunge.** Shoulder Charge and Guard Crusher strike with a body track; Leaping Smash and Counter Lunge.
+  - [-] ~~**7.25 The Greatsword's sprint attacks, Guard Crusher and Counter Lunge.**~~ Shoulder Charge and Guard Crusher strike with a body track; Leaping Smash and Counter Lunge.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 18–20.
     - Check: both checks (body tracks exempt from the wrist check); each hits from its table distance; the posture-crush tests pass; sheets; a 40-match soak is clean.
     - Blocked by: 7.24 · Stories: 21, 34
-  - [ ] **7.26 The Greatsword's backstep and jump attacks.** Rising Edge, Lunge Cleave, Aerial Chop and Meteor Drop.
+  - [-] ~~**7.26 The Greatsword's backstep and jump attacks.**~~ Rising Edge, Lunge Cleave, Aerial Chop and Meteor Drop.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 18–20.
     - Check: both checks; each hits from its table distance; sheets; a 40-match soak is clean.
     - Blocked by: 7.25 · Stories: 21
-  - [ ] **7.27 The Greatsword's unblockables.** Reaping Sweep, Mountain Slam, Low Sweep (narrower and faster than Reaping Sweep, and low enough to jump) and Skewer.
+  - [-] ~~**7.27 The Greatsword's unblockables.**~~ Reaping Sweep, Mountain Slam, Low Sweep (narrower and faster than Reaping Sweep, and low enough to jump) and Skewer.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 18–20.
     - Check: both checks; continuity from Overhead Strike to Low Sweep; Low Sweep misses a jumper; the unblockable combat tests pass (full damage through block, disarm on a full meter, no help from dodge invincibility, each counter still triggers); sheets; a 40-match soak is clean.
     - Blocked by: 7.26 · Stories: 22, 32, 33, 34, 41
-  - [ ] **7.28 Named swing shapes for two blades: double stab and crossing cut.**
+  - [-] ~~**7.28 Named swing shapes for two blades: double stab and crossing cut.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 21–23.
     - Check: both tracks pass both checks; the blades never cross each other's arms; sheets.
     - Blocked by: 15.2 · Stories: 19, 21
-  - [ ] **7.29 The Daggers' string and heavies on swings.** Quick Slice, Off-hand Slice, Twin Rip, Flurry Finisher, Twin Fang, Spinning Backhand and Passing Cut, with two hand tracks.
+  - [-] ~~**7.29 The Daggers' string and heavies on swings.**~~ Quick Slice, Off-hand Slice, Twin Rip, Flurry Finisher, Twin Fang, Spinning Backhand and Passing Cut, with two hand tracks.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 21–23.
     - Check: both checks for both blades; continuity; the duel reach test; task 11's tests; sheets; a 40-match soak is clean.
     - Blocked by: 7.28 · Stories: 16, 35, 36, 37, 38
-  - [ ] **7.30 The Daggers' sprint and dodge attacks, and Shadow Step.** Slide Slash, Pounce and Reverse Spin, with Shadow Step as a pose-only swing.
+  - [-] ~~**7.30 The Daggers' sprint and dodge attacks, and Shadow Step.**~~ Slide Slash, Pounce and Reverse Spin, with Shadow Step as a pose-only swing.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 21–23.
     - Check: both checks; each hits from its table distance; the Shadow Step backstab tests pass; sheets; a 40-match soak is clean.
     - Blocked by: 7.29 · Stories: 21, 39
-  - [ ] **7.31 The Daggers' backstep and jump attacks, and Counter Lunge.** Flick, Rebound Lunge, Air Slash, Dive Stab and Counter Lunge.
+  - [-] ~~**7.31 The Daggers' backstep and jump attacks, and Counter Lunge.**~~ Flick, Rebound Lunge, Air Slash, Dive Stab and Counter Lunge.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 21–23.
     - Check: both checks and continuity; each hits from its table distance; sheets; a 40-match soak is clean.
     - Blocked by: 7.30 · Stories: 21
-  - [ ] **7.32 The Daggers' unblockables: Serpent Sweep and Needle Thrust.**
+  - [-] ~~**7.32 The Daggers' unblockables: Serpent Sweep and Needle Thrust.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 21–23.
     - Check: both checks; the unblockable combat tests pass; sheets; a 40-match soak is clean.
     - Blocked by: 7.31 · Stories: 22, 39
-  - [ ] **7.33 Bare-hand string on swings: Jab, Cross, Hook and Slip Jab.** A fist strike segment.
+  - [-] ~~**7.33 Bare-hand string on swings: Jab, Cross, Hook and Slip Jab.**~~ A fist strike segment.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 24 and 25.
     - Check: the elbow and other-arm checks; continuity for Jab, Cross, Hook; the duel reach test at 1.6 m; the disarmed tests pass; sheets; a 40-match soak is clean.
     - Blocked by: 15.3 · Stories: 21, 41
-  - [ ] **7.34 Bare-hand specials: Spinning Backfist, Lunging Palm, Counter Lunge and Breaker Palm.**
+  - [-] ~~**7.34 Bare-hand specials: Spinning Backfist, Lunging Palm, Counter Lunge and Breaker Palm.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 24 and 25.
     - Check: the elbow and other-arm checks; each hits from its table distance; a disarmed fighter still can't block or redirect, and Breaker Palm works; sheets; a 40-match soak is clean.
     - Blocked by: 7.33 · Stories: 21, 41
-  - [ ] **7.35 Bare-hand kicks I: Roundhouse, Spinning Heel and Snap Kick.** Foot tracks with a hip pivot.
+  - [-] ~~**7.35 Bare-hand kicks I: Roundhouse, Spinning Heel and Snap Kick.**~~ Foot tracks with a hip pivot.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 24 and 25.
     - Check: each hits from its table distance and misses from 6 m; continuity for Hook, Roundhouse, Spinning Heel; sheets; a 40-match soak is clean.
     - Blocked by: 7.34 · Stories: 21, 41
-  - [ ] **7.36 Bare-hand kicks II: Flying Knee, Dragon Kick, Air Kick and Axe Kick.** Flying Knee strikes with a shin segment.
+  - [-] ~~**7.36 Bare-hand kicks II: Flying Knee, Dragon Kick, Air Kick and Axe Kick.**~~ Flying Knee strikes with a shin segment.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** replaced by authored clips with baked swings, `docs/plans/authored-animation.md` tasks 24 and 25.
     - Check: each hits from its table distance and misses from 6 m; sheets; a 40-match soak is clean.
     - Blocked by: 7.35 · Stories: 21, 41
-  - [ ] **7.37 The counters' generous cones, measured from the paths.** Stomp, leap and evade use the derived reach and arc, with their margins moved into `SimConst` and re-tuned to stay as generous as the demo.
+  - [-] ~~**7.37 The counters' generous cones, measured from the paths.**~~ Stomp, leap and evade use the derived reach and arc, with their margins moved into `SimConst` and re-tuned to stay as generous as the demo.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the counters keep their demo cones.
     - Check: the stomp, leap and evade combat tests pass; counterlab's three cases count at least as many counters as before, and the tallies go in the commit message; a 40-match soak is clean.
     - Blocked by: 7.36 · Stories: 41
-  - [ ] **7.38 Every move hits by its swing; task 7 ticked.** A test that every damaging move has a swing and every zero-damage stance a pose-only one; the cone kept only for scripted ultimate hits; authored range and arc removed where a swing exists.
+  - [-] ~~**7.38 Every move hits by its swing; task 7 ticked.**~~ A test that every damaging move has a swing and every zero-damage stance a pose-only one; the cone kept only for scripted ultimate hits; authored range and arc removed where a swing exists.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** every move gets a baked swing in `docs/plans/authored-animation.md`'s weapon tasks, and task 35 checks that every move resolves to a clip.
     - Check: the spec's swing-hit tests pass on real moves; debug-view shots of each weapon's string reviewed; a 40-match soak is clean; the spec's Weapon swings section and numbers updated.
     - Blocked by: 7.37 · Stories: 21, 58, 59, 62
 - [ ] **12. Computer opponent and balance pass.** The brain and dummy learn the Iai, the new unblockables and the dodge cancels; tuning follows soak data; the spec's numbers are updated.
@@ -1533,10 +1557,12 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Tests: `test_guard_shuffle.gd` (+3, the planner): the front foot's lift, landing and place ahead, the rear foot after it, the lunge's start and the cap; the foot on a dodge-lunge's side leads; planted feet stand exactly still through a strike and only the strike's steps are taken, ending on their spots where the lunge ends. `test_swing_player.gd` (+2): for each of the Katana's four lunging lights with a swing, the front foot lands exactly on the first active frame and the rear foot after it, and on the posed skeleton the standing feet slide less than 1 cm in the world; a move without a swing keeps the feet riding. Mutation caught: no strikes (no step, feet sliding 5 cm).
       - Sheet: `--move=k_l1 --swings=res://tools/swings/katana_demo.json --at=1,3,6,9,11,12,15,18 --views=side,feet` shows the front foot stepping out through the wind-up, down on frame 12, and the rear one closing by 18.
       - 1096 Godot tests. **14.10–14.13 done: with 14.3–14.9 (merged in PR #4), stage 8 of the build order is built**, built on the stage 7 lane's branch at 7.12; on Oct 3 the lane's 7.13–7.15 (and 22.1, through it) were merged in, which clears the plan's block on 7.15, with 1135 Godot tests passing. Waiting on the owner: the sheets above, from the demo swings.
-  - [ ] **14.14 Blade lag and follow-through overshoot.** A spring on the displayed blade behind the hand path, on the rules' clock, kept inside the wrist limits and 5 cm from the body. The rules' blade is unchanged.
+  - [-] ~~**14.14 Blade lag and follow-through overshoot.**~~ A spring on the displayed blade behind the hand path, on the rules' clock, kept inside the wrist limits and 5 cm from the body. The rules' blade is unchanged.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the displayed blade follows the clip, with no lag spring.
     - Check: no lag in the guard; a bounded trailing angle that settles within a set number of frames; nothing moves in hit-stop; PoseCheck passes on the Katana lights.
     - Blocked by: 7.17 · Stories: 19
-  - [ ] **14.15 Parry-bounce prototype.** On a parry, the attacker's blade rebounds back along its swing from the contact point, and the defender's blade rebounds off the same point (Katana only).
+  - [-] ~~**14.15 Parry-bounce prototype.**~~ On a parry, the attacker's blade rebounds back along its swing from the contact point, and the defender's blade rebounds off the same point (Katana only).
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the parry plays the attacker's own clip backwards, `docs/plans/authored-animation.md` task 27.
     - Check: the attacker's tip moves away from the contact point and retraces earlier samples; the defender's blade moves away; PoseCheck through the bounce; a contact sheet of the parry is reviewed.
     - Blocked by: 7.17, 14.12 · Stories: 40
   - [ ] **14.16 The saya and the sheathed hold.** A saya built in code at the left hip whenever the Katana is the weapon; the sheathe on the heavy press; the sheathed hold that the Iai's swings start from, kept while walking and strafing at block speed; the dodge cancel out of it.
@@ -1546,29 +1572,36 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: PoseCheck passes for every Katana move on both fighters; the soak is clean; the sheets and checklist are committed and sent to the owner.
     - Owner: approves the sheets. This OK is the gate for 15.1.
     - Blocked by: 7.23, 14.6, 14.7, 14.14, 14.15, 18.3 · Stories: 16, 19, 25, 40
-- [ ] **14b. Swing editor.** An editor plugin that scrubs a move frame by frame on a fighter.
+- [-] ~~**14b. Swing editor.**~~ An editor plugin that scrubs a move frame by frame on a fighter.
+  - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
   - Delivers:
     - drag path keys, poles and body keys with live preview;
     - edits saved back to the move data;
     - the wrist and self-collision checks shown live.
   - Check: re-key one Katana move in the editor and the saved data reloads identically; documented in the README.
-  - [ ] **14b.1 Swing data save and reload.** A writer for the swing JSON with stable formatting and validation (frames inside the move, keys sorted, valid eases).
+  - [-] ~~**14b.1 Swing data save and reload.**~~ A writer for the swing JSON with stable formatting and validation (frames inside the move, keys sorted, valid eases).
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: the Katana's file round-trips byte for byte; edit, save and reload give the same sample at every quarter frame.
     - Blocked by: 7.23 · Stories: 16, 21
-  - [ ] **14b.2 Editor plugin: dock, preview and scrubbing.** An EditorPlugin in `game/addons/swing_editor`. Its dock picks weapon, move, fighter and palette, with a frame slider, step and play, and a defender at the duelling distance. Its logic, undo included, lives in a non-UI controller that the typecheck covers, since the typecheck now skips only `addons/gut`.
+  - [-] ~~**14b.2 Editor plugin: dock, preview and scrubbing.**~~ An EditorPlugin in `game/addons/swing_editor`. Its dock picks weapon, move, fighter and palette, with a frame slider, step and play, and a defender at the duelling distance. Its logic, undo included, lives in a non-UI controller that the typecheck covers, since the typecheck now skips only `addons/gut`.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: the controller's pose at a frame equals SwingPlayer's; the editor opens headless with the plugin and no errors; a shot scene hosting the controller's preview renders and is reviewed.
     - Blocked by: 14b.1, 14.13 · Stories: 16, 19
-  - [ ] **14b.3 Drag the path keys with live preview.** Gizmo handles for the grip, the hand and blade direction and the edge, calling the controller; the path drawn at quarter frames; undo and redo.
+  - [-] ~~**14b.3 Drag the path keys with live preview.**~~ Gizmo handles for the grip, the hand and blade direction and the edge, calling the controller; the path drawn at quarter frames; undo and redo.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: the controller's edit operations change the samples as expected, and undo restores them exactly; the preview shot shows the path and handles.
     - Owner: tries dragging in the editor.
     - Blocked by: 14b.2 · Stories: 16, 19
-  - [ ] **14b.4 Poles, body keys and timing.** Pole offsets, coil, pelvis shift, pitch and roll, eases, and adding, removing and retiming keys.
+  - [-] ~~**14b.4 Poles, body keys and timing.**~~ Pole offsets, coil, pelvis shift, pitch and roll, eases, and adding, removing and retiming keys.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: each edit changes the sample as expected and undoes exactly; retiming keeps keys sorted and inside the move.
     - Blocked by: 14b.3 · Stories: 19
-  - [ ] **14b.5 Live wrist, self-collision and reach checks.** The timeline marks frames that fail either check, and shows the current frame's numbers with the tip's depth in the defender.
+  - [-] ~~**14b.5 Live wrist, self-collision and reach checks.**~~ The timeline marks frames that fail either check, and shows the current frame's numbers with the tip's depth in the defender.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: a bad edit flags exactly the frames the checks fail.
     - Blocked by: 14b.2 · Stories: 21
-  - [ ] **14b.6 Re-key one Katana move through the editor, and document the editor; task 14b ticked.** The move is re-keyed through the controller's operations (the ones the gizmos call), saved and reloaded. A README section explains the editor.
+  - [-] ~~**14b.6 Re-key one Katana move through the editor, and document the editor; task 14b ticked.**~~ The move is re-keyed through the controller's operations (the ones the gizmos call), saved and reloaded. A README section explains the editor.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
     - Check: the saved data reloads identically; both checks and the swing-hit and reach tests pass; the soak is clean; before and after sheets reviewed.
     - Owner: re-keys a move by hand in the editor.
     - Blocked by: 14b.4, 14b.5 · Stories: 16, 19
@@ -1615,7 +1648,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **15.8 Disarm and pickup.** The weapon leaves the hands on a disarm (its model on the ground is 18.10's), a pickup pose, and the bare-hand guard while disarmed.
     - Check: the weapon leaves on the disarm event and returns on pickup; sheets of both.
     - Blocked by: 15.7, 18.10 · Stories: 41
-  - [ ] **15.9 Dodge and backstep poses with ghost trails.** Dash poses by direction for dodge, backstep and evade, and fading afterimages on the rules' clock.
+  - [-] ~~**15.9 Dodge and backstep poses with ghost trails.**~~ Dash poses by direction for dodge, backstep and evade, and fading afterimages on the rules' clock.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the roll and the backstep play clips, `docs/plans/authored-animation.md` task 30; the ghost trail is dropped.
     - Check: the lean follows the dodge direction; the afterimages fade by frame and clear at round start; sheets.
     - Blocked by: 15.4 · Stories: 12, 13
   - [ ] **15.10 Jump and land.** Jump clips seeked from the rules' jump state and height, and the landing crouch.

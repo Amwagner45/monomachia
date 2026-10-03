@@ -101,6 +101,13 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# defender at the duelling distance on frame 13, its last but one active
 	# frame, where its lunge now ends (test_duel_reach)
 	{"move": "k_l1", "field": "lunge_end", "was": 12, "now": 13},
+	# authored animation 10: Return Cut (Attack1H03_R) and Crown Cut
+	# (Attack2H02) reach less far than their cones; their lunges grow so a
+	# push of at most 15 cm puts 17.5 cm into a defender at the duelling
+	# distance, Crown Cut's ending on its first touch, frame 15
+	{"move": "k_l2", "field": "lunge", "was": 0.35, "now": 0.45},
+	{"move": "k_l4", "field": "lunge", "was": 0.5, "now": 0.7},
+	{"move": "k_l4", "field": "lunge_end", "was": 16, "now": 15},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

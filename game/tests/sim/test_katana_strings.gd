@@ -442,20 +442,24 @@ func test_returning_draw_ends_the_string() -> void:
 func test_stopping_after_any_hit_in_the_iais_strings_ends_the_string_when_that_move_ends() -> void:
 	var light: int = Btn.LIGHT
 	var heavy: int = Btn.HEAVY
-	# mx 1.0 draws the horizontal
+	# mx 1.0 draws the horizontal. Return Cut's clip (authored-animation task
+	# 10) reaches less far than its old 2.2 m cone: after the horizontal Iai
+	# knocks the defender back 1.0 they stand 2.35 m off through its active
+	# frames, out of its reach, so those strings start 1.8 m apart (task 11,
+	# baking the Iai, looks at its knockback)
 	var strings: Array[Dictionary] = [
 		{"presses": [heavy], "mx": 0.0},
 		{"presses": [heavy, heavy], "mx": 0.0},
 		{"presses": [heavy, heavy, heavy], "mx": 0.0},
 		{"presses": [heavy], "mx": 1.0},
 		{"presses": [heavy, heavy], "mx": 1.0},
-		{"presses": [heavy, light], "mx": 1.0},
-		{"presses": [heavy, light, heavy], "mx": 1.0},
+		{"presses": [heavy, light], "mx": 1.0, "gap": 1.8},
+		{"presses": [heavy, light, heavy], "mx": 1.0, "gap": 1.8},
 	]
 	for s: Dictionary in strings:
 		var presses: Array[int] = []
 		presses.assign(s["presses"])
-		_assert_stops_after(presses, s["mx"])
+		_assert_stops_after(presses, s["mx"], s.get("gap", GAP))
 
 
 # ------------------------------------------------------------------ the spec's table
@@ -493,7 +497,8 @@ func test_returning_draw_hits_with_the_specs_interim_cone() -> void:
 func test_kesa_cut_hits_with_the_specs_interim_cone() -> void:
 	# until weapon paths decide hits (task 7): a slash from the right shoulder
 	# to the left hip (the stand-in's diagonal cut down), 2.2 m and 100° after
-	# a 0.35 m lunge, knocking back 0.4 m
+	# a lunge, knocking back 0.4 m; the lunge is 0.4 m since its clip
+	# (authored-animation task 10), from 0.35, to reach the duelling distance
 	var m: AttackDef = Moves.KATANA.moves[&"k_l3"]
 	assert_eq([m.type, m.anim], [&"slash", &"diagDown"], "Kesa Cut is a diagonal slash down")
-	assert_eq([m.range, m.arc, m.lunge, m.knockback], [2.2, 100.0, 0.35, 0.4], "range, arc, lunge and knockback")
+	assert_eq([m.range, m.arc, m.lunge, m.knockback], [2.2, 100.0, 0.4, 0.4], "range, arc, lunge and knockback")

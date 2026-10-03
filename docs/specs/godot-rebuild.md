@@ -365,7 +365,7 @@ A tapped Iai is drawn as the sheathe's 9 frames end, and a held one as its stanc
 
 Until the swings (7.20) and the saya (14.16), the stand-in poses both Iai Slashes from a sheathe (their anims, `iaiVertical` and `iaiHorizontal`): over the sheathe's 9 frames the hands go to the hilt in front of the left hip, the blade lying back along it; they stay there in the stance; and the draw brings the blade out in front, pointing forward, then up into the cut's wind-up, above the head for the vertical and to the right shoulder for the horizontal, before cutting as Crown Cut and Right Cut do. The stance's walk makes footsteps, as the free walk does.
 
-Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). Rising Heaven's, Returning Draw's and Heaven Splitter's lunges end two frames after their cuts start.
+Kesa Cut dodge-cancels from frame 20, six frames after its cut ends, as Right Cut and Return Cut do; Crown Cut keeps the demo's 26. Until weapon paths decide hits (task 7), Kesa Cut hits with an interim cone of 2.2 m and 100° after a 0.35 m lunge, and knocks back 0.4 m (Right Cut: 110° and 0.35 m). (Since authored-animation task 10 its lunge is 0.4 m, Return Cut's 0.45 and Crown Cut's 0.7, so their clips reach the duelling distance.) Rising Heaven's, Returning Draw's and Heaven Splitter's lunges end two frames after their cuts start.
 
 **Greatsword**
 

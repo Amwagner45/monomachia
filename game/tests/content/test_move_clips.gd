@@ -47,6 +47,16 @@ func test_a_chains_markers_run_from_its_start() -> void:
 		assert_eq(markers[name], 40.0 + last.markers[name], "the last clip's %s, after the first clip's 40 frames" % name)
 
 
+func test_a_moves_own_marks_stand_in_for_the_manifests() -> void:
+	var t: MoveClips = _read({"katana": {"guard": "CombatIdle1H01", "moves": {
+		"k_l3": {"clips": ["Attack2H01"], "speed": 1.3, "marks": {"windup": 8, "contact": 15, "contact_end": 17, "settle": 28}},
+	}}})
+	assert_eq(t.errors, PackedStringArray())
+	var e: MoveClips.Entry = t.of(&"katana")[&"k_l3"]
+	assert_eq(MoveClips.markers(e, ClipManifest.read(), PackedFloat64Array([48.0])),
+		{"windup": 8.0, "contact": 15.0, "contact_end": 17.0, "settle": 28.0}, "the move's own, not Attack2H01's")
+
+
 func test_mistakes_are_named() -> void:
 	var t: MoveClips = _read({
 		"spear": {"guard": "CombatIdle1H01", "moves": {}},
@@ -55,6 +65,7 @@ func test_mistakes_are_named() -> void:
 			"k_l1": {"clips": ["Nope01"]},
 			"k_l2": {"clips": ["Attack1H01_R"], "speed": 2.5},
 			"k_l3": {"clips": [], "tempo": 1},
+			"k_l4": {"clips": ["Attack1H01_R"], "marks": {"windup": 0, "contact": 8}},
 		}},
 	})
 	var want: Array[String] = [
@@ -65,6 +76,7 @@ func test_mistakes_are_named() -> void:
 		"katana.k_l2: speed must be a number from 1.0 to 2.0",
 		"katana.k_l3: unknown field tempo",
 		"katana.k_l3: needs clips, a list of clip ids",
+		"katana.k_l4: marks must give windup, contact, contact_end, settle, each a frame number",
 	]
 	for line: String in want:
 		assert_has(t.errors, line)

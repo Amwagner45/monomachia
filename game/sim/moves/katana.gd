@@ -15,19 +15,19 @@ const MOVES: Dictionary = {
 		"id": &"k_l2", "name": "Return Cut", "kind": &"light", "type": &"slash", "anim": &"slashLR",
 		"side_start": &"left", "side_end": &"right",
 		"startup": 10, "active": 3, "recovery": 16, "damage": 6, "posture": 7, "knockback": 0.35,
-		"range": 2.2, "arc": 110, "lunge": 0.35, "lunge_end": 11, "chain_light": &"k_l3", "chain_heavy": &"k_h1f", "dodge_cancel_from": 19,
+		"range": 2.2, "arc": 110, "lunge": 0.45, "lunge_end": 11, "chain_light": &"k_l3", "chain_heavy": &"k_h1f", "dodge_cancel_from": 19,
 	},
 	&"k_l3": {
 		"id": &"k_l3", "name": "Kesa Cut", "kind": &"light", "type": &"slash", "anim": &"diagDown",
 		"side_start": &"right", "side_end": &"left",
 		"startup": 11, "active": 3, "recovery": 17, "damage": 7, "posture": 8, "knockback": 0.4,
-		"range": 2.2, "arc": 100, "lunge": 0.35, "lunge_end": 12, "chain_light": &"k_l4", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
+		"range": 2.2, "arc": 100, "lunge": 0.4, "lunge_end": 14, "chain_light": &"k_l4", "chain_heavy": &"k_h2", "dodge_cancel_from": 20,
 	},
 	&"k_l4": {
 		"id": &"k_l4", "name": "Crown Cut", "kind": &"light", "type": &"overhead", "anim": &"overhead",
 		"side_start": &"centre", "side_end": &"centre",
 		"startup": 14, "active": 4, "recovery": 22, "damage": 8, "posture": 10, "knockback": 0.6,
-		"range": 2.3, "arc": 60, "lunge": 0.5, "lunge_end": 16, "dodge_cancel_from": 26,
+		"range": 2.3, "arc": 60, "lunge": 0.7, "lunge_end": 15, "dodge_cancel_from": 26,
 	},
 	# the heavy: sheathe for 9 frames (up to the fighter's charge check,
 	# CHARGE_CHECK_FRAME: held, the stance is the charge, walked in at the

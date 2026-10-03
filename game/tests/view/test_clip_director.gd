@@ -219,12 +219,14 @@ func test_a_move_without_a_baked_swing_keeps_the_stand_in() -> void:
 	var W: World = SimHelpers.make_world()
 	var f: Fighter = W.fighters[0]
 	var ctx: ClipDirector.Context = _ctx()
+	var move: AttackDef = Moves.KATANA.moves[&"k_l3"]
+	var own: Swing = move.swing
+	move.swing = null
 	_poke(W, f, &"attack", &"k_l3", 1)
 	assert_eq(ClipDirector.step(null, f, ctx).drive, ClipDirector.LEGS, "no swing: nothing authored")
-	var hand_keyed: Swing = _baked(Moves.KATANA.moves[&"k_l3"], [])
-	Moves.KATANA.moves[&"k_l3"].swing = hand_keyed
+	move.swing = _baked(move, [])
 	assert_eq(ClipDirector.step(null, f, ctx).drive, ClipDirector.LEGS, "a swing not baked from a clip: nothing authored")
-	Moves.KATANA.moves[&"k_l3"].swing = null
+	move.swing = own
 
 
 func test_without_the_packs_the_fallback_plays() -> void:

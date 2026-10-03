@@ -17,10 +17,13 @@ extends RefCounted
 ##
 ## A chain's markers are its first clip's wind-up start and its last clip's
 ## contact, contact end and settle, counted from the chain's start (markers()).
+## A move may give its own instead ("marks": all four, in source frames from
+## the chain's start), where one clip serves moves of different timings: a
+## light started from a heavy clip's wound-up pose, say (task 10).
 
 const PATH: String = "res://assets/kevin_iglesias/move_clips.json"
 const WEAPON_FIELDS: Array[String] = ["guard", "moves"]
-const MOVE_FIELDS: Array[String] = ["clips", "speed", "fallback"]
+const MOVE_FIELDS: Array[String] = ["clips", "speed", "fallback", "marks"]
 
 
 ## One move fitted to its clips.
@@ -33,6 +36,9 @@ class Entry:
 	## The committed CC0 clip (in FighterModel.LIBRARY) played without the
 	## Iglesias packs, the clip table's fallback; empty for none.
 	var fallback: StringName = &""
+	## The move's own markers (ClipManifest.MARKERS, source frames from the
+	## chain's start) in place of the manifest's; empty for the manifest's.
+	var marks: Dictionary = {}
 
 
 ## Weapon id -> the clip its guard is read from.
@@ -91,6 +97,8 @@ func of(weapon_id: StringName) -> Dictionary:
 ## clip's wind-up start and the last clip's other markers, after the clips
 ## before it (`lengths`: each clip's length in source frames).
 static func markers(e: Entry, manifest: ClipManifest, lengths: PackedFloat64Array) -> Dictionary:
+	if not e.marks.is_empty():
+		return e.marks.duplicate()
 	var first: ClipManifest.Clip = manifest.clips[e.clips[0]]
 	var last: ClipManifest.Clip = manifest.clips[e.clips[-1]]
 	var before: float = 0.0
@@ -136,4 +144,16 @@ func _entry(wid: StringName, id: StringName, d: Variant, manifest: ClipManifest)
 			errors.append("%s: the fallback %s is not in the CC0 library" % [at, fb])
 			return null
 		e.fallback = fb
+	if (d as Dictionary).has("marks"):
+		var m: Variant = d["marks"]
+		var ok: bool = m is Dictionary and (m as Dictionary).size() == ClipManifest.MARKERS.size()
+		if ok:
+			for name: String in ClipManifest.MARKERS:
+				var v: Variant = (m as Dictionary).get(name)
+				ok = ok and (v is float or v is int) and float(v) >= 0.0
+		if not ok:
+			errors.append("%s: marks must give %s, each a frame number" % [at, ", ".join(ClipManifest.MARKERS)])
+			return null
+		for name: String in ClipManifest.MARKERS:
+			e.marks[name] = float(m[name])
 	return e

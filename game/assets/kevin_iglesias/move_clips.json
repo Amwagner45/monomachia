@@ -1,7 +1,10 @@
 {
 	"about": "Which clip each move's swing is baked from, and its speed (times the clip's 30 fps; without one the bake picks the speed whose startup lands closest to the move's). The guard is read from the weapon's idle clip. Clip ids are the clip manifest's. Bake with node scripts/godot.mjs bake (tools/bake_swings.gd).",
 	"katana": {"guard": "CombatIdle1H01", "moves": {
-		"k_l1": {"clips": ["Attack1H01_R"], "speed": 1.45, "fallback": "Sword_Light_A"}
+		"k_l1": {"clips": ["Attack1H01_R"], "speed": 1.45, "fallback": "Sword_Light_A"},
+		"k_l2": {"clips": ["Attack1H03_R"], "speed": 1.8, "fallback": "Sword_Light_B"},
+		"k_l3": {"clips": ["Attack2H01"], "speed": 1.3, "fallback": "Sword_Light_C", "marks": {"windup": 8, "contact": 15, "contact_end": 17, "settle": 28}},
+		"k_l4": {"clips": ["Attack2H02"], "speed": 1.55, "fallback": "Sword_Light_D"}
 	}},
 	"greatsword": {"guard": "CombatIdle2H01", "moves": {}},
 	"daggers": {"guard": "CombatIdle1H01", "moves": {}},

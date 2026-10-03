@@ -23,7 +23,13 @@ extends RefCounted
 ## move's last frame; keys out of order; a striking track that doesn't key the
 ## frames that can hit; a part the guard lacks; a vector that isn't three
 ## numbers; a blade with no direction or an edge along the blade; a negative
-## ease. The swing editor (task 14b) writes these files back with a stable key
+## ease.
+##
+## A track baked from a clip (authored-animation task 6, SwingBake) is an
+## object instead of a list of keys, {"baked": true, "keys": [...]}, with a
+## key on every frame from 0 to the move's last, in order, and no ease: it is
+## played key by key, never splined (Swing.add_track()). A baked track with a
+## frame missing is refused. The bake writes these files with a stable key
 ## order and fixed decimals.
 
 const DIR: String = "res://sim/moves/swings/"
@@ -35,6 +41,8 @@ const BODY_FIELDS: Dictionary[String, bool] = {"torso": true, "pelvis": true, "p
 const KEY_FIELDS: Dictionary[String, bool] = {"frame": true, "ease": false}
 const FILE_FIELDS: Array[String] = ["guard", "swings"]
 const SWING_FIELDS: Array[String] = ["tracks"]
+## The fields of a baked track: true when required.
+const BAKED_FIELDS: Dictionary[String, bool] = {"baked": true, "keys": true}
 
 
 ## Where the swings of the weapon `weapon_id` live.
@@ -146,8 +154,25 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 			errors.append("%s: unknown part (the parts are %s)" % [at, ", ".join(Swing.PARTS)])
 			continue
 		var before: int = errors.size()
-		var keys: Array[Swing.KeyPose] = _keys(tracks[part_name], part == &"body", move.total_frames(), at, errors)
+		var list: Variant = tracks[part_name]
+		var baked: bool = false
+		if list is Dictionary:
+			if not _has_fields(list, BAKED_FIELDS, at, errors):
+				continue
+			if typeof(list["baked"]) != TYPE_BOOL:
+				errors.append("%s: baked must be true or false" % at)
+				continue
+			baked = list["baked"]
+			list = list["keys"]
+		var keys: Array[Swing.KeyPose] = _keys(list, part == &"body", move.total_frames(), at, errors, baked)
 		if errors.size() != before:
+			continue
+		if baked and keys.size() != move.total_frames() + 1:
+			var missing: int = 0
+			while missing < keys.size() and keys[missing].frame == missing:
+				missing += 1
+			errors.append("%s: a baked track keys every frame from 0 to %d; frame %d is missing"
+					% [at, move.total_frames(), missing])
 			continue
 		if part != &"body":
 			# a striking track keys the frames whose sweeps can hit: from the
@@ -162,17 +187,21 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 		if guard_read and not guard.has(part):
 			errors.append("%s: the guard has no %s for the entry and exit" % [at, part])
 		if errors.size() == before:
-			swing.add_track(part, keys)
+			swing.add_track(part, keys, baked)
 	return swing
 
 
-static func _keys(list: Variant, body: bool, last_frame: int, where: String, errors: Array[String]) -> Array[Swing.KeyPose]:
+## The keys of a track; a baked track's keys have no ease.
+static func _keys(list: Variant, body: bool, last_frame: int, where: String, errors: Array[String],
+		baked: bool = false) -> Array[Swing.KeyPose]:
 	var out: Array[Swing.KeyPose] = []
 	if not list is Array or (list as Array).is_empty():
 		errors.append("%s: a track must be a list of keys" % where)
 		return out
 	var fields: Dictionary[String, bool] = (BODY_FIELDS if body else LIMB_FIELDS).duplicate()
 	fields.merge(KEY_FIELDS)
+	if baked:
+		fields.erase("ease")
 	var previous: int = -1
 	for i: int in (list as Array).size():
 		var record: Variant = list[i]

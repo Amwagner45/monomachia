@@ -16,6 +16,8 @@
 //   build                  export the Windows build to build/windows/
 //   clips                  convert the clip manifest's Iglesias clips into the
 //                          gitignored clip libraries (needs the packs; see findAssetsSrc)
+//   bake [--weapon=<id>] [--check]   bake the swings of the moves in the move-clip
+//                          table from the clip libraries (tools/bake_swings.gd)
 //
 // Godot is found through the GODOT environment variable, then `godot` or
 // `godot4` on PATH, then a local `.godot-path` file (see findGodot).
@@ -137,7 +139,7 @@ async function importProject(godot) {
 async function main() {
   const [cmd = 'help', ...rest] = process.argv.slice(2);
   if (cmd === 'help' || cmd === '--help') {
-    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|dev|build|clips');
+    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|dev|build|clips|bake');
     return;
   }
   const godot = findGodot();
@@ -232,6 +234,14 @@ async function main() {
       await importProject(godot);
       const built = await runGodot(godot, ['--headless', '--path', PROJECT, '--script', 'res://tools/import_clips.gd', '--', '--build']);
       if (built.code !== 0 || hasScriptErrors(built.output)) die('godot.mjs: building the clip libraries failed.');
+      return;
+    }
+    case 'bake': {
+      // Bake the swings of the moves in the move-clip table (tools/bake_swings.gd).
+      await importProject(godot);
+      const r = await runGodot(godot, ['--headless', '--path', PROJECT, '--script', 'res://tools/bake_swings.gd', '--', ...rest]);
+      if (r.code === 2) die('godot.mjs: nothing baked: no clip libraries (run node scripts/godot.mjs clips).');
+      if (r.code !== 0 || hasScriptErrors(r.output)) die('godot.mjs: the bake failed.');
       return;
     }
     case 'run':

@@ -1,0 +1,258 @@
+extends GutTest
+## The bake (tools/swing_bake.gd, authored-animation task 6): markers onto
+## rules frames at a speed, the sampled poses into a baked swing that
+## SwingFile reads back, and the frame data. The poses come from a CC0 UAL
+## clip on the Hunter (ClipPoser), so CI needs no Iglesias packs.
+
+const CLIP: String = "ual/Sword_Attack"
+const MM: float = 0.001
+## Markers in source frames: a wind-up start, a contact start and end and a
+## settle, all inside Sword_Attack (46 frames).
+const MARKERS: Dictionary = {"windup": 2, "contact": 12, "contact_end": 17, "settle": 30}
+
+
+func _hunter(weapon: StringName) -> FighterModel:
+	var f: FighterModel = FighterLook.instantiate_fighter(&"hunter")
+	f.autoplay_idle = false
+	add_child_autofree(f)
+	if weapon != &"":
+		f.attach_weapon(WeaponLook.load_id(weapon))
+	return f
+
+
+func _bake(poser: ClipPoser, speed: float, parts: Array[StringName]) -> SwingBake.Result:
+	var errors: Array[String] = []
+	var r: SwingBake.Result = SwingBake.bake(poser.pose, poser.length, MARKERS, speed, parts, errors)
+	assert_eq(errors, [] as Array[String])
+	return r
+
+
+## A move with the timing's frames, for SwingFile to read a baked swing on.
+static func _moves(t: ClipTiming) -> Dictionary[StringName, AttackDef]:
+	return AttackDef.finalize_moves({&"t_cut": {"id": &"t_cut", "name": "Test Cut", "kind": &"light", "type": &"slash",
+		"startup": t.startup, "active": t.active, "recovery": t.recovery, "damage": 5, "posture": 5}})
+
+
+func test_the_markers_land_on_their_rules_frames() -> void:
+	var errors: Array[String] = []
+	var markers: Dictionary = {"windup": 10, "contact": 20, "contact_end": 26, "settle": 50}
+	var t: ClipTiming = SwingBake.timing(markers, 1.25, errors)
+	assert_eq(errors, [] as Array[String])
+	# 60 rules frames a second, the clip at 30 fps × 1.25: 1.6 rules frames
+	# per source frame from the wind-up start
+	assert_eq([t.startup, t.active, t.recovery, t.total()], [16, 10, 38, 64])
+	assert_eq(t.frames, PackedInt32Array([0, 16, 26, 64]))
+	assert_almost_eq(t.clip_time(0.0), 10.0 / 30.0, 1e-12, "the wind-up start on frame 0")
+	assert_almost_eq(t.clip_time(16.0), 20.0 / 30.0, 1e-12, "the contact start on the last startup frame")
+	assert_almost_eq(t.clip_time(26.0), 26.0 / 30.0, 1e-12, "the contact end on the last active frame")
+	assert_almost_eq(t.clip_time(64.0), 50.0 / 30.0, 1e-12, "the settle on the last frame")
+	assert_almost_eq(t.clip_time(8.0), 15.0 / 30.0, 1e-12, "even between them")
+	assert_almost_eq(t.clip_time(70.0), 50.0 / 30.0, 1e-12, "past the end holds the settle")
+	var slow: ClipTiming = SwingBake.timing(markers, 1.0, errors)
+	assert_eq([slow.startup, slow.active, slow.recovery], [20, 12, 48], "at the clip's own speed, two rules frames a source frame")
+	var fast: ClipTiming = SwingBake.timing(markers, 2.0, errors)
+	assert_eq([fast.startup, fast.active, fast.recovery], [10, 6, 24])
+	var short: ClipTiming = SwingBake.timing({"windup": 0, "contact": 3, "contact_end": 3.2, "settle": 9}, 2.0, errors)
+	assert_eq(short.active, 1, "each stretch takes at least a frame")
+
+
+func test_the_speed_is_picked_for_the_startup() -> void:
+	var markers: Dictionary = {"windup": 10, "contact": 20, "contact_end": 26, "settle": 50}
+	assert_eq(SwingBake.pick_speed(markers, 16), 1.25, "the slowest speed with a 16-frame startup")
+	assert_eq(SwingBake.pick_speed(markers, 30), 1.0, "too slow for the clip: as slow as it goes")
+	var errors0: Array[String] = []
+	assert_eq(SwingBake.timing(markers, SwingBake.pick_speed(markers, 4), errors0).startup, 10, "too fast: as few frames as it goes")
+	var errors: Array[String] = []
+	assert_eq(SwingBake.timing(markers, SwingBake.pick_speed(markers, 13), errors).startup, 13)
+
+
+func test_bad_markers_and_speeds_are_refused() -> void:
+	var errors: Array[String] = []
+	assert_null(SwingBake.timing(MARKERS, 0.9, errors))
+	assert_eq(errors, ["speed 0.9 is outside 1.0-2.0"] as Array[String])
+	errors.clear()
+	assert_null(SwingBake.timing(MARKERS, 2.1, errors))
+	assert_eq(errors.size(), 1, "too fast")
+	errors.clear()
+	var missing: Dictionary = MARKERS.duplicate()
+	missing.erase("contact_end")
+	assert_null(SwingBake.timing(missing, 1.5, errors))
+	assert_eq(errors, ["no contact_end marker"] as Array[String])
+	errors.clear()
+	var unordered: Dictionary = MARKERS.duplicate()
+	unordered["contact"] = 1
+	assert_null(SwingBake.timing(unordered, 1.5, errors))
+	assert_string_contains(errors[0], "the contact marker (1) must come after the windup marker")
+	errors.clear()
+	var late: Dictionary = MARKERS.duplicate()
+	late["settle"] = 999
+	var poser: ClipPoser = ClipPoser.new(_hunter(&"katana"), [CLIP])
+	assert_null(SwingBake.bake(poser.pose, poser.length, late, 1.5, [&"right_hand"] as Array[StringName], errors))
+	assert_string_contains(errors[0], "the settle marker (999) is past the clip's end")
+
+
+func test_the_samples_match_the_posed_hand() -> void:
+	# the Daggers: each in its own hand, no IK, so the bone pose tells where
+	# the weapon must be
+	var f: FighterModel = _hunter(&"daggers")
+	var poser: ClipPoser = ClipPoser.new(f, [CLIP])
+	var r: SwingBake.Result = _bake(poser, 1.5, [&"right_hand", &"left_hand", &"body"] as Array[StringName])
+	assert_eq(r.tracks.keys(), [&"right_hand", &"left_hand", &"body"])
+	assert_eq(r.times.size(), r.timing.total() + 1, "a pose on every rules frame")
+	# (not the last frame: the bake posed it last, so the poser gives it from
+	# its cache without updating)
+	for frame: int in [0, r.timing.startup, r.timing.startup + r.timing.active, r.timing.total() - 1]:
+		var bones: Dictionary[String, Transform3D] = {}
+		var sk: Skeleton3D = f.skeleton
+		var grab: Callable = func() -> void:
+			for side: String in FighterRig.SIDES:
+				bones[side] = sk.get_bone_global_pose(sk.find_bone(side + "Hand")) * f.rig.fixed_grip(side)
+		(sk.get_node(^"RigCarry") as SkeletonModifier3D).modification_processed.connect(grab, CONNECT_ONE_SHOT)
+		poser.pose(r.times[frame])
+		for side: String in FighterRig.SIDES:
+			var part: StringName = &"right_hand" if side == "Right" else &"left_hand"
+			var s: Swing.Sample = r.tracks[part][frame]
+			var want: Vector3 = bones[side].origin
+			var got: Vector3 = SwingPlayer.to_skeleton(s.grip)
+			assert_lt(got.distance_to(want), MM, "frame %d %s: grip %.2f mm off the posed hand" % [frame, side, got.distance_to(want) * 1000.0])
+			assert_gt(SwingPlayer.to_skeleton(s.blade).dot(bones[side].basis.y.normalized()), 0.99999, "frame %d %s: the blade" % [frame, side])
+			assert_gt(SwingPlayer.to_skeleton(s.edge).dot(bones[side].basis.x.normalized()), 0.99999, "frame %d %s: the edge" % [frame, side])
+	# the Katana: the weapon read is the one shown, off-hand IK and all
+	var k: FighterModel = _hunter(&"katana")
+	var kp: ClipPoser = ClipPoser.new(k, [CLIP])
+	var kr: SwingBake.Result = _bake(kp, 1.5, [&"right_hand", &"body"] as Array[StringName])
+	for frame: int in [3, kr.timing.startup + 1]:
+		kp.pose(kr.times[frame])
+		var got: Vector3 = SwingPlayer.to_skeleton((kr.tracks[&"right_hand"][frame] as Swing.Sample).grip)
+		assert_lt(got.distance_to(k.weapons[0].transform.origin), MM, "the Katana's grip where it is shown")
+
+
+func test_the_body_reads_the_hips_and_chest() -> void:
+	var f: FighterModel = _hunter(&"katana")
+	var poser: ClipPoser = ClipPoser.new(f, [CLIP])
+	var r: SwingBake.Result = _bake(poser, 1.0, [&"right_hand", &"body"] as Array[StringName])
+	# Sword_Attack winds up to the right and lunges into a cut across to the
+	# left, the hips dropping low
+	var body: Array = r.tracks[&"body"]
+	var first: Swing.Sample = body[0]
+	var most_left: float = 0.0
+	var lowest: float = 0.0
+	for s: Swing.Sample in body:
+		most_left = minf(most_left, s.torso)
+		lowest = minf(lowest, s.pelvis_shift.y)
+		assert_lt(absf(s.torso - s.pelvis), 90.0, "the chest stays within a quarter turn of the hips")
+	assert_gt(first.torso, 30.0, "wound up to the right")
+	assert_gt(first.torso, first.pelvis, "the chest wound further than the hips")
+	assert_lt(most_left, -90.0, "cut across to the left")
+	assert_lt(lowest, -0.3, "the lunge drops the hips")
+
+
+func test_the_bake_is_deterministic() -> void:
+	var texts: Array[String] = []
+	for i: int in 2:
+		var poser: ClipPoser = ClipPoser.new(_hunter(&"katana"), [CLIP])
+		var r: SwingBake.Result = _bake(poser, 1.35, [&"right_hand", &"body"] as Array[StringName])
+		texts.append(SwingBake.file_text(SwingBake.guard_record(poser.pose(0.0)), {"t_cut": r.record()}))
+	assert_eq(texts[0], texts[1])
+
+
+func test_a_baked_file_round_trips() -> void:
+	var poser: ClipPoser = ClipPoser.new(_hunter(&"katana"), [CLIP])
+	var r: SwingBake.Result = _bake(poser, 1.5, [&"right_hand", &"body"] as Array[StringName])
+	var text: String = SwingBake.file_text(SwingBake.guard_record(poser.pose(0.0)), {"t_cut": r.record()})
+	var swings: Dictionary[StringName, Swing] = SwingFile.parse(text, _moves(r.timing), "baked.json")
+	assert_eq(swings.keys(), [&"t_cut"], "read without an error")
+	var swing: Swing = swings[&"t_cut"]
+	assert_eq(swing.parts(), [&"right_hand", &"body"] as Array[StringName])
+	assert_true(swing.is_baked(&"right_hand"))
+	for f: int in r.timing.total() + 1:
+		var want: Swing.Sample = r.tracks[&"right_hand"][f]
+		var got: Swing.Sample = swing.tick(&"right_hand", f)
+		assert_lt(V3.distance(got.grip, want.grip), 1e-4, "frame %d: the grip, to the decimals written" % f)
+		assert_gt(V3.dot(got.blade, want.blade), 0.9999, "frame %d: the blade" % f)
+		var body: Swing.Sample = swing.tick(&"body", f)
+		assert_almost_eq(body.torso, (r.tracks[&"body"][f] as Swing.Sample).torso, 0.01, "frame %d: the torso" % f)
+	# rewritten from what was read, the text is the same
+	var again: Dictionary = JSON.parse_string(text)
+	assert_eq(SwingBake.file_text(again["guard"], again["swings"]), text, "a file rewrites to itself")
+
+
+func test_the_parts_each_weapon_bakes() -> void:
+	var k: WeaponDef = Moves.WEAPONS[&"katana"]
+	assert_eq(SwingBake.parts_for(k.moves[k.light_start], k), [&"right_hand", &"body"] as Array[StringName])
+	var d: WeaponDef = Moves.WEAPONS[&"daggers"]
+	assert_eq(SwingBake.parts_for(d.moves[d.light_start], d), [&"right_hand", &"left_hand", &"body"] as Array[StringName])
+	var fists: WeaponDef = Moves.FISTS
+	for id: StringName in fists.moves:
+		var m: AttackDef = fists.moves[id]
+		var parts: Array[StringName] = SwingBake.parts_for(m, fists)
+		var limb: String = "foot" if m.type == &"kick" else "hand"
+		assert_true(parts.has(StringName(("left_" if m.hand == &"L" else "right_") + limb)), "%s strikes with its %s %s" % [id, m.hand, limb])
+		assert_eq(parts[-1], &"body")
+
+
+func test_a_chain_plays_its_clips_one_after_another() -> void:
+	var f: FighterModel = _hunter(&"katana")
+	var first: float = f.animation_player.get_animation("ual/Sword_Regular_A").length
+	var chained: ClipPoser = ClipPoser.new(f, ["ual/Sword_Regular_A", "ual/Sword_Regular_A_Rec"] as Array[String])
+	assert_almost_eq(chained.length, first + f.animation_player.get_animation("ual/Sword_Regular_A_Rec").length, 1e-6)
+	var later: V3 = (chained.pose(first + 0.3)[&"right_hand"] as Swing.Sample).grip
+	var alone: ClipPoser = ClipPoser.new(f, ["ual/Sword_Regular_A_Rec"] as Array[String])
+	var want: V3 = (alone.pose(0.3)[&"right_hand"] as Swing.Sample).grip
+	assert_lt(V3.distance(later, want), 1e-6, "0.3 s into the second clip")
+	var errors: Array[String] = []
+	var markers: Dictionary = {"windup": 0, "contact": 6, "contact_end": 10, "settle": 30}
+	var r: SwingBake.Result = SwingBake.bake(chained.pose, chained.length, markers, 1.0, [&"right_hand"] as Array[StringName], errors)
+	assert_eq(errors, [] as Array[String], "markers on the chain's frames, the settle in the second clip")
+	assert_eq(r.timing.total(), 60)
+
+
+const BakeSwings := preload("res://tools/bake_swings.gd")
+
+
+func test_local_every_swing_file_matches_a_fresh_bake() -> void:
+	if not ClipLibraries.available():
+		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
+		return
+	var manifest: ClipManifest = ClipManifest.read()
+	var table: MoveClips = MoveClips.read(manifest)
+	var checked: int = 0
+	for wid: StringName in table.moves:
+		if table.of(wid).is_empty():
+			continue
+		var path: String = SwingFile.path_for(wid)
+		var old: String = FileAccess.get_file_as_string(path) if FileAccess.file_exists(path) else ""
+		var out: Dictionary = BakeSwings.bake_weapon(wid, table, manifest, self, old)
+		assert_eq(out["errors"], [] as Array[String], "%s bakes" % wid)
+		assert_eq(out["text"], old, "%s's swing file is what a fresh bake writes (node scripts/godot.mjs bake)" % wid)
+		checked += 1
+	assert_true(checked <= table.moves.size(), "%d weapons re-baked" % checked)
+
+
+func test_local_a_move_bakes_from_an_iglesias_clip() -> void:
+	if not ClipLibraries.available():
+		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
+		return
+	var manifest: ClipManifest = ClipManifest.read()
+	var path: String = "user://move_clips_bake_test.json"
+	var f: FileAccess = FileAccess.open(path, FileAccess.WRITE)
+	f.store_string(JSON.stringify({"katana": {"guard": "CombatIdle1H01", "moves": {"k_l1": {"clips": ["Attack1H01_R"]}}}}))
+	f.close()
+	var table: MoveClips = MoveClips.read(manifest, path)
+	DirAccess.remove_absolute(path)
+	var out: Dictionary = BakeSwings.bake_weapon(&"katana", table, manifest, self, "")
+	assert_eq(out["errors"], [] as Array[String])
+	assert_eq((out["report"] as PackedStringArray).size(), 1)
+	assert_string_contains(out["report"][0], "k_l1 (Attack1H01_R ×")
+	var data: Dictionary = JSON.parse_string(out["text"])
+	assert_eq(data["guard"].keys(), ["right_hand", "body"], "the guard has the parts the swings move")
+	var track: Dictionary = data["swings"]["k_l1"]["tracks"]["right_hand"]
+	assert_true(track["baked"])
+	var k_l1: AttackDef = (Moves.WEAPONS[&"katana"] as WeaponDef).moves[&"k_l1"]
+	var markers: Dictionary = MoveClips.markers(table.of(&"katana")[&"k_l1"], manifest, PackedFloat64Array([0.0]))
+	var t: ClipTiming = ClipTiming.make(markers, SwingBake.pick_speed(markers, k_l1.startup), [] as Array[String])
+	assert_eq((track["keys"] as Array).size(), t.total() + 1, "a key on every rules frame")
+	for key: Dictionary in track["keys"]:
+		var grip: Array = key["grip"]
+		assert_between(float(grip[1]), 0.3, 2.2, "frame %d: the grip at a hand's height" % key["frame"])
+		assert_lt(Vector2(grip[0], grip[2]).length(), 1.2, "frame %d: the grip within an arm's reach" % key["frame"])

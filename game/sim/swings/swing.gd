@@ -33,6 +33,11 @@ extends RefCounted
 ## SwingSampler gives a track's pose between keys. Each track's poses at the
 ## whole frames 0 to last_frame, entered from the guard, are worked out once,
 ## when it is added, and tick() reads them.
+##
+## A baked track (authored-animation task 6: SwingBake, from a clip) keys
+## every frame from 0 to last_frame, so it has no entry or exit: each frame's
+## pose is its key, and between frames the poses are blended in a straight
+## line (the blade and edge turned between the two), never splined.
 
 const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"body"]
 
@@ -103,6 +108,7 @@ var reach: float = -1.0
 var arc: float = -1.0
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
+var _baked: Dictionary[StringName, bool] = {}
 
 
 func _init(p_last_frame: int = 0, p_guard: Dictionary[StringName, KeyPose] = {}) -> void:
@@ -111,13 +117,23 @@ func _init(p_last_frame: int = 0, p_guard: Dictionary[StringName, KeyPose] = {})
 
 
 ## Adds the track for `part` (one of PARTS), its keys sorted by frame, and
-## works out its poses at every whole frame, entered from the guard.
-func add_track(part: StringName, keys: Array[KeyPose]) -> void:
+## works out its poses at every whole frame, entered from the guard. A baked
+## track's keys are one per frame, 0 to last_frame (SwingFile checks them).
+func add_track(part: StringName, keys: Array[KeyPose], baked: bool = false) -> void:
 	_tracks[part] = keys
+	_baked[part] = baked
 	var ticks: Array[Sample] = []
 	for f: int in last_frame + 1:
-		ticks.append(SwingSampler.sample(keys, part, float(f), guard.get(part), guard.get(part), last_frame))
+		if baked:
+			ticks.append(SwingSampler.held(keys[mini(f, keys.size() - 1)]))
+		else:
+			ticks.append(SwingSampler.sample(keys, part, float(f), guard.get(part), guard.get(part), last_frame))
 	_ticks[part] = ticks
+
+
+## Whether the track for `part` was baked from a clip.
+func is_baked(part: StringName) -> bool:
+	return _baked.get(part, false)
 
 
 ## The parts this swing has tracks for, in the order they were added.
@@ -171,4 +187,32 @@ func tick(part: StringName, frame: int, chained_from: Swing = null) -> Sample:
 func sample(part: StringName, t: float, chained_from: Swing = null) -> Sample:
 	if not _tracks.has(part):
 		return null
+	if _baked[part]:
+		return _between(part, t)
 	return SwingSampler.sample(track(part), part, t, entry(part, chained_from), guard.get(part), last_frame)
+
+
+## A baked track's pose at frame `t`: the two frames either side blended in
+## a straight line, the blade and edge turned between them and squared.
+func _between(part: StringName, t: float) -> Sample:
+	var ticks: Array = _ticks[part]
+	var c: float = clampf(t, 0.0, float(last_frame))
+	var i: int = mini(floori(c), last_frame - 1) if last_frame > 0 else 0
+	var s: float = c - float(i)
+	var a: Sample = ticks[i]
+	if s <= 0.0 or last_frame == 0:
+		return a
+	var b: Sample = ticks[i + 1]
+	var out: Sample = Sample.new()
+	out.grip = V3.lerp(a.grip, b.grip, s)
+	out.pole = V3.lerp(a.pole, b.pole, s)
+	out.torso = lerpf(a.torso, b.torso, s)
+	out.pelvis = lerpf(a.pelvis, b.pelvis, s)
+	out.pelvis_shift = V3.lerp(a.pelvis_shift, b.pelvis_shift, s)
+	out.blade = V3.normalized(V3.lerp(a.blade, b.blade, s))
+	if V3.length(out.blade) < 1e-9:
+		out.blade = a.blade
+	var edge: V3 = V3.lerp(a.edge, b.edge, s)
+	var square: V3 = V3.sub(edge, V3.scale(out.blade, V3.dot(edge, out.blade)))
+	out.edge = V3.normalized(square) if V3.length(square) > 1e-9 else a.edge
+	return out

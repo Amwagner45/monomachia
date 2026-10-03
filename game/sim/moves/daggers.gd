@@ -6,35 +6,50 @@ extends RefCounted
 ## weak posture damage, short parry window.
 
 const D: StringName = &"dagger"
+## The string's four lights stun for 10 frames, where lights default to 14:
+## they follow each other faster than other weapons' (Off-hand Slice lands 11
+## frames after Quick Slice), so this leaves the defender a frame to block or
+## parry the next.
+const STRING_HITSTUN: int = 10
 
 const MOVES: Dictionary = {
 	&"d_l1": {
 		"id": &"d_l1", "name": "Quick Slice", "kind": &"light", "type": &"slash", "anim": &"slashRL", "hand": &"R", "sound": D,
-		"startup": 7, "active": 2, "recovery": 13, "damage": 4, "posture": 4, "knockback": 0.2,
-		"range": 1.8, "arc": 110, "lunge": 0.3, "chain_light": &"d_l2", "chain_heavy": &"d_h1", "dodge_cancel_from": 13,
+		"side_start": &"right", "side_end": &"left",
+		"startup": 7, "active": 2, "recovery": 13, "damage": 4, "posture": 4, "knockback": 0.2, "hitstun": STRING_HITSTUN,
+		"range": 1.8, "arc": 110, "lunge": 0.3, "chain_light": &"d_l2", "chain_heavy": &"d_h1", "dodge_cancel_from": 10,
 	},
+	# the left hand's slash: the stand-in mirrors slashRL onto the left hand, so
+	# it runs left to right
 	&"d_l2": {
 		"id": &"d_l2", "name": "Off-hand Slice", "kind": &"light", "type": &"slash", "anim": &"slashRL", "hand": &"L", "sound": D,
-		"startup": 7, "active": 2, "recovery": 13, "damage": 4, "posture": 4, "knockback": 0.2,
-		"range": 1.8, "arc": 110, "lunge": 0.3, "chain_light": &"d_l3", "chain_heavy": &"d_h1", "dodge_cancel_from": 13,
+		"side_start": &"left", "side_end": &"right",
+		"startup": 7, "active": 2, "recovery": 13, "damage": 4, "posture": 4, "knockback": 0.2, "hitstun": STRING_HITSTUN,
+		"range": 1.8, "arc": 110, "lunge": 0.3, "chain_light": &"d_l3", "chain_heavy": &"d_h1", "dodge_cancel_from": 10,
 	},
 	&"d_l3": {
 		"id": &"d_l3", "name": "Twin Rip", "kind": &"light", "type": &"slash", "anim": &"cross", "hand": &"both", "sound": D,
-		"startup": 9, "active": 3, "recovery": 14, "damage": 6, "posture": 5, "knockback": 0.3,
-		"range": 1.8, "arc": 100, "lunge": 0.4, "chain_light": &"d_l4", "chain_heavy": &"d_h1", "dodge_cancel_from": 16,
+		"side_start": &"centre", "side_end": &"centre",
+		"startup": 9, "active": 3, "recovery": 14, "damage": 6, "posture": 5, "knockback": 0.3, "hitstun": STRING_HITSTUN,
+		"range": 1.8, "arc": 100, "lunge": 0.4, "chain_light": &"d_l4", "dodge_cancel_from": 13,
 	},
 	&"d_l4": {
 		"id": &"d_l4", "name": "Flurry Finisher", "kind": &"light", "type": &"stab", "anim": &"doubleStab", "hand": &"both", "sound": D,
-		"startup": 11, "active": 3, "recovery": 18, "damage": 7, "posture": 6, "knockback": 0.6,
-		"range": 1.9, "arc": 70, "lunge": 0.6, "chain_heavy": &"d_h2",
+		"side_start": &"centre", "side_end": &"centre",
+		"startup": 11, "active": 3, "recovery": 18, "damage": 7, "posture": 6, "knockback": 0.6, "hitstun": STRING_HITSTUN,
+		"range": 1.9, "arc": 70, "lunge": 0.6, "chain_heavy": &"d_h2", "dodge_cancel_from": 15,
 	},
+	# a dashing double stab
 	&"d_h1": {
 		"id": &"d_h1", "name": "Twin Fang", "kind": &"heavy", "type": &"stab", "anim": &"doubleStab", "hand": &"both", "sound": D,
+		"side_start": &"centre", "side_end": &"centre",
 		"startup": 16, "active": 3, "recovery": 20, "damage": 10, "posture": 9, "knockback": 0.6,
-		"range": 1.9, "arc": 70, "lunge": 0.8, "chargeable": true, "chain_heavy": &"d_h2", "chain_light": &"d_l1",
+		"range": 1.9, "arc": 70, "lunge": 1.4, "chargeable": true, "chain_heavy": &"d_h2",
 	},
+	# the heavy string's finisher, after Twin Fang or Flurry Finisher: a spin
 	&"d_h2": {
-		"id": &"d_h2", "name": "Gutting Spiral", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,
+		"id": &"d_h2", "name": "Spinning Backhand", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,
+		"side_start": &"centre", "side_end": &"centre",
 		"startup": 18, "active": 5, "recovery": 22, "damage": 12, "posture": 10, "knockback": 0.9,
 		"range": 1.9, "arc": 360, "lunge": 0.4,
 	},

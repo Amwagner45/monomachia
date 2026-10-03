@@ -303,10 +303,14 @@ func test_a_lunge_into_a_defender_still_stops_0_25_m_clear_of_their_body() -> vo
 
 # ------------------------------------------------------------------ hitstun
 
-## The spec's light hitstun: 14 frames. Bare hands keep their own 16 on
-## their first two lights.
+## The spec's light hitstun: 14 frames. The lights with their own: bare
+## hands' first two keep 16, and the Daggers' four string lights, which follow
+## each other faster, stun for 10 (11.1: Off-hand Slice lands 11 frames after
+## Quick Slice).
 const LIGHT_HITSTUN: int = 14
-const BARE_HAND_HITSTUN: Dictionary[StringName, int] = {&"f_l1": 16, &"f_l2": 16}
+const OWN_HITSTUN: Dictionary[StringName, int] = {
+	&"f_l1": 16, &"f_l2": 16, &"d_l1": 10, &"d_l2": 10, &"d_l3": 10, &"d_l4": 10,
+}
 
 
 ## A light string's run: its events, the step of each hit, and when the
@@ -367,7 +371,7 @@ func test_every_light_without_its_own_hitstun_has_14() -> void:
 			if m.kind != &"light":
 				continue
 			lights += 1
-			var want: int = BARE_HAND_HITSTUN.get(m.id, LIGHT_HITSTUN)
+			var want: int = OWN_HITSTUN.get(m.id, LIGHT_HITSTUN)
 			if m.hitstun != want:
 				wrong.append("%s %d, want %d" % [m.id, m.hitstun, want])
 	assert_gt(lights, 20, "every weapon's lights, bare hands included")

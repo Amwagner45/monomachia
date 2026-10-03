@@ -14,6 +14,8 @@ const LIGHT_OR_HEAVY: Array[int] = [Btn.LIGHT, Btn.HEAVY]
 ## for.
 const GAP: float = 2.2
 const STEPS: int = 240
+## How far apart the fighters start for a string to whiff (m).
+const WHIFF_GAP: float = 10.0
 
 ## The weapon fighter 0 holds.
 var weapon: WeaponDef
@@ -78,7 +80,7 @@ func _assert_starts_nothing_in(presses: Array[int], swings: Array[StringName], b
 	for press: int in buttons:
 		var played: Array[int] = presses.duplicate()
 		played.append(press)
-		var r: PlayedString = _play(played, 2.2, mx)
+		var r: PlayedString = _play(played, GAP, mx)
 		var what: String = "a %s pressed in %s" % ["light" if press == Btn.LIGHT else "heavy", rows[id]["name"]]
 		assert_eq(r.ids(&"swing"), swings, "%s starts nothing" % what)
 		assert_eq(r.ended_on(id), _length(id), "%s: it ends on startup + active + recovery" % what)
@@ -89,7 +91,7 @@ func _assert_starts_nothing_in(presses: Array[int], swings: Array[StringName], b
 ## string then stops: its last move, one of the spec's rows, ends on startup
 ## + active + recovery, leaving the fighter free.
 func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
-	var r: PlayedString = _play(presses, 2.2, mx)
+	var r: PlayedString = _play(presses, GAP, mx)
 	var what: String = "%s%s" % [_named(presses), " sideways" if mx != 0.0 else ""]
 	var hits: Array[StringName] = r.ids(&"hit")
 	assert_eq(hits.size(), presses.size(), "every press of %s hits" % what)
@@ -102,6 +104,30 @@ func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
 	var last_name: String = rows[last]["name"]
 	assert_eq(r.ended_on(last), _length(last), "%s: %s ends on startup + active + recovery" % [what, last_name])
 	assert_eq(r.state_after(last), &"free", "%s: and the fighter is free after %s" % [what, last_name])
+
+
+## Plays presses, the last starting attack id, after a hit (GAP) and after a
+## whiff (WHIFF_GAP), and checks a dodge pressed on its frame cancel - 1, or
+## on any of the frames also_early, is refused there and comes on cancel (the
+## input buffer holds it), and one pressed on cancel comes at once.
+func _assert_dodge_cancels_from(presses: Array[int], id: StringName, cancel: int, also_early: Array[int] = []) -> void:
+	var early_frames: Array[int] = [cancel - 1]
+	early_frames.append_array(also_early)
+	for gap: float in [GAP, WHIFF_GAP]:
+		var what: String = "%s %s" % [rows[id]["name"], "after a hit" if gap == GAP else "after a whiff"]
+		for pressed: int in early_frames:
+			var early: PlayedString = _play(presses, gap, 0.0, id, pressed)
+			assert_eq(
+				[early.ended_on(id), early.state_after(id)],
+				[cancel, &"dodge"],
+				"%s: a dodge pressed on frame %d is refused there and comes on %d" % [what, pressed, cancel],
+			)
+		var on_time: PlayedString = _play(presses, gap, 0.0, id, cancel)
+		assert_eq(
+			[on_time.ended_on(id), on_time.state_after(id)],
+			[cancel, &"dodge"],
+			"%s: one pressed on frame %d comes at once" % [what, cancel],
+		)
 
 
 ## Checks each of the spec's rows against the weapon's move: its name,

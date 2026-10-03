@@ -109,26 +109,6 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 		_assert_stops_after(typed)
 
 
-## Plays presses, the last starting attack id, after a hit (2.2 m) and after a
-## whiff (10 m), and checks a dodge pressed on its frame cancel - 1 is refused
-## there and comes on cancel, and one pressed on cancel comes at once.
-func _assert_dodge_cancels_from(presses: Array[int], id: StringName, cancel: int) -> void:
-	for gap: float in [2.2, 10.0]:
-		var what: String = "%s %s" % [id, "after a hit" if gap < 3.0 else "after a whiff"]
-		var early: PlayedString = _play(presses, gap, 0.0, id, cancel - 1)
-		assert_eq(
-			[early.ended_on(id), early.state_after(id)],
-			[cancel, &"dodge"],
-			"%s: a dodge pressed on frame %d is refused there and comes on %d" % [what, cancel - 1, cancel],
-		)
-		var on_time: PlayedString = _play(presses, gap, 0.0, id, cancel)
-		assert_eq(
-			[on_time.ended_on(id), on_time.state_after(id)],
-			[cancel, &"dodge"],
-			"%s: one pressed on frame %d comes at once" % [what, cancel],
-		)
-
-
 func test_kesa_cut_dodge_cancels_from_frame_20() -> void:
 	_assert_dodge_cancels_from([Btn.LIGHT, Btn.LIGHT, Btn.LIGHT], &"k_l3", KESA_CUT_CANCEL)
 

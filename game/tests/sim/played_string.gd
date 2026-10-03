@@ -5,7 +5,8 @@ extends SimHelpers.Rec
 ## step fighter 0's state, the attack it was in (&"" outside one), that
 ## attack's frame (-1), whether it was holding a charge (for the Iai,
 ## sheathed), how far it moved over the ground in the step and how far apart
-## the two fighters' centres stood. play() and run() drive the strings.
+## the two fighters' centres stood, and fighter 1's state. play() and run()
+## drive the strings.
 
 var state: Array[StringName] = []
 var attack: Array[StringName] = []
@@ -13,6 +14,8 @@ var frame: PackedInt32Array = []
 var charging: Array[bool] = []
 var moved: PackedFloat64Array = []
 var apart: PackedFloat64Array = []
+## Fighter 1's state after each step.
+var defender_state: Array[StringName] = []
 ## The step play() pressed each of its presses on, one per press (empty
 ## after run()).
 var pressed_on: Array[int] = []
@@ -83,6 +86,7 @@ func step(W: World, p0: RawInput, p1: RawInput = null) -> Array[Dictionary]:
 	charging.append(attacking and a.atk.charging)
 	moved.append(JsMath.hypot(a.pos.x - x, a.pos.z - z))
 	apart.append(SimMath.dist2(a.pos, W.fighters[1].pos))
+	defender_state.append(W.fighters[1].state)
 	return new_events
 
 

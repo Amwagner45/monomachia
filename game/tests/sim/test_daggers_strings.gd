@@ -1,0 +1,143 @@
+extends WeaponStringsTest
+## The Daggers' new strings (plan task 11): the spec's Twin Daggers table,
+## played through the rules. Expected numbers come from the spec, not the
+## code.
+
+## The spec's Twin Daggers table, the rows built so far (see
+## WeaponStringsTest.rows): the four lights and Twin Fang.
+const ROWS: Dictionary[StringName, Dictionary] = {
+	&"d_l1": {
+		"name": "Quick Slice", "frames": [7, 2, 13], "damage": 4, "posture": 4,
+		"light": &"d_l2", "heavy": &"d_h1", "sides": [&"right", &"left"],
+	},
+	&"d_l2": {
+		"name": "Off-hand Slice", "frames": [7, 2, 13], "damage": 4, "posture": 4,
+		"light": &"d_l3", "heavy": &"d_h1", "sides": [&"left", &"right"],
+	},
+	&"d_l3": {
+		"name": "Twin Rip", "frames": [9, 3, 14], "damage": 6, "posture": 5,
+		"light": &"d_l4", "heavy": &"", "sides": [&"centre", &"centre"],
+	},
+	&"d_l4": {
+		"name": "Flurry Finisher", "frames": [11, 3, 18], "damage": 7, "posture": 6,
+		"light": &"", "heavy": &"d_h2", "sides": [&"centre", &"centre"],
+	},
+	&"d_h1": {
+		"name": "Twin Fang", "frames": [16, 3, 20], "damage": 10, "posture": 9,
+		"light": &"", "heavy": &"d_h2", "sides": [&"centre", &"centre"],
+	},
+}
+
+## The four lights, in the order the string plays them.
+const LIGHTS: Array[StringName] = [&"d_l1", &"d_l2", &"d_l3", &"d_l4"]
+
+
+func _init() -> void:
+	weapon = Moves.DAGGERS
+	rows = ROWS
+
+
+## The spec's first active frame of move id: startup + 1.
+func _first_active_frame(id: StringName) -> int:
+	return rows[id]["frames"][0] + 1
+
+
+## The spec's first recovery frame of move id, the frame after its last
+## active one: startup + active + 1.
+func _first_recovery_frame(id: StringName) -> int:
+	var frames: Array = rows[id]["frames"]
+	return frames[0] + frames[1] + 1
+
+
+## n light presses.
+static func _lights(n: int) -> Array[int]:
+	var out: Array[int] = []
+	out.resize(n)
+	out.fill(Btn.LIGHT)
+	return out
+
+
+# ------------------------------------------------------------------ the light string
+
+func test_four_lights_alternate_hands_right_left_both_both() -> void:
+	var hits: Array[StringName] = _play(_lights(4)).ids(&"hit")
+	assert_eq(hits, LIGHTS, "Quick Slice, Off-hand Slice, Twin Rip, Flurry Finisher")
+	var hands: Array[StringName] = []
+	for id: StringName in hits:
+		hands.append(weapon.moves[id].hand)
+	assert_eq(hands, [&"R", &"L", &"both", &"both"] as Array[StringName], "right hand, left hand, both, both")
+
+
+func test_a_heavy_after_one_or_two_lights_is_twin_fang() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	assert_eq(_play([light, heavy]).ids(&"hit"), [&"d_l1", &"d_h1"] as Array[StringName], "L-H: Quick Slice, Twin Fang")
+	assert_eq(
+		_play([light, light, heavy]).ids(&"hit"),
+		[&"d_l1", &"d_l2", &"d_h1"] as Array[StringName],
+		"L-L-H: Off-hand Slice, Twin Fang",
+	)
+
+
+func test_a_heavy_in_twin_rip_starts_nothing() -> void:
+	_assert_starts_nothing_in(_lights(3), LIGHTS.slice(0, 3), [Btn.HEAVY])
+
+
+func test_a_light_in_twin_fang_starts_nothing() -> void:
+	# the demo's light follow-up looped back to Quick Slice
+	_assert_starts_nothing_in([Btn.HEAVY], [&"d_h1"], [Btn.LIGHT])
+
+
+func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
+	var light: int = Btn.LIGHT
+	var heavy: int = Btn.HEAVY
+	var strings: Array = [
+		[light], [light, light], [light, light, light], [light, light, light, light],
+		[light, heavy], [light, light, heavy], [heavy],
+	]
+	for presses: Array in strings:
+		var typed: Array[int] = []
+		typed.assign(presses)
+		_assert_stops_after(typed)
+
+
+# ------------------------------------------------------------------ dodge cancels
+
+func test_each_light_dodge_cancels_from_its_first_recovery_frame() -> void:
+	# a dodge pressed in its active frames, from the first, waits in the input
+	# buffer (over a hit's hit-stop too) and comes on that frame
+	for n: int in LIGHTS.size():
+		var id: StringName = LIGHTS[n]
+		_assert_dodge_cancels_from(_lights(n + 1), id, _first_recovery_frame(id), [_first_active_frame(id)])
+
+
+# ------------------------------------------------------------------ hitstun
+
+func test_a_defender_pressing_block_as_hitstun_ends_parries_off_hand_slice() -> void:
+	var probe: PlayedString = _play(_lights(2))
+	var hits: Array[Dictionary] = probe.by_fighter_0(&"hit")
+	assert_eq(probe.ids(&"hit"), LIGHTS.slice(0, 2), "an idle defender takes both slices")
+	if hits.size() != 2:
+		return
+	var free_step: int = -1
+	for i: int in range(hits[0]["step"], probe.defender_state.size()):
+		if probe.defender_state[i] != &"hitstun":
+			free_step = i
+			break
+	# Off-hand Slice lands 11 frames after Quick Slice (the plan's notes), so
+	# the string's hitstun leaves the defender one free step before it
+	assert_eq(free_step, hits[1]["step"] - 1, "out of hitstun for one step before Off-hand Slice lands")
+	# pressing block a step before hitstun ends: the press waits in the buffer
+	var r: PlayedString = _play_against(_lights(2), H.tap_at(free_step - 1, Btn.BLOCK))
+	assert_eq(r.ids(&"hit"), LIGHTS.slice(0, 1), "only Quick Slice lands")
+	var parries: Array[Dictionary] = r.all(&"parry")
+	assert_eq(parries.size(), 1, "Off-hand Slice is parried")
+	if parries.size() == 1:
+		assert_eq([parries[0]["kind"], parries[0]["parrier"]], [&"parry", 1], "a plain parry, by the defender")
+	assert_true(r.state.has(&"recoil"), "and the attacker recoils")
+
+
+# ------------------------------------------------------------------ the spec's table
+
+func test_the_rows_built_so_far_match_the_spec_table() -> void:
+	_assert_rows_match_the_spec()

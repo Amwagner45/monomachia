@@ -79,6 +79,20 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "g_h1", "field": "type", "was": "slash", "now": "overhead"},
 	{"move": "g_h1", "field": "anim", "was": "diagDown", "now": "overhead"},
 	{"move": "g_h1", "field": "chain_light", "was": "g_l2", "now": ""},
+	# 11.1: the Daggers' four lights dodge-cancel from their first recovery
+	# frame and stun for 10, so the next can be blocked or parried; Twin Rip
+	# loses its heavy follow-up, and Twin Fang its light one, the loop back to
+	# Quick Slice, which broke continuity
+	{"move": "d_l1", "field": "dodge_cancel_from", "was": 13, "now": 10},
+	{"move": "d_l2", "field": "dodge_cancel_from", "was": 13, "now": 10},
+	{"move": "d_l3", "field": "dodge_cancel_from", "was": 16, "now": 13},
+	{"move": "d_l4", "field": "dodge_cancel_from", "was": AttackDef.UNSET, "now": 15},
+	{"move": "d_l3", "field": "chain_heavy", "was": "d_h1", "now": ""},
+	{"move": "d_h1", "field": "chain_light", "was": "d_l1", "now": ""},
+	{"move": "d_l1", "field": "hitstun", "was": 18, "now": 10},
+	{"move": "d_l2", "field": "hitstun", "was": 18, "now": 10},
+	{"move": "d_l3", "field": "hitstun", "was": 18, "now": 10},
+	{"move": "d_l4", "field": "hitstun", "was": 18, "now": 10},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

@@ -90,6 +90,8 @@ const ADDED: Array[StringName] = [
 	&"k_iai_h", # 9.4: the Iai Slash (horizontal), its release variant
 	&"k_rdraw", # 9.5: Returning Draw, the horizontal Iai's heavy follow-up
 	&"g_h2", # 10.2: Low Sweep, Overhead Strike's heavy follow-up, under Earthbreaker's id
+	&"g_dl", # 10.3: Piercing Lunge, the light out of a dodge, under Pommel Strike's id
+	&"g_dh", # 10.3: Skewer, the heavy out of a dodge, under Cyclone's id
 ]
 
 ## Demo moves the new strings removed (one whose id a new move took is in
@@ -97,6 +99,8 @@ const ADDED: Array[StringName] = [
 const REMOVED: Array[StringName] = [
 	&"k_h1", # 9.2: Kesa Giri, the heavy before the Iai Slash
 	&"g_h2", # 10.2: Earthbreaker, whose id Low Sweep took
+	&"g_dl", # 10.3: Pommel Strike, whose id Piercing Lunge took
+	&"g_dh", # 10.3: Cyclone, whose id Skewer took
 ]
 
 ## Demo moves the new strings gave a new id: their id now -> the demo's.

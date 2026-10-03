@@ -46,15 +46,18 @@ const MOVES: Dictionary = {
 		"startup": 26, "active": 5, "recovery": 32, "damage": 18, "posture": 22, "knockback": 1.8,
 		"range": 3.0, "arc": 70, "lunge": 3.0, "lunge_start": 6, "lunge_end": 28, "hop": 5.5, "hitstop": 10,
 	},
+	# Piercing Lunge, on light out of a dodge: a quick stab that a block stops
 	&"g_dl": {
-		"id": &"g_dl", "name": "Pommel Strike", "kind": &"light", "type": &"bash", "anim": &"pommel", "sound": &"fist",
-		"startup": 12, "active": 3, "recovery": 18, "damage": 6, "posture": 12, "knockback": 0.8,
-		"range": 1.7, "arc": 90, "lunge": 0.6,
+		"id": &"g_dl", "name": "Piercing Lunge", "kind": &"light", "type": &"stab", "anim": &"thrust", "sound": C,
+		"startup": 12, "active": 3, "recovery": 20, "damage": 8, "posture": 10, "knockback": 0.8,
+		"range": 3.0, "arc": 50, "lunge": 0.8,
 	},
+	# Skewer, on heavy out of a dodge: an unblockable thrust, stomped by a dodge
+	# forward into it
 	&"g_dh": {
-		"id": &"g_dh", "name": "Cyclone", "kind": &"heavy", "type": &"spin", "anim": &"spin", "sound": C,
-		"startup": 24, "active": 8, "recovery": 30, "damage": 14, "posture": 18, "knockback": 1.4,
-		"range": 2.9, "arc": 360,
+		"id": &"g_dh", "name": "Skewer", "kind": &"heavy", "type": &"thrust", "anim": &"thrust", "sound": C,
+		"startup": 22, "active": 4, "recovery": 28, "damage": 14, "posture": 18, "knockback": 1.4,
+		"range": 3.4, "arc": 36, "lunge": 1.0, "unblockable": true, "counter": &"thrust", "track_active": 0.5,
 	},
 	&"g_bl": {
 		"id": &"g_bl", "name": "Rising Edge", "kind": &"light", "type": &"slash", "anim": &"diagUp", "sound": C,

@@ -28,6 +28,7 @@ set_right_wrist = true
 [sub_resource type="Resource" id="Hold_katana"]
 script = ExtResource("16_hold")
 weapon = &"katana"
+guard = true
 blade_tilt = 45.0
 
 [sub_resource type="Resource" id="Hold_daggers"]

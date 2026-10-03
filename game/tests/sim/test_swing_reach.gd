@@ -122,13 +122,16 @@ func test_a_move_reads_its_swings_reach_and_arc_and_without_one_its_authored_ran
 	assert_eq(def.range, 2.2, "the authored range stays for the counters' cones")
 
 
-func test_the_weapons_reach_comes_from_its_light_starters_swing() -> void:
+func test_the_weapons_reach_comes_from_its_light_starters_hand_keyed_swing() -> void:
 	assert_eq(SF.without_swings(&"katana").reach, 2.1, "the Katana's authored reach while Right Cut has no swing")
 	var other: WeaponDef = SF.without_swings(&"katana")
 	other.moves[&"k_l2"].swing = SF.level_slash(other.moves[&"k_l2"])
 	other.derive_reach()
 	assert_eq(other.reach, 2.1, "a swing on another move leaves it")
-	assert_eq(Moves.KATANA.reach, Moves.KATANA.moves[CUT].swing.reach, "Right Cut's baked swing gives the Katana's (task 9)")
+	# a swing baked from a clip leaves the authored reach (its lunge was
+	# lengthened to keep the reach table's distances; authored animation 20)
+	assert_eq(Moves.KATANA.reach, 2.1, "Right Cut's swing, baked from a clip, leaves the Katana's authored reach")
+	assert_eq(Moves.GREATSWORD.reach, 2.75, "and Heavy Swing's the Greatsword's")
 	var w: WeaponDef = _straight(SF.level_slash(_cut()))
 	assert_almost_eq(w.reach, 1.26, EPS, "a swing on the light starter gives it")
 

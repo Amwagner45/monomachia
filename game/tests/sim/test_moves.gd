@@ -150,6 +150,12 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "g_bl", "field": "lunge", "was": 0.9, "now": 1.15},
 	{"move": "g_bh", "field": "lunge", "was": 2.2, "now": 2.35},
 	{"move": "g_crush", "field": "lunge", "was": 1.6, "now": 1.85},
+	# authored animation 20: Reaping Sweep (AttackPolearm04's spin) and
+	# Mountain Slam (AttackPolearm03) reach less far than their cones, so
+	# their lunges carry them to a touch from the unblockables' test distance
+	# (4.0 m; Low Sweep, an added move, is in its strings test)
+	{"move": "g_sweep", "field": "lunge", "was": 0.3, "now": 1.65},
+	{"move": "g_slam", "field": "lunge", "was": 0.6, "now": 1.35},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each
@@ -255,9 +261,12 @@ static func _rebuilt(ts: Dictionary, id: StringName) -> Dictionary:
 ## The value a weapon's field should hold: its TS value, or its
 ## WEAPON_CHANGES row's.
 static func _weapon_wanted(wid: String, field: String, ts_value: Variant) -> Variant:
-	# a weapon's reach is its light starter's swing's once it has one (7.13)
+	# a weapon's reach is its light starter's swing's once it has a hand-keyed
+	# one (7.13); one baked from a clip leaves the authored reach (authored
+	# animation 20)
 	var w: WeaponDef = Moves.WEAPONS.get(StringName(wid))
-	if field == "reach" and w != null and (w.moves[w.light_start] as AttackDef).swing != null:
+	var starter: AttackDef = w.moves[w.light_start] if w != null else null
+	if field == "reach" and starter != null and starter.swing != null and starter.swing.clips.is_empty():
 		return (w.moves[w.light_start] as AttackDef).swing.reach
 	for row: Dictionary in WEAPON_CHANGES:
 		if row["weapon"] == wid and row["field"] == field:

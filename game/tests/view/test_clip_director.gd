@@ -292,8 +292,42 @@ func test_moonsplitter_holds_its_wind_up_and_cuts_with_the_wave() -> void:
 	c = ClipDirector.ult_clip(f, bare)
 	assert_eq(c.name, "ual/Sword_Heavy_Combo", "without the packs, the fallback")
 	assert_almost_eq(c.time, 2.0 * 18.0 / 70.0, 1e-6, "stretched over the wind-up and release")
-	f.ult.kind = &"impaler"
-	assert_null(ClipDirector.ult_clip(f, ctx), "the other ultimates keep their stand-ins")
+	f.ult.kind = &"tempest"
+	assert_null(ClipDirector.ult_clip(f, ctx), "the Daggers' ultimate keeps its stand-in")
+
+
+func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
+	var W: World = SimHelpers.make_world(Moves.GREATSWORD, Moves.KATANA)
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {"HumanM/AttackPolearm01": 41.0 / 30.0, "ual/Sword_Dash": 1.4}
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	f.state = &"ult"
+	f.ult = UltState.make(&"impaler", &"aim", 0, &"vertical", 0, false)
+	var at: Callable = func(phase: StringName, pf: int) -> float:
+		f.ult.phase = phase
+		f.ult.pf = pf
+		var c: ClipDirector.Clip = ClipDirector.ult_clip(f, ctx)
+		assert_eq(c.name, "HumanM/AttackPolearm01")
+		return c.time * 30.0
+	assert_almost_eq(at.call(&"aim", 8), 4.0, 1e-6, "drawing back at 1.0")
+	assert_almost_eq(at.call(&"aim", 29), ClipDirector.IMPALER_DRAWN, 1e-6, "held drawn back through the aim")
+	assert_almost_eq(at.call(&"dash", 4), ClipDirector.IMPALER_DRAWN + 3.0, 1e-6, "thrusting out as the dash starts")
+	assert_almost_eq(at.call(&"dash", 30), ClipDirector.IMPALER_OUT, 1e-6, "held out through the dash")
+	assert_almost_eq(at.call(&"impale", 20), ClipDirector.IMPALER_OUT, 1e-6, "and the impale")
+	assert_almost_eq(at.call(&"recover", 30), 41.0, 1e-4, "recovering to the clip's end")
+	# a phase change fades as a follow-up
+	f.ult.phase = &"aim"
+	f.ult.pf = 29
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	W.frame += 1
+	f.ult.phase = &"dash"
+	f.ult.pf = 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.drive, shot.move, shot.fade], [ClipDirector.ATTACK, &"impaler", ClipDirector.FADES[&"follow_up"]], "a phase change fades")
+	var bare: ClipDirector.Context = ClipDirector.Context.make(&"hunter", false, lengths)
+	f.ult.phase = &"dash"
+	f.ult.pf = 5
+	assert_almost_eq(ClipDirector.ult_clip(f, bare).time, 1.4 * 35.0 / 70.0, 1e-6, "without the packs the dash stretched over the aim and dash")
 
 
 # ------------------------------------------------------------------ the shoulder carry (task 18)

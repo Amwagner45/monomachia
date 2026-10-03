@@ -33,7 +33,7 @@ const MOVES: Dictionary = {
 		"id": &"g_h2", "name": "Low Sweep", "kind": &"heavy", "type": &"sweep", "anim": &"sweep", "sound": C,
 		"side_start": &"right", "side_end": &"left",
 		"startup": 26, "active": 5, "recovery": 34, "damage": 16, "posture": 22, "knockback": 2.0,
-		"range": 3.2, "arc": 110, "lunge": 0.8, "lunge_start": 10, "lunge_end": 28,
+		"range": 3.2, "arc": 110, "lunge": 0.85, "lunge_start": 10, "lunge_end": 28,
 		"unblockable": true, "jumpable": true, "counter": &"sweep", "hitstop": 10,
 	},
 	&"g_sl": {
@@ -83,12 +83,12 @@ const MOVES: Dictionary = {
 	&"g_sweep": {
 		"id": &"g_sweep", "name": "Reaping Sweep", "kind": &"ability", "type": &"sweep", "anim": &"sweep", "sound": C,
 		"startup": 28, "active": 6, "recovery": 28, "damage": 14, "posture": 18, "knockback": 1.0,
-		"range": 3.0, "arc": 160, "lunge": 0.3, "unblockable": true, "jumpable": true, "counter": &"sweep",
+		"range": 3.0, "arc": 160, "lunge": 1.65, "unblockable": true, "jumpable": true, "counter": &"sweep",
 	},
 	&"g_slam": {
 		"id": &"g_slam", "name": "Mountain Slam", "kind": &"ability", "type": &"slam", "anim": &"slam", "sound": C,
 		"startup": 32, "active": 5, "recovery": 36, "damage": 20, "posture": 26, "knockback": 1.6,
-		"range": 3.2, "arc": 44, "lunge": 0.6, "lunge_start": 12, "lunge_end": 34,
+		"range": 3.2, "arc": 44, "lunge": 1.35, "lunge_start": 12, "lunge_end": 34,
 		"unblockable": true, "counter": &"slam", "hitstop": 12,
 	},
 	&"g_crush": {

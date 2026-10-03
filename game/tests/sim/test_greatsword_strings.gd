@@ -245,15 +245,16 @@ func test_low_sweep_is_marked_as_an_unblockable_that_can_be_jumped() -> void:
 
 
 func test_low_sweep_is_a_sweep_with_its_interim_cone_and_earthbreakers_lunge() -> void:
-	# until weapon paths decide hits (task 7): a sweep (the stand-in's sweep
-	# pose), 3.2 m and 110°, with Earthbreaker's lunge, knockback and
-	# hitstop, its lunge ending two frames after its cut starts, as
-	# Earthbreaker's did
+	# a sweep (the stand-in's sweep pose), 3.2 m and 110° (the cone, kept for
+	# the computer opponent), with Earthbreaker's knockback and hitstop, its
+	# lunge ending two frames after its cut starts, as Earthbreaker's did;
+	# 0.85 m, 5 cm past Earthbreaker's, so its clip (Attack2H03) reaches
+	# 3.5 m (authored animation 20)
 	var m: AttackDef = Moves.GREATSWORD.moves[&"g_h2"]
 	assert_eq([m.type, m.anim], [&"sweep", &"sweep"], "a sweep")
 	assert_eq(
 		[m.range, m.arc, m.lunge, m.lunge_start, m.lunge_end, m.knockback, m.hitstop],
-		[3.2, 110.0, 0.8, 10, 28, 2.0, 10],
+		[3.2, 110.0, 0.85, 10, 28, 2.0, 10],
 		"range, arc, lunge and its window, knockback and hitstop",
 	)
 

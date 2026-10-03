@@ -102,7 +102,7 @@ Oct 3, 2026. Task 1 built: `tools/build_iglesias_bone_map.gd` writes `assets/kev
     - `git status` is clean after an import;
     - the exported build plays a clip.
   - Blocked by: 1 (and the owner's pass) · Stories: 38, 39, 41, 49
-- [ ] **3. The fallback library and the soak baseline.**
+- [x] **3. The fallback library and the soak baseline.**
   - **The fallback library.** `build_animation_library.gd` adds every UAL2 Source clip the spec's clip table names to the committed CC0 library, read from the already committed `UAL2_Source.glb`.
   - **The soak baseline.** A 300-match `soak:tune` and a 40-match soak, run before any rules change, recorded in Progress. Each weapon's review is measured against them (±5 points).
   - Check: a content test that the CC0 library holds every fallback clip in the table; the art stays inside its 110 MB budget.

@@ -176,7 +176,8 @@ func blade_touch(capsule: SimCapsule) -> BladeSweep:
 ## decided from. A charge holds the frame, so the pose holds, and frames past
 ## the swing's end (a charge's extra recovery) hold its last pose. Hit-stop
 ## skips the whole step, so the segments hold through it. On the attack's
-## first tick the last tick's segment is this one's.
+## first tick the last tick's segment is this one's. An unblockable's blades
+## sweep SimConst.UNBLOCKABLE_SWEEP_BONUS thicker on every side (task 7.12).
 func place_blades() -> void:
 	if state != &"attack" or atk == null:
 		return
@@ -199,7 +200,7 @@ func place_blades() -> void:
 		b.tip = SimMath.local_to_world(pos, yaw, pose.place(segment.tip))
 		b.prev_base = b.base
 		b.prev_tip = b.tip
-		b.half_thickness = segment.thickness / 2.0
+		b.half_thickness = segment.thickness / 2.0 + (SimConst.UNBLOCKABLE_SWEEP_BONUS if def.unblockable else 0.0)
 		for before: BladeSegment in last:
 			if before.part == part:
 				b.prev_base = before.base

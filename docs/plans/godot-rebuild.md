@@ -859,8 +859,12 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - a slash that falls short of the axis puts the hit on its quad, inside the capsule and off the axis, at the sweep's contact;
       - the cone's hit, and a Moonsplitter wave from a Katana whose Right Cut has a swing, keep the midpoint.
     - Blocked by: 7.10 · Stories: 40, 48
-  - [ ] **7.12 Unblockables sweep a thicker blade.** `UNBLOCKABLE_SWEEP_BONUS` (0.1 m) is added to an unblockable's half-thickness, and presentation can read it.
+  - [x] **7.12 Unblockables sweep a thicker blade.** `UNBLOCKABLE_SWEEP_BONUS` (0.1 m) is added to an unblockable's half-thickness, and presentation can read it.
     - Check: a synthetic unblockable hits where the same swing without the flag misses; normal moves are unchanged.
+    - Built: `SimConst.UNBLOCKABLE_SWEEP_BONUS` is 0.1 m. `Fighter.place_blades()` adds it to the half-thickness of each blade segment an unblockable places, so the sweep, its contact, depth and length inside, and `blade_segments()` all carry the thicker blade, and presentation can read either the constant or the segment. Unblockables without a swing keep their cones, and the counters keep theirs. `test_swing_hits.gd` holds Right Cut's point straight at the defender, 1.227 m out, with the move flagged unblockable or not and nothing else changed:
+      - the segment's half-thickness is 0.75 cm (half the Katana's 1.5 cm), and 10.75 cm when flagged;
+      - from 1.99 m apart the lunge leaves the point 0.413 m from the defender's axis: the normal move whiffs 5.5 cm short, and the unblockable hits on frame 12, 4.5 cm in;
+      - 10 cm further back, the unblockable whiffs as well.
     - Blocked by: 7.10 · Stories: 22
   - [ ] **7.13 Reach and arc derived from each swing.** `SwingReach` computes reach and arc at load, and `first_contact()` gives the first-touch frame and depth at a distance. The AI's reach checks, `WeaponDef.reach` and the dummy's practice distance use them.
     - Check: a synthetic slash's reach and arc match hand-computed values; a spin's arc is 360; `first_contact` agrees with a stepped world at three distances; a 40-match soak is clean.

@@ -26,6 +26,11 @@ const WEAPON_BOUNCE_MARGIN: float = 0.8
 const FIGHTER_RADIUS: float = 0.42
 const GRAVITY: float = 30.0 # m/s^2 (snappy, game-like)
 const JUMP_CLEAR: float = 0.3 # feet height above which low attacks miss
+## An unblockable's sweep is this much thicker than its blade on every side
+## (added to half the strike segment's thickness), so it reaches this much
+## further than the same swing without the flag. Presentation reads it for
+## the reach shown on the warning mark.
+const UNBLOCKABLE_SWEEP_BONUS: float = 0.1
 
 # --- Defence ---------------------------------------------------------------
 const PARRY_POSTURE: float = 16.0 # "each parry does a consistent amount of posture damage"

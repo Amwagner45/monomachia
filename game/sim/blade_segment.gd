@@ -13,5 +13,6 @@ var tip: V3 = V3.make()
 ## the segment at the last tick: on the attack's first tick, this one
 var prev_base: V3 = V3.make()
 var prev_tip: V3 = V3.make()
-## half the strike segment's thickness
+## half the strike segment's thickness, plus SimConst.UNBLOCKABLE_SWEEP_BONUS
+## for an unblockable (task 7.12): half the thickness its sweep tests
 var half_thickness: float = 0.0

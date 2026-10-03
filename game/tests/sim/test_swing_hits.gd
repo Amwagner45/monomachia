@@ -6,7 +6,8 @@ extends GutTest
 ## synthetic level slashes (swing_fixtures.gd) on Right Cut, whose active
 ## frames are 12 to 14 and which lunges 0.35 m: from 1.6 m apart it closes to
 ## 1.25 m, so a blade from 0.45 m out (the Katana's tip 1.23 m out) crosses a
-## defender standing straight ahead.
+## defender standing straight ahead. An unblockable sweeps a blade 10 cm
+## thicker on every side (task 7.12).
 
 const H := preload("res://tests/sim/sim_helpers.gd")
 const SF := preload("res://tests/sim/swing_fixtures.gd")
@@ -121,3 +122,32 @@ func test_a_parry_timed_to_the_first_touch_parries_and_block_blocks() -> void:
 	assert_eq(_play(_world(null), parry), ["hit on 12"] as Array[String], "where the cone's hit lands a frame before it")
 	var hold: Callable = func(_i: int) -> RawInput: return H.btn(Btn.BLOCK)
 	assert_eq(_play(_world(cut), hold), ["block on 13"] as Array[String], "a held block blocks the first touch")
+
+
+## Fighter 0 with a Katana whose Right Cut holds its point straight at the
+## defender, flagged unblockable or not (nothing else differs), `gap` m from
+## an idle Katana. The grip is 1.2 m up and 0.45 m out with the edge down, so
+## the point is 0.777 m further out (and 7.7 cm up, the curve).
+static func _point_world(unblockable: bool, gap: float) -> World:
+	var point: Swing.KeyPose = SF.key(0, [0.0, 1.2, 0.45], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0])
+	var w: WeaponDef = SF.weapon(&"katana", {CUT: SF.held(_cut(), {SF.RIGHT: point} as Dictionary[StringName, Swing.KeyPose])})
+	(w.moves[CUT] as AttackDef).unblockable = unblockable
+	return H.make_world(w, Moves.KATANA, gap)
+
+
+func test_an_unblockable_sweeps_a_blade_10_cm_thicker_and_reaches_that_much_further() -> void:
+	var normal: World = _point_world(false, 1.99)
+	var thick: World = _point_world(true, 1.99)
+	for W: World in [normal, thick]:
+		W.step([H.btn(Btn.LIGHT), H.idle()])
+	assert_almost_eq(normal.fighters[0].blade_segments()[0].half_thickness, 0.0075, 1e-12,
+			"Right Cut sweeps half the Katana's 1.5 cm")
+	assert_almost_eq(thick.fighters[0].blade_segments()[0].half_thickness, 0.1075, 1e-12,
+			"an unblockable one 10 cm more")
+	# the lunge (0.35 m, done by frame 12) leaves the point 1.64 - 1.227 =
+	# 0.413 m from the defender's axis: beyond the capsule's 0.35 m and half
+	# the blade, within them with the 10 cm
+	assert_eq(_play(_point_world(false, 1.99)), ["whiff on 15"] as Array[String], "the point stops 5.5 cm short")
+	assert_eq(_play(_point_world(true, 1.99)), ["hit on 12"] as Array[String], "the unblockable's reaches 4.5 cm in")
+	# 10 cm further back, the unblockable falls as short
+	assert_eq(_play(_point_world(true, 2.09)), ["whiff on 15"] as Array[String], "and 10 cm further back, falls as short")

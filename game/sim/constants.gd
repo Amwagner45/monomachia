@@ -118,6 +118,16 @@ const COLOSSAL_SLIDE_DIST: float = 0.35
 ## The slide takes this many recovery frames.
 const COLOSSAL_SLIDE_FRAMES: int = 10
 
+# --- Greatsword shoulder carry (authored-animation task 15) ----------------
+## An armed Greatsword goes onto the shoulder (Fighter.shouldered) after this
+## many frames in a row of moving in the free state (walking, running,
+## sprinting or stepping), and at every round start.
+const GS_SHOULDER_MOVE_FRAMES: int = 20
+## An attack started from the shoulder holds its frame 0 this many frames
+## while the sword is heaved off: its startup and its dodge cancel come this
+## much later, its active and recovery frames don't change.
+const GS_SHOULDER_LIFT_FRAMES: int = 6
+
 # DISARMED_MULT = { speed, dodge, jump }
 const DISARMED_MULT_SPEED: float = 1.2
 const DISARMED_MULT_DODGE: float = 1.5

@@ -43,7 +43,7 @@ The raw Iglesias files and the clips converted from them stay out of the public 
 7. As a player, I want an attack that is hit to stop at once and turn into the hit reaction, so that interrupts read clearly.
 8. As a Katana player, I want the Iai Slash to sheathe the blade into its saya and draw it in one authored motion, so that the quick-draw looks real.
 9. As a Greatsword player, I want my fighter to carry the sword on the shoulder while moving and visibly heave it into a swing, so that the weight shows.
-10. As a Greatsword player, I want attacks started from the shoulder to take longer, so that the carry is a real trade-off and not just a look.
+10. [x] As a Greatsword player, I want attacks started from the shoulder to take longer, so that the carry is a real trade-off and not just a look.
 11. As a Daggers player, I want my fighter to idle with the daggers in a reverse grip and flip them forward to attack, so that the Rogue's style survives the clips.
 12. As a bare-hands fighter, I want real punches and kicks, so that disarmed play looks like fighting, not flailing.
 13. As a player, I want the ultimates, block abilities, counters (stomp, leap, evade), Flash, Shadow Step and the jump attacks to have authored motion too, so that nothing looks procedural next to the rest.
@@ -163,6 +163,8 @@ All of these get rule tests and a soak run.
   - Off at once on any attack, block, parry, dodge, backstep, hitstun, blockstun, knockdown, disarm or pick-up. Standing still and jumping leave it as it is.
   - Any attack started while shouldered (lights, heavies, sprint and jump attacks, block abilities and the ultimate) adds 6 frames to its startup (`GS_SHOULDER_LIFT_FRAMES`). Its active and recovery frames are unchanged; its dodge cancel opens 6 frames later.
   - Dodge attacks never pay, since the dodge clears the flag, and string follow-ups never pay, since the first attack cleared it.
+  - A guard raised from the shoulder (a block or a parry press) clears the flag but starts the same 6-frame lift, and an attack started before that lift ends waits for the rest of it. So a block ability pressed with the guard pays all 6 frames, one pressed a frame later pays 5, and one from a guard already up pays none (settled in plan task 15).
+  - While lifting, the attack holds its frame 0, and the ultimate holds its first phase.
   - The flag is part of the fighter's state, so the presentation and the computer opponent read it.
 - **The computer opponent** knows about knockdowns (it doesn't attack a downed fighter until the stand-up's guard window) and about the shoulder lift (its timing and reach estimates for Greatsword attacks include it).
 

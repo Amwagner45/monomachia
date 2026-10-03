@@ -38,7 +38,7 @@ The Godot build plays everything the web demo plays, on the new direction in the
 - Phase C is reordered: the new strings come before weapon swings, so swing paths are authored once, for the final moves.
 - The 4.7.2 export templates are installed on the owner's PC, so `npm run build` can export locally; CI exports too.
 - The match host owns the input host (one set of devices for the whole game, pause on focus loss, profiles picked up on resume), so task 6 did that part of task 22.
-- Oct 3, 2026: the authored-animation spec (`docs/specs/authored-animation.md`, plan `docs/plans/authored-animation.md`) replaces the procedural swings, reactions and movement with authored clips and baked hit paths. It retires 7.16–7.38, 14.14, 14.15, 14b and 15.9, which are struck through below (`[-]`) with what replaces each. 14.16 (the saya) and 14.17 (the review sheets) stay.
+- Oct 3, 2026: the authored-animation spec (`docs/specs/authored-animation.md`, plan `docs/plans/authored-animation.md`) replaces the procedural swings, reactions and movement with authored clips and baked hit paths. It retires 7.16–7.38, 14.14, 14.15, 14b and all of task 15, which are struck through below (`[-]`) with what replaces each. 14.16 (the saya) and 14.17 (the review sheets) stay. The tasks that waited on a retired one (14.16, 14.17, 12.2, 18.12 and 25.7) now wait on that plan's tasks instead, each with a note.
 
 ### Decisions from the task breakdown (Oct 1, 2026)
 
@@ -329,7 +329,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 
 ## Build order
 
-One task at a time, top to bottom. Each stage names its tasks in order. The retired tasks in stages 9, 10, 11 and 13 (7.16–7.38, 14.14, 14.15, 14b and 15.9) are done by the authored-animation plan instead.
+One task at a time, top to bottom. Each stage names its tasks in order. The retired tasks in stages 9, 10, 11 and 13 (7.16–7.38, 14.14, 14.15, 14b and task 15) are done by the authored-animation plan instead.
 
 1. **Resume and safety nets:** 13.1, 25.1, 25.2, 25.3.
 2. **The look, and the real fighters in the match:** 16.1–16.7, 14.1, 14.2.
@@ -797,6 +797,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Soak: `soak:godot -- 10`, the plan's check, has 0 failures, and so does the usual 40-match run. Against 11.2: rounds 155 (155), average 41.1 s (41.6), blocks 25.08 (24.19), parries 5.02 (4.90), disarms 1.06 (1.08); match wins and losses Katana 14–17 (15–16), Greatsword 14–10 (13–11), Daggers 12–13 (12–13).
       - `soak:tune` (300 matches, 0 failures): win rates against the other weapons Katana 53.1% (55.4% after 11.2), Greatsword 46.1% (42.6%), Daggers 50.4% (51.2%), all three inside the spec's 45–55% for the first time; rounds 39.6 s (38.8). Disarms stay above the spec's 0.3–0.6, at 1.06 per round (1.08); task 12 tunes toward it.
 - [ ] **7. Weapon swings drive hits.**
+  - 7.16–7.38 were retired on Oct 3, 2026 by the authored-animation spec: the swings are baked from authored clips by `docs/plans/authored-animation.md`. Task 7 is ticked when that plan's last weapon task (25) is done.
   - Delivers:
     - the swing data and arc interpolation, starting from the spike's swing code:
       - the hand drives the blade, with limited wrist bend and deviation;
@@ -1028,7 +1029,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Stage 4 is done.
   - [ ] **12.2 The computer times its defence from the swing's first touch.** `_respond_to` predicts impact with `SwingReach.first_contact` and ignores moves that can't reach.
     - Check: Hard parries a late-touching swing about as often as an early one over seeded runs; it ignores a move that can't reach; a 40-match soak is clean.
-    - Blocked by: 7.38 · Stories: 5, 41, 54
+    - Blocked by: `docs/plans/authored-animation.md` task 25 · Stories: 5, 41, 54
+    - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 7.38: every move has a baked swing after `docs/plans/authored-animation.md` task 25.
   - [ ] **12.3 The training dummy performs every unblockable.** A shared `UnblockableRoutes` table (ability slots, Low Sweep as heavy then heavy, Skewer as dodge then heavy) replaces `ability_for`. The Katana dummy's heavies alternate both Iai variants.
     - Check: a Greatsword dummy telegraphs Reaping Sweep and Low Sweep on sweep, and Skewer on thrust; a Katana dummy releases both Iai variants.
     - Blocked by: 12.2 · Stories: 53
@@ -1567,11 +1569,13 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Blocked by: 7.17, 14.12 · Stories: 40
   - [ ] **14.16 The saya and the sheathed hold.** A saya built in code at the left hip whenever the Katana is the weapon; the sheathe on the heavy press; the sheathed hold that the Iai's swings start from, kept while walking and strafing at block speed; the dodge cancel out of it.
     - Check: the pose follows the rules' stance; walking keeps the hold; PoseCheck passes; sheets of the stance standing and walking reviewed.
-    - Blocked by: 7.19, 14.9 · Stories: 26, 29
+    - Blocked by: 14.9 · Stories: 26, 29
+    - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 7.19: the saya no longer waits on the Iai's hand keys. `docs/plans/authored-animation.md` task 11 needs it, and builds the saya part if this task hasn't run by then.
   - [ ] **14.17 Animation core review sheets; task 14 ticked.** The full sheet set from the gameplay camera, three-quarter and hands. It covers the four lights, the Iai draws, thrust, sweep, the L-L-L-L string with each stop, guard, shuffle, run and brake, strafe and backpedal, the parry bounce and the trails. A checklist maps each of the spike critique's 10 fixes and 7 conditions to its sheet or test, and fixes follow.
     - Check: PoseCheck passes for every Katana move on both fighters; the soak is clean; the sheets and checklist are committed and sent to the owner.
     - Owner: approves the sheets. This OK is the gate for 15.1.
-    - Blocked by: 7.23, 14.6, 14.7, 14.14, 14.15, 18.3 · Stories: 16, 19, 25, 40
+    - Blocked by: `docs/plans/authored-animation.md` task 14, 14.6, 14.7, 18.3 · Stories: 16, 19, 25, 40
+    - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 7.23, 14.14 and 14.15: the sheets show the Katana's clips once `docs/plans/authored-animation.md` task 14 has them, and the OK no longer gates 15.1, which is retired.
 - [-] ~~**14b. Swing editor.**~~ An editor plugin that scrubs a move frame by frame on a fighter.
   - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** clips replace the hand-keyed swings, so the swing editor is dropped.
   - Delivers:
@@ -1605,7 +1609,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: the saved data reloads identically; both checks and the swing-hit and reach tests pass; the soak is clean; before and after sheets reviewed.
     - Owner: re-keys a move by hand in the editor.
     - Blocked by: 14b.4, 14b.5 · Stories: 16, 19
-- [ ] **15. Full fighter animation.**
+- [-] ~~**15. Full fighter animation.**~~
+  - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** authored clips animate every fighter state, `docs/plans/authored-animation.md`.
   - Delivers:
     - every move of the three weapons and bare hands;
     - two-handed grips for the Greatsword;
@@ -1624,53 +1629,68 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - Defender reactions (flinch, block impact, parry recoil, stagger) are their own system: procedural recoil from the hit direction blended with the pack's flinch clips. Weapon paths don't animate the defender. Ultimates, disarms and the dropped weapon may use keyed motion or physics on top of the paths.
   - Check: the gameplay-camera contact sheet for every move on both fighters, with the wrist and self-collision tests passing for all; a match screenshot series; an art-direction review.
   - The Iai sheathe is 14.16, and the swings of every move are task 7's (7.16–7.36), authored on the real fighters.
-  - [ ] **15.1 The Greatsword's two-handed guard and carry.** Both hands on IK, the off hand on `OffHandGrip`, a lower guard and a wider stance, through the shuffle and the run. It matches the rules' guard key.
+  - [-] ~~**15.1 The Greatsword's two-handed guard and carry.**~~ Both hands on IK, the off hand on `OffHandGrip`, a lower guard and a wider stance, through the shuffle and the run. It matches the rules' guard key.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the weapon fixed in the hand and the Greatsword's combat idle and shoulder carry, `docs/plans/authored-animation.md` tasks 4 and 18.
     - Check: PoseCheck on the guard and the walk on both fighters; sheets reviewed.
     - Blocked by: 14.17 and the owner's OK on its sheets · Stories: 31, 44
-  - [ ] **15.2 The Daggers in both hands: guard and carry.** Forward grip, each dagger on its own arm.
+  - [-] ~~**15.2 The Daggers in both hands: guard and carry.**~~ Forward grip, each dagger on its own arm.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the Daggers one in each hand with the reverse-grip idle, `docs/plans/authored-animation.md` tasks 4 and 21.
     - Check: PoseCheck for both blades on the guard and the walk on both fighters; sheets reviewed.
     - Blocked by: 15.1 · Stories: 35, 44
-  - [ ] **15.3 The bare-hand guard.**
+  - [-] ~~**15.3 The bare-hand guard.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the bare hands' combat idle, `docs/plans/authored-animation.md` task 8.
     - Check: PoseCheck on the guard and the walk; sheets reviewed.
     - Blocked by: 15.1 · Stories: 41, 44
-  - [ ] **15.4 Block and guard for every weapon.** Raise, hold and lower from the rules' blocking flag and blockstun; an impact pushing the guard back from the contact point; the hand-off into a guard crush.
+  - [-] ~~**15.4 Block and guard for every weapon.**~~ Raise, hold and lower from the rules' blocking flag and blockstun; an impact pushing the guard back from the contact point; the hand-off into a guard crush.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the held block and blockstun clips, `docs/plans/authored-animation.md` task 26.
     - Check: block poses follow blocking with no pop; the impact follows the contact point; PoseCheck; sheets from the gameplay camera.
     - Blocked by: 15.3, 7.38 · Stories: 24, 41
-  - [ ] **15.5 The parry deflect for every weapon.** 14.15 made production for every pairing, both daggers and two-handed recoil, for the parry, flash and redirect kinds.
+  - [-] ~~**15.5 The parry deflect for every weapon.**~~ 14.15 made production for every pairing, both daggers and two-handed recoil, for the parry, flash and redirect kinds.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the parrier's Parry Hit and the attacker's own clip reversed, `docs/plans/authored-animation.md` task 27.
     - Check: both weapons move away from the contact point for each pairing; PoseCheck through the bounces; sheets per pairing.
     - Blocked by: 15.4 · Stories: 40, 41
-  - [ ] **15.6 Flinches by hit direction.** A reaction system apart from swings: recoil away from the contact point, blended with the pack's hit clips over the rules' hitstun.
+  - [-] ~~**15.6 Flinches by hit direction.**~~ A reaction system apart from swings: recoil away from the contact point, blended with the pack's hit clips over the rules' hitstun.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the damage clips by the hit's side, `docs/plans/authored-animation.md` task 26.
     - Check: the recoil follows the contact side (front, left, right, high, low) and returns to guard when hitstun ends; sheets.
     - Blocked by: 15.4 · Stories: 19, 24
-  - [ ] **15.7 Stun, stagger and daze.** Poses for the stunned, stagger, disarm-stagger and impaled states, with a daze sway on the rules' clock.
+  - [-] ~~**15.7 Stun, stagger and daze.**~~ Poses for the stunned, stagger, disarm-stagger and impaled states, with a daze sway on the rules' clock.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** Stun01 fitted to each long stun, `docs/plans/authored-animation.md` task 26.
     - Check: each state maps to its pose and holds in hit-stop; sheets.
     - Blocked by: 15.6 · Stories: 41
-  - [ ] **15.8 Disarm and pickup.** The weapon leaves the hands on a disarm (its model on the ground is 18.10's), a pickup pose, and the bare-hand guard while disarmed.
+  - [-] ~~**15.8 Disarm and pickup.**~~ The weapon leaves the hands on a disarm (its model on the ground is 18.10's), a pickup pose, and the bare-hand guard while disarmed.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the bare hands' idle and the pick-up clip, `docs/plans/authored-animation.md` tasks 8 and 30.
     - Check: the weapon leaves on the disarm event and returns on pickup; sheets of both.
     - Blocked by: 15.7, 18.10 · Stories: 41
   - [-] ~~**15.9 Dodge and backstep poses with ghost trails.**~~ Dash poses by direction for dodge, backstep and evade, and fading afterimages on the rules' clock.
     - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the roll and the backstep play clips, `docs/plans/authored-animation.md` task 30; the ghost trail is dropped.
     - Check: the lean follows the dodge direction; the afterimages fade by frame and clear at round start; sheets.
     - Blocked by: 15.4 · Stories: 12, 13
-  - [ ] **15.10 Jump and land.** Jump clips seeked from the rules' jump state and height, and the landing crouch.
+  - [-] ~~**15.10 Jump and land.**~~ Jump clips seeked from the rules' jump state and height, and the landing crouch.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the jump and land clips, `docs/plans/authored-animation.md` task 30.
     - Check: the clip phase follows rise, apex and fall; the crouch lasts the land recovery; sheets.
     - Blocked by: 15.4 · Stories: 12
-  - [ ] **15.11 Stomp and leap counters.** Poses for the stomp (onto a thrust) and the leap (over a sweep).
+  - [-] ~~**15.11 Stomp and leap counters.**~~ Poses for the stomp (onto a thrust) and the leap (over a sweep).
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the stomp and leap clips, `docs/plans/authored-animation.md` task 30.
     - Check: each counter state maps to its pose; sheets of a stomp on Skewer and a leap over Low Sweep.
     - Blocked by: 15.10 · Stories: 41, 42
-  - [ ] **15.12 KO, death and a victory hold.**
+  - [-] ~~**15.12 KO, death and a victory hold.**~~
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** the death clips and the victory poses, `docs/plans/authored-animation.md` tasks 28, 33 and 34.
     - Check: the KO plays once and holds; round start resets it; the winner holds a simple victory pose; sheets.
     - Blocked by: 15.6 · Stories: 6, 49
-  - [ ] **15.13 Moonsplitter presentation.** Keyed motion over the paths for the ultimate, the choice and the recall, in time with the rules' wave hits.
+  - [-] ~~**15.13 Moonsplitter presentation.**~~ Keyed motion over the paths for the ultimate, the choice and the recall, in time with the rules' wave hits.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** Moonsplitter's clip, `docs/plans/authored-animation.md` task 13.
     - Check: the poses follow the rules' phases; sheets.
     - Blocked by: 15.4 · Stories: 30
-  - [ ] **15.14 Impaler presentation.** The dash, impale and burst for the attacker and the impaled defender.
+  - [-] ~~**15.14 Impaler presentation.**~~ The dash, impale and burst for the attacker and the impaled defender.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** Impaler's clip, `docs/plans/authored-animation.md` task 20.
     - Check: the poses follow the phases, and the impaled defender's pose holds; sheets.
     - Blocked by: 15.7 · Stories: 34
-  - [ ] **15.15 Lightning Tempest presentation.** The spin and the Thunder Finisher with both daggers.
+  - [-] ~~**15.15 Lightning Tempest presentation.**~~ The spin and the Thunder Finisher with both daggers.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** Lightning Tempest's clips, `docs/plans/authored-animation.md` task 23.
     - Check: the spin follows the rules' phase; sheets.
     - Blocked by: 15.4 · Stories: 39
-  - [ ] **15.16 Retire the stand-in poses, and the final animation sheets; task 15 ticked.** StickPose and the WeaponHold idles removed; contact sheets for every move on both fighters, from the batch mode; a match screenshot series.
+  - [-] ~~**15.16 Retire the stand-in poses, and the final animation sheets; task 15 ticked.**~~ StickPose and the WeaponHold idles removed; contact sheets for every move on both fighters, from the batch mode; a match screenshot series.
+    - **Retired on Oct 3, 2026 by the authored-animation spec (`docs/specs/authored-animation.md`):** retiring the stand-ins and the final sheets, `docs/plans/authored-animation.md` tasks 35 and 36.
     - Check: PoseCheck passes on every move on both fighters; the soak is clean; the sheets are reviewed and sent to the owner.
     - Owner: the final art-direction review.
     - Blocked by: 15.5–15.15 · Stories: 21, 43, 44
@@ -2174,7 +2194,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **18.12 Effects parity check, re-shoot and re-benchmark on the finished fighters; task 18 ticked.** A test that every rules event has an effect or is on an explicit no-visual list, including shake and kick amounts; the effects shot series at High and Low; the shrine bench rerun with the finished fighters and effects.
     - Check: the parity test passes; the shot series is reviewed; High still averages at least 60 fps at 1080p on the target laptop, or the presets are tuned until it does.
     - Note from 17.9: the bench is `arena_bench.tscn` (gameplay view), plus `"--bench=low;medium;high"` on `arena_watch.tscn`, the heaviest view. Tuning candidates on High, by what they cost in 17.9: the lantern lights 1.1 ms, the moon's shadows 1.1 ms, the prop outlines 0.4 ms.
-    - Blocked by: 15.16, 18.4–18.11 · Stories: 40, 48, 49, 57, 65
+    - Blocked by: `docs/plans/authored-animation.md` task 36, 18.4–18.11 · Stories: 40, 48, 49, 57, 65
+    - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 15.16: the fighters are finished at `docs/plans/authored-animation.md` task 36.
 
 ### Phase F: sound and music
 
@@ -2410,7 +2431,8 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **25.7 README for the Godot game; task 25 ticked.** The download, the modes, how a fight works under the new rules, controls, building and developing, the swing editor, the folder layout, the workflows and the credits, with new screenshots.
     - Check: every command in it runs as written; the screenshots are reviewed.
     - Owner: reads it.
-    - Blocked by: 14b.6, 25.6 · Stories: 1, 56, 64, 65
+    - Blocked by: 25.6 · Stories: 1, 56, 64, 65
+    - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 14b.6: the README has no swing editor to explain.
 - [ ] **26. Retire the web version and verify.** Delete the TypeScript sources, web tests and scripts, the Vite config, the built `Monomachia.html` and the web dependencies, keeping npm only as the task runner. Run the full test suite, a 40-match soak and the whole screenshot set.
   - Check: all tests pass, the soak run is clean, and the screenshots are reviewed; the pull request is marked ready.
   - [ ] **26.1 The Node audio tests on Node's own runner.** The 27 audio tests move from Vitest to `node --test`, and `npm test` runs them with GUT.

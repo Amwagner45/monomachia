@@ -32,16 +32,26 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 
 - [Spec](../specs/authored-animation.md), approved by the owner on Oct 3, 2026.
 - PR #11 already committed the whole UAL2 Source and root-motion GLBs (`UAL2_Source.glb`, `UAL2_Source_RM.glb`, `UAL2_Standard_RM.glb`), the female mannequin and the CREDITS note on the Iglesias packs, and raised the art budget to 110 MB. The spec's first step, bringing over only the clips used, is therefore done differently: the files are in, and task 3 folds the clips the clip table names into the committed library. Its `assets/ual2-source-and-iglesias-refs` worktree (`add-3d-references-530c11`) is clean and can go (task 2, with the owner's OK).
-- The godot-rebuild plan's tasks this feature retires are marked there: 14b (the swing editor), 7.16–7.38 (the hand-keyed swings), 14.14 (blade lag), 14.15 (the parry-bounce prototype) and 15.9 (the dash poses and ghost trails). 14.16 (the saya) and 14.17 (the review sheets) stay.
+- The godot-rebuild plan's tasks this feature retires are marked there:
+  - 14b (the swing editor) and 7.16–7.38 (the hand-keyed swings);
+  - 14.14 (blade lag) and 14.15 (the parry-bounce prototype);
+  - all of task 15 (full fighter animation), 15.9's ghost trails included. The owner chose on Oct 3 to retire 15.1–15.16 as well as 15.9, since this plan covers them.
+
+  14.16 (the saya) and 14.17 (the review sheets) stay. The godot-rebuild tasks that waited on a retired one now wait on this plan:
+  - 14.16 waits on 14.9 only;
+  - 14.17 on task 14;
+  - 12.2 on task 25;
+  - 18.12 on task 36;
+  - 25.7 no longer waits on the swing editor.
 - While a weapon is between tasks, a move with a baked swing plays its clip, and a move without one keeps the stand-in poses and its cone. The stand-ins go in task 35.
 - The Greatsword's recovery slide keeps running along the facing; the retired 7.24 would have taken its direction from the follow-through.
 - The counters (stomp, leap, evade) keep their demo cones; the retired 7.37 would have measured them from the paths.
 - Story 42, the email to Kevin Iglesias, is drafted in the spec's Licence section; the owner sends it. Until he answers, the baked paths are committed.
-- The merge of `origin/feature/godot-rebuild` (PR #11) into this branch happens at the start of task 1.
+- The merge of `origin/feature/godot-rebuild` (PR #11) into this branch happens at the start of task 1, on the owner's go-ahead.
 
 ## Progress
 
-Oct 3, 2026. Plan written; waiting for the owner's OK before task 1.
+Oct 3, 2026. Plan approved by the owner. Next: task 1, the retargeting prototype.
 
 ## Build order
 
@@ -336,7 +346,7 @@ Oct 3, 2026. Plan written; waiting for the owner's OK before task 1.
   - **The roll** plays Roll01 with the body turned toward the roll's direction. The body turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames.
   - **The backstep** plays Dodge01.
   - **A new roll sound** (cloth and a thump) plays on a dodge that isn't a backstep.
-  - **The other states:** jump and land, the stomp, the leap, the evade lunge, the pick-up (Loot01) and the recall.
+  - **The other states:** jump and land, the stomp, the leap, the evade lunge, the pick-up (Loot01) and the recall. On a disarm the weapon leaves the hand (its model on the ground is godot-rebuild 18.10's), and it returns on the pick-up or the recall.
   - Check:
     - director tests for the roll's turn and each state's clip;
     - a sound test that the roll and the backstep play different cues;

@@ -22,6 +22,8 @@ extends RefCounted
 ## - threatens() is the rebuild's (task 7.13): the reach test _respond_to()
 ##   made inline, now reading AttackDef.reach(), a swing's reach once a move
 ##   has one.
+## - Waiting out a knockdown (_think_neutral() and _output()) is authored
+##   animation's (task 16).
 
 
 ## Difficulty: &"easy" | &"normal" | &"hard"
@@ -178,6 +180,12 @@ func _output(frame: int) -> RawInput:
 		if t.to >= frame:
 			kept.append(t)
 	_taps = kept
+	# A downed opponent can't be hit (task 16): no attack goes in, even one
+	# planned before they fell, until their stand-up's guard window. A charge
+	# already held stays held.
+	if me.opp != null and me.opp.is_downed():
+		var charging: bool = me.state == &"attack" and me.atk != null and me.atk.charging
+		buttons &= ~((1 << Btn.LIGHT) | (1 << Btn.ULTIMATE) | (0 if charging else 1 << Btn.HEAVY))
 	return RawInput.make(mx, my, buttons)
 
 
@@ -464,6 +472,9 @@ func _think_neutral(frame: int, d: float) -> RawInput:
 		or (opp.state == &"attack" and opp.attack_phase() == &"recovery" and opp.atk.frame > 0)
 	)
 	var can_act: bool = me.state == &"free" or me.state == &"step" or me.state == &"parryAnim" or me.state == &"land"
+	# wait out a knockdown: close in, but attack only once they rise in guard
+	if opp.is_downed():
+		can_act = false
 
 	# With a full meter, a parried attack would disarm us: only attack into openings.
 	var risky: bool = me.posture_full() or (me.posture > 80.0 and not punish)

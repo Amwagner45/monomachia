@@ -237,7 +237,7 @@ Oct 3, 2026. Task 4 done. `FighterModel.fix_weapons(reverse)`: while a clip driv
     - the brain's estimate includes the lift;
     - a 40-match soak is clean.
   - Blocked by: none · Stories: 10
-- [ ] **16. Knockdown.** A new fighter state.
+- [x] **16. Knockdown.** A new fighter state.
   - **Causes:** a hit (not a block, a parry or a counter) from an unblockable, a heavy at full charge, or Mountain Slam, Meteor Drop or Leaping Smash. A knock-out plays the KO instead.
   - **Phases:** fall 20, ground 30 and stand-up 25 frames (provisional).
   - **Invulnerability:** from the fall's first frame to stand-up frame 10.

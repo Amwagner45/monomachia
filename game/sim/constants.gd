@@ -67,6 +67,22 @@ const REDIRECT_POSTURE: float = 35.0
 const REDIRECT_STUN: int = 50
 const FLASH_STUN: int = 60
 
+# --- Knockdown (authored-animation task 16) ---------------------------------
+# A hit from an unblockable (not an ultimate), a heavy released at full charge,
+# or one of KNOCKDOWN_MOVES knocks the defender down instead of into hitstun:
+# a fall, a time on the ground and a stand-up. Provisional lengths, for the
+# knockdown clips' markers and soak runs to settle.
+const KNOCKDOWN_FALL_FRAMES: int = 20
+const KNOCKDOWN_GROUND_FRAMES: int = 30
+const KNOCKDOWN_STANDUP_FRAMES: int = 25
+## The stand-up's last frames, in which the fighter is no longer invulnerable
+## and can block or parry (but not attack, dodge or move); before them the
+## fighter is invulnerable from the fall's first frame.
+const KNOCKDOWN_GUARD_FRAMES: int = 15
+## The Greatsword's slams, which knock down though they aren't all
+## unblockable: Mountain Slam, Meteor Drop and Leaping Smash.
+const KNOCKDOWN_MOVES: Array[StringName] = [&"g_slam", &"g_jh", &"g_sh"]
+
 # --- Disarm ----------------------------------------------------------------
 const DISARM_STAGGER: int = 26 # the disarmed fighter reels back
 const PICKUP_RANGE: float = 1.25

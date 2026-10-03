@@ -21,6 +21,8 @@ extends RefCounted
 ##   division.
 ## - body and hurt_capsule() are the rebuild's (task 7.5), as are
 ##   place_blades() and blade_segments() (task 7.9) and blade_touch() (7.10).
+## - The knockdown state is authored animation's (task 16): enter_knockdown(),
+##   knockdown_phase(), is_downed() and knockdown_frames().
 
 ## FState
 const STATES: Array[StringName] = [
@@ -48,6 +50,7 @@ const STATES: Array[StringName] = [
 	&"impaled",
 	&"ko",
 	&"victory",
+	&"knockdown",
 ]
 
 const CHARGE_CHECK_FRAME: int = 9
@@ -229,6 +232,9 @@ func is_guard_capable() -> bool:
 		return true
 	if state == &"recoil" and sf >= recoil_guard_after:
 		return true
+	# rising in guard: the stand-up's last frames
+	if state == &"knockdown" and not is_downed():
+		return true
 	return false
 
 
@@ -257,7 +263,33 @@ func is_invulnerable() -> bool:
 		return true
 	if state == &"ko" or state == &"intro" or state == &"victory":
 		return true
+	if state == &"knockdown":
+		return is_downed()
 	return false
+
+
+## A knockdown's whole length: its fall, its time on the ground and its
+## stand-up.
+static func knockdown_frames() -> int:
+	return SimConst.KNOCKDOWN_FALL_FRAMES + SimConst.KNOCKDOWN_GROUND_FRAMES + SimConst.KNOCKDOWN_STANDUP_FRAMES
+
+
+## Whether the fighter is down: knocked down and not yet in the stand-up's
+## guard window, so it can't be hit (not even by an undodgeable move) and
+## can't guard.
+func is_downed() -> bool:
+	return state == &"knockdown" and sf <= knockdown_frames() - SimConst.KNOCKDOWN_GUARD_FRAMES
+
+
+## &"fall" | &"ground" | &"standUp" while knocked down, or &"" otherwise.
+func knockdown_phase() -> StringName:
+	if state != &"knockdown":
+		return &""
+	if sf <= SimConst.KNOCKDOWN_FALL_FRAMES:
+		return &"fall"
+	if sf <= SimConst.KNOCKDOWN_FALL_FRAMES + SimConst.KNOCKDOWN_GROUND_FRAMES:
+		return &"ground"
+	return &"standUp"
 
 
 ## dodging toward the attacker, early enough to count as "dodging into" a thrust
@@ -426,6 +458,8 @@ func update() -> void:
 			vel.z = 0.0
 		&"ko":
 			_brake()
+		&"knockdown":
+			_update_knockdown()
 
 	_integrate()
 	_update_facing()
@@ -1072,6 +1106,10 @@ func _update_facing() -> void:
 			rate = 2.0
 		&"ko", &"impaled", &"leap":
 			return
+		&"knockdown":
+			# down, the body doesn't turn; rising in guard, it turns to face
+			if is_downed():
+				return
 		&"ult":
 			var up: StringName = ult.phase if ult != null else &""
 			rate = 8.0 if up == &"windup" or up == &"aim" else (0.6 if up == &"dash" else 3.0)
@@ -1131,6 +1169,25 @@ func enter_stun(frames: int, kind: StringName = &"stunned") -> void:
 	set_state(kind, frames)
 	vel.x = 0.0
 	vel.z = 0.0
+
+
+## Knocked down (task 16), in place of hitstun, by a hit from an unblockable,
+## a full charge or a Greatsword slam (World.knocks_down()).
+func enter_knockdown() -> void:
+	set_state(&"knockdown", knockdown_frames())
+	vel.x = 0.0
+	vel.z = 0.0
+
+
+## Lies still through the fall and on the ground, then stands up: in the
+## stand-up's guard window the fighter may block or parry but not attack,
+## dodge or move. Free on the last frame.
+func _update_knockdown() -> void:
+	_brake()
+	blocking = armed and not is_downed() and input.is_held(Btn.BLOCK)
+	if sf >= state_dur:
+		world.emit({"t": &"standup", "f": id})
+		to_free()
 
 
 func enter_recoil(frames: int, guard_after: int) -> void:

@@ -17,13 +17,17 @@ extends RefCounted
 ## the ticks' segments, unless a sweep passes behind the fighter.
 
 
-## Where a move's swing first touches a defender (first_contact()).
+## Where a move's swing touches a defender on one tick (first_contact(),
+## touches()).
 class Contact:
-	## the attack frame of the first touch
+	## the attack frame of the touch
 	var frame: int = 0
 	## how far inside the defender's capsule its blade went deepest that tick
 	## (BladeSweep.depth)
 	var depth: float = 0.0
+	## the most blade inside the capsule at any moment of the tick
+	## (BladeSweep.length_inside), which the reach tests measure (task 7.14)
+	var length_inside: float = 0.0
 
 
 ## Where `def`'s swing on `weapon` first touches a defender with `body`
@@ -37,6 +41,21 @@ class Contact:
 ## at the move's tracking rates, then the blades. A hop, an air attack and a
 ## lunge along the dodge are played on the ground along the facing.
 static func first_contact(def: AttackDef, weapon: WeaponDef, distance: float, bearing: float, body: FighterBody) -> Contact:
+	var found: Array[Contact] = _play(def, weapon, distance, bearing, body, true)
+	return null if found.is_empty() else found[0]
+
+
+## Every tick on which `def`'s swing touches the defender, played as
+## first_contact() plays it (task 7.14), in order: on each tick that checks
+## for hits, the deepest touch of its striking tracks. The game stops
+## checking after a hit; this goes on through the active frames.
+static func touches(def: AttackDef, weapon: WeaponDef, distance: float, bearing: float, body: FighterBody) -> Array[Contact]:
+	return _play(def, weapon, distance, bearing, body, false)
+
+
+static func _play(def: AttackDef, weapon: WeaponDef, distance: float, bearing: float, body: FighterBody,
+		first_only: bool) -> Array[Contact]:
+	var out: Array[Contact] = []
 	var pos: V3 = V3.make()
 	var yaw: float = 0.0
 	var off: float = bearing * SimMath.DEG
@@ -74,8 +93,11 @@ static func first_contact(def: AttackDef, weapon: WeaponDef, distance: float, be
 			var c: Contact = Contact.new()
 			c.frame = f
 			c.depth = deepest.depth
-			return c
-	return null
+			c.length_inside = deepest.length_inside
+			out.append(c)
+			if first_only:
+				break
+	return out
 
 
 ## The reach of `def`'s swing on `weapon` (the weapon whose moves hold it):

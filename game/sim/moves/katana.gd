@@ -159,6 +159,7 @@ static func build() -> WeaponDef:
 		"default_abilities": [&"k_flash", &"k_thrust"],
 		"ultimate": &"moonsplitter",
 		"reach": 2.1,
+		"duel_distance": 2.5,
 		"blurb": "Balanced and versatile. Flash parries with a wide window and stuns.",
 		# the blade from the habaki to the point, curving off the straight line
 		# by up to 3 cm; 1.4 cm thick at the habaki and 7 mm along the blade

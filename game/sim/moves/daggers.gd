@@ -146,6 +146,7 @@ static func build() -> WeaponDef:
 		"default_abilities": [&"d_sweep", &"d_shadow"],
 		"ultimate": &"tempest",
 		"reach": 1.6,
+		"duel_distance": 2.0,
 		"blurb": "Fast and slippery. Many quick hits, long dodges, a short parry window.",
 		# each dagger's blade from the guard to the point, 1.3 cm thick at the
 		# guard and 5 mm along the blade

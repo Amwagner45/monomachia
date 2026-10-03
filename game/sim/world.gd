@@ -22,12 +22,18 @@ extends RefCounted
 ##   separating the fighters and before resolving combat (Fighter.place_blades,
 ##   the rebuild's task 7.9), and evaluate() asks reaches() where the TS asks
 ##   inVolume: a move with a swing reaches by its blades' sweeps (task 7.10).
+##   Their touch's contact rides in HitCtx.contact into apply(), which puts
+##   it in hit, block and parry events in place of the midpoint (task 7.11).
 
 
 ## { chargeF, backstab }: the context an attack carries into apply().
 class HitCtx:
 	var charge_f: float = 0.0
 	var backstab: bool = false
+	## Where the attack's blade met the target this frame, for a move with a
+	## swing (the sweep's contact, task 7.11); null puts the hit, block and
+	## parry events halfway between the fighters, as the demo did.
+	var contact: V3 = null
 
 	static func make(p_charge_f: float, p_backstab: bool) -> HitCtx:
 		var c: HitCtx = HitCtx.new()
@@ -159,13 +165,14 @@ func in_volume(a: Fighter, b: Fighter, def: AttackDef) -> bool:
 
 
 ## Whether a's attack `def` reaches b this frame. A move with a swing reaches
-## when a sweep of its blades touches b's hurt capsule (task 7.10); one
-## without keeps the demo's cone (in_volume), so the Duel plays as it did
-## while swings are authored.
-func reaches(a: Fighter, b: Fighter, def: AttackDef) -> bool:
+## when a sweep of its blades touches b's hurt capsule (task 7.10): `touch`
+## is that touch, as Fighter.blade_touch() found it, or null for none. A move
+## without a swing keeps the demo's cone (in_volume), so the Duel plays as it
+## did while swings are authored.
+func reaches(a: Fighter, b: Fighter, def: AttackDef, touch: BladeSweep) -> bool:
 	if def.swing == null:
 		return in_volume(a, b, def)
-	return a.blade_touch(b.hurt_capsule()) != null
+	return touch != null
 
 
 static func _skip_separate(f: Fighter) -> bool:
@@ -226,7 +233,13 @@ func _resolve_combat() -> void:
 				continue
 		elif at.hit_done:
 			continue
-		outs.append([a, a.opp, def, evaluate(a, a.opp, def, false), HitCtx.make(at.charge_frac, at.backstab)])
+		# a move with a swing reaches by its blades' sweeps (task 7.10), and its
+		# events start where they touched (task 7.11)
+		var touch: BladeSweep = a.blade_touch(a.opp.hurt_capsule()) if def.swing != null else null
+		var ctx: HitCtx = HitCtx.make(at.charge_frac, at.backstab)
+		if touch != null:
+			ctx.contact = touch.contact
+		outs.append([a, a.opp, def, evaluate(a, a.opp, def, false, touch), ctx])
 	# decided simultaneously, applied in order: each carries its own context so a
 	# trade is fair even though the first application interrupts the second attacker
 	for o: Array in outs:
@@ -234,7 +247,9 @@ func _resolve_combat() -> void:
 
 
 ## Decide what an attack does to its target this frame, without changing anything.
-func evaluate(a: Fighter, b: Fighter, def: AttackDef, scripted: bool) -> StringName:
+## `touch`: for a move with a swing, its blades' touch on b this frame
+## (Fighter.blade_touch()), or null for none; a scripted hit needs none.
+func evaluate(a: Fighter, b: Fighter, def: AttackDef, scripted: bool, touch: BladeSweep = null) -> StringName:
 	if b.state == &"ko" or b.state == &"intro" or b.state == &"victory":
 		return &"miss"
 	if b.state == &"impaled" and not scripted:
@@ -256,7 +271,7 @@ func evaluate(a: Fighter, b: Fighter, def: AttackDef, scripted: bool) -> StringN
 	):
 		return &"leap"
 
-	if not scripted and not reaches(a, b, def):
+	if not scripted and not reaches(a, b, def, touch):
 		return &"miss"
 	if def.jumpable and b.pos.y > SimConst.JUMP_CLEAR:
 		return &"jumped"
@@ -292,7 +307,10 @@ static func _mark_done(atk: AttackState, def: AttackDef) -> void:
 ## Apply an outcome decided by evaluate().
 func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: bool, ctx: HitCtx = null) -> void:
 	var atk: AttackState = null if scripted else a.atk
-	var contact: V3 = V3.make((a.pos.x + b.pos.x) / 2.0, 1.25, (a.pos.z + b.pos.z) / 2.0)
+	var contact: V3 = (
+		ctx.contact if ctx != null and ctx.contact != null
+		else V3.make((a.pos.x + b.pos.x) / 2.0, 1.25, (a.pos.z + b.pos.z) / 2.0)
+	)
 	var charge_f: float = 0.0
 	if ctx != null:
 		charge_f = ctx.charge_f

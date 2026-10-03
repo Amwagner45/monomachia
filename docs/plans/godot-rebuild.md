@@ -809,8 +809,12 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - a block press on frame 13 parries, where the cone's hit lands on 12, and a held block blocks.
       The 7.9 hit-stop test moved its defender from 2.2 to 1.6 m apart, so the fixture's blade reaches them now that it decides. A 40-match soak gives exactly the same report with and without the change.
     - Blocked by: 7.8, 7.9 · Stories: 21, 24, 41, 59
-  - [ ] **7.11 Contact points on hit, block and parry events.** Swing moves put the sweep's contact point in the event; cone moves and scripted hits keep the midpoint.
+  - [x] **7.11 Contact points on hit, block and parry events.** Swing moves put the sweep's contact point in the event; cone moves and scripted hits keep the midpoint.
     - Check: hit, block and parry points lie on the blade quad near the defender's axis; a Moonsplitter wave hit keeps the midpoint.
+    - Built: `World._resolve_combat` finds a swing move's touch once (`Fighter.blade_touch()`, the deepest of its tracks'). It hands the touch to `evaluate()` for the reach (`reaches()` now takes it) and puts its contact in `HitCtx.contact`, which `apply()` uses for the hit, block and parry events' `pos`. A null contact (moves without a swing, and scripted hits, which carry no context) keeps the demo's point, halfway between the fighters at 1.25 m. The counters keep their own points. `test_contact_points.gd`:
+      - a level slash whose sweep holds the defender's axis puts the hit, the block and the parry exactly where the axis meets the blade's level;
+      - a slash that falls short of the axis puts the hit on its quad, inside the capsule and off the axis, at the sweep's contact;
+      - the cone's hit, and a Moonsplitter wave from a Katana whose Right Cut has a swing, keep the midpoint.
     - Blocked by: 7.10 · Stories: 40, 48
   - [ ] **7.12 Unblockables sweep a thicker blade.** `UNBLOCKABLE_SWEEP_BONUS` (0.1 m) is added to an unblockable's half-thickness, and presentation can read it.
     - Check: a synthetic unblockable hits where the same swing without the flag misses; normal moves are unchanged.

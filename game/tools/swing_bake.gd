@@ -359,7 +359,8 @@ static func _measure(r: Result, move: AttackDef, weapon: WeaponDef, distance: fl
 
 ## The parts a move's swing bakes, beside the body: both hands for a pair
 ## of weapons (the Daggers); the striking hand, or foot for a kick, for bare
-## hands (both hands for a move with both); the main hand otherwise.
+## hands (both hands for a move with both); a bash's leading shoulder
+## (task 19); the main hand otherwise.
 static func parts_for(move: AttackDef, weapon: WeaponDef) -> Array[StringName]:
 	var out: Array[StringName] = []
 	if move.damage <= 0.0 and move.posture <= 0.0:
@@ -367,7 +368,12 @@ static func parts_for(move: AttackDef, weapon: WeaponDef) -> Array[StringName]:
 		# placed and it never strikes; the weapon rides the clip's hand
 		out.append(&"body")
 		return out
-	if weapon.id == &"daggers":
+	if move.type == &"bash":
+		# a bash strikes with the leading shoulder (task 19: the packs' bashes,
+		# Shield_Dash and AttackShield01, lead with the left); the weapon
+		# rides the clip's hands
+		out.append(&"left_shoulder")
+	elif weapon.id == &"daggers":
 		out.assign([&"right_hand", &"left_hand"])
 	elif weapon.id == &"fists":
 		var limb: String = "foot" if move.type == &"kick" else "hand"

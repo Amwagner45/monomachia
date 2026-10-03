@@ -39,7 +39,10 @@ extends RefCounted
 ## pose is its key, and between frames the poses are blended in a straight
 ## line (the blade and edge turned between the two), never splined.
 
-const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"body"]
+## A bash strikes with a shoulder (authored-animation task 19): its track's
+## grip is the shoulder joint, its blade the way out along the shoulder line
+## and its edge forward (SimConst.SHOULDER_STRIKE_*).
+const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"right_shoulder", &"left_shoulder", &"body"]
 
 
 ## One key pose of a track. Hand and foot keys use frame, grip, blade, edge,
@@ -84,14 +87,18 @@ class Sample:
 
 
 ## What the track for `part` strikes with on `weapon` (task 7.9): a hand the
-## weapon's blade (bare hands' fist), a foot bare hands' foot; null for the
-## body, which doesn't strike, or a foot on a weapon with no kicks.
+## weapon's blade (bare hands' fist), a foot bare hands' foot, a shoulder the
+## bash's shoulder on any weapon; null for the body, which doesn't strike, or
+## a foot on a weapon with no kicks.
 static func strike_segment(part: StringName, weapon: WeaponDef) -> StrikeSegment:
 	match part:
 		&"right_hand", &"left_hand":
 			return weapon.blade
 		&"right_foot", &"left_foot":
 			return weapon.foot
+		&"right_shoulder", &"left_shoulder":
+			return StrikeSegment.make(V3.make(0.0, SimConst.SHOULDER_STRIKE_BASE, 0.0),
+				V3.make(0.0, SimConst.SHOULDER_STRIKE_TIP, 0.0), SimConst.SHOULDER_STRIKE_THICKNESS)
 	return null
 
 

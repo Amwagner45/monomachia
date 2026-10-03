@@ -191,6 +191,33 @@ func test_the_parts_each_weapon_bakes() -> void:
 		assert_eq(parts[-1], &"body")
 
 
+func test_a_bash_strikes_with_its_left_shoulder() -> void:
+	# task 19: Shoulder Charge and Guard Crusher, the weapon riding the hands
+	var g: WeaponDef = Moves.GREATSWORD
+	for id: StringName in [&"g_sl", &"g_crush"]:
+		assert_eq(SwingBake.parts_for(g.moves[id], g), [&"left_shoulder", &"body"] as Array[StringName], String(id))
+	var segment: StrikeSegment = Swing.strike_segment(&"left_shoulder", g)
+	assert_eq([segment.base.y, segment.tip.y, segment.thickness],
+		[SimConst.SHOULDER_STRIKE_BASE, SimConst.SHOULDER_STRIKE_TIP, SimConst.SHOULDER_STRIKE_THICKNESS], "any weapon's bash shoulder")
+	assert_eq(Swing.strike_segment(&"right_shoulder", Moves.KATANA).thickness, SimConst.SHOULDER_STRIKE_THICKNESS)
+
+
+func test_a_shoulders_sample_is_its_joint_facing_out_along_the_shoulders() -> void:
+	var f: FighterModel = _hunter(&"greatsword")
+	var poser: ClipPoser = ClipPoser.new(f, ["ual/Sword_Idle"] as Array[String])
+	var p: Dictionary = poser.pose(0.2)
+	var sk: Skeleton3D = f.skeleton
+	for side: String in ["Left", "Right"]:
+		var s: Swing.Sample = p[StringName(side.to_lower() + "_shoulder")]
+		var joint: V3 = ClipPoser.to_fighter(sk.get_bone_global_pose(sk.find_bone(side + "UpperArm")).origin)
+		# (read after the whole stack; the off hand's IK, after the capture,
+		# moves the left shoulder a little)
+		assert_almost_eq(V3.length(V3.sub(s.grip, joint)), 0.0, 0.02, "%s: at the joint" % side)
+		# out along the shoulder line: to the fighter's left for the left (+X is right)
+		assert_true(s.blade.x < -0.5 if side == "Left" else s.blade.x > 0.5, "%s: out along the shoulders (%s)" % [side, s.blade.x])
+		assert_gt(s.edge.z, 0.5, "%s: its edge forward" % side)
+
+
 func test_a_chain_plays_its_clips_one_after_another() -> void:
 	var f: FighterModel = _hunter(&"katana")
 	var first: float = f.animation_player.get_animation("ual/Sword_Regular_A").length

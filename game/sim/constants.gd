@@ -31,6 +31,14 @@ const JUMP_CLEAR: float = 0.3 # feet height above which low attacks miss
 ## further than the same swing without the flag. Presentation reads it for
 ## the reach shown on the warning mark.
 const UNBLOCKABLE_SWEEP_BONUS: float = 0.1
+## A bash's striking shoulder (authored-animation task 19; Swing's
+## left_shoulder and right_shoulder tracks): in the shoulder's frame (origin
+## at the shoulder joint, +Y out along the shoulder line, +X forward), from
+## just inside the joint to the outside of the upper arm, 24 cm thick for the
+## deltoid and the arm's bulk.
+const SHOULDER_STRIKE_BASE: float = -0.04
+const SHOULDER_STRIKE_TIP: float = 0.08
+const SHOULDER_STRIKE_THICKNESS: float = 0.24
 
 # --- Defence ---------------------------------------------------------------
 const PARRY_POSTURE: float = 16.0 # "each parry does a consistent amount of posture damage"

@@ -39,12 +39,12 @@ const MOVES: Dictionary = {
 	&"g_sl": {
 		"id": &"g_sl", "name": "Shoulder Charge", "kind": &"light", "type": &"bash", "anim": &"bash", "sound": &"fist",
 		"startup": 10, "active": 6, "recovery": 20, "damage": 5, "posture": 14, "knockback": 1.3,
-		"range": 1.5, "arc": 100, "lunge": 2.2, "lunge_end": 16,
+		"range": 1.5, "arc": 100, "lunge": 3.35, "lunge_end": 16,
 	},
 	&"g_sh": {
 		"id": &"g_sh", "name": "Leaping Smash", "kind": &"heavy", "type": &"overhead", "anim": &"leapCleave", "sound": C,
 		"startup": 26, "active": 5, "recovery": 32, "damage": 18, "posture": 22, "knockback": 1.8,
-		"range": 3.0, "arc": 70, "lunge": 3.0, "lunge_start": 6, "lunge_end": 28, "hop": 5.5, "hitstop": 10,
+		"range": 3.0, "arc": 70, "lunge": 3.15, "lunge_start": 6, "lunge_end": 28, "hop": 5.5, "hitstop": 10,
 	},
 	# Piercing Lunge, on light out of a dodge: a quick stab that a block stops
 	&"g_dl": {
@@ -62,12 +62,12 @@ const MOVES: Dictionary = {
 	&"g_bl": {
 		"id": &"g_bl", "name": "Rising Edge", "kind": &"light", "type": &"slash", "anim": &"diagUp", "sound": C,
 		"startup": 14, "active": 4, "recovery": 20, "damage": 8, "posture": 10, "knockback": 0.7,
-		"range": 2.8, "arc": 110, "lunge": 0.9,
+		"range": 2.8, "arc": 110, "lunge": 1.15,
 	},
 	&"g_bh": {
 		"id": &"g_bh", "name": "Lunge Cleave", "kind": &"heavy", "type": &"slash", "anim": &"diagDown", "sound": C,
 		"startup": 24, "active": 5, "recovery": 28, "damage": 14, "posture": 18, "knockback": 1.5,
-		"range": 3.0, "arc": 80, "lunge": 2.2, "lunge_start": 6, "lunge_end": 26,
+		"range": 3.0, "arc": 80, "lunge": 2.35, "lunge_start": 6, "lunge_end": 26,
 	},
 	&"g_jl": {
 		"id": &"g_jl", "name": "Aerial Chop", "kind": &"light", "type": &"slash", "anim": &"airSlash", "sound": C,
@@ -94,7 +94,7 @@ const MOVES: Dictionary = {
 	&"g_crush": {
 		"id": &"g_crush", "name": "Guard Crusher", "kind": &"ability", "type": &"bash", "anim": &"bash", "sound": &"fist",
 		"startup": 14, "active": 5, "recovery": 22, "damage": 4, "posture": 20, "knockback": 1.2,
-		"range": 1.6, "arc": 100, "lunge": 1.6, "lunge_end": 18, "guard_crush": 1.6,
+		"range": 1.6, "arc": 100, "lunge": 1.85, "lunge_end": 18, "guard_crush": 1.6,
 	},
 	&"g_lunge": {
 		"id": &"g_lunge", "name": "Counter Lunge", "kind": &"light", "type": &"slash", "anim": &"drawCut", "sound": C,

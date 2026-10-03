@@ -140,6 +140,16 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "g_l2", "field": "lunge", "was": 0.4, "now": 0.55},
 	{"move": "g_h1", "field": "lunge", "was": 0.7, "now": 1.05},
 	{"move": "g_h1", "field": "recovery", "was": 32, "now": 29},
+	# authored animation 19: the Greatsword's movement attacks and Guard
+	# Crusher reach less far on their clips than their cones, so their lunges
+	# carry them to a touch from their test distances (sprint 4.5 and 5.5 m,
+	# back 3.5 and 5.0, the ability 3.0); the bashes strike with the left
+	# shoulder
+	{"move": "g_sl", "field": "lunge", "was": 2.2, "now": 3.35},
+	{"move": "g_sh", "field": "lunge", "was": 3.0, "now": 3.15},
+	{"move": "g_bl", "field": "lunge", "was": 0.9, "now": 1.15},
+	{"move": "g_bh", "field": "lunge", "was": 2.2, "now": 2.35},
+	{"move": "g_crush", "field": "lunge", "was": 1.6, "now": 1.85},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

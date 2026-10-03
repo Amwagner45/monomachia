@@ -145,6 +145,13 @@ func _capture() -> void:
 		var axes: Array = _foot_axes[bone]
 		var basis: Basis = foot.basis.orthonormalized()
 		out[StringName(side + "_foot")] = limb_sample(foot.origin, basis * (axes[0] as Vector3), basis * (axes[1] as Vector3))
+		# the shoulder a bash strikes with: out along the shoulder line, its
+		# edge the chest's forward
+		var other: String = SIDES["left" if side == "right" else "right"]
+		var joint: Vector3 = sk.get_bone_global_pose(sk.find_bone(bone + "UpperArm")).origin
+		var away: Vector3 = joint - sk.get_bone_global_pose(sk.find_bone(other + "UpperArm")).origin
+		var chest: Basis = sk.get_bone_global_pose(sk.find_bone("UpperChest")).basis.orthonormalized()
+		out[StringName(side + "_shoulder")] = limb_sample(joint, away, chest.z)
 	var body: Swing.Sample = Swing.Sample.new()
 	var hips: int = sk.find_bone("Hips")
 	body.pelvis = coil(sk, hips)

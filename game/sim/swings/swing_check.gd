@@ -112,7 +112,7 @@ class Moment:
 static func check(move: AttackDef, weapon: WeaponDef, body: ReferenceBody, chained_from: Swing = null) -> Array[String]:
 	var out: Array[String] = []
 	var swing: Swing = move.swing
-	if swing == null or swing.is_baked(&"right_hand") or swing.is_baked(&"left_hand"):
+	if swing == null or not swing.clips.is_empty() or swing.is_baked(&"right_hand") or swing.is_baked(&"left_hand"):
 		return out
 	if weapon.off_hand_grip != null and swing.parts().has(&"left_hand"):
 		out.append("left_hand: a weapon held in both hands keys no left hand; it grips the off-hand grip")

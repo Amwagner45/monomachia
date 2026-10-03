@@ -27,7 +27,14 @@
 		"g_l1": {"clips": ["Attack2H01"], "speed": 1.15, "fallback": "Sword_Heavy_A", "marks": {"windup": 8, "contact": 16, "contact_end": 18.3, "settle": 31}},
 		"g_l2": {"clips": ["Attack2H01_Mirror"], "speed": 1.45, "fallback": "Sword_Heavy_B", "marks": {"windup": 8, "contact": 16, "contact_end": 19, "settle": 34.9}},
 		"g_h1": {"clips": ["Attack2H02"], "speed": 1.53, "fallback": "Sword_Heavy_C", "marks": {"windup": 0, "hold": 8, "contact": 21, "contact_end": 24.8, "settle": 47}},
-		"g_dl": {"clips": ["AttackPolearm01"], "speed": 1.83, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 11, "contact_end": 13.5, "settle": 32}}
+		"g_sl": {"clips": ["ual/Shield_Dash@0*4", "ual/Shield_Dash@0"], "speed": 1.2, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 6, "contact_end": 9.6, "settle": 21.6}},
+		"g_sh": {"clips": ["ual/Sword_GroundPound@0-3", "ual/Sword_GroundPound@3*4", "ual/Sword_GroundPound@3"], "speed": 1.0, "fallback": "Sword_Heavy_Combo", "marks": {"windup": 0, "contact": 13, "contact_end": 15.5, "settle": 31.5}},
+		"g_dl": {"clips": ["AttackPolearm01"], "speed": 1.83, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 11, "contact_end": 13.5, "settle": 32}},
+		"g_bl": {"clips": ["Attack1H05_R"], "speed": 1.14, "fallback": "Sword_Regular_A", "marks": {"windup": 0, "contact": 8, "contact_end": 10.3, "settle": 21.7}},
+		"g_bh": {"clips": ["Attack2H04"], "speed": 1.17, "fallback": "Sword_Heavy_A", "marks": {"windup": 0, "contact": 14, "contact_end": 16.9, "settle": 33.3}},
+		"g_jl": {"clips": ["Attack2H01"], "speed": 1.33, "fallback": "Sword_Attack", "marks": {"windup": 8, "contact": 16, "contact_end": 18.7, "settle": 30.7}},
+		"g_crush": {"clips": ["AttackShield01"], "speed": 1.0, "fallback": "Idle_Shield_Break", "marks": {"windup": 0, "contact": 7, "contact_end": 9.5, "settle": 20.5}},
+		"g_lunge": {"clips": ["AttackPolearm01@4"], "speed": 1.75, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 7, "contact_end": 9.6, "settle": 28.9}}
 	}},
 	"daggers": {"guard": "CombatIdle1H01", "moves": {}},
 	"fists": {"guard": "CombatIdle01", "moves": {}}

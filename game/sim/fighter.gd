@@ -20,7 +20,7 @@ extends RefCounted
 ##   SimMath.js_round; every TS division of two ints is written as a float
 ##   division.
 ## - body and hurt_capsule() are the rebuild's (task 7.5), as are
-##   place_blades() and blade_segments() (task 7.9).
+##   place_blades() and blade_segments() (task 7.9) and blade_touch() (7.10).
 
 ## FState
 const STATES: Array[StringName] = [
@@ -154,6 +154,18 @@ func blade_segments() -> Array[BladeSegment]:
 	if state != &"attack" or atk == null:
 		return [] as Array[BladeSegment]
 	return atk.blades
+
+
+## The touch of this tick's blade sweeps on `capsule` (task 7.10): the
+## deepest of the striking tracks' (the first on a tie), or null when none
+## touches or the attack has no swing.
+func blade_touch(capsule: Capsule) -> BladeSweep:
+	var deepest: BladeSweep = null
+	for b: BladeSegment in blade_segments():
+		var touch: BladeSweep = BladeSweep.touch(b.prev_base, b.prev_tip, b.base, b.tip, b.half_thickness, capsule)
+		if touch != null and (deepest == null or touch.depth > deepest.depth):
+			deepest = touch
+	return deepest
 
 
 ## Places each striking track of the attack's swing in the world for this

@@ -172,8 +172,9 @@ func test_the_segment_holds_in_a_charge_and_through_extra_recovery() -> void:
 
 func test_the_segment_holds_in_hit_stop() -> void:
 	var cut: AttackDef = Moves.KATANA.moves[&"k_l1"]
-	# 2.2 m apart: Right Cut's cone reaches the idle opponent
-	var W: World = H.make_world(SF.weapon(&"katana", {&"k_l1": SF.level_slash(cut, 1.2)}), Moves.KATANA, 2.2)
+	# 1.6 m apart: the lunge closes to 1.25 m, and the slash cuts through the
+	# idle opponent (task 7.10: its sweep decides)
+	var W: World = H.make_world(SF.weapon(&"katana", {&"k_l1": SF.level_slash(cut, 1.2)}), Moves.KATANA, 1.6)
 	var f: Fighter = W.fighters[0]
 	var hit: bool = false
 	for i: int in 20:

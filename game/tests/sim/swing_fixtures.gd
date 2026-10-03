@@ -67,13 +67,14 @@ static func slash_guard() -> Swing.KeyPose:
 
 
 ## The right hand's pose on a level slash at `height`, `deg` round from
-## straight ahead toward the fighter's right: the grip 0.45 m out, the blade
-## pointing out from the body and the edge leading toward the left.
-static func level_pose(frame: int, height: float, deg: float, ease: float = 1.0) -> Swing.KeyPose:
+## straight ahead toward the fighter's right: the grip `radius` out from
+## between the feet, the blade pointing straight out and the edge leading
+## toward the left.
+static func level_pose(frame: int, height: float, deg: float, ease: float = 1.0, radius: float = 0.45) -> Swing.KeyPose:
 	var a: float = deg * SimMath.DEG
 	var s: float = JsMath.sin(a)
 	var c: float = JsMath.cos(a)
-	return key(frame, [0.45 * s, height, 0.45 * c], [s, 0.0, c], [-c, 0.0, s], ease)
+	return key(frame, [radius * s, height, radius * c], [s, 0.0, c], [-c, 0.0, s], ease)
 
 
 ## A level right-to-left slash for `move` at `height` (from 60° right to 60°
@@ -81,16 +82,30 @@ static func level_pose(frame: int, height: float, deg: float, ease: float = 1.0)
 ## keyed on every frame from the last of the startup through the last active
 ## one, so its blade is exactly level at each of them, cocked 4 frames
 ## before and settling 20° on, 4 frames after. It enters from slash_guard()
-## and goes back to it.
-static func level_slash(move: AttackDef, height: float = 1.2, from_deg: float = 60.0, to_deg: float = -60.0) -> Swing:
+## and goes back to it. The grip is `radius` out (a Katana's tip 0.78 m
+## further).
+static func level_slash(move: AttackDef, height: float = 1.2, from_deg: float = 60.0, to_deg: float = -60.0,
+		radius: float = 0.45) -> Swing:
 	var S: int = move.startup
 	var A: int = move.active
-	var keys: Array[Swing.KeyPose] = []
-	keys.append(level_pose(maxi(S - 4, 0), height, from_deg, 0.0))
+	var degs: Dictionary[int, float] = {maxi(S - 4, 0): from_deg}
 	for i: int in A + 1:
-		keys.append(level_pose(S + i, height, from_deg + (to_deg - from_deg) * i / A))
-	var on: float = to_deg + signf(to_deg - from_deg) * 20.0
-	keys.append(level_pose(mini(S + A + 4, move.total_frames()), height, on, 0.0))
+		degs[S + i] = from_deg + (to_deg - from_deg) * i / A
+	degs[mini(S + A + 4, move.total_frames())] = to_deg + signf(to_deg - from_deg) * 20.0
+	return level_swing(move, height, degs, radius, [maxi(S - 4, 0), mini(S + A + 4, move.total_frames())])
+
+
+## A level swing for `move` at `height`: the right hand keyed at each frame of
+## `degs` at its angle (see level_pose()), with ease 0 at the frames of
+## `still` and 1 elsewhere, entering from slash_guard() and going back to it.
+static func level_swing(move: AttackDef, height: float, degs: Dictionary[int, float], radius: float = 0.45,
+		still: Array[int] = []) -> Swing:
+	var frames: Array[int] = []
+	frames.assign(degs.keys())
+	frames.sort()
+	var keys: Array[Swing.KeyPose] = []
+	for f: int in frames:
+		keys.append(level_pose(f, height, degs[f], 0.0 if still.has(f) else 1.0, radius))
 	var s: Swing = Swing.new(move.total_frames(), {RIGHT: slash_guard()} as Dictionary[StringName, Swing.KeyPose])
 	s.add_track(RIGHT, keys)
 	return s

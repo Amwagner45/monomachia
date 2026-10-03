@@ -20,7 +20,8 @@ extends RefCounted
 ##   freed. Call it when a world is no longer needed.
 ## - step() places each attacking fighter's blades in the world after
 ##   separating the fighters and before resolving combat (Fighter.place_blades,
-##   the rebuild's task 7.9).
+##   the rebuild's task 7.9), and evaluate() asks reaches() where the TS asks
+##   inVolume: a move with a swing reaches by its blades' sweeps (task 7.10).
 
 
 ## { chargeF, backstab }: the context an attack carries into apply().
@@ -157,6 +158,16 @@ func in_volume(a: Fighter, b: Fighter, def: AttackDef) -> bool:
 	return a.angle_to(b.pos) <= half
 
 
+## Whether a's attack `def` reaches b this frame. A move with a swing reaches
+## when a sweep of its blades touches b's hurt capsule (task 7.10); one
+## without keeps the demo's cone (in_volume), so the Duel plays as it did
+## while swings are authored.
+func reaches(a: Fighter, b: Fighter, def: AttackDef) -> bool:
+	if def.swing == null:
+		return in_volume(a, b, def)
+	return a.blade_touch(b.hurt_capsule()) != null
+
+
 static func _skip_separate(f: Fighter) -> bool:
 	return f.state == &"leap" or f.state == &"impaled" or f.state == &"ko" or f.state == &"stomp"
 
@@ -245,7 +256,7 @@ func evaluate(a: Fighter, b: Fighter, def: AttackDef, scripted: bool) -> StringN
 	):
 		return &"leap"
 
-	if not scripted and not in_volume(a, b, def):
+	if not scripted and not reaches(a, b, def):
 		return &"miss"
 	if def.jumpable and b.pos.y > SimConst.JUMP_CLEAR:
 		return &"jumped"

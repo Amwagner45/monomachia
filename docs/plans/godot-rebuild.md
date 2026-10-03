@@ -209,7 +209,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - after 10.3 and its review fixes, with the animation lane merged: 926 Godot tests (137 s) and 85 web tests pass, and the typecheck loads 196 scripts;
   - after 11.1 and its review fixes: 934 Godot tests (144 s) and 85 web tests pass, and the typecheck loads 197 scripts;
   - after 11.2 and its review fixes: 937 Godot tests (148 s) and 85 web tests pass, and the typecheck loads 197 scripts;
-  - after 11.3 and its review fixes: 945 Godot tests (149 s) and 85 web tests pass, and the typecheck loads 197 scripts.
+  - after 11.3 and its review fixes: 945 Godot tests (149 s) and 85 web tests pass, and the typecheck loads 197 scripts; rebased onto PR #6 (the guard's footfalls), 949 Godot tests (149 s) pass.
   - the animation lane after 14.7, with 9.3 merged in: 846 Godot tests (100 s; the animation tests take most of the extra time) and 85 web tests pass, the typecheck loads 189 scripts, and the skeleton exchange shot renders with no leaks at exit. Every check added in 14.3–14.7 was mutation-tested (each task's Done lists them);
   - the animation lane after 14.9, with 10.2 merged in: 919 Godot tests (165 s) and 85 web tests pass, the typecheck loads 196 scripts, and the skeleton exchange and Iai stance shots render with no leaks at exit. 14.8's and 14.9's checks were mutation-tested too (each task's Done lists them).
 - **The look-and-arena worktree, fully salvaged:**

@@ -29,8 +29,11 @@ extends RefCounted
 ## object instead of a list of keys, {"baked": true, "keys": [...]}, with a
 ## key on every frame from 0 to the move's last, in order, and no ease: it is
 ## played key by key, never splined (Swing.add_track()). A baked track with a
-## frame missing is refused. The bake writes these files with a stable key
-## order and fixed decimals.
+## frame missing is refused. A baked swing may also carry "reach", its reach
+## correction ([right, up, forward] metres, at most 15 cm; Swing.reach_offset),
+## and "rogue_humanm": true when the Rogue plays the Hunter's clip for it
+## (task 7). The bake writes these files with a stable key order and fixed
+## decimals.
 
 const DIR: String = "res://sim/moves/swings/"
 
@@ -40,7 +43,9 @@ const LIMB_FIELDS: Dictionary[String, bool] = {"grip": true, "blade": true, "edg
 const BODY_FIELDS: Dictionary[String, bool] = {"torso": true, "pelvis": true, "pelvis_shift": false}
 const KEY_FIELDS: Dictionary[String, bool] = {"frame": true, "ease": false}
 const FILE_FIELDS: Array[String] = ["guard", "swings"]
-const SWING_FIELDS: Array[String] = ["tracks"]
+const SWING_FIELDS: Array[String] = ["tracks", "reach", "rogue_humanm"]
+## The longest reach correction a swing may carry (m; SwingBake).
+const MAX_REACH: float = 0.15
 ## The fields of a baked track: true when required.
 const BAKED_FIELDS: Dictionary[String, bool] = {"baked": true, "keys": true}
 
@@ -147,6 +152,18 @@ static func _swing(record: Variant, move: AttackDef, where: String, guard: Dicti
 		errors.append("%s: needs tracks, an object of parts" % where)
 		return null
 	var swing: Swing = Swing.new(move.total_frames(), guard)
+	swing.reach_startup = move.startup
+	swing.reach_active = move.active
+	var d: Dictionary = record
+	if d.has("reach"):
+		swing.reach_offset = _vector(d, "reach", where, errors)
+		if V3.length(swing.reach_offset) > MAX_REACH + 1e-6:
+			errors.append("%s: the reach correction is %.1f cm; at most %.0f" % [where, V3.length(swing.reach_offset) * 100.0, MAX_REACH * 100.0])
+	if d.has("rogue_humanm"):
+		if typeof(d["rogue_humanm"]) != TYPE_BOOL:
+			errors.append("%s: rogue_humanm must be true or false" % where)
+		else:
+			swing.rogue_humanm = d["rogue_humanm"]
 	for part_name: Variant in tracks:
 		var part := StringName(str(part_name))
 		var at: String = "%s.%s" % [where, part]

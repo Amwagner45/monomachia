@@ -14,6 +14,8 @@ extends RefCounted
 const FOLDER: String = "res://assets/kevin_iglesias/library"
 ## The clip sets, in the order the import tool writes them.
 const SETS: Array[StringName] = [&"HumanM", &"HumanF"]
+## Each fighter's own clip set.
+const FIGHTER_SETS: Dictionary[StringName, StringName] = {&"hunter": &"HumanM", &"rogue": &"HumanF"}
 
 
 ## Where a set's library is saved.
@@ -35,3 +37,13 @@ static func load_set(set_name: StringName) -> AnimationLibrary:
 	if not ResourceLoader.exists(p):
 		return null
 	return load(p) as AnimationLibrary
+
+
+## The clip set fighter `fighter_id` plays a move with `swing` (null for a move
+## without one) from: its own, except that the Rogue plays the Hunter's
+## HumanM for a move whose HumanF clip strays from the shared path
+## (Swing.rogue_humanm, authored-animation task 7).
+static func set_for(fighter_id: StringName, swing: Swing = null) -> StringName:
+	if fighter_id == &"rogue" and swing != null and swing.rogue_humanm:
+		return &"HumanM"
+	return FIGHTER_SETS.get(fighter_id, &"HumanM")

@@ -244,6 +244,8 @@ func test_local_a_move_bakes_from_an_iglesias_clip() -> void:
 	assert_eq(out["errors"], [] as Array[String])
 	assert_eq((out["report"] as PackedStringArray).size(), 1)
 	assert_string_contains(out["report"][0], "k_l1 (Attack1H01_R ×")
+	assert_string_contains(out["report"][0], "reach from 2.5 m: ", "the reach, measured from the duelling distance")
+	assert_string_contains(out["report"][0], "Rogue: HumanF ", "the Rogue's clip, measured")
 	var data: Dictionary = JSON.parse_string(out["text"])
 	assert_eq(data["guard"].keys(), ["right_hand", "body"], "the guard has the parts the swings move")
 	var track: Dictionary = data["swings"]["k_l1"]["tracks"]["right_hand"]
@@ -256,3 +258,118 @@ func test_local_a_move_bakes_from_an_iglesias_clip() -> void:
 		var grip: Array = key["grip"]
 		assert_between(float(grip[1]), 0.3, 2.2, "frame %d: the grip at a hand's height" % key["frame"])
 		assert_lt(Vector2(grip[0], grip[2]).length(), 1.2, "frame %d: the grip within an arm's reach" % key["frame"])
+
+
+# --- task 7: the reach correction and the Rogue's paths -----------------------
+
+func _katana_cut(speed: float) -> Array:
+	var f: FighterModel = _hunter(&"katana")
+	var poser: ClipPoser = ClipPoser.new(f, [CLIP])
+	return [f, poser, _bake(poser, speed, [&"right_hand", &"body"] as Array[StringName])]
+
+
+
+func test_the_reach_correction_eases_in_and_out_and_is_zero_outside_the_attack() -> void:
+	# startup 10, active 4, last frame 30
+	assert_eq(Swing.reach_weight_at(0.0, 10, 4, 30), 0.0, "none on frame 0")
+	assert_eq(Swing.reach_weight_at(-3.0, 10, 4, 30), 0.0)
+	assert_almost_eq(Swing.reach_weight_at(5.0, 10, 4, 30), 0.5, 1e-9, "easing in over the wind-up")
+	for f: int in range(10, 15):
+		assert_eq(Swing.reach_weight_at(float(f), 10, 4, 30), 1.0, "all of it on frame %d" % f)
+	assert_almost_eq(Swing.reach_weight_at(22.0, 10, 4, 30), 0.5, 1e-9, "easing out over the recovery")
+	assert_eq(Swing.reach_weight_at(30.0, 10, 4, 30), 0.0, "none on the last frame")
+	assert_eq(Swing.reach_weight_at(40.0, 10, 4, 30), 0.0)
+
+
+func test_a_short_light_is_pushed_toward_the_reach_rule() -> void:
+	var k: WeaponDef = Moves.WEAPONS[&"katana"]
+	var cut: AttackDef = k.moves[&"k_l1"]
+	var got: Array = _katana_cut(1.5)
+	var r: SwingBake.Result = got[2]
+	var raw: Array = (r.tracks[&"right_hand"] as Array).duplicate()
+	# a distance where the cut puts about 8 cm in: short of the rule's 15
+	var near: SwingBake.Reach = SwingBake.correct_reach(r, cut, k, 1.5)
+	assert_gt(near.before, SwingBake.LIGHT_MAX_INSIDE, "from 1.5 m it goes deep")
+	assert_true(near.over, "a light over 20 cm in is reported")
+	assert_eq(V3.length(near.offset), 0.0, "and not pulled back")
+	var d: float = 1.5 + near.before - 0.08
+	got = _katana_cut(1.5)
+	r = got[2]
+	var reach: SwingBake.Reach = SwingBake.correct_reach(r, cut, k, d)
+	assert_between(reach.before, 0.0, SwingBake.LIGHT_MIN_INSIDE, "short of 15 cm before")
+	assert_false(reach.short)
+	assert_gt(V3.length(reach.offset), 0.0, "pushed")
+	assert_lte(V3.length(reach.offset), SwingBake.MAX_REACH, "at most 15 cm")
+	assert_gte(reach.after, SwingBake.LIGHT_AIM - 0.002, "into the rule's band")
+	assert_lte(reach.after, SwingBake.LIGHT_MAX_INSIDE)
+	assert_eq(V3.length(V3.sub(r.reach_offset, reach.offset)), 0.0, "kept with the swing")
+	var t: ClipTiming = r.timing
+	for f: int in [0, t.total()]:
+		assert_eq(V3.distance((r.tracks[&"right_hand"][f] as Swing.Sample).grip, (raw[f] as Swing.Sample).grip), 0.0, "frame %d untouched" % f)
+	var moved: float = V3.distance((r.tracks[&"right_hand"][t.startup + 1] as Swing.Sample).grip, (raw[t.startup + 1] as Swing.Sample).grip)
+	assert_almost_eq(moved, V3.length(reach.offset), 1e-9, "all of it in the active frames")
+	var swing: Swing = SwingFile.parse(SwingBake.file_text(SwingBake.guard_record(got[1].pose(0.0)), {"t_cut": r.record()}),
+		_moves(t), "reach.json")[&"t_cut"]
+	assert_lt(V3.distance(swing.reach_offset, reach.offset), 1e-4, "the swing file carries it")
+	assert_lt(V3.distance(swing.reach_at(float(t.startup + 1)), reach.offset), 1e-4)
+
+
+func test_a_move_that_needs_more_than_15_cm_is_reported() -> void:
+	var k: WeaponDef = Moves.WEAPONS[&"katana"]
+	var r: SwingBake.Result = _katana_cut(1.5)[2]
+	# the CC0 cut's tip gets 1.26 m ahead: from the Katana's 2.5 m it can't
+	# reach the defender, however far the arm goes
+	var reach: SwingBake.Reach = SwingBake.correct_reach(r, k.moves[&"k_l1"], k)
+	assert_eq(reach.distance, k.duel_distance, "a light is tested from its duelling distance")
+	assert_true(reach.short)
+	assert_almost_eq(V3.length(reach.offset), SwingBake.MAX_REACH, 1e-9, "the most is applied")
+
+
+func test_the_visible_blade_follows_the_corrected_path() -> void:
+	var got: Array = _katana_cut(1.5)
+	var f: FighterModel = got[0]
+	var poser: ClipPoser = got[1]
+	var r: SwingBake.Result = got[2]
+	SwingBake.apply_reach(r, V3.make(0.0, 0.0, 0.1))
+	var swing: Swing = SwingBake.swing_of(r)
+	swing.reach_offset = r.reach_offset
+	var t: ClipTiming = r.timing
+	var sk: Skeleton3D = f.skeleton
+	for frame: int in range(t.startup, t.startup + t.active + 1):
+		f.rig.reach_offset["Right"] = SwingPlayer.to_skeleton(swing.reach_at(float(frame)))
+		var hand: Array[Vector3] = []
+		var grab: Callable = func() -> void:
+			hand.append(sk.get_bone_global_pose(sk.find_bone("RightHand")) * f.rig.fist("Right").origin)
+		(sk.get_node(^"RigCarry") as SkeletonModifier3D).modification_processed.connect(grab, CONNECT_ONE_SHOT)
+		poser.pose(r.times[frame])
+		var shown: Vector3 = f.weapons[0].transform.origin
+		var baked: Vector3 = SwingPlayer.to_skeleton((r.tracks[&"right_hand"][frame] as Swing.Sample).grip)
+		assert_lt(shown.distance_to(baked), 0.01, "frame %d: the blade shown is the baked path's (%.1f cm)" % [frame, shown.distance_to(baked) * 100.0])
+		assert_lt(hand[0].distance_to(shown), 0.01, "frame %d: the hand holds it (%.1f cm)" % [frame, hand[0].distance_to(shown) * 100.0])
+	f.rig.reach_offset["Right"] = Vector3.ZERO
+
+
+func test_the_rogues_drift_and_a_flagged_move_plays_humanm() -> void:
+	var got: Array = _katana_cut(1.5)
+	var r: SwingBake.Result = got[2]
+	assert_eq(SwingBake.drift(r, (got[1] as ClipPoser).pose), 0.0, "the Hunter's own clip is on the path")
+	var rogue: FighterModel = FighterLook.instantiate_fighter(&"rogue")
+	rogue.autoplay_idle = false
+	add_child_autofree(rogue)
+	rogue.attach_weapon(WeaponLook.load_id(&"katana"))
+	var drift: float = SwingBake.drift(r, ClipPoser.new(rogue, [CLIP]).pose)
+	assert_gt(drift, 0.0, "the Rogue's smaller body holds the blade elsewhere")
+	assert_lt(drift, 0.3)
+	var swing: Swing = SwingBake.swing_of(r)
+	assert_eq(ClipLibraries.set_for(&"rogue", swing), &"HumanF", "on the path: her own clip")
+	assert_eq(ClipLibraries.set_for(&"hunter", swing), &"HumanM")
+	swing.rogue_humanm = true
+	assert_eq(ClipLibraries.set_for(&"rogue", swing), &"HumanM", "flagged: the Hunter's clip")
+	assert_eq(ClipLibraries.set_for(&"hunter", swing), &"HumanM")
+	assert_eq(ClipLibraries.set_for(&"rogue"), &"HumanF", "a move without a swing: her own")
+	r.rogue_humanm = true
+	var record: Dictionary = r.record()
+	assert_true(record["rogue_humanm"])
+	var read: Swing = SwingFile.parse(SwingBake.file_text(SwingBake.guard_record((got[1] as ClipPoser).pose(0.0)), {"t_cut": record}),
+		_moves(r.timing), "rogue.json")[&"t_cut"]
+	assert_true(read.rogue_humanm, "the swing file carries the flag")

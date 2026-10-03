@@ -10,17 +10,25 @@ extends SceneTree
 ## - --weapon: only that weapon (default: every weapon with a move fitted);
 ## - --check: write nothing; exit 1 if a file would change.
 ##
-## A move whose baked frames differ from its frame data is marked in the
-## report: its frame data is retuned by hand in game/sim/moves/<weapon>.gd,
+## Each move's reach is corrected toward the reach rule (SwingBake.
+## correct_reach(); the report gives the blade inside the defender before
+## and after, and marks a move that needs more than 15 cm), and the Rogue
+## playing HumanF is measured against the path (SwingBake.drift()): past
+## 5 cm the swing says she plays HumanM. A move whose baked frames differ
+## from its frame data is marked in the report: its frame data is retuned by hand in game/sim/moves/<weapon>.gd,
 ## in the same commit as its swing (the file is refused until then). Moves
 ## of the file the table doesn't fit (baked before) are kept; the guard is
 ## read afresh from the weapon's idle clip. Exits 2 without the libraries.
 
 const SET: StringName = &"HumanM"
+## The Rogue's own clip set, measured against the Hunter's path.
+const ROGUE_SET: StringName = &"HumanF"
 const EXIT_NO_LIBRARIES: int = 2
 
 
 func _initialize() -> void:
+	# the fighters' skeletons pose only once the main loop runs
+	await process_frame
 	var args: PackedStringArray = OS.get_cmdline_user_args()
 	var only: StringName = &""
 	for a: String in args:
@@ -81,6 +89,13 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 	if WeaponLook.IDS.has(wid):
 		model.attach_weapon(WeaponLook.load_id(wid))
 	model.animation_player.add_animation_library(SET, ClipLibraries.load_set(SET))
+	var rogue: FighterModel = FighterLook.instantiate_fighter(&"rogue")
+	rogue.autoplay_idle = false
+	parent.add_child(rogue)
+	if WeaponLook.IDS.has(wid):
+		rogue.attach_weapon(WeaponLook.load_id(wid))
+	rogue.animation_player.add_animation_library(ROGUE_SET, ClipLibraries.load_set(ROGUE_SET))
+	rogue.animation_player.add_animation_library(SET, ClipLibraries.load_set(SET))
 	var kept: Dictionary = {}
 	if old != "":
 		var data: Variant = JSON.parse_string(old)
@@ -104,10 +119,33 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 		if r == null:
 			errors.append("%s: %s" % [id, "; ".join(why)])
 			continue
-		baked[String(id)] = r.record()
+		# the Rogue's HumanF clip against HumanM on her own body: her smaller
+		# body holds any clip's blade some way off the Hunter's path, which
+		# her hand IK closes; what flags a move is her clip moving otherwise
+		var own_chain: Array[String] = []
+		for clip: StringName in e.clips:
+			own_chain.append("%s/%s" % [ROGUE_SET, clip])
+		var own: ClipPoser = ClipPoser.new(rogue, own_chain)
+		var hunters: ClipPoser = ClipPoser.new(rogue, chain)
+		var on_her: SwingBake.Result = SwingBake.bake(hunters.pose, hunters.length, markers, speed, SwingBake.parts_for(move, weapon), why)
+		if on_her == null:
+			errors.append("%s on the Rogue: %s" % [id, "; ".join(why)])
+			continue
+		var drift: float = SwingBake.drift(on_her, own.pose)
+		var off_path: float = SwingBake.drift(r, own.pose)
+		r.rogue_humanm = drift > SwingBake.ROGUE_DRIFT
 		var line: String = SwingBake.report_line(id, " + ".join(e.clips), r.timing, move)
 		if r.timing.total() != move.total_frames() or r.timing.startup != move.startup or r.timing.active != move.active:
 			line += "  <- retune in sim/moves/%s.gd" % wid
+		if move.damage > 0.0 or move.posture > 0.0:
+			var reach: SwingBake.Reach = SwingBake.correct_reach(r, move, weapon)
+			line += "\n      reach from %.1f m: %s inside, %s after a %.1f cm push%s%s; first touch on frame %d" % [
+				reach.distance, _cm(reach.before), _cm(reach.after), V3.length(reach.offset) * 100.0,
+				"  <- needs more than 15 cm: another clip or a lunge" if reach.short else "",
+				"  <- over 20 cm inside" if reach.over else "", reach.first_touch]
+		line += "\n      Rogue: HumanF %.1f cm off HumanM on her body (%.1f cm off the Hunter's path)%s" % [
+			drift * 100.0, off_path * 100.0, ": she plays HumanM" if r.rogue_humanm else ""]
+		baked[String(id)] = r.record()
 		report.append(line)
 	# the moves in their weapon's order, those not baked now kept as they were
 	var swings: Dictionary = {}
@@ -124,7 +162,12 @@ static func bake_weapon(wid: StringName, table: MoveClips, manifest: ClipManifes
 	for part: StringName in guard_poses:
 		if used.has(part):
 			guard[part] = guard_poses[part]
-	parent.remove_child(model)
-	model.free()
+	for m: FighterModel in [model, rogue]:
+		parent.remove_child(m)
+		m.free()
 	var text: String = SwingBake.file_text(SwingBake.guard_record(guard), swings) if not swings.is_empty() else old
 	return {"text": text, "report": report, "errors": errors}
+
+
+static func _cm(inside: float) -> String:
+	return "no touch" if inside < 0.0 else "%.1f cm" % (inside * 100.0)

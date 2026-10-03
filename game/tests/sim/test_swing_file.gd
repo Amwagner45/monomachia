@@ -320,3 +320,30 @@ func test_baked_track_mistakes_are_refused() -> void:
 	d = _baked()
 	d["swings"]["t_cut"]["tracks"]["right_hand"]["baked"] = false
 	assert_eq(SwingFile.parse(JSON.stringify(d), _moves(), "good.json").keys(), [&"t_cut"], "baked false: hand-keyed keys in the object form")
+
+
+func test_a_baked_swing_carries_its_reach_correction_and_the_rogues_clip() -> void:
+	var d: Dictionary = _baked()
+	d["swings"]["t_cut"]["reach"] = [0, 0, 0.12]
+	d["swings"]["t_cut"]["rogue_humanm"] = true
+	var cut: Swing = SwingFile.parse(JSON.stringify(d), _moves(), "baked.json")[&"t_cut"]
+	_assert_v3(cut.reach_offset, 0.0, 0.0, 0.12, "the reach correction")
+	assert_eq([cut.reach_startup, cut.reach_active], [4, 2], "eased by the move's frames")
+	_assert_v3(cut.reach_at(5.0), 0.0, 0.0, 0.12, "all of it in the active frames")
+	_assert_v3(cut.reach_at(0.0), 0.0, 0.0, 0.0, "none on frame 0")
+	assert_true(cut.rogue_humanm)
+	var plain: Swing = SwingFile.parse(JSON.stringify(_baked()), _moves(), "baked.json")[&"t_cut"]
+	_assert_v3(plain.reach_offset, 0.0, 0.0, 0.0, "none by default")
+	assert_false(plain.rogue_humanm, "the Rogue's own clip by default")
+
+
+func test_reach_and_rogue_mistakes_are_refused() -> void:
+	var d: Dictionary = _baked()
+	d["swings"]["t_cut"]["reach"] = [0, 0.1, 0.12]
+	_assert_refused(d, "t_cut: the reach correction is 15.6 cm; at most 15", "a correction over 15 cm")
+	d = _baked()
+	d["swings"]["t_cut"]["reach"] = [0, 0.1]
+	_assert_refused(d, "t_cut: reach must be three numbers", "a short vector")
+	d = _baked()
+	d["swings"]["t_cut"]["rogue_humanm"] = 1
+	_assert_refused(d, "t_cut: rogue_humanm must be true or false", "a number for the flag")

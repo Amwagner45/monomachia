@@ -106,6 +106,19 @@ var guard: Dictionary[StringName, KeyPose] = {}
 ## .reach_arc() read them.
 var reach: float = -1.0
 var arc: float = -1.0
+## A baked swing's reach correction (authored-animation task 7, SwingBake):
+## how far its striking tracks' grips were pushed toward the reach rule
+## (metres, right, up, forward; at most 15 cm), already in their keys. It
+## eases in over the startup and out over the recovery (reach_weight()); the
+## view's arm IK plays the same push on a weapon fixed to the clip's hand.
+var reach_offset: V3 = V3.make()
+## The startup and the active frames, which reach_weight() eases by (set by
+## SwingFile from the move).
+var reach_startup: int = 0
+var reach_active: int = 0
+## True when the Rogue's HumanF clip strays more than 5 cm from this path in
+## the active frames, so she plays the Hunter's HumanM clip for it.
+var rogue_humanm: bool = false
 var _tracks: Dictionary[StringName, Array] = {}
 var _ticks: Dictionary[StringName, Array] = {}
 var _baked: Dictionary[StringName, bool] = {}
@@ -134,6 +147,29 @@ func add_track(part: StringName, keys: Array[KeyPose], baked: bool = false) -> v
 ## Whether the track for `part` was baked from a clip.
 func is_baked(part: StringName) -> bool:
 	return _baked.get(part, false)
+
+
+## How much of the reach correction is on at frame `f` (0 to 1): none on
+## frame 0, easing in to all of it on the last startup frame, all of it
+## through the active frames, and easing out to none on the last frame.
+func reach_weight(f: float) -> float:
+	return reach_weight_at(f, reach_startup, reach_active, last_frame)
+
+
+## The reach correction at frame `f` (reach_offset times reach_weight()).
+func reach_at(f: float) -> V3:
+	return V3.scale(reach_offset, reach_weight(f))
+
+
+## reach_weight() for a move of these frames.
+static func reach_weight_at(f: float, startup: int, active: int, last: int) -> float:
+	if f <= 0.0 or f >= float(last):
+		return 0.0
+	if f < float(startup):
+		return smoothstep(0.0, float(startup), f)
+	if f <= float(startup + active):
+		return 1.0
+	return 1.0 - smoothstep(float(startup + active), float(last), f)
 
 
 ## The parts this swing has tracks for, in the order they were added.

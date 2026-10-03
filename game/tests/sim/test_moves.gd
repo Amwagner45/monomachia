@@ -93,6 +93,9 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "d_l2", "field": "hitstun", "was": 18, "now": 10},
 	{"move": "d_l3", "field": "hitstun", "was": 18, "now": 10},
 	{"move": "d_l4", "field": "hitstun", "was": 18, "now": 10},
+	# 11.2: Twin Fang dashes 1.4 m, and the spin after it is Spinning Backhand
+	{"move": "d_h1", "field": "lunge", "was": 0.8, "now": 1.4},
+	{"move": "d_h2", "field": "name", "was": "Gutting Spiral", "now": "Spinning Backhand"},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

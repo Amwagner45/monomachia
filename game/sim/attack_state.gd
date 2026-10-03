@@ -10,6 +10,7 @@ extends RefCounted
 ## - pathFrom and pathTo ({ ang, r } | undefined) are PathPoint objects, null
 ##   when undefined.
 ## - Keep it an object (not a Dictionary): the AI compares attacks by identity.
+## - lunge_dir is the rebuild's (the demo lunged along the facing only).
 
 
 ## A point of the Shadow Step path: { ang, r } around the opponent.
@@ -33,6 +34,9 @@ var charge_frames: int = 0
 var charge_frac: float = 0.0
 var queued: StringName = &""
 var lunge_total: float = 0.0
+## the ground direction the lunge runs along, fixed as the attack starts (a
+## lunge along the dodge: Passing Cut); null runs it along the facing
+var lunge_dir: V2 = null
 var extra_recovery: int = 0
 var backstab: bool = false
 var started_by: int = -1

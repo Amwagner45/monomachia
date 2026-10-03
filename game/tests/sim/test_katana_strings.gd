@@ -43,6 +43,10 @@ const ROWS: Dictionary[StringName, Dictionary] = {
 	},
 }
 
+## Wind Cut, the dodge light, lunges 0.4 m, as the demo's did (the spec
+## leaves the Katana's dodge attacks unchanged).
+const WIND_CUT_LUNGE: float = 0.4
+
 ## Kesa Cut dodge-cancels from frame 20 (the plan's decisions: startup +
 ## active + 6, as Right Cut and Return Cut).
 const KESA_CUT_CANCEL: int = 20
@@ -107,6 +111,20 @@ func test_stopping_after_any_hit_ends_the_string_when_that_move_ends() -> void:
 		var typed: Array[int] = []
 		typed.assign(presses)
 		_assert_stops_after(typed)
+
+
+func test_wind_cut_out_of_a_dodge_still_lunges_toward_the_defender() -> void:
+	# Passing Cut, the Daggers' dodge light, lunges on along the dodge; the
+	# Katana's, unchanged, lunges along its facing, toward the defender
+	var r: PlayedString = _out_of_a_dodge(Btn.LIGHT, Callable(), Vector2(1.0, 0.0), WHIFF_GAP)
+	assert_eq(r.ids(&"swing"), [&"k_dl"] as Array[StringName], "Wind Cut")
+	var start: int = r.attack.find(&"k_dl")
+	assert_gt(start, 0, "Wind Cut starts")
+	if start <= 0:
+		return
+	assert_almost_eq(r.displacement(&"k_dl").length(), WIND_CUT_LUNGE, CLOSE, "its 0.4 m lunge")
+	var closed: float = r.apart[start - 1] - r.apart[r.attack.rfind(&"k_dl")]
+	assert_almost_eq(closed, WIND_CUT_LUNGE, CLOSE, "straight at the defender: the gap shrinks by all of it")
 
 
 func test_kesa_cut_dodge_cancels_from_frame_20() -> void:

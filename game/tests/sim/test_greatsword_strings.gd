@@ -260,20 +260,6 @@ func test_low_sweep_is_a_sweep_with_its_interim_cone_and_earthbreakers_lunge() -
 
 # ------------------------------------------------------------------ the dodge thrusts
 
-## Fighter 0 dodges on step 0 with the stick at stick (to the right by
-## default), then presses button on the step the dodge ends (inside the 12
-## frames a dodge attack may follow), against a Katana GAP m away that plays
-## the input p1 gives (idle without one).
-func _out_of_a_dodge(button: int, p1: Callable = Callable(), stick: Vector2 = Vector2(1.0, 0.0)) -> PlayedString:
-	var dodge: Callable = func(i: int) -> RawInput: return H.move(stick.x, stick.y, Btn.DODGE) if i == 0 else H.idle()
-	var ends: int = _run(dodge).state.find(&"free")
-	var p0: Callable = func(i: int) -> RawInput:
-		if i == ends:
-			return H.btn(button)
-		return dodge.call(i)
-	return _run(p0, GAP, STEPS, p1)
-
-
 func test_a_light_out_of_a_dodge_is_piercing_lunge_which_a_block_stops() -> void:
 	assert_eq(_out_of_a_dodge(Btn.LIGHT).ids(&"hit"), [&"g_dl"] as Array[StringName], "Piercing Lunge hits")
 	var blocked: PlayedString = _out_of_a_dodge(Btn.LIGHT, func(_i: int) -> RawInput: return H.btn(Btn.BLOCK))

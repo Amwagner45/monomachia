@@ -63,10 +63,12 @@ const MOVES: Dictionary = {
 		"startup": 14, "active": 4, "recovery": 20, "damage": 11, "posture": 9, "knockback": 0.8,
 		"range": 1.9, "arc": 80, "lunge": 3.0, "lunge_start": 2, "lunge_end": 16, "hop": 4,
 	},
+	# Passing Cut, on light out of a dodge: a cut that carries the fighter on
+	# along the dodge, dodge-cancelling from its first recovery frame
 	&"d_dl": {
-		"id": &"d_dl", "name": "Ghost Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL", "hand": &"R", "sound": D,
+		"id": &"d_dl", "name": "Passing Cut", "kind": &"light", "type": &"slash", "anim": &"slashRL", "hand": &"R", "sound": D,
 		"startup": 6, "active": 2, "recovery": 12, "damage": 5, "posture": 4, "knockback": 0.2,
-		"range": 1.8, "arc": 120, "lunge": 0.4, "dodge_cancel_from": 12,
+		"range": 1.8, "arc": 120, "lunge": 1.2, "lunge_along_dodge": true, "dodge_cancel_from": 9,
 	},
 	&"d_dh": {
 		"id": &"d_dh", "name": "Reverse Spin", "kind": &"heavy", "type": &"spin", "anim": &"spin", "hand": &"both", "sound": D,

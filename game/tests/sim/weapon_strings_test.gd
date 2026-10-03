@@ -106,6 +106,24 @@ func _assert_stops_after(presses: Array[int], mx: float = 0.0) -> void:
 	assert_eq(r.state_after(last), &"free", "%s: and the fighter is free after %s" % [what, last_name])
 
 
+## Fighter 0's input to dodge on step 0 with the stick at stick (to the
+## right by default), then press button wait steps after the dodge ends (from
+## the step it is free again; a dodge attack may follow within 12 frames), gap
+## m from the defender.
+func _dodge_then(button: int, stick: Vector2 = Vector2(1.0, 0.0), gap: float = GAP, wait: int = 0) -> Callable:
+	var dodge: Callable = func(i: int) -> RawInput: return H.move(stick.x, stick.y, Btn.DODGE) if i == 0 else H.idle()
+	var press_on: int = _run(dodge, gap).state.find(&"free") + wait
+	return func(i: int) -> RawInput: return H.btn(button) if i == press_on else dodge.call(i)
+
+
+## Plays _dodge_then's input against a Katana gap m away that plays the input
+## p1 gives (idle without one).
+func _out_of_a_dodge(
+	button: int, p1: Callable = Callable(), stick: Vector2 = Vector2(1.0, 0.0), gap: float = GAP, wait: int = 0
+) -> PlayedString:
+	return _run(_dodge_then(button, stick, gap, wait), gap, STEPS, p1)
+
+
 ## Plays presses, the last starting attack id, after a hit (GAP) and after a
 ## whiff (WHIFF_GAP), and checks a dodge pressed on its frame cancel - 1, or
 ## on any of the frames also_early, is refused there and comes on cancel (the

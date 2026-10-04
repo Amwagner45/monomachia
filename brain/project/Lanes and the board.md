@@ -10,6 +10,6 @@ A task names what blocks it ("Blocked by"), and some wait on the owner's OK, suc
 
 ## The board
 
-A local dashboard at http://localhost:5197 charts every plan and every worktree live: which lane works on which task, what's ready, what's blocked, and what waits on the owner. It reads git without fetching, so it never collides with the lanes. Its **Second brain** button opens this vault in a popup window.
+A local dashboard at http://localhost:5197 charts every plan and every worktree live: which lane works on which task, what's ready, what's blocked, and what waits on the owner. It reads git without fetching, so it never collides with the lanes. Its **Second brain** button opens this vault in a popup window. It also answers on the PC's Tailscale address, so the owner can follow the lanes from a phone, which gets a mobile page of its own.
 
 Related: [[Rebuild plan]] (the stages and tasks) · [[Workflow]] · [[About this vault]]

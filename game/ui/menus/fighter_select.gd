@@ -1,7 +1,8 @@
 class_name FighterSelect
 extends MenuPage
 ## The fighter select, in the design's layout without the gate cinematic or
-## the intros: the loadout on the left, the fighter grid in the middle, and
+## the intros: the loadout on the left (LoadoutPanel: weapon cards, the
+## blurb and ultimate, the two block abilities), the fighter grid in the middle, and
 ## the right side kept for the fighter's 3D preview (22.7; until then the
 ## fighter's name stands there in the side's colour).
 ##
@@ -59,10 +60,10 @@ var skill_row: OptionRow
 var arena_row: OptionRow
 var confirm: Button
 var back_entry: Button
-## The left column, kept for the loadout panel (22.6).
+## The left column, holding the loadout panel.
 var loadout: VBoxContainer
-var weapon_name: Label
-var abilities_line: Label
+## The side's weapon and block abilities (22.6).
+var loadout_panel: LoadoutPanel
 ## The right side, kept for the 3D preview (22.7).
 var preview_slot: Control
 var preview_name: Label
@@ -103,12 +104,10 @@ func _init() -> void:
 	loadout = VBoxContainer.new()
 	loadout.add_theme_constant_override("separation", 10)
 	left.add_child(loadout)
-	loadout.add_child(_left_label(UiTheme.label("Weapon", UiTheme.EYEBROW, 15)))
-	weapon_name = _left_label(UiTheme.label("", UiTheme.DISPLAY, 40))
-	loadout.add_child(weapon_name)
-	loadout.add_child(_left_label(UiTheme.label("Block abilities", UiTheme.EYEBROW, 15)))
-	abilities_line = _left_label(UiTheme.label("", UiTheme.MUTED, 20))
-	loadout.add_child(abilities_line)
+	loadout_panel = LoadoutPanel.new()
+	loadout.add_child(loadout_panel)
+	loadout_panel.changed.connect(refresh)
+	side_shown.connect(func(i: int) -> void: loadout_panel.edit(draft, i))
 
 	# the middle: heading, side, grid, rows and the entries
 	var middle: VBoxContainer = VBoxContainer.new()
@@ -175,6 +174,8 @@ func _init() -> void:
 	back_entry.pressed.connect(step_back)
 	actions.add_child(back_entry)
 	add_item(back_entry)
+	for c: Control in loadout_panel.items():
+		add_loadout_item(c)
 
 	# the right: kept for the 3D preview
 	preview_slot = Control.new()
@@ -273,21 +274,11 @@ func _on_arena(i: int) -> void:
 	MatchSelection.set_arena(draft, id)
 
 
-## Brings the loadout's and the preview's text up to the draft, and tells
-## the loadout panel (draft_changed). Called after every pick.
+## Brings the preview's text up to the draft and tells whoever follows it
+## (draft_changed). Called after every pick (the loadout panel applies its
+## own and calls it too).
 func refresh() -> void:
 	var s: MatchSide = draft.sides[side]
-	var w: WeaponDef = s.weapon()
-	if draft.random_weapon[side]:
-		weapon_name.text = "Random"
-		abilities_line.text = ""
-	else:
-		weapon_name.text = w.name if w != null else String(s.weapon_id)
-		var names: Array[String] = []
-		for id: StringName in s.resolved_abilities():
-			var m: AttackDef = w.moves.get(id) if w != null else null
-			names.append(m.name if m != null else String(id).capitalize())
-		abilities_line.text = "  ·  ".join(names)
 	preview_name.text = s.display_name()
 	preview_name.add_theme_color_override("font_color", LookPalette.side_color(side).lightened(0.35))
 	draft_changed.emit()

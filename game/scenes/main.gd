@@ -1,9 +1,11 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, How to play, Quit) -> the fighter select
-## (Duel and Watch) -> a match -> results (Rematch, Main menu), with a pause menu (Resume, Main menu) during play, which Back, Start
-## or the pause binding also closes. The pages sit on a ScreenStack: Back on
-## a page goes to the page that opened it (the main menu's to the title).
+## title -> main menu (Duel, Watch, How to play, Controls, Settings, Quit)
+## -> the fighter select (Duel and Watch) -> a match -> results (Rematch,
+## Change fighters, Main menu), with a pause menu (Resume, Main menu) during
+## play, which Back, Start or the pause binding also closes. The pages sit on
+## a ScreenStack: Back on a page goes to the page that opened it (the main
+## menu's to the title).
 ## A computer duel plays behind the title
 ## and the menus, seen from the orbiting menu camera; its restarts and the
 ## matches draw their seeds from one sequence (_next_seed).
@@ -43,6 +45,8 @@ var select: FighterSelect
 ## The fighter select's drafts and last picks.
 var selection: MatchSelection
 var how_to_play: HowToPlayScreen
+var controls_screen: ControlsScreen
+var settings_screen: SettingsScreen
 ## The menus' pages, the open one on top.
 var stack: ScreenStack = ScreenStack.new()
 ## The last match played, for Rematch.
@@ -64,6 +68,8 @@ func _ready() -> void:
 	main_menu.add_button("Duel", "vs computer", open_select.bind(MatchConfig.DUEL))
 	main_menu.add_button("Watch", "computer vs computer", open_select.bind(MatchConfig.WATCH))
 	main_menu.add_button("How to play", "rules and move lists", show_how_to_play)
+	main_menu.add_button("Controls", "keys and buttons", show_controls)
+	main_menu.add_button("Settings", "picture and sound", show_settings)
 	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
@@ -79,6 +85,7 @@ func _ready() -> void:
 	results_screen = ResultsScreen.new()
 	results_screen.name = "Results"
 	results_screen.rematch.connect(rematch)
+	results_screen.change_fighters.connect(change_fighters)
 	results_screen.main_menu.connect(quit_to_menu)
 	ui.add_child(results_screen)
 
@@ -92,6 +99,12 @@ func _ready() -> void:
 	how_to_play = HowToPlayScreen.new()
 	how_to_play.name = "HowToPlay"
 	ui.add_child(how_to_play)
+	controls_screen = ControlsScreen.new()
+	controls_screen.name = "Controls"
+	ui.add_child(controls_screen)
+	settings_screen = SettingsScreen.new()
+	settings_screen.name = "Settings"
+	ui.add_child(settings_screen)
 	stack.changed.connect(_on_stack_changed)
 
 	host.match_finished.connect(_on_match_finished)
@@ -163,6 +176,16 @@ func show_how_to_play() -> void:
 	stack.push(how_to_play)
 
 
+## Controls and Settings open over the page that chose them; Back returns
+## there.
+func show_controls() -> void:
+	stack.push(controls_screen)
+
+
+func show_settings() -> void:
+	stack.push(settings_screen)
+
+
 ## Opens the fighter select for a mode over the page on top, on the mode's
 ## last picks; Back from its first side returns to that page.
 func open_select(mode: StringName) -> void:
@@ -214,6 +237,15 @@ func rematch() -> void:
 	if last_config == null:
 		return
 	start_match(last_config.with_seed(_next_seed()))
+
+
+## From the results: the select for the mode just played, on its last picks,
+## over the main menu (where its Back goes), with the duel behind the menus
+## playing again.
+func change_fighters() -> void:
+	var mode: StringName = last_config.mode if last_config != null else MatchConfig.DUEL
+	quit_to_menu()
+	open_select(mode)
 
 
 ## Back to the match from the pause menu (Resume, Back). The host's

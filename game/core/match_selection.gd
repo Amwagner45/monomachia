@@ -172,7 +172,7 @@ static func lock_in(d: Draft, p_seed: int) -> MatchConfig:
 			s.profile = -1
 		elif d.mode != MatchConfig.VERSUS:
 			s.device = InputDevices.ALL
-		if d.random_weapon[i] and d.mode == MatchConfig.DUEL and i == 1:
+		if d.random_weapon[i] and offers_random(d.mode, i):
 			s.weapon_id = Moves.PLAYABLE_WEAPONS[rng.randi_range(0, Moves.PLAYABLE_WEAPONS.size() - 1)]
 			s.abilities.clear()
 		sides.append(s)
@@ -192,6 +192,17 @@ static func controller_for(mode: StringName, side: int) -> StringName:
 		MatchConfig.WATCH:
 			return MatchSide.COMPUTER
 	return MatchSide.HUMAN
+
+
+## Whether a side may leave its weapon to chance: the Duel opponent only
+## (lock_in() picks it).
+static func offers_random(mode: StringName, side: int) -> bool:
+	return mode == MatchConfig.DUEL and side == 1
+
+
+## Whether a side picks block abilities: everyone but the training dummy.
+static func picks_abilities(mode: StringName, side: int) -> bool:
+	return controller_for(mode, side) != MatchSide.DUMMY
 
 
 ## Empty when a draft makes a match, else what is wrong with it.

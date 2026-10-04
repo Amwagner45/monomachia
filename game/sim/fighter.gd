@@ -132,6 +132,10 @@ var knock_z: float = 0.0
 var knock_left: int = 0
 ## What put the fighter in its stun (enter_stun()): &"stomp" for a stomped thrust, else &"".
 var stun_cause: StringName = &""
+## The final blow (to_ko(); authored-animation task 28, for the KO's clip):
+## whether it was a heavy, and whether it came from behind the fighter.
+var ko_heavy: bool = false
+var ko_from_behind: bool = false
 var knock_total: int = 0
 var knock_meters: float = 0.0
 
@@ -395,6 +399,8 @@ func reset_for_round(x: float, z: float, p_yaw: float) -> void:
 	ult_announced = false
 	impaled_by = null
 	stun_cause = &""
+	ko_heavy = false
+	ko_from_behind = false
 	counter_lunge_until = -99999
 	backstab_until = -99999
 	blind_until = -99999
@@ -1617,7 +1623,11 @@ func _update_recall() -> void:
 		set_state(&"free")
 
 
-func to_ko() -> void:
+## Knocked out, by a blow from `by` (null for none) that was a heavy when
+## `heavy`: the fighter keeps which (ko_heavy, ko_from_behind).
+func to_ko(by: Fighter = null, heavy: bool = false) -> void:
+	ko_heavy = heavy
+	ko_from_behind = by != null and SimMath.angle_between(yaw, SimMath.yaw_to(pos, by.pos)) > PI / 2.0
 	hp = 0.0
 	release_if_impaling()
 	set_state(&"ko")

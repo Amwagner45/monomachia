@@ -877,3 +877,93 @@ func test_a_stun_not_from_an_attack_plays_stun01_from_its_start() -> void:
 	shot = ClipDirector.step(shot, f, ctx)
 	assert_eq([shot.phase, shot.clip.name], [&"stun", "HumanM/Stun01"], "no attack to run back")
 	assert_null(shot.rebound)
+
+
+# ------------------------------------------------------------------ knockdown and KO (task 28)
+
+## A context with the knockdown's and the deaths' clips and their fallbacks.
+static func _down_ctx(libraries: bool = true) -> ClipDirector.Context:
+	var ctx: ClipDirector.Context = _ctx(&"hunter", libraries)
+	var frames: Dictionary[StringName, float] = {
+		&"Knockdown01_Fall": 28.0, &"Knockdown01_Ground": 52.0, &"Knockdown01_StandUp": 35.0,
+		&"CombatDeath01": 45.0, &"CombatDeath02": 33.0, &"CombatDeath03": 35.0, &"CombatDeath04": 41.0,
+	}
+	for set_name: StringName in ClipLibraries.SETS:
+		for id: StringName in frames:
+			ctx.lengths["%s/%s" % [set_name, id]] = frames[id] / 30.0
+	for fallback: StringName in [&"Hit_Knockback", &"LayToIdle", &"Death01"]:
+		ctx.lengths["ual/%s" % fallback] = 1.5
+	return ctx
+
+
+func test_a_knockdown_fits_knockdown01_to_its_three_phases() -> void:
+	var ctx: ClipDirector.Context = _down_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	f.enter_knockdown()
+	var fall: int = SimConst.KNOCKDOWN_FALL_FRAMES
+	var ground: int = SimConst.KNOCKDOWN_GROUND_FRAMES
+	var up: int = SimConst.KNOCKDOWN_STANDUP_FRAMES
+	var shot: ClipDirector.Shot = null
+	var fall_len: float = ctx.lengths["HumanM/Knockdown01_Fall"]
+	var ground_len: float = ctx.lengths["HumanM/Knockdown01_Ground"]
+	var up_len: float = ctx.lengths["HumanM/Knockdown01_StandUp"]
+	var from: float = ClipDirector.KNOCKDOWN_STANDUP_FROM / 30.0
+	for sf: int in range(1, fall + ground + up + 1):
+		f.sf = sf
+		W.frame += 1
+		shot = ClipDirector.step(shot, f, ctx)
+		assert_eq([shot.drive, shot.upper], [ClipDirector.STATE, false], "frame %d: the whole body" % sf)
+		match f.knockdown_phase():
+			&"fall":
+				assert_eq([shot.phase, shot.clip.name], [&"fall", "HumanM/Knockdown01_Fall"])
+				assert_almost_eq(shot.clip.time, ClipDirector.fitted_time(sf, fall, fall_len), 1e-9, "frame %d: timed to the fall" % sf)
+			&"ground":
+				assert_eq([shot.phase, shot.clip.name], [&"ground", "HumanM/Knockdown01_Ground"])
+				assert_almost_eq(shot.clip.time, fmod(float(sf - fall) / 60.0, ground_len), 1e-9, "frame %d: lying, looped" % sf)
+			&"standUp":
+				assert_eq([shot.phase, shot.clip.name], [&"standUp", "HumanM/Knockdown01_StandUp"])
+				assert_almost_eq(shot.clip.time, from + ClipDirector.fitted_time(sf - fall - ground, up, up_len - from), 1e-9, "frame %d: up over the stand-up" % sf)
+	# the fall lands (the hips down on its source frame 20) as the fall ends,
+	# and the stand-up is up (its source frame 31) as it ends
+	f.sf = fall
+	assert_almost_eq(ClipDirector.down_clip(f, ctx).time * 30.0, 20.0, 1e-6, "landed as the fall ends")
+	f.sf = fall + ground + up
+	assert_almost_eq(ClipDirector.down_clip(f, ctx).time * 30.0, 31.0, 1e-6, "up as the stand-up ends")
+
+
+func test_without_the_packs_a_knockdown_plays_the_stand_ins() -> void:
+	var ctx: ClipDirector.Context = _down_ctx(false)
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	f.enter_knockdown()
+	f.sf = 10
+	assert_eq(ClipDirector.down_clip(f, ctx).name, "ual/Hit_Knockback", "falling")
+	f.sf = SimConst.KNOCKDOWN_FALL_FRAMES + 5
+	var lying: ClipDirector.Clip = ClipDirector.down_clip(f, ctx)
+	assert_eq([lying.name, lying.time], ["ual/LayToIdle", 0.0], "lying in the rise's first pose")
+	f.sf = SimConst.KNOCKDOWN_FALL_FRAMES + SimConst.KNOCKDOWN_GROUND_FRAMES + 5
+	assert_eq(ClipDirector.down_clip(f, ctx).name, "ual/LayToIdle", "rising")
+
+
+func test_the_ko_picks_its_death_by_the_final_blows_side_and_weight() -> void:
+	var ctx: ClipDirector.Context = _down_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var want: Dictionary = {
+		[false, false]: "CombatDeath01", [false, true]: "CombatDeath02",
+		[true, false]: "CombatDeath03", [true, true]: "CombatDeath04",
+	}
+	for key: Array in want:
+		f.to_ko()
+		f.ko_from_behind = key[0]
+		f.ko_heavy = key[1]
+		f.sf = 20
+		var clip: ClipDirector.Clip = ClipDirector.down_clip(f, ctx)
+		assert_eq(clip.name, "HumanM/" + String(want[key]), "behind %s, heavy %s" % key)
+		assert_almost_eq(clip.time, 20.0 / 60.0, 1e-9, "at 1.0 from the blow, slowed with the rules")
+	f.sf = 600
+	assert_almost_eq(ClipDirector.down_clip(f, ctx).time, ctx.lengths["HumanM/CombatDeath04"], 1e-9, "held lying at its end")
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	assert_eq([shot.drive, shot.phase], [ClipDirector.STATE, &"ko"])
+	assert_eq(ClipDirector.down_clip(f, _down_ctx(false)).name, "ual/Death01", "without the packs")

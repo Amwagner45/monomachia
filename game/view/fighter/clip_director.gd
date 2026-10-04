@@ -63,6 +63,10 @@ extends RefCounted
 ##   its own attack's clip backwards from where the parry met it over the
 ##   rebound (REBOUND_FRAMES at REBOUND_SPEED; Shot.rebound), then Stun01 for
 ##   the rest of the recoil or stun, faded over FADES' rebound;
+## - knockdown and KO (task 28; down_clip()): Knockdown01's Fall, Ground and
+##   StandUp fitted to the knockdown's three phases, and the KO's death
+##   (KO_CLIPS, by the final blow's side and weight) at 1.0, so the
+##   final-blow slow motion slows it with the rules;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
@@ -124,6 +128,28 @@ const STUN_CLIP: StringName = &"Stun01"
 const STUN_FALLBACK: StringName = &"Hit_Knockback"
 ## The reactions that show on the upper body alone.
 const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun", &"parry"]
+## Knockdown (task 28): Knockdown01's fall timed to the fall's frames (it
+## lands, the hips on the floor, on its source frame 20, the fall's 20 rules
+## frames at 2.0), its ground loop at 1.0, and its stand-up from
+## KNOCKDOWN_STANDUP_FROM (the frames before lie still) timed to the
+## stand-up's frames (up on its source frame 31). Without the packs the CC0
+## Hit_Knockback for the fall and LayToIdle lying and rising.
+const KNOCKDOWN_CLIPS: Dictionary[StringName, StringName] = {
+	&"fall": &"Knockdown01_Fall", &"ground": &"Knockdown01_Ground", &"standUp": &"Knockdown01_StandUp",
+}
+const KNOCKDOWN_FALLBACKS: Dictionary[StringName, StringName] = {
+	&"fall": &"Hit_Knockback", &"ground": &"LayToIdle", &"standUp": &"LayToIdle",
+}
+const KNOCKDOWN_STANDUP_FROM: float = 6.0
+## The KO's death by the final blow (Fighter.ko_heavy, ko_from_behind),
+## [from the front, from behind] each [light, heavy]: from the front a light
+## blow reels the fighter round to collapse sideways (CombatDeath01), a
+## heavy one blows it flat on its back (02); from behind a light blow turns
+## it round to fall back (03), a heavy one doubles it over onto its face
+## (04). Played at 1.0 from the blow, held lying at the end. Without the
+## packs the CC0 Death01.
+const KO_CLIPS: Array[Array] = [[&"CombatDeath01", &"CombatDeath02"], [&"CombatDeath03", &"CombatDeath04"]]
+const KO_FALLBACK: StringName = &"Death01"
 ## The parried attacker's rebound (task 27): its attack's clip runs backwards
 ## from where the parry met it for this many rules frames (the parry's
 ## knock back, World: 8 frames) at this speed, then hands over to Stun01.
@@ -321,6 +347,10 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 				phase = StringName("spin%d" % f.ult.spins)
 	else:
 		playing = state_clip(f, ctx)
+		if playing == null:
+			playing = down_clip(f, ctx)
+			if playing != null:
+				phase = f.knockdown_phase() if f.state == &"knockdown" else &"ko"
 		var reaction: StringName = reaction_of(f) if playing == null else &""
 		out.rebound = _rebound_from(prev, f, reaction)
 		if out.rebound != null and f.sf < REBOUND_FRAMES:
@@ -471,6 +501,42 @@ static func reaction_clip(f: Fighter, ctx: Context, reaction: StringName, held: 
 static func fitted_time(frame: int, frames: int, length: float) -> float:
 	var speed: float = clampf(length * float(SimConst.FPS) / float(maxi(1, frames)), ClipTiming.MIN_SPEED, ClipTiming.MAX_SPEED)
 	return minf(float(frame) * speed / float(SimConst.FPS), length)
+
+
+## The clip of a knocked-down or knocked-out `f` (task 28), as a name in
+## the tree and a time, or null: not down, or the clip isn't in the tree.
+static func down_clip(f: Fighter, ctx: Context) -> Clip:
+	var id: StringName = &""
+	var fallback: StringName = &""
+	var phase: StringName = f.knockdown_phase()
+	if f.state == &"ko":
+		id = KO_CLIPS[1 if f.ko_from_behind else 0][1 if f.ko_heavy else 0]
+		fallback = KO_FALLBACK
+	elif phase != &"":
+		id = KNOCKDOWN_CLIPS[phase]
+		fallback = KNOCKDOWN_FALLBACKS[phase]
+	else:
+		return null
+	var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, fallback]
+	if ctx.libraries:
+		anim_name = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), id)
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	if length <= 0.0:
+		return null
+	var fps: float = float(SimConst.FPS)
+	var fall: int = SimConst.KNOCKDOWN_FALL_FRAMES
+	var ground: int = SimConst.KNOCKDOWN_GROUND_FRAMES
+	match phase:
+		&"fall":
+			return Clip.make(anim_name, fitted_time(f.sf, fall, length))
+		&"ground":
+			if not ctx.libraries:
+				return Clip.make(anim_name, 0.0)
+			return Clip.make(anim_name, fmod(float(f.sf - fall) / fps, length))
+		&"standUp":
+			var from: float = KNOCKDOWN_STANDUP_FROM / float(ClipManifest.SOURCE_FPS) if ctx.libraries else 0.0
+			return Clip.make(anim_name, from + fitted_time(f.sf - fall - ground, SimConst.KNOCKDOWN_STANDUP_FRAMES, length - from))
+	return Clip.make(anim_name, minf(float(f.sf) / fps, length))
 
 
 ## The clip a parried attacker's rebound runs back from (task 27): on the

@@ -93,7 +93,7 @@ flowchart TD
 | `game/input` | Reading keyboards, mice and controllers into a `RawInput` per player; bindings, profiles, rebinding, button labels. |
 | `game/core` | `GameServices` (the only autoload), `GameSettings`, `MatchConfig`, `MatchSide`, `MatchResults`. |
 | `game/view/match` | `MatchHost` (the fixed-step loop), `MatchView`, `CameraRig`, `MatchAudio`, `StickPose`, the arena registry. |
-| `game/view/fighter` | Animating a rigged fighter from the rules' state: locomotion, lean, guard stance and shuffle, IK rig. |
+| `game/view/fighter` | Animating a rigged fighter from the rules' state: the clip director, locomotion, foot locking, IK rig. |
 | `game/view/look` | Toon materials, outline, ink-wash post pass, colour grade, graphics presets. **Superseded by ADR 0001 (Oct 4):** This is the code today; as the slice lands, a realistic look (physically based materials under a painterly colour grade) replaces the toon materials, outlines and ink-wash pass, and four presets with Ultra as the reference preset replace today's three. |
 | `game/view/mesh_kit*.gd` | Procedural mesh building for props and stand-ins. |
 | `game/fighters`, `game/weapons`, `game/arenas` | Content: fighter models and palettes, weapon models, the Moonlit Shrine. |
@@ -698,8 +698,8 @@ flowchart TD
         POS["Place at host.display_position / display_yaw"] --> SP["StickPose.compute(f, alpha):<br/>switch on f.state → hands, blade, lean, crouch, glow"]
         SP --> KO{"f.state == ko?"}
         KO -- yes --> FALL["Play the Death01 clip by frame"]
-        KO -- no --> LU["Locomotion.update():<br/>blend idle/walk/jog/sprint by speed,<br/>Lean, GuardShuffle, footfalls"]
-        LU --> PB["Pose the body: BodyLayer fields,<br/>GuardStance for the Katana"]
+        KO -- no --> LU["Locomotion.update():<br/>blend the idle and the directional walks,<br/>runs and sprints by velocity, footfalls"]
+        LU --> PB["Pose the body: BodyLayer fields,<br/>foot locking under every clip"]
         PB --> PW["Pose weapons in the hands<br/>(kept within arm's reach)"]
         PW --> OV["Hit flash, KO dim, weapon glow"]
     end
@@ -722,11 +722,8 @@ flowchart TD
 | `fighter_view.gd` | `FighterView` | One side's fighter; runs the per-frame pipeline above. |
 | `fighter_rig.gd` | `FighterRig` | Builds the modifier stack; seats hands on weapons. |
 | `body_layer.gd` | `BodyLayer` | Procedural pelvis, spine and head over the clip. |
-| `locomotion.gd` | `Locomotion` | Gait blending on one shared step phase stepped per rules frame; backpedal, turn toward travel. |
-| `lean.gd` | `Lean` | Lean into starts and turns, brace on stops (a damped spring). |
-| `guard_stance.gd` | `GuardStance` | The Katana's grounded guard stance. |
-| `guard_shuffle.gd` | `GuardShuffle` | Guard footwork: lead foot steps, trailing foot closes, planted feet don't slide. |
-| `foot_phase.gd` | `FootPhase` | Measures each clip's stride and phase once. |
+| `locomotion.gd` | `Locomotion` | The packs' directional walk, run and sprint clips blended by the rules' velocity on one shared step phase stepped per rules frame; tap steps, a backwards sprint turned away, the turn on the spot, footfalls at the clips' foot contacts (authored-animation task 29). |
+| `foot_phase.gd` | `FootPhase` | Measures each locomotion clip's way, stride, mid-stances and foot contacts once. |
 | `pose_check.gd` | `PoseCheck` | Pose quality checks for tools and tests (wrist bend, knee over toes, blade clearance). |
 | `rig_callback.gd` | `RigCallback` | Lets the rig insert a function into the modifier stack. |
 
@@ -796,8 +793,8 @@ flowchart LR
     EV["sim_event(e)"] --> MA["MatchAudio"]
     MA --> SB["SoundBank.cues_for(e)<br/>event → cue names,<br/>refined by weapon, heavy, kind"]
     SB --> SP["SoundPlayer.play_cue<br/>pick variation, pitch, bus;<br/>3D voice at the event's position"]
-    ST["stepped"] --> FC["FootstepCadence<br/>one step per stride"] --> SP
-    SH["MatchView.footfall<br/>(guard shuffle)"] --> SP
+    ST["stepped (not drawn)"] --> FC["FootstepCadence<br/>one step per stride"] --> SP
+    SH["MatchView.footfall<br/>(the clips' foot contacts)"] --> SP
     MA --> AMB["FadedLoop: arena ambience"]
 
     MM["main.gd: menu or match"] --> GS["GameServices"]
@@ -917,7 +914,7 @@ flowchart LR
 | --- | --- | --- |
 | `game/tests/` (root) | 2 | Godot version; every scene loads |
 | `game/tests/sim` | 16 | Ports of the web rule tests, fixture parity (`rng`, `moves`, `math`, port regressions), fluid combat, each weapon's strings, string continuity, training brain, soak. **Superseded by ADR 0001 (Oct 4):** Tests that pin frame data to the web demo, such as the `moves` fixture parity, will be replaced as the slice lands, and a test will keep every attack inside its timing band. |
-| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, guard stance and shuffle, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes. **Superseded by ADR 0001 (Oct 4):** The toon and ink look tests will be replaced as the slice lands. |
+| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes. **Superseded by ADR 0001 (Oct 4):** The toon and ink look tests will be replaced as the slice lands. |
 | `game/tests/audio` | 10 | Bus layout and ducking, FadedLoop, footsteps, music director and player, sound bank, sound player, headless playback of a match |
 | `game/tests/input` | 7 | Device state, InputFeed, labels, profiles, rebinding, sampling, seats and pause |
 | `game/tests/content` | 5 | Animation library, asset size budgets, fighter scenes, palettes, weapon models. **Superseded by ADR 0001 (Oct 4):** Size budgets per place (public repository, asset repository, shipped game) replace the asset budget test's 110 MB art cap, and the test will be replaced as the slice lands. |

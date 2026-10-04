@@ -40,6 +40,10 @@ extends Node
 ## plate names, and is 30 steps into its drill. "training_panel" shows the
 ## Training panel at the bottom left (23.3): the dummy on Light chains with
 ## refill off, 40 steps into its drill.
+## "recall_burst" shows the recall's power-up (task 30b) on the disarmed Rogue
+## against the idle dummy at 2.2 m, up to its frame --frame= (default 18,
+## just after the burst): the aura, the burst's flare and shockwave, the dummy
+## blasted down.
 
 const SEED: int = 7
 
@@ -47,6 +51,7 @@ const SEED: int = 7
 	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
 	"iai_stance", "iai_vertical", "iai_horizontal", "select_duel", "select_watch",
 	"trail_light", "trail_unblockable", "trail_moonsplitter", "training_swap", "training_panel",
+	"recall_burst",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
@@ -189,13 +194,15 @@ func _ready() -> void:
 			host.set_training_behaviour(&"lights")
 			host.set_refill(false)
 			host.step(40)
+		"recall_burst":
+			_recall_burst()
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
 	if shot == "dropped":
 		_frame_dropped(view.camera)
 	elif shot.begins_with("iai_"):
 		_frame_front(view.camera, 0, shot == "iai_horizontal")
-	elif shot.begins_with("trail_"):
+	elif shot.begins_with("trail_") or shot == "recall_burst":
 		_frame_raised(view.camera, 0)
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
@@ -344,6 +351,29 @@ func _trail(which: String) -> void:
 		done = func() -> bool: return a.atk == null or a.atk.frame >= at
 	for k: int in 200:
 		if done.call():
+			break
+		host.step(1)
+		view.render(1.0 / 60.0)
+
+
+## The player's Rogue, disarmed, 2.2 m from an idle training dummy, recalls
+## her Katana (task 30b): the power-up, its aura swelling, the burst on frame
+## 16 blasting the dummy down, every step drawn, up to the recall's frame
+## trail_frame (default 18, just after the burst).
+func _recall_burst() -> void:
+	var dummy: MatchSide = MatchSide.computer(&"hunter", &"greatsword", 1)
+	dummy.controller = MatchSide.DUMMY
+	var cfg: MatchConfig = MatchConfig.make(MatchConfig.TRAINING, MatchSide.human(&"rogue", &"katana"), dummy, SEED)
+	_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(FakeDeviceState.new()))
+	host.step(Match.INTRO_FRAMES + 20)
+	_place_apart(2.2)
+	var view: MatchView = host.get_node("View")
+	var a: Fighter = host.fighter(0)
+	a.armed = false
+	a.set_state(&"recall", SimConst.RECALL_FRAMES)
+	var at: int = trail_frame if trail_frame >= 0 else SimConst.RECALL_BURST_FRAME + 2
+	for k: int in 120:
+		if a.state != &"recall" or a.sf >= at:
 			break
 		host.step(1)
 		view.render(1.0 / 60.0)

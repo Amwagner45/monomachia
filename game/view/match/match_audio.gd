@@ -16,11 +16,11 @@ extends Node3D
 ## 3D cue off its own bus, so there is no reverb area.
 ##
 ## Footsteps: [method foot_down] plays the footstep cue where a foot comes
-## down. A fighter walking in its guard (the Katana's) steps where its guard
-## shuffle lands its feet, which the view reports ([signal MatchView.footfall]);
-## otherwise a FootstepCadence turns each rules step's movement into a
-## footfall every stride, at the fighter's feet. The running clips' own foot
-## contacts can take the cadence's place later.
+## down. A drawn fighter steps where its walking and running clips land its
+## feet (authored-animation task 29), which the view reports
+## ([signal MatchView.footfall]); a match stepped without being drawn falls
+## back on a FootstepCadence, which turns each rules step's movement into a
+## footfall every stride, at the fighter's feet.
 ##
 ## The arena's ambience: a played match fades in the loop its arena's data
 ## names ([method ambience_cue]) on a [FadedLoop]. It plays on through pauses,
@@ -172,8 +172,8 @@ func _on_stepped(_step: int) -> void:
 	if host.attract:
 		return
 	for foot: Dictionary in footsteps.update(host.world.fighters, host.world.frame):
-		# a fighter in its guard steps where its shuffle's feet land instead
-		if view != null and view.shuffles(foot["fighter"]):
+		# a drawn fighter steps where its clips' feet land instead
+		if view != null and view.steps_from_clips(foot["fighter"]):
 			continue
 		foot_down(foot["at"])
 

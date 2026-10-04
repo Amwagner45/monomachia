@@ -16,12 +16,19 @@ extends RefCounted
 ##   wrenched free as the stomper rises, a stagger back and a dazed sway, then
 ##   back to the guard. Over its first frames the view pins the weapon's tip
 ##   under the stomper's foot (pin_weight(), STOMP_FOOT).
+## - Power_Up: the recall's power-up (authored-animation task 30b, the
+##   owner's design after a Super Saiyan power-up): feet planted wide, a
+##   gather, then the chest thrown out, the head back shouting and the fists
+##   clenched low at the sides, bursting on frame 16 as the weapon returns,
+##   and up to ready, fitted to the recall's 26 frames; RecallAura draws its
+##   aura and burst.
 
 const LIBRARY: StringName = &"keyed"
 const PATH: String = "res://assets/authored/keyed_library.tres"
 const KEYS_FOLDER: String = "res://assets/authored/keys"
 const STOMP: StringName = &"Mikiri_Stomp"
 const PINNED: StringName = &"Mikiri_Pinned"
+const POWER_UP: StringName = &"Power_Up"
 ## Where the stomp's right foot presses the blade from its landing on: the
 ## middle of the sole, in the stomper's fighter space (+Z forward, +X its
 ## left), on the floor (Mikiri_Stomp's right ankle key, 0.32 m ahead).

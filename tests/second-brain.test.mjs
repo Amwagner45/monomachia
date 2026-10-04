@@ -58,6 +58,7 @@ const PLAN = `# Plan: test
     - Blocked by: 1.1–1.3
   - [ ] **2.2 B.**
   - [ ] **2.3 C.**
+  - [-] ~~**2.4 D.**~~ Retired.
 
 ## Out of scope
 
@@ -133,7 +134,8 @@ describe('parsePlan', () => {
   const plan = parsePlan(PLAN);
 
   it('reads every task under Tasks with its done mark, parent and phase', () => {
-    expect(plan.tasks.map((t) => t.id)).toEqual(['1', '1.1', '1.2', '1.3', '2', '2.1', '2.2', '2.3']);
+    expect(plan.tasks.map((t) => t.id)).toEqual(['1', '1.1', '1.2', '1.3', '2', '2.1', '2.2', '2.3', '2.4']);
+    expect(plan.tasks[8]).toMatchObject({ title: 'D', lead: 'Retired.', done: false, retired: true, parent: '2' });
     expect(plan.tasks[0]).toMatchObject({ title: 'Group one', lead: 'Lead text.', done: true, parent: null, phase: 'Phase A: start' });
     expect(plan.tasks[1]).toMatchObject({ title: 'First thing', done: true, parent: '1' });
     expect(plan.tasks[1].text).toContain('- Check: it works.');

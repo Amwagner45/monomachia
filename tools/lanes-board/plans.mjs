@@ -39,9 +39,14 @@ const ID = { nested: String.raw`\d+b?\.\d+`, flat: String.raw`(?<![\w.])\d+[a-z]
 const ANY = String.raw`R\d+|\d+b?\.\d+|\d+[a-z]?`;
 const END = String.raw`(?:R|\d+b?\.)?\d+`;
 const RANGE = (id) => String.raw`(${id})(?:\s*[–-]\s*(${END}))?`;
-const ONE = String.raw`(?:${ANY})(?:\s*[–-]\s*${END})?`;
-// `docs/plans/<file>.md` task <id>, or tasks <id>, <id> and <id>.
-const CROSS = new RegExp(String.raw`\`docs/plans/([\w.-]+\.md)\`\s+(?:task\s+(${ONE})|tasks\s+(${ONE}(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+)${ONE})*))`, 'g');
+// `docs/plans/<file>.md` task <id>, or tasks <id>, <id> and <id>. The ids take
+// the shape of that plan's kind (any shape for a plan the board doesn't follow)
+// and a list ends at its "and <id>", so local ids written after it stay local.
+const CROSS = /`docs\/plans\/([\w.-]+\.md)`\s+(tasks?)\s+/g;
+function crossList(kind, many) {
+  const one = String.raw`(?:${ID[kind] ?? ANY})(?:\s*[–-]\s*${END})?`;
+  return new RegExp(many ? String.raw`${one}(?:\s*,\s*${one})*(?:,?\s+and\s+${one})?` : one, 'y');
+}
 const ITEM = new RegExp(RANGE(ANY), 'g');
 
 // One id, or a range's ids ("23.4", "23.7" -> 23.4 … 23.7).
@@ -61,11 +66,16 @@ const idList = (text) => [...text.matchAll(ITEM)].flatMap((m) => expand(m[1], m[
 function readRefs(text, plan, local = true) {
   const found = [];
   const blank = (m) => ' '.repeat(m.length);
-  let rest = text.replace(CROSS, (m, file, one, many, at) => {
-    const key = KEY_BY_FILE[file];
-    if (key) found.push({ at, end: at + m.length, refs: idList(one ?? many).map((id) => `${key}:${id}`) });
-    return blank(m);
-  });
+  let rest = text;
+  for (const head of text.matchAll(CROSS)) {
+    const key = KEY_BY_FILE[head[1]];
+    const list = crossList(PLAN_BY_KEY[key]?.kind, head[2] === 'tasks');
+    list.lastIndex = head.index + head[0].length;
+    const m = list.exec(text);
+    const end = m ? list.lastIndex : head.index + head[0].length;
+    if (key && m) found.push({ at: head.index, end, refs: idList(m[0]).map((id) => `${key}:${id}`) });
+    rest = rest.slice(0, head.index) + blank(text.slice(head.index, end)) + rest.slice(end);
+  }
   rest = rest.replace(/\([^)]*\)/g, blank);
   if (local) {
     for (const m of rest.matchAll(new RegExp(RANGE(ID[plan.kind]), 'g'))) {
@@ -176,11 +186,12 @@ export function parseRoadmap(text, plan) {
       const key = m[1] ?? plan.key;
       refs.push(...(m[2] === '*' ? ['*'] : expand(m[2], m[3])).map((id) => `${key}:${id}`));
     }
-    return { n: s.n, name: s.name, alongside: Number(s.note.match(/\(alongside phase (\d+)\)/)?.[1]) || null, refs, bad };
+    return { n: s.n, name: s.name, alongside: Number(s.note.match(/\([^)]*\balongside phase (\d+)\b[^)]*\)/)?.[1]) || null, refs, bad };
   });
+  // A phase of other plans' tasks only would be an empty stage, which reads as finished.
   const stages = phases.map((p) => ({
     n: p.n, name: p.name, ids: p.refs.filter((r) => r.startsWith(`${plan.key}:`)).map((r) => r.slice(plan.key.length + 1)).filter((id) => tasks.has(id)),
-  }));
+  })).filter((s) => s.ids.length);
   return { tasks, stages, phases, branch: headerBranch(text) };
 }
 

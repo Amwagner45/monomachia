@@ -7,7 +7,9 @@ const trim = (n) => String(Number(n.toFixed(1)));
 
 // ---------- the context gauge ----------
 // ctx is a session's context from /data or /sessions (sessions.mjs):
-// { model, tokens, window, pct, autoCompactAt, series: [{ t, tokens }], compactions: [t] }.
+// { model, tokens, window, pct, autoCompactAt, series: [{ t, tokens }], compactions: [t] };
+// compacted since its last reply, it has compacted: true, tokens and pct null
+// and `before`, the fill it had.
 
 // 143210 -> '143k', 1250000 -> '1.3M'.
 export function fmtTokens(n) {
@@ -21,25 +23,32 @@ export function fmtTokens(n) {
 // auto-compact line.
 export function gaugeLevel(ctx) {
   if (!ctx) return null;
+  if (ctx.compacted) return 'calm';
   if (ctx.pct > 85 || ctx.tokens >= ctx.autoCompactAt) return 'high';
   return ctx.pct >= 60 ? 'warn' : 'calm';
 }
 
-const gaugeTitle = (ctx) => `Context: ${fmtTokens(ctx.tokens)} of ${fmtTokens(ctx.window)} tokens (${ctx.pct}%)`
+const gaugeTitle = (ctx) => (ctx.compacted
+  ? `Context: compacted from ${fmtTokens(ctx.before ?? 0)} of ${fmtTokens(ctx.window)} tokens; the next reply shows the new fill`
+  : `Context: ${fmtTokens(ctx.tokens)} of ${fmtTokens(ctx.window)} tokens (${ctx.pct}%)`)
   + `, auto-compacts at ${fmtTokens(ctx.autoCompactAt)}${ctx.model ? ` · ${ctx.model}` : ''}`;
+// The compact meter's percent: 100% only once the window is full.
+const shortPct = (ctx) => (ctx.tokens < ctx.window ? Math.min(99, Math.round(ctx.pct)) : Math.round(ctx.pct));
 
 // A meter and its percent. live: the session is at work now (drawn 'fresh',
 // else 'stale': muted, its last value). full: also the tokens, the exact
-// percent and a tick where Claude Code compacts. The pages style .gauge with
-// their own colours.
+// percent and a tick where Claude Code compacts. Just compacted: an empty
+// meter that says so. The pages style .gauge with their own colours.
 export function gaugeHtml(ctx, { live = false, full = false } = {}) {
   if (!ctx) return '';
-  const fill = Math.min(100, Math.max(0, ctx.pct));
+  const fill = ctx.compacted ? 0 : Math.min(100, Math.max(0, ctx.pct));
   const tick = Math.min(100, (ctx.autoCompactAt / ctx.window) * 100);
   const cls = `gauge${full ? ' full' : ''} ${gaugeLevel(ctx)} ${live ? 'fresh' : 'stale'}`;
   const meter = `<span class="gm"><i style="width:${trim(fill)}%"></i>${full && tick < 100 ? `<b class="gt" style="left:${trim(tick)}%"></b>` : ''}</span>`;
-  if (!full) return `<span class="${cls}" title="${esc(gaugeTitle(ctx))}">${meter}<span class="gp">${Math.round(ctx.pct)}%</span></span>`;
-  return `<span class="${cls}" title="${esc(gaugeTitle(ctx))}">${meter}<span class="gp"><b>${ctx.pct}%</b> ${fmtTokens(ctx.tokens)} / ${fmtTokens(ctx.window)}</span>`
+  if (!full) return `<span class="${cls}" title="${esc(gaugeTitle(ctx))}">${meter}<span class="gp">${ctx.compacted ? 'compacted' : `${shortPct(ctx)}%`}</span></span>`;
+  const fig = ctx.compacted ? `<b>Compacted</b> from ${fmtTokens(ctx.before ?? 0)} / ${fmtTokens(ctx.window)}`
+    : `<b>${ctx.pct}%</b> ${fmtTokens(ctx.tokens)} / ${fmtTokens(ctx.window)}`;
+  return `<span class="${cls}" title="${esc(gaugeTitle(ctx))}">${meter}<span class="gp">${fig}</span>`
     + `<span class="gx">auto-compacts at ${fmtTokens(ctx.autoCompactAt)}${ctx.model ? ` · ${esc(ctx.model)}` : ''}</span></span>`;
 }
 
@@ -78,7 +87,7 @@ export function sparkSvg(ctx, { width = 300, height = 44 } = {}) {
     const b = i < pts.length - 1 ? (p.x + pts[i + 1].x) / 2 : width;
     return `<rect class="sh" x="${f(a)}" y="0" width="${Math.max(0.5, f(b - a))}" height="${height}"><title>${esc(`${clock(p.t)} · ${fmtTokens(p.tokens)} (${trim((p.tokens / ctx.window) * 100)}%)`)}</title></rect>`;
   });
-  return `<svg class="spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height="${height}" role="img" aria-label="${esc(`Context turn by turn, now ${fmtTokens(ctx.tokens)}`)}">`
+  return `<svg class="spark" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none" width="100%" height="${height}" role="img" aria-label="${esc(`Context turn by turn, ${ctx.compacted ? 'just compacted' : `now ${fmtTokens(ctx.tokens)}`}`)}">`
     + `<path class="sf" d="${area}"/>${auto}<path class="sl" d="${line}"/>${ticks.join('')}${cols.join('')}</svg>`;
 }
 

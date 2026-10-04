@@ -71,6 +71,25 @@ describe('gaugeHtml', () => {
     expect(gaugeHtml(ctx(260_000), {})).toContain('width:100%');
   });
 
+  it('says 100% on the compact meter only when the window is full', () => {
+    expect(gaugeHtml(ctx(199_000), {})).toContain('>99%<');
+    expect(gaugeHtml(ctx(200_000), {})).toContain('>100%<');
+    expect(gaugeHtml(ctx(199_000), { full: true })).toContain('<b>99.5%</b>');
+  });
+
+  it('shows a session compacted since its last reply as just compacted, with an empty, calm meter', () => {
+    const c = ctx(0, 200_000, { tokens: null, pct: null, compacted: true, before: 190_000 });
+    expect(gaugeLevel(c)).toBe('calm');
+    const html = gaugeHtml(c, { live: true });
+    expect(html).toContain('width:0%');
+    expect(html).toContain('>compacted<');
+    expect(html).toContain('title="Context: compacted from 190k of 200k tokens; the next reply shows the new fill');
+    const full = gaugeHtml(c, { full: true });
+    expect(full).toContain('<b>Compacted</b> from 190k / 200k');
+    expect(full).not.toContain('NaN');
+    expect(full).not.toContain('null');
+  });
+
   it('escapes the model name', () => {
     expect(gaugeHtml(ctx(1000, 200_000, { model: '<x>' }), { full: true })).not.toContain('<x>');
   });
@@ -112,6 +131,11 @@ describe('sparkSvg', () => {
   it('marks each compaction with a small vertical tick', () => {
     const svg = sparkSvg(ctx(60_000, 200_000, { series, compactions: [2500] }));
     expect(svg.match(/class="sc"/g)).toHaveLength(1);
+  });
+
+  it('says when the session has just compacted', () => {
+    const svg = sparkSvg(ctx(0, 200_000, { series, tokens: null, pct: null, compacted: true, before: 60_000 }));
+    expect(svg).toContain('aria-label="Context turn by turn, just compacted"');
   });
 
   it('draws the auto-compact line', () => {

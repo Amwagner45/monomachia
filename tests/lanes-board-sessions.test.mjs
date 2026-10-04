@@ -221,6 +221,16 @@ describe('contextTracker', () => {
     expect(track([turn(0, 1000), JSON.stringify({ ...JSON.parse(boundary(1)), isSidechain: true })]).compactions).toEqual([]);
   });
 
+  it('shows a session compacted since its last reply as just compacted, not at its old fill', () => {
+    const v = track([turn(0, 150_000, { model: 'claude-haiku-4-5' }), turn(1, 190_000, { model: 'claude-haiku-4-5' }), boundary(2), summary(2)]);
+    expect(v).toMatchObject({ compacted: true, tokens: null, pct: null, before: 190_000, window: 200_000, updated: T0 + 120_000,
+      compactions: [T0 + 120_000] });
+    expect(v.series.map((p) => p.tokens)).toEqual([150_000, 190_000]);
+    // The next reply gives the new fill.
+    const after = track([turn(0, 190_000), boundary(1), summary(1), turn(2, 20_000)]);
+    expect(after).toMatchObject({ compacted: false, tokens: 20_000, before: null });
+  });
+
   it('reads the same whatever the chunks, carrying a cut line over to the next chunk', () => {
     const text = [turn(0, 30_000), turn(1, 40_000), boundary(2), summary(2), turn(3, 5_000)].map((l) => `${l}\n`).join('');
     const whole = contextTracker();

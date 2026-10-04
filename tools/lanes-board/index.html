@@ -213,6 +213,7 @@ details.history > section { margin-top: 10px; }
 .tr .id { color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
 .tr .ti { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .tr.s-done .ti, .tr.s-done .id { color: var(--muted); }
+.tr.queued .sw { box-shadow: 0 0 0 2px var(--page), 0 0 0 4px var(--text); }
 .lrow { display: flex; gap: 8px; align-items: center; font-size: 13px; padding: 3px 0; min-width: 0; }
 .lrow .lt { min-width: 0; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .lrow .lt .m { margin-left: 4px; }
@@ -579,7 +580,7 @@ const taskRow = (ref) => {
   const t = taskOf(ref);
   if (!t) return '';
   const [k, id] = ref.split(':');
-  return `<li class="tr s-${t.status}" tabindex="0" data-p="${k}" data-id="${esc(id)}"><i class="sw ${t.status}"></i><span class="id">${esc(taskName(k, id))}</span><span class="ti">${esc(t.title)}</span></li>`;
+  return `<li class="tr s-${t.status}${queue.includes(ref) ? ' queued' : ''}" tabindex="0" data-p="${k}" data-id="${esc(id)}"><i class="sw ${t.status}"></i><span class="id">${esc(taskName(k, id))}</span><span class="ti">${esc(t.title)}</span></li>`;
 };
 function phaseLanes(ph) {
   return ph.lanes.map((x) => {
@@ -761,7 +762,8 @@ function renderPlans() {
         if (t.status === 'moved') return `<i class="t moved" data-p="${p.key}" data-id="${esc(id)}"${t.movedTo ? ` data-to="${esc(t.movedTo)}"` : ''}>${esc(t.moved.toUpperCase())}</i>`;
         return taskTile(`${p.key}:${id}`);
       }).join('');
-      const what = s.ids.every((id) => p.tasks[id].status === 'moved') ? 'moved' : 'retired';
+      // A stage with no tasks (none of this plan's) is neither moved nor retired.
+      const what = !s.ids.length ? '' : s.ids.every((id) => p.tasks[id].status === 'moved') ? 'moved' : 'retired';
       return `<div class="stage"><div class="nm" title="${esc(s.name)}"><span class="n">${s.n ?? ''}</span>${esc(s.name)}</div>
         <div class="tiles">${tiles}</div><div class="ct">${live.length ? `${done}/${live.length}` : what}</div></div>`;
     }).join('');
@@ -895,12 +897,13 @@ function chainOf(ref) {
   add(ref);
   return chain;
 }
-function taskActions(ref) {
+// panel: for the graph's side panel, which shows the status line itself.
+function taskActions(ref, { panel = false } = {}) {
   const t = taskOf(ref);
   if (!t) return [];
   const acts = [];
   if (t.status === 'moved') {
-    acts.push({ disabled: true, label: statusLabel(t) });
+    if (!panel) acts.push({ disabled: true, label: statusLabel(t) });
     if (t.movedTo && taskOf(t.movedTo)) acts.push({ act: 'goto', label: `Go to ${refName(t.movedTo)}` });
     return acts;
   }
@@ -948,10 +951,10 @@ document.addEventListener('contextmenu', (e) => {
   e.preventDefault();
   openMenu(el, e.clientX, e.clientY);
 });
-// A roadmap task row opens the same menu on a click (or Enter); a moved tile
-// leads to the task that took it over.
+// A roadmap task row or tile opens the same menu on a click (a row also on
+// Enter); a moved tile leads to the task that took it over.
 document.addEventListener('click', (e) => {
-  const row = e.target.closest('.tr[data-p]');
+  const row = e.target.closest('.tr[data-p], #v-roadmap .t[data-p]:not(.moved)');
   if (row && data) { e.stopPropagation(); const r = row.getBoundingClientRect(); openMenu(row, e.clientX || r.left + 20, e.clientY || r.bottom); return; }
   const mv = e.target.closest('.t.moved[data-to]');
   if (mv && data && taskOf(mv.dataset.to)) jumpTo(mv.dataset.to);
@@ -1139,7 +1142,7 @@ function renderPanel() {
   const dependents = [];
   for (const p of data.plans) for (const [did, dt] of Object.entries(p.tasks)) if (dt.blockers.some((b) => b.ref === gSel)) dependents.push(`${p.key}:${did}`);
   const row = (ref, met) => { const x = taskOf(ref); const [rk, rid] = ref.split(':'); return `<li data-pick="${esc(ref)}" class="${met ? 'met' : ''}"><i class="sw ${x?.status ?? 'blocked'}"></i><span>${esc(taskName(rk, rid))} ${esc(x?.title ?? '')}</span></li>`; };
-  const acts = taskActions(gSel);
+  const acts = taskActions(gSel, { panel: true });
   const live = liveLaunch(gSel);
   const lane = data.lanes.find((l) => l.working && l.plan === k && l.task === id);
   setPanel(`<div class="m">${esc(planOf(k)?.name ?? k)}</div>

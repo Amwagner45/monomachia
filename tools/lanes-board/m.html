@@ -533,7 +533,7 @@ function renderPlan() {
     .map((k) => `<div class="${k}" style="flex:${c[k]}"></div>`).join('');
   const counts = ['done', 'working', 'launched', 'owner', 'ready', 'blocked', 'retired', 'moved'].filter((k) => c[k])
     .map((k) => `<span><i class="sw ${k}"></i>${c[k]} ${k === 'owner' ? 'your OK' : k}</span>`).join('');
-  const complete = (s) => s.ids.every((id) => ['done', 'retired', 'moved'].includes(p.tasks[id].status));
+  const complete = (s) => s.ids.length > 0 && s.ids.every((id) => ['done', 'retired', 'moved'].includes(p.tasks[id].status));
   const nComplete = p.stages.filter(complete).length;
   const stages = p.stages.map((s) => {
     const live = s.ids.filter((id) => !['retired', 'moved'].includes(p.tasks[id].status));
@@ -544,7 +544,7 @@ function renderPlan() {
       // A moved task: a muted "M1" tile; its sheet links to the task that took it over.
       return `<button class="t ${t.status}${t.gate ? ' gate' : ''}${queue.includes(ref) ? ' queued' : ''}" data-task="${esc(ref)}" aria-label="${esc(`${taskName(p.key, id)} ${t.title}: ${statusLabel(t)}`)}">${t.status === 'moved' ? esc(t.moved.toUpperCase()) : ''}</button>`;
     }).join('');
-    const what = s.ids.every((id) => p.tasks[id].status === 'moved') ? 'moved' : 'retired';
+    const what = !s.ids.length ? '' : s.ids.every((id) => p.tasks[id].status === 'moved') ? 'moved' : 'retired';
     return `<div class="stage ${complete(s) ? 'complete' : ''}"><div class="hd"><span class="nm">${s.n != null ? `<span class="n">${s.n}</span>` : ''}${esc(s.name)}</span><span class="ct">${live.length ? `${done}/${live.length}` : what}</span></div>
       <div class="tiles">${tiles}</div></div>`;
   }).join('');

@@ -182,6 +182,23 @@ describe('parseFlat on milestone 1', () => {
   });
 });
 
+describe('blockers in another plan', () => {
+  const blockersOf = (parse, plan, id, line) => parse(`# P\n\n## Tasks\n- [ ] **${id}. T.** x\n  - Blocked by: ${line}\n`, plan).tasks.get(id).blockers;
+
+  it('ends a list of another plan\'s tasks at its "and <id>", so local ids after it stay local', () => {
+    expect(blockersOf(parseRoadmap, RM, 'R3', '`docs/plans/milestone-1.md` tasks 12 and 13, R2')).toEqual(['m1:12', 'm1:13', 'rm:R2']);
+    expect(blockersOf(parseFlat, M1, '12', '`docs/plans/godot-rebuild.md` tasks 25.4 and 26.4, 3')).toEqual(['gr:25.4', 'gr:26.4', 'm1:3']);
+    expect(blockersOf(parseFlat, M1, '12', '`docs/plans/godot-rebuild.md` tasks 25.4, 25.5, and 26.4; 3')).toEqual(['gr:25.4', 'gr:25.5', 'gr:26.4', 'm1:3']);
+  });
+
+  it('takes only ids shaped like the other plan\'s tasks', () => {
+    expect(blockersOf(parseFlat, M1, '13', '`docs/plans/godot-rebuild.md` tasks 26.3, 26.4, 3 · Stories: 1')).toEqual(['gr:26.3', 'gr:26.4', 'm1:3']);
+    expect(blockersOf(parseFlat, M1, '12', '`docs/plans/godot-rebuild.md` task 26.4, 3')).toEqual(['gr:26.4', 'm1:3']);
+    expect(blockersOf(parseRoadmap, RM, 'R4', '`docs/plans/milestone-1.md` task 12, R2')).toEqual(['m1:12', 'rm:R2']);
+    expect(blockersOf(parseFlat, M1, '14', '`docs/plans/roadmap.md` tasks R1 and R2, 3')).toEqual(['rm:R1', 'rm:R2', 'm1:3']);
+  });
+});
+
 describe('moved tasks', () => {
   // Excerpts of the Oct 4 triage in docs/plans/godot-rebuild.md.
   const TRIAGED = `# Plan
@@ -315,11 +332,17 @@ describe('parseRoadmap', () => {
     ]);
   });
 
-  it('gives the phases as stages of its own tasks, so the other views work', () => {
+  it('reads "alongside phase N" anywhere in the bracketed note', () => {
+    const text = '# R\n\n## Phases\n1. **A:** R1\n2. **B:** R2\n3. **Master follow-ups** (on master, alongside phase 2): gr 18.11\n'
+      + '4. **C** (alongside phase 2, after the consolidation): R3\n5. **D** (not alongside anything): R4\n';
+    expect(parseRoadmap(text, RM).phases.map((p) => p.alongside)).toEqual([null, null, 2, 2, null]);
+  });
+
+  it('gives the phases with roadmap tasks as stages of its own tasks, so the other views work', () => {
+    // Master follow-ups has only other plans' tasks: as a stage it would be empty, and read as finished.
     expect(stages).toEqual([
       { n: 1, name: 'Consolidation', ids: ['R1'] },
       { n: 2, name: 'Milestone 1', ids: ['R2', 'R3'] },
-      { n: 3, name: 'Master follow-ups', ids: [] },
       { n: 4, name: 'Milestone 2', ids: ['R4'] },
     ]);
   });

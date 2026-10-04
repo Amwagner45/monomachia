@@ -216,9 +216,14 @@ export function contextTracker(env = {}) {
       let window = contextWindowFor(model, env);
       if (window < ONE_M && !envNumber(env.LANES_CONTEXT_WINDOW) && bigger.has(model)) window = ONE_M;
       const { t, tokens } = series.at(-1);
+      // Compacted since the last reply: the old fill is gone and the new one
+      // comes with the next reply, so tokens and pct are null until then.
+      const fill = compactedSinceTurn
+        ? { compacted: true, tokens: null, pct: null, before: tokens, updated: compactions.at(-1) ?? t }
+        : { compacted: false, tokens, pct: Math.round((tokens / window) * 1000) / 10, before: null, updated: t };
       shown = {
-        model, tokens, window, pct: Math.round((tokens / window) * 1000) / 10, autoCompactAt: autoCompactAt(window, env),
-        updated: t, series: downsample(series, compactions, SHOWN), compactions: compactions.slice(),
+        model, window, autoCompactAt: autoCompactAt(window, env), ...fill,
+        series: downsample(series, compactions, SHOWN), compactions: compactions.slice(),
       };
       return shown;
     },

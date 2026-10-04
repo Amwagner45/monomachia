@@ -8,6 +8,8 @@ Read these before changing gameplay or planning new features:
 
 - `docs/design.md`: the full game design document, the vision for the finished game (all 9 weapons, arenas, progression, online play). Its "(Oct 4)" lines set the current direction: animation leads the rules' timing, a realistic look replaces the toon and ink-wash style, an RTX 3090 is the target, and the existing content reaches final quality before new content.
 - `docs/adr/0001-animation-leads-realistic-look.md`: why that direction was taken. Where an older spec or plan section carries a "Superseded by ADR 0001" note, follow `docs/design.md` and the ADR, not that section.
+- `docs/specs/milestone-1.md`: the current milestone, the Hunter with the Katana and bare hands on the Moonlit Shrine at final quality; its plan is `docs/plans/milestone-1.md`.
+- `docs/plans/roadmap.md`: the order of the work from the consolidation to online play, in six phases, pointing at each phase's plan.
 - `docs/mvp-spec.md`: the MVP plan and spec, the record of the original web demo. Its "Decisions", "Scope" and "Gaps in the design doc" tables record the choices it made; the Godot game's rules and numbers have moved on (see `docs/specs/`).
 - `docs/architecture.md`: a map of the code with diagrams: the folders, how one frame flows through the Godot game, the rules, the view, tests and tools. Start here when new to the code, and update it when a change moves a boundary it describes.
 

@@ -2,6 +2,8 @@
 
 Spec: `docs/specs/animation-studio.md` · branch `feature/animation-studio`, off `feature/authored-animation` · draft pull request #19 (into `feature/authored-animation`; retargeted to `feature/godot-rebuild` once #12 merges)
 
+> **Absorbed by milestone 1 (Oct 4, 2026):** this plan is no longer followed on its own. PR #19 merged it into `feature/godot-rebuild` as it stood (tasks 1–6 done), and milestone 1 slims the Studio to its gallery, timeline, markers and chains (`docs/specs/milestone-1.md`, The Animation Studio). Its leftover tasks fold into `docs/plans/milestone-1.md`: task 11 drops tasks 13, 14 and 16–21; task 25 carries 7, 8 and 9 (only the distance band's hit-or-miss check); task 26 carries 10 and 11; task 27 carries 12 and 15; task 41 carries 22 and the gallery's open gate 6, as the owner's try of the slimmed Studio on the pilot family. The Global Constraints' excuse for `test_whole_attacks_keep_the_weapon_in_the_hands` no longer holds: `docs/plans/roadmap.md` task R1 fixes it before the consolidation merges.
+
 > **For agentic workers:** work task by task with `/implement` (tests first, then code, then review), or superpowers:subagent-driven-development / superpowers:executing-plans. Tick each task's box here when it's done.
 
 ## Destination
@@ -43,7 +45,7 @@ Spec: `docs/specs/animation-studio.md` · branch `feature/animation-studio`, off
 - Never commit an Iglesias file, a clip converted from one, a screenshot of one, `.anim-refine/` or `game/tools/anim_studio/.refinements.json`.
 - Data files keep their hand formatting: one move per line in `move_clips.json`, numbers in `JsFormat.num()` style, tabs. A load and save with no edits writes identical bytes.
 - Every task ends with:
-  - `npm test` and `npm run typecheck` passing, apart from the failure inherited from the base, `test_whole_attacks_keep_the_weapon_in_the_hands`, until the authored-animation lane fixes it;
+  - `npm test` and `npm run typecheck` passing (`test_whole_attacks_keep_the_weapon_in_the_hands`, once a failure inherited from the base on clones without the packs, has been local-only since Oct 4);
   - `git checkout -- game/default_bus_layout.tres` (Godot test runs rewrite it);
   - a commit and a push.
 - New worktrees lack gitignored files. Before Godot runs in one, copy `.godot-path` (and `.assets-src-path`) and junction `node_modules` from the main checkout.

@@ -71,10 +71,23 @@ The input classes the spec implies but no story spells out. Each has a test in t
 - **The plan was approved** by the owner on Oct 3.
   - **Execution:** a fresh subagent builds each task test-first, and a fresh reviewer checks it before the next starts.
   - **Pacing:** tasks run back to back. Work stops only at the gates (6, 17, 22).
+- **Choices made while building** (Oct 3–4):
+  - **Knockdown and KO** moved to `state_clips.json` in task 3 along with the other states. They arrived with authored-animation task 28, after this plan was written, and spec story 17 lists knockdown among the editable states.
+  - **The regression tests use a frozen copy of the table** (`tests/fixtures/state_clips_frozen.json`), so Studio edits to the live file don't break them.
+  - **Roll and the locomotion clips** are view-only source entries in the States tab.
+  - **Catalogue entries carry their fallback clips** (`Entry.fallbacks`), so the tiles and the editor play what the game plays without the packs.
+  - **Tiles build when first shown**, at most two per frame, and tick at 30 Hz. These are the spec's speed mitigations, applied early.
+  - **Task 15** will signal `send_to_chat` for task 17 to connect. **Task 16** owns building the terminal command.
+  - **Task 22** also adds the Studio to `docs/architecture.md`, which CLAUDE.md now asks for.
 
 ## Progress
 
-Nothing built yet.
+- **Tasks 1–6 done** (Oct 3–4, up to 7208d42). Each task was built test-first by a fresh implementer and passed an independent review; tasks 3 to 6 needed one fix round each.
+  - **What works:** the Studio opens with `node scripts/godot.mjs studio` and shows a live gallery of every animation in seven tabs (Katana, Daggers, Greatsword, Fists, States, Ults, Source), on either body. It has search and badge filters, and tiles play the real clips, or the fallbacks without the packs.
+  - **Gate shots:** `shots/studio/<tab>_<body>.png` (gitignored).
+  - **Speed:** about 19–33 ms per frame with a screenful of 12 live tiles. Opening a later tab takes 70–95 ms; the first tab after start takes about 0.6 s, while the clip libraries and shaders load.
+  - **Tests:** the full suite was 1772/1772 with the clip libraries present.
+- **Paused after task 6** (Oct 4), on the owner's word relayed from the roadmap session: the owner is rethinking the animation approach (the fighters' skeleton and models; whether clips or frame data lead). Gate 6, the owner's look at the gallery shots, is still open. Nothing starts until the owner restarts the lane.
 
 ## Build order
 
@@ -119,7 +132,7 @@ game/tests/tools/anim_studio/test_*.gd
 
 ### Phase A: foundations
 
-- [ ] **1. The Studio shell and its launch command.**
+- [x] **1. The Studio shell and its launch command.**
   - **The scene.** `game/tools/anim_studio/studio.tscn` with `studio.gd` (`class_name AnimStudio`, `extends Control`). A full-window layout holds a top bar (title, Hunter/Rogue toggle, a packs-missing note from `ClipLibraries.MISSING_NOTE`), a central area that swaps between an empty gallery and an empty editor, and a chat panel docked on the right that can be collapsed. It has a dark theme in `studio_theme.tres`.
   - **`node scripts/godot.mjs studio`** runs `godot --path game res://tools/anim_studio/studio.tscn` windowed (1600×900), like `run`. It is added to the usage line.
   - **`.gitignore`** gains `.anim-refine/` and `game/tools/anim_studio/.refinements.json`.
@@ -130,7 +143,7 @@ game/tests/tools/anim_studio/test_*.gd
   - Check: `tests/tools/anim_studio/test_studio_smoke.gd` instantiates the scene headless, awaits two process frames and asserts the three areas exist with no script errors. A shot (`godot.mjs shots`) of the empty layout.
   - Blocked by: none · Stories: 36, 37
 
-- [ ] **2. SourceEdit: change one value in a hand-formatted file.**
+- [x] **2. SourceEdit: change one value in a hand-formatted file.**
   - `game/tools/anim_studio/source_edit.gd` (`class_name SourceEdit`, `extends RefCounted`), a pure text tool for JSON and GDScript dictionary literals.
   - It is string-aware (`"..."` with escapes, `&"..."` StringNames) and bracket-matching over `{}`, `[]` and `()`.
   - Interfaces produced:
@@ -152,7 +165,7 @@ game/tests/tools/anim_studio/test_*.gd
     - a key under a call value is refused.
   - Blocked by: none · Stories: 14–17, 19
 
-- [ ] **3. State and ult clips on data.**
+- [x] **3. State and ult clips on data.**
   - **The file.** `game/assets/kevin_iglesias/state_clips.json` holds, with unchanged values, everything ClipDirector's constants hard-code about which clips play:
     - `IDLE`, `FALLBACK_IDLE` and `FADES`;
     - `STATE_CLIPS` and `STUN_CLIPS`;
@@ -176,7 +189,7 @@ game/tests/tools/anim_studio/test_*.gd
     - a file with an unknown key is refused with an error.
   - Blocked by: 2 · Stories: 17
 
-- [ ] **4. The catalogue.**
+- [x] **4. The catalogue.**
   - `game/tools/anim_studio/studio_catalogue.gd` (`class_name StudioCatalogue`) and `studio_libraries.gd` (`class_name StudioLibraries`).
   - Interfaces produced:
     - `class Entry`:
@@ -204,7 +217,7 @@ game/tests/tools/anim_studio/test_*.gd
 
 ### Phase B: the gallery
 
-- [ ] **5. The animation tile.**
+- [x] **5. The animation tile.**
   - `gallery/anim_tile.tscn/.gd` (`class_name AnimTile`, `extends PanelContainer`) holds:
     - a 256×256 `SubViewport` with its own `World3D`, a key light and a three-quarter camera;
     - a `FighterModel` from `FighterLook.instantiate_fighter(fighter_id)` with the entry's weapon attached (`WeaponLook`), its AnimationPlayer given the shared libraries;
@@ -222,7 +235,7 @@ game/tests/tools/anim_studio/test_*.gd
     - a source entry for a UAL clip plays without the packs.
   - Blocked by: 4 · Stories: 1, 4, 5
 
-- [ ] **6. The gallery screen.**
+- [x] **6. The gallery screen.**
   - `gallery/gallery.tscn/.gd`:
     - tabs Katana, Daggers, Greatsword, Fists, States, Ults and Source, each a scrolling `HFlowContainer` of tiles;
     - a search box and badge filter chips;

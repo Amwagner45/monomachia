@@ -1,6 +1,6 @@
 # Spec: Animation Studio
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/animation-studio.md`, Oct 3) · branch `feature/animation-studio`, off `feature/authored-animation` (at 3b9b01c, task 27), pull request against `feature/authored-animation` until PR #12 merges, then against `feature/godot-rebuild`
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/animation-studio.md`, Oct 3); tasks 1–6 done (the gallery), lane paused on Oct 4 at gate 6 · branch `feature/animation-studio`, off `feature/authored-animation` (at 3b9b01c, task 27), pull request against `feature/authored-animation` until PR #12 merges, then against `feature/godot-rebuild`
 
 The Animation Studio is a local dev tool for the Godot game: a gallery of every clip the fighters play, grouped by category and playing live, where clicking one opens a full editor for it. Each animation also has a chat panel: a prompt sent from it starts a new Claude Code session in a fresh git worktree, with the animation's data and a screenshot attached, and that session takes the change through the usual spec, plan and pull request flow.
 

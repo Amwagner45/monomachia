@@ -291,7 +291,7 @@ export function buildVault(source) {
     if (!d.plan) continue;
     const prefix = d.slug === 'godot-rebuild' ? 'Task ' : `${d.slug} task `;
     d.taskName = new Map(d.plan.tasks.map((t) => [t.id, claim(`${prefix}${t.id}`)]));
-    d.stageName = new Map(d.plan.stages.map((s) => [s.n, claim(`${d.slug === 'godot-rebuild' ? '' : `${d.slug} `}Stage ${s.n} - ${s.name}`)]));
+    d.stageName = new Map(d.plan.stages.map((s) => [s.n, claim(`${d.slug === 'godot-rebuild' ? '' : `${d.slug} `}Stage ${s.n} - ${s.name.split(':')[0]}`)]));
   }
   const rebuild = docs.find((d) => d.plan && d.slug === 'godot-rebuild') ?? docs.find((d) => d.plan);
 

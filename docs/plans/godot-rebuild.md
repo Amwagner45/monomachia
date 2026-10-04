@@ -2292,15 +2292,34 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **22.11 Controls: rebinding capture.** Choosing a slot listens for a key or button (cancel and clear included), feeding the input feed before taking each event; the result goes into the active profile and saves; Back is ignored while listening.
     - Check: binding a key, a mouse button, a controller button, a trigger and a stick direction; a token moving off its old action; clear and cancel; the saved file changes; a shot of a slot listening.
     - Blocked by: 22.10 · Stories: 56
-  - [ ] **22.12 Controls: profiles.** Pick, rename (keyboard), new and delete, saved.
+    - Decided with the owner (Oct 3, wayfinder questions for the 22.11–22.14 lane):
+      - Order: this lane builds 22.13 and 22.14 first, then merges the menus lane's branch (`godot/menus-22.6-22.10`, or Arod231/monomachia#16 if it has merged) in before 22.11, since 22.10's binding table lives there.
+      - Controller-only cancel and clear: on a focused slot that isn't listening, Y/△ clears it (Delete and Backspace too); while listening, 5 seconds with no input cancels. Esc and Backspace still cancel and clear during capture, as in the demo.
+  - [ ] **22.12 Controls: profiles.** Pick, rename (keyboard, or a letter grid on a controller), new and delete, saved.
     - Check: each operation changes the profiles and the file; Delete is hidden with one profile; the table follows the active profile; a shot reviewed.
     - Blocked by: 22.11 · Stories: 56
-  - [ ] **22.13 Move list from the move data.** `MoveList` walks each weapon's light and heavy strings, release variants, movement attacks and block abilities into rows with damage, posture, reach and counter kind.
+    - Decided with the owner (Oct 3):
+      - Rename on a controller: a letter grid under the name field when a controller opened Rename: A–Z, 0–9, Space, Shift (lower case), Delete and Done; A picks a key, B deletes a letter, Start is Done. Keyboard typing works either way. (This replaces the notes' keyboard-only rename.)
+      - Delete asks first: the first press turns the button into "Delete <name>? Press again"; moving focus away resets it.
+  - [x] **22.13 Move list from the move data.** `MoveList` walks each weapon's light and heavy strings, release variants, movement attacks and block abilities into rows with damage, posture, reach and counter kind.
     - Check: every move reachable from a weapon appears once with the data's numbers; a changed or added move changes the rows.
     - Blocked by: 22.3 · Stories: 58
+    - Decided with the owner (Oct 3):
+      - Columns: Input; Move, with a red "unblockable" or "counters thrust/sweep/slam" tag; Damage; Posture; Reach (m, `AttackDef.reach()`: the swing's once a move has one, else the authored range).
+      - Inputs are named in action words ("Light → Light → Heavy", "Dodge + light", the Iai's draw with left or right), not the player's bound buttons.
+      - Ultimates are listed: one "Light + heavy at 25% health" row per weapon, and bare hands get Recall and Breaker Palm.
+    - Done:
+      - `MoveList` (`game/ui/move_list.gd`, no nodes) gives a weapon's rows in five sections: Strings, Movement attacks, Block abilities, Counter and Ultimate. Each row has the input, the move's name, damage, posture, reach (`AttackDef.reach()`), unblockable and counter kind, a short note and, for a follow-up, the other moves that also lead into it (`also_after`).
+      - The strings are walked breadth first from the light and heavy starters through each move's light and heavy follow-ups and its release variant, so every move appears once, under its shortest input: the Katana's Rising Heaven is "Heavy → Heavy" (also after Return Cut), and the horizontal Iai is "Heavy + left/right". Rows read light first, then each branch: a move, its light follow-up, its release variant, then its heavy follow-up. A chargeable heavy notes "hold to charge" (the Iai adds "walk in the stance").
+      - Movement attacks, every block ability the weapon offers ("Block + light or heavy"; the loadout picks two) and the counter lunge ("Back-dash a slam → Light", from `Moves.COUNTER_LUNGE`) follow. The scripted ultimates add up their hits from `Moves.ULT_HITS` (`MoveList.ULTIMATES` lists each one's hits and a one-line note): Moonsplitter 30 damage and 40 posture, Impaler 35 and 50, Lightning Tempest 38 and 40 over its six spins and finisher. Bare hands list Recall and Breaker Palm. A scripted ultimate has no reach (NAN).
+      - The Tempest's six spins are now `SimConst.TEMPEST_SPINS`, which `Fighter` and the move list share; the rules don't change (a 10-match soak is clean).
+      - `test_move_list.gd` (12 tests): every move of every weapon appears once, with its own name, damage, posture, reach, unblockable and counter; the Katana's inputs, their other ways in and the string order; the Greatsword's string; movement, ability and counter rows; each ultimate's totals and hits; bare hands' choice; and a made-up weapon whose changed damage and reach, and an added follow-up, change the rows.
   - [ ] **22.14 How to play and the move list screen.** The demo's rule blocks, updated for this build's rules, and a move-list tab per weapon and bare hands; Back returns to the opener.
     - Check: the tabs show the move list's rows; scrolling and tabs work with keys and with a controller; shots reviewed.
     - Blocked by: 22.13 · Stories: 9, 58
+    - Decided with the owner (Oct 3):
+      - Layout: a tab row (Rules, Katana, Greatsword, Daggers, Bare hands) over a scrolling page. Left and right on the tab row, or LB/RB and Q/E from anywhere, switch tabs; up, down and the stick scroll.
+      - The rule text describes the finished rebuild (the spec's rules, Training and Versus as task 23 builds them), not only what is built today; 22.17's walk rereads it.
   - [ ] **22.15 Pause menu.** 休止 Paused with Resume, Move list, Controls, Settings, Restart and Quit to menu; sub-screens over the frozen match; a profile picked here takes effect on resume.
     - Check: it opens on the pause binding and on focus loss; each entry and Back work; a profile change applies on resume; the rules never step while it is open; walks; shots reviewed.
     - Blocked by: 22.9, 22.12, 22.14 · Stories: 9, 10, 56

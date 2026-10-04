@@ -110,7 +110,7 @@ const MOVES: Dictionary = {
 	&"d_needle": {
 		"id": &"d_needle", "name": "Needle Thrust", "kind": &"ability", "type": &"thrust", "anim": &"thrust", "hand": &"R", "sound": D,
 		"startup": 20, "active": 3, "recovery": 20, "damage": 10, "posture": 12, "knockback": 0.5,
-		"range": 2.4, "arc": 34, "lunge": 0.8, "lunge_start": 12, "lunge_end": 23,
+		"range": 2.4, "arc": 34, "lunge": 1.15, "lunge_start": 12, "lunge_end": 23,
 		"unblockable": true, "counter": &"thrust", "track_active": 0.5,
 	},
 	&"d_lunge": {

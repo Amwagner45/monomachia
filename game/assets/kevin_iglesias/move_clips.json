@@ -57,7 +57,9 @@
 		"d_jl": {"clips": ["Attack1H02_R@6"], "speed": 1.86, "fallback": "Sword_Attack", "marks": {"windup": 0, "contact": 6.5, "contact_end": 9.29, "settle": 20.45}},
 		"d_jh": {"clips": ["AttackPolearm03@4"], "speed": 1.83, "fallback": "Sword_Attack", "marks": {"windup": 0, "contact": 11, "contact_end": 14.66, "settle": 31.13}},
 		"d_shadow": {"clips": ["Roll01"], "speed": 2, "fallback": "Roll", "marks": {"windup": 0, "contact": 5, "contact_end": 19, "settle": 27}},
-		"d_lunge": {"clips": ["Attack1H04_R@6"], "speed": 1.8, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 4.5, "contact_end": 7.2, "settle": 21.6}}
+		"d_lunge": {"clips": ["Attack1H04_R@6"], "speed": 1.8, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 4.5, "contact_end": 7.2, "settle": 21.6}},
+		"d_sweep": {"clips": ["RunSlide01@0-6", "SerpentSweep01"], "speed": 1.55, "fallback": "Slide_Start", "marks": {"windup": 0, "contact": 15.5, "contact_end": 19.38, "settle": 36.42}},
+		"d_needle": {"clips": ["AttackPolearm01@0-8", "AttackPolearm01@8*4", "AttackPolearm01@8"], "speed": 1.55, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 15.5, "contact_end": 17.83, "settle": 33.33}}
 	}},
 	"fists": {"guard": "CombatIdle01", "moves": {}}
 }

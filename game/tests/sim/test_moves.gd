@@ -179,6 +179,10 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "d_sl", "field": "lunge", "was": 2.0, "now": 2.2},
 	{"move": "d_dh", "field": "lunge", "was": 0.0, "now": 0.45},
 	{"move": "d_bl", "field": "lunge", "was": 0.5, "now": 0.95},
+	# authored animation 23: Needle Thrust (AttackPolearm01, its pull-back
+	# held) reaches less far than its cone, so its lunge carries it to a touch
+	# from the unblockables' test distance (3.0 m)
+	{"move": "d_needle", "field": "lunge", "was": 0.8, "now": 1.15},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

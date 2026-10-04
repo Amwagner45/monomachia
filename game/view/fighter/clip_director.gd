@@ -27,10 +27,12 @@ extends RefCounted
 ##   (ClipLibraries.set_for()). Moves without a baked swing keep the
 ##   stand-in poses: nothing drives;
 ## - the ultimate Moonsplitter (task 13; ult_clip()): its clip wound up and
-##   held through the rules' wind-up, released as the wave goes out; and
+##   held through the rules' wind-up, released as the wave goes out;
 ##   Impaler (task 20): AttackPolearm01 drawn back through the aim, thrust
 ##   out on the dash and held through the impale, then the burst and the
-##   recovery; a change of an ultimate's phase fades as a follow-up does;
+##   recovery; and Lightning Tempest (task 23): six whole-body spinning
+##   slashes, each cutting on its spin's hit, and an outward double slash
+##   for the final; a change of an ultimate's phase fades as a follow-up does;
 ## - the Greatsword's shoulder carry (task 18; carry_clip()): while the
 ##   fighter is shouldered, CARRY_POSE on the upper body over the legs' blend
 ##   (Shot.legs_free()), faded in as a stance (8 frames); an attack from the
@@ -111,6 +113,24 @@ const IMPALER_RECOVER_FRAMES: float = 30.0
 const IMPALER_FALLBACK: StringName = &"Sword_Dash"
 const IMPALER_AIM: int = 30
 const IMPALER_DASH: int = 40
+## Lightning Tempest (task 23; Fighter._ult_tempest()): the flash eases into
+## TEMPEST_SPIN's first slash as the fighter darts in; each of the six spins
+## plays one of its two whole-body spinning slashes in turn (TEMPEST_SLASHES:
+## the source frame each starts from) at 2.0, its cut landing on the spin's
+## hit (its fifth frame); the final plays TEMPEST_FINAL's outward double slash
+## from TEMPEST_FINAL_FROM at 1.5, the cut on the final's hit (its eighth),
+## and the recovery the rest of the clip over its 24 frames. (The clip
+## table's AttackDW01 and AttackDW02 stab to the front; Sword_Aerial_Combo, a
+## CC0 clip, spins, so the spins play without the packs too.)
+const TEMPEST_SPIN: StringName = &"ual/Sword_Aerial_Combo"
+const TEMPEST_SLASHES: Array[float] = [2.0, 17.0]
+const TEMPEST_FLASH: int = 8
+const TEMPEST_FINAL: StringName = &"AttackDW02"
+const TEMPEST_FINAL_FROM: float = 12.0
+const TEMPEST_FINAL_FRAMES: int = 14
+const TEMPEST_RECOVER_FRAMES: int = 24
+## Without the packs: the CC0 combo stretched over the final and recovery.
+const TEMPEST_FALLBACK: StringName = &"Sword_Heavy_Combo"
 
 
 ## What a fighter is playing and from what it plays.
@@ -238,6 +258,9 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		move = f.atk.def.id if f.atk != null else f.ult.kind
 		if f.atk == null:
 			phase = f.ult.phase
+			if f.ult.kind == &"tempest" and phase == &"spin":
+				# each spin is a phase of its own, faded into as a follow-up
+				phase = StringName("spin%d" % f.ult.spins)
 	else:
 		playing = state_clip(f, ctx)
 		if playing != null:
@@ -384,6 +407,8 @@ static func ult_clip(f: Fighter, ctx: Context) -> Clip:
 		return null
 	if f.ult.kind == &"impaler":
 		return impaler_clip(f.ult, ctx)
+	if f.ult.kind == &"tempest":
+		return tempest_clip(f.ult, ctx)
 	if f.ult.kind != &"moonsplitter":
 		return null
 	var u: UltState = f.ult
@@ -422,6 +447,31 @@ static func impaler_clip(u: UltState, ctx: Context) -> Clip:
 			var end: float = length * float(ClipManifest.SOURCE_FPS)
 			source = lerpf(IMPALER_RECOVER, end, clampf(pf / IMPALER_RECOVER_FRAMES, 0.0, 1.0))
 	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
+
+
+## Lightning Tempest's clip in ultimate state `u` (see TEMPEST_SPIN).
+static func tempest_clip(u: UltState, ctx: Context) -> Clip:
+	var pf: float = float(u.pf)
+	var fps: float = float(ClipManifest.SOURCE_FPS)
+	if u.phase == &"flash" or u.phase == &"spin":
+		var source: float = TEMPEST_SLASHES[0] * minf(1.0, pf / float(TEMPEST_FLASH))
+		if u.phase == &"spin":
+			var start: float = TEMPEST_SLASHES[u.spins % TEMPEST_SLASHES.size()]
+			source = start + minf(pf, 10.0)
+		var spin_name: String = String(TEMPEST_SPIN)
+		return Clip.make(spin_name, clampf(source / fps, 0.0, ctx.lengths.get(spin_name, 0.0)))
+	var done: float = pf if u.phase == &"final" else float(TEMPEST_FINAL_FRAMES) + pf
+	if not ctx.libraries:
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, TEMPEST_FALLBACK]
+		var share: float = clampf(done / float(TEMPEST_FINAL_FRAMES + TEMPEST_RECOVER_FRAMES), 0.0, 1.0)
+		return Clip.make(anim_name, share * ctx.lengths.get(anim_name, 0.0))
+	var final_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), TEMPEST_FINAL)
+	var length: float = ctx.lengths.get(final_name, 0.0)
+	var cut_end: float = TEMPEST_FINAL_FROM + float(TEMPEST_FINAL_FRAMES) * 0.75
+	var source: float = TEMPEST_FINAL_FROM + pf * 0.75
+	if u.phase == &"recover":
+		source = lerpf(cut_end, length * fps, clampf(pf / float(TEMPEST_RECOVER_FRAMES), 0.0, 1.0))
+	return Clip.make(final_name, clampf(source / fps, 0.0, length))
 
 
 ## The timing a baked swing was baked on (its markers and speed), or null.

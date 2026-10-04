@@ -1128,6 +1128,25 @@
 				"daggers"
 			]
 		},
+		"SerpentSweep01": {
+			"compose": {
+				"upper": "Attack1H04_R",
+				"upper_from": 2,
+				"legs": "RunSlide01",
+				"legs_from": 9
+			},
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 9,
+				"contact_end": 13,
+				"settle": 30
+			},
+			"provisional": false,
+			"groups": [
+				"daggers"
+			]
+		},
 		"SheatheHips01_R": {
 			"pack": "Human Melee Animations",
 			"dir": "Misc/Unsheathe",

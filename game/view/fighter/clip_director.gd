@@ -40,8 +40,9 @@ extends RefCounted
 ##   (AttackState.lift, 6 frames), the legs handed over with it, and a guard
 ##   raised from it fades back to the legs over the same lift. There is no
 ##   CC0 carry, so without the packs nothing shows it;
-## - the states with a clip of their own (STATE_CLIPS; so far the stomp
-##   counter's hand-keyed Mikiri_Stomp, KeyedClips; and by cause, STUN_CLIPS,
+## - the states with a clip of their own (STATE_CLIPS; the stomp counter's
+##   hand-keyed Mikiri_Stomp and the recall's Power_Up, task 30b, KeyedClips;
+##   and by cause, STUN_CLIPS,
 ##   the stomped thruster's Mikiri_Pinned): the clip fitted to the
 ##   state's length, whole body, with or without the packs (the keyed clips
 ##   are committed);
@@ -158,7 +159,7 @@ const CARRY: StringName = &"carry"
 const STATE: StringName = &"state"
 ## The rules states that play a clip of their own, fitted to the state's
 ## length: hand-keyed clips (KeyedClips).
-const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.STOMP}
+const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.STOMP, &"recall": KeyedClips.POWER_UP}
 ## A stun's own clip by what caused it (Fighter.stun_cause): the stomped
 ## thruster's pin and stagger.
 const STUN_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.PINNED}

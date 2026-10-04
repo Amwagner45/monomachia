@@ -57,6 +57,10 @@ A slow, telegraphed thrust, sweep or overhead slam. Blocking it doesn't stop it,
 **Ultimate**:
 The once-per-round signature move a fighter can use at 25% HP or less.
 
+**Recall**:
+The disarmed ultimate's re-arm: a power-up whose burst returns the weapon to the fighter's hands and blasts a nearby opponent away and down.
+_Avoid_: Summon, pick-up (that is walking to the dropped weapon)
+
 ## Hits
 
 **Swing**:

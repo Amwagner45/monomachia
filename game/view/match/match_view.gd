@@ -69,6 +69,8 @@ var fighters: Array[FighterView] = []
 var swing_debug_view: SwingDebugView
 ## The combat effects (flashes, rings, particles) on the effect clock.
 var effects: CombatEffects
+## The recall's power-up aura and burst (task 30b), drawn with the effects.
+var recall_aura: RecallAura = RecallAura.new()
 
 ## owner side -> Node3D: the dropped weapon stand-ins.
 var _dropped: Dictionary[int, Node3D] = {}
@@ -121,6 +123,7 @@ func render(delta: float) -> void:
 	update_fighters(delta)
 	_update_dropped()
 	_feed_trails()
+	_feed_auras()
 	effects.update(effects.clock())
 	var me: int = host.view_side()
 	camera.update_rig(delta, host.display_position(me), host.display_position(1 - me))
@@ -158,6 +161,13 @@ func _feed_trails() -> void:
 		for hand: int in mini(2, blades.size()):
 			var span: PackedVector3Array = WeaponTrail.span(blades[hand][0], blades[hand][1], width)
 			effects.feed_trail(i, hand, t, span[0], span[1], rules.intensity(hand), rules.kind)
+
+
+## Throws each recalling fighter's power-up aura (RecallAura, task 30b) for
+## the rules frames stepped since the last drawn frame.
+func _feed_auras() -> void:
+	for i: int in fighters.size():
+		recall_aura.feed(effects, i, host.fighter(i))
 
 
 ## True when side `side`'s footsteps fall where its clips land its feet
@@ -315,6 +325,14 @@ func _on_sim_event(e: Dictionary) -> void:
 			camera.kick_fov(10.0)
 		&"ultLightning":
 			camera.add_shake(0.3)
+		&"recallBurst":
+			# the recall's power-up burst (task 30b): the flare and shockwave,
+			# and the opponent blasted away when it hits
+			RecallAura.burst(effects, e, host.world.frame)
+			camera.add_shake(1.0 if e["hit"] else 0.4)
+			camera.kick_fov(8.0)
+			if e["hit"]:
+				fighters[int(e["on"])].flash(Color(1.0, 0.9, 0.55), 0.7, host.world.frame)
 		&"ko":
 			camera.add_shake(ko_shake)
 			var loser: int = int(e["loser"])
@@ -326,6 +344,7 @@ func _on_sim_event(e: Dictionary) -> void:
 			camera.reset_round()
 			_clear_dropped()
 			effects.clear()
+			recall_aura.clear()
 
 
 # ------------------------------------------------------------------ dropped weapons

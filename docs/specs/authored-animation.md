@@ -1,6 +1,6 @@
 # Spec: Authored animation and the dodge roll
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); tasks 1–30 done (the Katana's review, task 14, `docs/reviews/katana-animation-review.md`, taken as passed when the owner set the next tasks going on Oct 3; its lunge and PoseCheck questions are still open); the Greatsword's review (task 20, `docs/reviews/greatsword-animation-review.md`) passed on Oct 3, its balance left to a tuning change after the Daggers; the Daggers' review (task 23, `docs/reviews/daggers-animation-review.md`) passed on Oct 3, their balance going into the same tuning change; bare hands' review (task 25, `docs/reviews/bare-hands-animation-review.md`) passed on Oct 3 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); tasks 1–30 and 30b done (the Katana's review, task 14, `docs/reviews/katana-animation-review.md`, taken as passed when the owner set the next tasks going on Oct 3; its lunge and PoseCheck questions are still open); the Greatsword's review (task 20, `docs/reviews/greatsword-animation-review.md`) passed on Oct 3, its balance left to a tuning change after the Daggers; the Daggers' review (task 23, `docs/reviews/daggers-animation-review.md`) passed on Oct 3, their balance going into the same tuning change; bare hands' review (task 25, `docs/reviews/bare-hands-animation-review.md`) passed on Oct 3 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
 
 The Godot rebuild's fighters move with procedural animation. Attacks follow hand-keyed weapon paths with arm IK and a torso and hip turn; reactions are a recoil and a lean; movement is hip-turned clips, a lean and a guard shuffle. This feature replaces all of it with authored clips: Kevin Iglesias's Human Melee and Human Basic Motions packs, retargeted onto the Quaternius fighters, with the Quaternius Universal Animation Library 2 as a supplement and as the fallback. It also turns the dodge from a dash into a roll, adds a knockdown rule, and gives the Greatsword a shoulder carry. The rules stay in charge: they decide every hit and every frame at 60 steps a second, and the clips are fitted to them.
 
@@ -178,6 +178,7 @@ All of these get rule tests and a soak run.
   - A guard raised from the shoulder (a block or a parry press) clears the flag but starts the same 6-frame lift, and an attack started before that lift ends waits for the rest of it. So a block ability pressed with the guard pays all 6 frames, one pressed a frame later pays 5, and one from a guard already up pays none (settled in plan task 15).
   - While lifting, the attack holds its frame 0, and the ultimate holds its first phase.
   - The flag is part of the fighter's state, so the presentation and the computer opponent read it.
+- **The recall's power-up burst** (added by the owner on Oct 4, 2026, plan task 30b). The recall (the disarmed ultimate's choice: 26 frames, the weapon back in the hand on frame 16, invulnerable up to it) bursts on frame 16: an opponent within the recalled weapon's duelling distance (Katana 2.5, Greatsword 3.0, Daggers 2.0 m) that isn't invulnerable (a dodge's i-frames, down, a counter's leap or stomp) is knocked back 2.0 m (`RECALL_BURST_KNOCKBACK`, twice a heavy's 1.0) over 14 frames and knocked down, with no damage or posture, and 6 frames of hit-stop. A guard doesn't stop it and it can't be parried. The `recallBurst` event (`f`, `on`, `hit`, `reach`, `pos`) fires either way, with `knockdown` after it on a hit.
 - **The computer opponent** knows about knockdowns (it doesn't attack a downed fighter until the stand-up's guard window) and about the shoulder lift (its timing and reach estimates for Greatsword attacks include it).
 
 ### Presentation
@@ -338,7 +339,7 @@ Two-handed weapons on one-handed clips (the Katana) put the off hand on the grip
 | Stunned, stagger, disarm stagger, impaled | Stun01 | UAL Hit_Knockback |
 | Knockdown | Knockdown01 Fall, Ground, StandUp (from frame 6), fitted to the phases (task 28) | UAL Hit_Knockback, LayToIdle |
 | Pick-up | Basic Motions Loot01 | UAL PickUp_Table |
-| Recall | Unsheathe for the weapon | UAL Sword_Idle |
+| Recall | Power_Up: hand-keyed, CC0 (KeyedClips), after a Super Saiyan power-up (the owner's reference): feet planted wide, a gather, then the chest thrown out, the head back shouting and the fists clenched low at the sides, bursting on frame 16 as the weapon returns, and up to ready; with a golden flame aura, white wind streaks and, on the burst, a golden flare and shockwave (RecallAura). Changed from the unsheathes on Oct 4, 2026, at the owner's request (task 30b) | none needed (committed) |
 | KO | CombatDeath01–04, by the final blow's side and weight (task 28) | UAL Death01 |
 | Intro, victory | As above | UAL Idle, Yes |
 
@@ -395,7 +396,7 @@ A good test checks behaviour at a public seam, not how the code works inside: bu
 - New weapons, including the Polearm clips' future spear.
 - New fighters, and per-fighter clip sets beyond the Rogue's HumanF and the Hunter's HumanM.
 - Motion capture or new clips beyond the two hand-keyed victory clips (Daggers toss, Greatsword plant).
-- Rule changes other than the knockdown, the Greatsword's shoulder carry, the roll curve and the retuned frame data.
+- Rule changes other than the knockdown, the Greatsword's shoulder carry, the roll curve, the recall's burst (added by the owner, task 30b) and the retuned frame data.
 - Ground attacks on downed fighters, and get-up choices.
 - The match intro's gates and walk-out, and the character select screen. This feature adds only the draw at the round intro and the victory poses.
 - Publishing converted Iglesias clips, unless Kevin confirms in writing that it's allowed.
@@ -428,6 +429,7 @@ The godot-rebuild spec is updated on this branch where these change it. Its plan
 - **Dodge:** design.md said "a dash, not a roll" (Movement) and "a dash with brief invincibility frames" (Defending). It's now a roll in any direction; the backstep stays.
 - **Knockdowns** are new: big hits knock down, and the downed fighter is invulnerable.
 - **Greatsword:** carried on the shoulder while moving, and attacks from there are slower.
+- **The recall** (the disarmed ultimate's re-arm) bursts as the weapon returns, blasting a near opponent 2.0 m away and down (task 30b).
 - **Assets:** licensed Iglesias packs join the CC0 sources, used in builds but not published.
 
 design.md is updated on this branch for all four.

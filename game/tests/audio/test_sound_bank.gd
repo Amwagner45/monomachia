@@ -7,7 +7,7 @@ const EXPECTED_EVENTS: Array[StringName] = [
 	&"swing", &"telegraph", &"hit", &"block", &"parry", &"counter", &"evade", &"disarm",
 	&"stagger", &"dodge", &"jump", &"land", &"step", &"ko", &"ultReady", &"ultStart",
 	&"ultChoice", &"ultWave", &"ultDash", &"ultImpale", &"ultBurst", &"ultLightning",
-	&"recall", &"pickup", &"weaponBounce", &"counterReady", &"backstabReady",
+	&"recall", &"pickup", &"recallBurst", &"weaponBounce", &"counterReady", &"backstabReady",
 	&"roundStart", &"fight", &"roundOver", &"matchOver",
 	&"ui_move", &"ui_select", &"ui_back",
 ]

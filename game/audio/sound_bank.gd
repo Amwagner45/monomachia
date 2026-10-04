@@ -262,6 +262,7 @@ const EVENTS: Dictionary = {
 	&"ultLightning": [&"lightning", &"lightning_zap"],
 	&"recall": [&"recall"],
 	&"pickup": [&"pickup"],
+	&"recallBurst": [&"boom"], # the recall's power-up burst (task 30b)
 	&"weaponBounce": [&"weapon_bounce"],
 	&"counterReady": [], # shown by a flash; the counter itself is loud
 	&"backstabReady": [], # shown by a prompt

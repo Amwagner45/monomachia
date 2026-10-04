@@ -1149,3 +1149,21 @@ func test_without_the_packs_the_states_play_their_fallbacks() -> void:
 	assert_eq((ClipDirector.move_clip(f, ctx)[0] as ClipDirector.Clip).name, "ual/Jump")
 	f.set_state(&"free")
 	assert_eq(ClipDirector.move_clip(f, ctx), [], "the free state is the legs'")
+
+
+func test_the_recall_plays_the_keyed_power_up_fitted_to_it() -> void:
+	var lib: AnimationLibrary = KeyedClips.load_library()
+	var ctx: ClipDirector.Context = _ctx()
+	var name: String = KeyedClips.anim_name(KeyedClips.POWER_UP)
+	ctx.lengths[name] = lib.get_animation(KeyedClips.POWER_UP).length
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	f.armed = false
+	f.set_state(&"recall", SimConst.RECALL_FRAMES)
+	for sf: int in [1, SimConst.RECALL_BURST_FRAME, SimConst.RECALL_FRAMES]:
+		f.sf = sf
+		W.frame += 1
+		var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+		assert_eq([shot.drive, shot.clip.name], [ClipDirector.STATE, name], "frame %d: the power-up, whole body" % sf)
+		assert_almost_eq(shot.clip.time, float(sf) / 60.0, 1e-6, "frame %d: on the recall's frames" % sf)
+	assert_eq(ClipDirector.step(null, f, _ctx()).drive, ClipDirector.LEGS, "without the clip in the tree: none")

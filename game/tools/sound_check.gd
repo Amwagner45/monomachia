@@ -421,6 +421,7 @@ static func make_steps() -> Array[Dictionary]:
 	out.append(_event_step(c, "ultLightning", {"t": &"ultLightning", "f": 1,
 		"from": _dict(YOU + Vector3(0.0, 8.0, 0.0)), "to": _dict(YOU + Vector3(0.0, CHEST, 0.0))}))
 	out.append(_event_step(c, "recall: a weapon flies back", {"t": &"recall", "f": 1}))
+	out.append(_event_step(c, "recallBurst: the recall's power-up bursts", {"t": &"recallBurst", "f": 1, "on": 0, "hit": true, "reach": 2.5, "pos": at}))
 	out.append(_event_step(c, "pickup", {"t": &"pickup", "f": 1}))
 	for bounce: Array in [[3.0, "slow"], [8.0, "fast, so it clatters too"]]:
 		out.append(_event_step(c, "weaponBounce: %s" % bounce[1],

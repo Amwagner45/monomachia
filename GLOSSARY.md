@@ -138,16 +138,20 @@ The meter under HP that fills under pressure. A full meter is the danger state.
 _Avoid_: Stamina, guard meter
 
 **Disarm**:
-What happens to a fighter whose posture is full when they are parried, or when they block a power attack, an unblockable or an ultimate: the weapon flies away.
+What happens to a fighter whose posture is full when they are parried, or when they block a power attack, an unblockable or an ultimate: the weapon flies off the way it was knocked and sticks in the ground.
 
 **Bare hands**:
 Fighting while disarmed, with the fighter's own hand-to-hand moves.
 _Avoid_: Unarmed mode, fists mode
 
+**Finisher**:
+A weapon's cinematic killing move, open to the fighter who disarms an opponent at 5% HP or less: one timed press during the slow motion plays it and ends the round.
+_Avoid_: Execution, fatality; calling a string's last hit a finisher
+
 ## Matches
 
 **Round** / **Match**:
-A round ends when a fighter's HP reaches zero; a match is won by the first fighter to win three rounds.
+A round ends when a fighter's HP reaches zero or they are finished; a match is won by the first fighter to win three rounds.
 
 **Arena**:
 The walled, floating stage a match is fought on.

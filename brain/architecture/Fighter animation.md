@@ -21,6 +21,7 @@ On Oct 4, 2026 the owner reversed the premise that the rules stay in charge and 
 - The authored-animation plan closes after its task 30b; its draws, victories and the retiring of the stand-ins move into the slice spec.
 - New parts of the bar: directional hit reactions with a physical layer, a matched deflect pair for each attack direction, paired clips for counters and the Impaler, cancels marked on each clip, and inertial blending with authored transitions.
 - Capes, coats and other loose clothing are cloth-simulated, and the final models share a UE5-style skeleton with twist bones.
+- **Momentum:** starting a run, stopping and turning take their clips' time and distance, with the weight visibly shifting, and the rules move the fighter as the clip does. Attacks, dodges, backsteps, parries and blocks still start at once out of any movement.
 
 Plan: [[Task 13]], [[Task 14]] · [[Stage 8 - Fighter animation core]] · [[Stage 13 - Full animation]]
 

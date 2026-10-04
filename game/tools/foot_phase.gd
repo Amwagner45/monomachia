@@ -1,7 +1,8 @@
 extends SceneTree
 ## Prints the gait of every locomotion clip on every fighter (FootPhase):
-## the ground speed each clip shows, its stride, and where in its cycle each
-## foot is furthest ahead. Locomotion's clip table comes from these numbers.
+## the way and ground speed each clip travels, its stride, where in its cycle
+## each foot is at mid-stance and where each comes down: the packs' clips
+## when they are there, else the CC0 fallback's (Locomotion's clip table).
 ##
 ## Run: node scripts/godot.mjs script res://tools/foot_phase.gd [-- --trace=<clip>]
 ## --trace= also prints the feet through that clip's cycle on each fighter
@@ -21,9 +22,13 @@ func _run() -> void:
 		var model: FighterModel = FighterLook.instantiate_fighter(id)
 		model.autoplay_idle = false
 		root.add_child(model)
+		await process_frame
+		var loco: Locomotion = Locomotion.new(model, id)
 		print("%s (%s):" % [model.look.display_name, id])
-		for clip: StringName in Locomotion.CLIPS:
-			print("  ", FootPhase.measure(model, clip))
+		for gait: StringName in Locomotion.GAITS:
+			for clip: String in loco.clips[gait]:
+				if clip != "":
+					print("  ", loco.gaits[clip])
 		if trace != &"":
 			_trace(model, trace)
 		model.free()
@@ -33,7 +38,7 @@ func _run() -> void:
 func _trace(model: FighterModel, clip: StringName) -> void:
 	var ap: AnimationPlayer = model.animation_player
 	var sk: Skeleton3D = model.skeleton
-	var anim_name: String = String(FighterModel.LIBRARY) + "/" + String(clip)
+	var anim_name: String = String(clip) if String(clip).contains("/") else String(FighterModel.LIBRARY) + "/" + String(clip)
 	var anim: Animation = ap.get_animation(anim_name)
 	ap.play(anim_name, 0.0)
 	print("  %s: phase, left foot y z, right foot y z, hips y (cm)" % clip)

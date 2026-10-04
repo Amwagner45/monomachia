@@ -152,15 +152,16 @@ function firstSentence(s) {
 }
 
 /**
- * A plan's tasks (`- [x] **ID Title**` lines and their sub-bullets) and, when
- * it has a "Build order", its stages with id ranges expanded.
+ * A plan's tasks (`- [x] **ID Title**` lines and their sub-bullets; a retired
+ * task is `- [-] ~~**ID Title**~~`) and, when it has a "Build order", its
+ * stages with id ranges expanded.
  */
 export function parsePlan(md) {
   const lines = md.split(/\r?\n/);
   const tasks = [];
   let section = '';
   let phase = '';
-  const taskLine = new RegExp(String.raw`^(\s*)- \[([ xX])\] \*\*(${ID})[.:]?\s+(.*?)\*\*(.*)$`);
+  const taskLine = new RegExp(String.raw`^(\s*)- \[([ xX-])\] (?:~~)?\*\*(${ID})[.:]?\s+(.*?)\*\*(?:~~)?(.*)$`);
   for (let i = 0; i < lines.length; i++) {
     const h = /^(#{2,3})\s+(.+)/.exec(lines[i]);
     if (h) { if (h[1] === '##') { section = plain(h[2]); phase = ''; } else phase = plain(h[2]); continue; }
@@ -183,6 +184,7 @@ export function parsePlan(md) {
       title: plain(m[4]).replace(/[.:]$/, ''),
       lead: plain(m[5]),
       done: m[2].toLowerCase() === 'x',
+      retired: m[2] === '-',
       parent: indent > 0 ? tasks.findLast((t) => t.depth === 0)?.id ?? null : null,
       depth: indent > 0 ? 1 : 0,
       phase,
@@ -357,7 +359,7 @@ export function buildVault(source) {
       : [];
     const phases = d.plan ? [...new Set(d.plan.tasks.map((t) => t.phase))] : [];
     const taskList = d.plan
-      ? ['## Tasks', '', ...phases.flatMap((p) => [p ? `### ${p}` : null, '', ...d.plan.tasks.filter((t) => t.phase === p && t.depth === 0).map((t) => `- ${t.done ? '✓' : '○'} ${link(d.taskName.get(t.id))}: ${t.title}`), ''])]
+      ? ['## Tasks', '', ...phases.flatMap((p) => [p ? `### ${p}` : null, '', ...d.plan.tasks.filter((t) => t.phase === p && t.depth === 0).map((t) => `- ${t.done ? '✓' : t.retired ? '–' : '○'} ${link(d.taskName.get(t.id))}: ${t.title}`), ''])]
       : [];
     emit(folder, d.label, [
       banner(`\`${d.path}\``), '', `# ${d.label}`, '',
@@ -401,16 +403,16 @@ export function buildVault(source) {
         banner(`the build order in \`${d.path}\``), '',
         `**Plan:** ${link(d.label)} · ${ts.filter((t) => t.done).length} of ${ts.length} tasks done`, '',
         `# Stage ${s.n}: ${s.name}`, '',
-        ...ts.map((t) => `- ${t.done ? '✓' : '○'} ${tl(t.id)}: ${t.title}`),
+        ...ts.map((t) => `- ${t.done ? '✓' : t.retired ? '–' : '○'} ${tl(t.id)}: ${t.title}`),
       ]);
     }
     for (const t of d.plan.tasks) {
       const subtasks = d.plan.tasks.filter((x) => x.parent === t.id);
       const stage = stageOf.get(t.id);
       emit(`${folder}/tasks`, d.taskName.get(t.id), [
-        '---', `tags: [task, ${t.done ? 'done' : 'todo'}]`, '---', '',
+        '---', `tags: [task, ${t.done ? 'done' : t.retired ? 'retired' : 'todo'}]`, '---', '',
         banner(`\`${d.path}\``), '',
-        [`**Status:** ${t.done ? 'done ✓' : 'to do'}`,
+        [`**Status:** ${t.done ? 'done ✓' : t.retired ? 'retired' : 'to do'}`,
           stage ? `**Stage:** ${link(d.stageName.get(stage))}` : null,
           t.parent && byId.has(t.parent) ? `**Part of:** ${tl(t.parent)}` : null,
           `**Plan:** ${link(d.label)}${t.phase ? ` › ${t.phase}` : ''}`].filter(Boolean).join(' · '), '',

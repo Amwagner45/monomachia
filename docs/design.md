@@ -2,7 +2,7 @@ Third person arena fighter with melee and weapon based combat
 
 # Game Design Document: *Monomachia*
 
-This is the full vision for the finished game. It combines the original design document with the "Updates to game design doc and plan" notes of Sep 30, 2026 (rebuild in Godot, eight fighters, per-weapon movesets, floating arenas, character select, match intros, music). Where the update changed or added something, it is marked **(update)**. How the current build works, and every rule question the design leaves open, is recorded in `docs/mvp-spec.md` (the original web demo) and in the specs under `docs/specs/`.
+This is the full vision for the finished game. It combines the original design document with the "Updates to game design doc and plan" notes of Sep 30, 2026 (rebuild in Godot, eight fighters, per-weapon movesets, floating arenas, character select, match intros, music). Where the update changed or added something, it is marked **(update)**. The direction set on Oct 4, 2026 (a realistic dark look, animation that leads the rules' timing, an RTX 3090 as the target, and quality before breadth) is marked **(Oct 4)**; where it replaces a Sep 30 update, the older text is gone. How the current build works, and every rule question the design leaves open, is recorded in `docs/mvp-spec.md` (the original web demo) and in the specs under `docs/specs/`.
 
 ## 1. High Concept & Overview
 
@@ -18,6 +18,8 @@ Holding block while not being attacked lowers your posture meter. Holding block 
 
 * **Genre:** Arena fighter / Action combat / Local & Online Multiplayer
 * **Platform (update):** PC (Windows). Built in the Godot engine.
+* **Target hardware (Oct 4):** the top graphics preset runs at 4K and 60 fps on an NVIDIA RTX 3090. The Low preset stays playable on laptops with integrated graphics, such as the development laptop (Ryzen 7 4700U with Radeon graphics).
+* **Order of work (Oct 4):** the existing content (the Katana, Greatsword, Twin Daggers and bare hands; the Rogue and the Hunter; the Moonlit Shrine) is brought to the final quality first. The remaining weapons, fighters, arenas and progression come after, and online play last.
 * **Target Audience:** Fans of competitive, fast-paced fighting games and action RPGs (e.g., *For Honor*, *Tekken*, *Sekiro*, *Dark Souls*, *Soul Calibur*).
 * **Core Loop:** control your fighter and use their weapon's capabilities to disarm the opponent and reduce their HP to 0 → maintain your posture meter → parry, block, counter and dodge attacks → use your ultimate ability to deal a devastating blow → win 3 rounds to win the match.
 * **Tone (update):** dark fantasy, ancient oriental, gritty. Noble warriors who fight for honor and glory.
@@ -209,7 +211,8 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 
 ### Art Style & Presentation
 
-* **Visual style:** gritty dark fantasy, ancient oriental. **(update)** Rendered as stylized toon with outlines, ink-wash and painterly touches.
+* **Visual style:** gritty dark fantasy, ancient oriental. **(Oct 4)** Rendered realistically: physically based materials, dark lighting and volumetric fog under a painterly colour grade, in the spirit of Sekiro, Ghost of Tsushima and Elden Ring. This replaces the Sep 30 update's stylized toon look with outlines and ink-wash.
+* **Violence (Oct 4):** hits draw blood: a burst on each hit, blood on blades and clothes, and splatter on the floor that fades. No dismemberment or gore.
 * **UI layout:** a minimalist HUD with HP bars in classic fighting-game style and the posture bar underneath. Ultimate access is shown by a glowing aura around the fighter when they are at 25% HP or less.
 
 ### Animation (update)
@@ -222,7 +225,9 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 * Strings flow naturally; a swing that ends on the right continues from the right.
 * Unblockable attacks have longer range and a visible effect showing their reach.
 * Hitboxes should be as tight to the weapon as possible.
-* **(update)** Fighters animate from authored clips: attacks, reactions, movement, draws and victory poses. The clips are fitted to the rules' timing, and the path that decides hits is taken from the same clip.
+* **(update)** Fighters animate from authored clips: attacks, reactions, movement, draws and victory poses. The path that decides hits is taken from the same clip.
+* **Animation leads (Oct 4):** each move's frame data (startup, active and recovery) and its footwork come from its clip; the rules follow the animation, not the other way round. Each move has a **timing band** set by design, and its clip is edited until it lands inside the band. A clip is never sped up, slowed down or stretched while the game runs to fit the rules, and a fighter never slides along the floor further than the clip's own steps carry them. Every weapon is rebalanced around its clips.
+* **Quality bar (Oct 4):** every move is judged against For Honor (weight and readability in a locked-on duel), Ghost of Tsushima (grounded, cinematic realism) and Tekken 8 / Mortal Kombat 1 (snap, and impacts that read instantly).
 * **(update)** Each weapon is drawn at the round intro and has its own victory pose. The Katana is sheathed with a bow, the Daggers toss and catch a blade, the Greatsword is planted in the ground, and bare hands cheer.
 
 ### Sound Design
@@ -239,7 +244,7 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 
 ### Assets (update)
 
-* Asset budget: to be determined.
+* **Spending (Oct 4):** up to about $300 on assets and tools (animation packs, animation tools, environment kits) for bringing the existing content to the final quality.
 * Assets must be easy to swap as new files and downloaded packs become available.
 * Current sources:
   * Quaternius characters, outfits, animations and weapons (CC0).

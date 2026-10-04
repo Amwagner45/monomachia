@@ -64,8 +64,16 @@ The path a move's weapon travels through the move, in the fighter's own space: t
 _Avoid_: Animation (for the path itself), hitbox
 
 **Clip**:
-An authored animation a fighter plays, such as an attack, a damage reaction or a walk. Clips are fitted to the rules' frames and never decide anything themselves.
+An authored animation a fighter plays, such as an attack, a damage reaction or a walk. An attack's clip sets the move's frame data and footwork: the rules follow the clip.
 _Avoid_: Animation (when the swing is meant), mocap
+
+**Frame data**:
+A move's startup, active and recovery, counted in the rules' frames (60 a second).
+_Avoid_: Timing (on its own), speed
+
+**Timing band**:
+The range of frame data a move is allowed, set by design. A move's clip is edited until it lands inside its band.
+_Avoid_: Window (that's the parry's), target frames
 
 **Hurt capsule**:
 The capsule around a fighter's body, from the feet up, that a swing must touch to hit them. It rises with the fighter in a jump.

@@ -1,19 +1,23 @@
 extends Node
-## Screenshot scenes for the menu screens of tasks 22.6-22.10, over the duel
+## Screenshot scenes for the menu screens of tasks 22.6-22.12, over the duel
 ## behind the menus. Each .tscn next to this script picks one `shot`; render
 ## one with
 ##   node scripts/godot.mjs shots res://tools/shot_scenes/<name>.tscn <out.png>
 ##
 ## "settings" is the Settings screen; "controls_kb" and "controls_pad" the
 ## Controls table's two tabs (the controller tab with a PlayStation pad
-## plugged in a fake device state, so its names show); "results_defeat" and
+## plugged in a fake device state, so its names show), and "controls_listening"
+## a keyboard slot listening for a key (22.11); "controls_profiles" the profile
+## row with three profiles and "controls_rename" Rename opened from a
+## controller, with its letter grid (22.12); "results_defeat" and
 ## "results_watch" the results of a played Duel the player lost and of a
 ## Watch match; "loadout_<weapon>" the fighter select on your side of a Duel
 ## with that weapon, and "loadout_random" on the opponent's side left to
 ## Random. The screens save to throwaway paths, never the player's.
 
 @export_enum(
-	"settings", "controls_kb", "controls_pad", "results_defeat", "results_watch",
+	"settings", "controls_kb", "controls_pad", "controls_listening", "controls_profiles", "controls_rename",
+	"results_defeat", "results_watch",
 	"loadout_katana", "loadout_greatsword", "loadout_daggers", "loadout_random",
 ) var shot: String = "settings"
 ## Frames to let the renderer settle before the capture.
@@ -45,19 +49,35 @@ func _ready() -> void:
 			var s: SettingsScreen = SettingsScreen.new(GameSettings.new(), "user://shot_settings.cfg")
 			ui.add_child(s)
 			stack.push(s)
-		"controls_kb", "controls_pad":
+		"controls_kb", "controls_pad", "controls_listening", "controls_profiles", "controls_rename":
 			_menus_behind()
 			var state: FakeDeviceState = FakeDeviceState.new()
 			var input: InputDevices = InputDevices.new(state)
-			if shot == "controls_pad":
+			if shot == "controls_pad" or shot == "controls_rename":
 				state.plug_pad(0, "DualSense Wireless Controller", {"vendor_id": 0x054C})
 				var press: InputEventJoypadButton = InputEventJoypadButton.new()
 				press.button_index = JOY_BUTTON_A
 				press.pressed = true
 				input.note_event(press)
-			var c: ControlsScreen = ControlsScreen.new(ControlProfiles.new(), "user://shot_controls.cfg", input)
+			var store: ControlProfiles = ControlProfiles.new()
+			if shot == "controls_profiles" or shot == "controls_rename":
+				store.add_profile()
+				store.add_profile()
+				store.rename(0, "Kenji")
+			var c: ControlsScreen = ControlsScreen.new(store, "user://shot_controls.cfg", input)
 			ui.add_child(c)
 			stack.push(c)
+			if shot == "controls_listening":
+				# the heavy attack's second slot waiting for a key (22.11)
+				c.start_capture(ControlProfile.KB, "heavy", 1)
+				(c.slot_buttons["heavy"][1] as Button).grab_focus()
+			elif shot == "controls_profiles":
+				# three profiles, Player 3 active: Delete shows
+				c.profile_row.grab_focus()
+			elif shot == "controls_rename":
+				# Rename opened from a controller: the letter grid, the cursor on R
+				c.rename_button.pressed.emit()
+				c.letter_grid.cursor = Vector2i(1, 7)
 		"loadout_katana", "loadout_greatsword", "loadout_daggers", "loadout_random":
 			_menus_behind()
 			main.call("open_select", MatchConfig.DUEL)

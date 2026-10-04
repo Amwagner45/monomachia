@@ -1,10 +1,11 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, Controls, Settings, Quit) -> the fighter
-## select (Duel and Watch) -> a match -> results (Rematch, Change fighters,
-## Main menu), with a pause menu (Resume, Main menu) during play, which Back,
-## Start or the pause binding also closes. The pages sit on a ScreenStack: Back on
-## a page goes to the page that opened it (the main menu's to the title).
+## title -> main menu (Duel, Watch, How to play, Controls, Settings, Quit)
+## -> the fighter select (Duel and Watch) -> a match -> results (Rematch,
+## Change fighters, Main menu), with a pause menu (Resume, Main menu) during
+## play, which Back, Start or the pause binding also closes. The pages sit on
+## a ScreenStack: Back on a page goes to the page that opened it (the main
+## menu's to the title).
 ## A computer duel plays behind the title
 ## and the menus, seen from the orbiting menu camera; its restarts and the
 ## matches draw their seeds from one sequence (_next_seed).
@@ -43,6 +44,7 @@ var results_screen: ResultsScreen
 var select: FighterSelect
 ## The fighter select's drafts and last picks.
 var selection: MatchSelection
+var how_to_play: HowToPlayScreen
 var controls_screen: ControlsScreen
 var settings_screen: SettingsScreen
 ## The menus' pages, the open one on top.
@@ -65,6 +67,7 @@ func _ready() -> void:
 	main_menu.name = "MainMenu"
 	main_menu.add_button("Duel", "vs computer", open_select.bind(MatchConfig.DUEL))
 	main_menu.add_button("Watch", "computer vs computer", open_select.bind(MatchConfig.WATCH))
+	main_menu.add_button("How to play", "rules and move lists", show_how_to_play)
 	main_menu.add_button("Controls", "keys and buttons", show_controls)
 	main_menu.add_button("Settings", "picture and sound", show_settings)
 	main_menu.add_button("Quit", "to the desktop", quit_game)
@@ -93,6 +96,9 @@ func _ready() -> void:
 	select.locked_in.connect(_on_locked_in)
 	ui.add_child(select)
 
+	how_to_play = HowToPlayScreen.new()
+	how_to_play.name = "HowToPlay"
+	ui.add_child(how_to_play)
 	controls_screen = ControlsScreen.new()
 	controls_screen.name = "Controls"
 	ui.add_child(controls_screen)
@@ -163,6 +169,11 @@ func show_title() -> void:
 func show_main_menu() -> void:
 	stack.reset([title, main_menu] as Array[MenuPage])
 	GameServices.play_menu_music()
+
+
+## How to play opens over the page that chose it; Back returns there.
+func show_how_to_play() -> void:
+	stack.push(how_to_play)
 
 
 ## Controls and Settings open over the page that chose them; Back returns

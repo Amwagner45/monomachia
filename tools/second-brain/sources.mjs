@@ -27,13 +27,22 @@ function subjectsOf(repo, ref) {
   });
 }
 
-/** The files at a git ref. Text the builder reads (Markdown and GDScript) is loaded in one batch. */
+/**
+ * The files at a git ref. Text the builder reads (Markdown and GDScript) is loaded in one batch.
+ * Blobs are read by object id from one ls-tree: asking cat-file for "ref:path" makes git resolve
+ * the ref and walk the tree again for every file, about 3x slower on this repo.
+ */
 export function gitSource(repo, ref) {
-  const paths = git(repo, ['ls-tree', '-r', '-z', '--name-only', ref]).toString('utf8').split('\0').filter(Boolean);
+  const ids = new Map(); // path -> object id
+  for (const entry of git(repo, ['ls-tree', '-r', '-z', ref]).toString('utf8').split('\0')) {
+    const tab = entry.indexOf('\t');
+    if (tab > 0) ids.set(entry.slice(tab + 1), entry.slice(0, tab).split(' ')[2]);
+  }
+  const paths = [...ids.keys()];
   let texts = null;
   const load = () => {
     const wanted = paths.filter((p) => /\.(md|gd)$/.test(p));
-    const out = git(repo, ['cat-file', '--batch'], wanted.map((p) => `${ref}:${p}`).join('\n') + '\n');
+    const out = git(repo, ['cat-file', '--batch'], wanted.map((p) => ids.get(p)).join('\n') + '\n');
     texts = new Map();
     let at = 0;
     for (const p of wanted) {
@@ -49,7 +58,7 @@ export function gitSource(repo, ref) {
     read: (p) => {
       if (!texts) load();
       if (texts.has(p)) return texts.get(p);
-      return git(repo, ['cat-file', 'blob', `${ref}:${p}`]).toString('utf8');
+      return git(repo, ['cat-file', 'blob', ids.get(p) ?? `${ref}:${p}`]).toString('utf8');
     },
     subjects: () => subjectsOf(repo, ref),
   };

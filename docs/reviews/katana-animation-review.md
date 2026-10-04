@@ -13,6 +13,8 @@ Every Katana move now animates from a clip, and its hits are decided by the path
 
 ## Decisions for you
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Decision 1 is answered: the rules-authored lunges and the reach push retire, and a clip that falls short of the weapon's distance band is re-keyed with a longer step or reach, never slid. The weapon models will set the blade lengths, and reach is retuned to match.
+
 1. **The lunges.** Kevin's clips reach far less than the demo's cones did, and the spec's answer for a clip that falls short of its test distance is a longer lunge in the rules. So 19 of the Katana's 21 moves now lunge further (table below). The frames are unchanged on every move, and a 300-match run keeps the Katana inside ±5 points of its baseline. But a heavy now carries the fighter much further: the Iai Slash lunges 2.1 m (was 0.4), so from close range it runs right up to the defender before the cut, and a whiffed one leaves the attacker deep. The alternatives are to accept shorter reach (retune the test distances) or to retime the clips so their stepping covers more ground. **Recommended: keep the lunges for now and judge them in play.**
 2. **The clip table changed where the probe showed the named clips don't match their moves** (the table was picked from names, before anyone looked): Return Cut, Kesa Cut, Crown Cut, Rising Heaven, Returning Draw, Heaven Splitter, Whirl Cut, Running Draw, Rising Cut, Lunging Cut and both jump attacks use other clips than the spec's first candidates (the spec's table now says which, and why). Kevin's `_L` clips swing with the left hand, a whole-body mirror, so "the other side" never meant a right-handed backswing. **Recommended: keep the new fits.**
 3. **The Rogue plays the Hunter's clips (HumanM) for 15 of the 21 moves:** her own HumanF clip strays more than 5 cm on her body for those (the drift you kept at task 7). She looks the same as him in those moves. **Recommended: accept for now; revisit if it reads as wrong in play.**
@@ -92,6 +94,8 @@ The spike critique (`docs/research/animation-spike/critique.md`) judged the proc
 | Condition 7: keyed or mocap clips for ultimates, reactions and the rest | This plan: Moonsplitter here; reactions in tasks 26–31 | — |
 
 ## The soak
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The target of staying within ±5 points of the baseline retires. Every weapon is rebalanced around its clips as its animation lands.
 
 A 300-match `soak:tune` with every Katana move on its clip (Oct 3), against the baseline before any rules change (task 3):
 

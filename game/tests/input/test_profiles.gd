@@ -110,6 +110,18 @@ func test_a_file_with_no_profiles_gives_one_default_profile() -> void:
 	assert_eq(loaded.active_profile().name, "Player 1")
 
 
+func test_a_run_asking_for_the_defaults_ignores_the_saved_file() -> void:
+	var store: ControlProfiles = ControlProfiles.new()
+	store.add_profile()
+	store.rename(1, "Arcade stick")
+	store.save(PATH)
+	var fresh: ControlProfiles = ControlProfiles.load_for_run(true, PATH)
+	assert_eq(fresh.names(), PackedStringArray(["Player 1"]))
+	assert_eq(fresh.active, 0)
+	assert_eq(ControlProfiles.load_for_run(false, PATH).names(), PackedStringArray(["Player 1", "Arcade stick"]))
+	assert_true(OS.has_environment(GameSettings.DEFAULTS_ENV), "godot.mjs runs the tests with the defaults")
+
+
 func test_rename_trims_and_cuts_to_24_characters() -> void:
 	var store: ControlProfiles = ControlProfiles.new()
 	assert_true(store.rename(0, "  A very long profile name indeed  "))

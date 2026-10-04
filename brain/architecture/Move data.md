@@ -6,6 +6,8 @@ tags: [architecture]
 
 Each weapon's moves are a table of numbers in its own data file ([[game.sim.moves]]), with shared defaults applied at load, as in the demo. A move has frames (startup / active / recovery at 60 a second), damage, posture damage, knockback, lunge, hitstun, the parry window and its follow-ups.
 
+Since Oct 4, 2026 an attack's frame data are to be generated from its clip into a committed table with no hand overrides, and a test keeps every attack inside its [[Timing band]] (`docs/adr/0001-animation-leads-realistic-look.md`). The protected timings (the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases) and the jump arcs stay rules numbers.
+
 Fields the rebuild added:
 
 - `swing`: the weapon path. See [[Weapon swings]].

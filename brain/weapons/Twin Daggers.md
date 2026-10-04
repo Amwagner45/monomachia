@@ -8,7 +8,7 @@ A [[Weapon class|small]] weapon: fast and slippery. The daggers deal low posture
 
 ## Moves
 
-- **Light string** of four, alternating hands: Quick Slice (right) → Off-hand Slice (left) → Twin Rip (a crossing cut) → Flurry Finisher (a double stab). These lights stun for 10 frames instead of the usual 14.
+- **Light string** of four, alternating hands: Quick Slice (right) → Off-hand Slice (left) → Twin Rip (a crossing cut) → Flurry Finisher (a double stab; to be renamed when the Daggers are redone, since [[Finisher]] now names the 5%-HP kill). These lights stun for 10 frames instead of the usual 14.
 - **Heavies:** Twin Fang (a dashing double stab, chargeable) → Spinning Backhand.
 - **Dodge attack:** Passing Cut, a slash that lunges in the dodge's direction.
 - **[[Block ability|Block abilities]]** (pick two): Serpent Sweep (a low, dashing [[Unblockable]] sweep), Shadow Step (a blink behind the opponent that turns the next light into a backstab) and Needle Thrust (a quick unblockable thrust).

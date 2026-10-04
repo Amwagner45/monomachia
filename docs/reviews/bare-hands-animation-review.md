@@ -13,6 +13,8 @@ Every bare-hands move now animates from clips: the punches (task 24), the kicks 
 
 ## Decisions for you
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Decision 4 is answered: rules-authored lunges such as Breaker Palm's retire, with the reach push, and a clip that falls short of its distance band is re-keyed with a longer step or reach, never slid.
+
 1. **A fist's reach is measured by its depth** (task 24). The reach rule puts the last 15–20 cm of blade into a defender at the duelling distance; a fist's strike segment is 7.6 cm across the knuckles, so it can never hold that much. For any strike part shorter than 15 cm the bake and the reach test measure how deep it goes past the defender's surface instead, to the same 15–20 cm (`SwingReach.inside()`). Before it, the bake pushed every punch the full 15 cm chasing a length it couldn't reach. The three string lights now go 17.1–18.8 cm deep from 1.6 m, each lunge ending on its first touch. **Recommended: keep the depth rule.**
 2. **The clip table changed where the clips didn't fit their moves:**
    - Cross plays AttackPunch02_R, the quick straight right (AttackPunch01_R is a wound-up lunging punch, 33 frames against Cross's 18); Hook AttackPunch01_L, the left wound back and thrown with a lunge (AttackPunch03 is a jumping, spinning uppercut).
@@ -90,6 +92,8 @@ As for the Katana (its table holds for bare hands too, with these differences):
 | Condition 7: keyed or mocap clips for ultimates | Breaker Palm plays from clips |
 
 ## The soak
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The target of staying within ±5 points of the baseline retires. Every weapon is rebalanced around its clips as its animation lands.
 
 A 300-match `node scripts/godot.mjs soak 300` with every bare-hands move on its clip: 0 failures. Bare hands aren't a weapon anyone picks, so they have no win rate of their own; they show in the weapons' rates through every disarm.
 

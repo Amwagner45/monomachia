@@ -29,8 +29,9 @@ const VOLUME_BUSES: Dictionary = {
 	"effects": [&"SFX", &"UI", &"Ambience"],
 	"music": [&"Music"],
 }
-## When this environment variable is set, the run ignores the saved file and
-## uses the defaults. godot.mjs sets it for test and shot runs, so what a
+## When this environment variable is set, the run ignores the saved files and
+## uses the defaults (these settings, and ControlProfiles.load_for_run's one
+## fresh profile). godot.mjs sets it for test and shot runs, so what a
 ## player saved on this machine can't change them.
 const DEFAULTS_ENV: String = "MONOMACHIA_DEFAULT_SETTINGS"
 

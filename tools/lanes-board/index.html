@@ -32,10 +32,17 @@
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--text); font: 14px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
 main { max-width: 1040px; margin: 0 auto; padding: 20px 16px 48px; }
-header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 12px; margin-bottom: 16px; }
+body.wide main { max-width: none; padding-bottom: 16px; }
+header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; margin-bottom: 16px; }
 h1 { font-size: 20px; font-weight: 600; margin: 0; }
 h2 { font-size: 15px; font-weight: 600; margin: 0; }
 section { margin-top: 26px; }
+[hidden] { display: none !important; }
+.tabs, .seg { display: inline-flex; gap: 2px; background: var(--surface); border-radius: 8px; padding: 2px; }
+.tabs button, .seg button { font: inherit; font-size: 13px; border: 0; background: none; color: var(--text-2); padding: 3px 12px; border-radius: 6px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+.tabs button[aria-selected="true"], .seg button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 0 0 1px var(--border); }
+.count { min-width: 18px; height: 18px; border-radius: 9px; background: var(--owner); color: #0b0b0b; font-size: 11px; font-weight: 600; padding: 0 5px; display: inline-flex; align-items: center; justify-content: center; }
+.count:empty { display: none; }
 .sh { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 10px; margin-bottom: 8px; }
 .sh .m { font-size: 12px; color: var(--muted); }
 .stamp { font-size: 12px; color: var(--muted); margin-left: auto; display: flex; align-items: center; gap: 6px; font-variant-numeric: tabular-nums; }
@@ -67,6 +74,8 @@ section { margin-top: 26px; }
 .t:hover { outline: 2px solid var(--text); outline-offset: 1px; }
 .done { background: var(--done); } .working { background: var(--working); } .ready { background: var(--ready); }
 .owner { background: var(--owner); } .blocked { background: var(--blocked); }
+.sw.retired { background: transparent; border: 1px dashed var(--border-strong); }
+.sw.launched { background: transparent; border: 2px solid var(--working); }
 .wait { list-style: none; margin: 0; padding: 0; }
 .wait li { display: flex; gap: 8px; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--border); font-size: 13px; }
 .wait li .sw { position: relative; top: 1px; }
@@ -78,7 +87,7 @@ section { margin-top: 26px; }
 .lane .name { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .badge { font-size: 11px; color: var(--text-2); background: var(--surface); border-radius: 4px; padding: 0 6px; white-space: nowrap; margin-left: auto; }
 .act { font-size: 12px; display: inline-flex; align-items: center; gap: 5px; color: var(--text-2); }
-.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blocked); flex: none; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: var(--blocked); flex: none; display: inline-block; }
 .dot.active { background: var(--good); animation: pulse 2s infinite; } .dot.recent { background: var(--muted); }
 .lane .br { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lane .task { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; margin: 7px 0 5px; }
@@ -111,6 +120,7 @@ details.others summary { cursor: pointer; font-size: 13px; color: var(--text-2);
 .btn:hover { border-color: var(--text-2); }
 .btn.primary { background: var(--text); color: var(--page); border-color: var(--text); }
 .btn.small { padding: 1px 8px; font-size: 12px; }
+.btn.ghost { border-color: transparent; color: var(--text-2); }
 .btn[disabled] { opacity: .5; cursor: default; }
 #queue .note { font-size: 12px; color: var(--muted); margin-top: 8px; }
 #queue .msg { font-size: 13px; margin-top: 8px; }
@@ -125,6 +135,128 @@ body.has-queue.queue-collapsed main { padding-bottom: 72px; }
 .ask { display: flex; gap: 7px; align-items: flex-start; font-size: 13px; margin: 6px 0; padding: 6px 8px; border-radius: 6px; background: var(--surface); }
 .ask .sw { margin-top: 4px; }
 .ask span { flex: 1; min-width: 0; }
+input[type="search"], input.text, textarea { font: inherit; font-size: 13px; padding: 5px 9px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--card); color: var(--text); min-width: 0; }
+textarea { width: 100%; resize: vertical; line-height: 1.45; }
+.m { font-size: 12px; color: var(--muted); }
+
+/* ---------- graph ---------- */
+.gbar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 14px; margin-bottom: 8px; font-size: 13px; }
+.gbar label { display: inline-flex; gap: 5px; align-items: center; color: var(--text-2); }
+.gbar input[type="search"] { width: 220px; }
+.gbar .sp { margin-left: auto; display: inline-flex; gap: 4px; align-items: center; }
+.glegend { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--text-2); margin-bottom: 8px; }
+.glegend span { display: inline-flex; align-items: center; gap: 5px; }
+.glegend svg { overflow: visible; }
+.gbody { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 10px; }
+.gwrap { position: relative; height: calc(100vh - 186px); min-height: 420px; background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; cursor: grab; touch-action: none; user-select: none; }
+.gwrap.dragging { cursor: grabbing; }
+#gsvg { width: 100%; height: 100%; display: block; }
+.band rect { fill: var(--surface); }
+.band text { font-size: 12px; font-weight: 600; fill: var(--text-2); }
+.band .bc { font-weight: 400; fill: var(--muted); }
+.edge { fill: none; stroke: var(--border-strong); stroke-width: 1.2; marker-end: url(#arr); }
+.edge.met { stroke-dasharray: 2 3; }
+.gn { cursor: pointer; }
+.gn .box { fill: var(--card); stroke: var(--border-strong); stroke-width: 1; }
+.gn .gid { font-size: 11px; font-weight: 600; fill: var(--text-2); font-variant-numeric: tabular-nums; }
+.gn .gti { font-size: 12px; fill: var(--text); }
+.gn .gate { fill: var(--card); stroke: var(--text-2); stroke-width: 1.5; }
+.gn .ring { fill: none; stroke: none; }
+.gn.s-done .stripe { fill: var(--done); } .gn.s-working .stripe { fill: var(--working); animation: pulse 1.6s infinite; }
+.gn.s-ready .stripe { fill: var(--ready); } .gn.s-owner .stripe { fill: var(--owner); }
+.gn.s-blocked .stripe { fill: var(--blocked); } .gn.s-retired .stripe { fill: none; }
+.gn.s-launched .stripe { fill: var(--working); opacity: .45; }
+.gn.s-done .gti, .gn.s-retired .gti, .gn.s-done .gid, .gn.s-retired .gid { fill: var(--muted); }
+.gn.s-retired .box { stroke-dasharray: 4 3; fill: none; }
+.gn.s-launched .box { stroke: var(--working); stroke-width: 2; }
+.gn.queued .box { stroke: var(--text); stroke-width: 2.5; }
+.gn.sel .ring { stroke: var(--text); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.gn.hit .box { stroke: var(--owner); stroke-width: 3; }
+.gn:hover .box { stroke: var(--text); }
+svg.focus .gn:not(.rel) { opacity: .22; }
+svg.focus .edge:not(.rel) { opacity: .1; }
+svg.focus .edge.rel { stroke: var(--text); stroke-width: 2; marker-end: url(#arrHi); stroke-dasharray: none; }
+svg.focus .edge.rel.down { stroke-dasharray: 6 4; }
+#gpanel { background: var(--card); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; font-size: 13px; max-height: calc(100vh - 186px); overflow: auto; min-width: 0; }
+#gpanel h3 { font-size: 15px; margin: 2px 0 6px; font-weight: 600; }
+#gpanel h4 { font-size: 12px; font-weight: 600; color: var(--text-2); margin: 14px 0 4px; }
+#gpanel .acts { display: flex; flex-direction: column; gap: 6px; margin-top: 10px; }
+#gpanel .acts .btn { text-align: left; white-space: normal; }
+#gpanel ul { list-style: none; margin: 0; padding: 0; }
+#gpanel li { display: flex; gap: 6px; align-items: baseline; padding: 3px 0; cursor: pointer; border-radius: 4px; }
+#gpanel li:hover { background: var(--surface); }
+#gpanel li .sw { position: relative; top: 1px; }
+#gpanel li.met span { color: var(--muted); text-decoration: line-through; }
+#gpanel .confirm { background: var(--surface); border-radius: 8px; padding: 8px 10px; }
+@media (max-width: 900px) { .gbody { grid-template-columns: 1fr; } #gpanel { max-height: none; } }
+
+/* ---------- sessions ---------- */
+.sbody { display: grid; grid-template-columns: 320px minmax(0, 1fr); gap: 10px; height: calc(100vh - 92px); min-height: 480px; }
+.slist { background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; min-height: 0; }
+.slist .sf { padding: 10px; border-bottom: 1px solid var(--border); display: flex; flex-direction: column; gap: 6px; }
+.slist .sf label { font-size: 12px; color: var(--text-2); display: inline-flex; gap: 5px; align-items: center; }
+#sList { list-style: none; margin: 0; padding: 4px; overflow: auto; flex: 1; }
+#sList li { display: flex; gap: 8px; padding: 8px; border-radius: 8px; cursor: pointer; align-items: flex-start; }
+#sList li:hover { background: var(--surface); }
+#sList li.on { background: var(--surface); box-shadow: inset 3px 0 0 var(--text); }
+#sList .dot { margin-top: 6px; }
+#sList .sm { min-width: 0; flex: 1; }
+#sList .st { font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#sList .ss { font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pills { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 3px; }
+.pill { font-size: 11px; border-radius: 4px; padding: 0 6px; background: var(--surface); color: var(--text-2); border: 1px solid var(--border); white-space: nowrap; }
+.pill.need { background: var(--owner); color: #0b0b0b; border-color: transparent; }
+.sdetail { background: var(--card); border: 1px solid var(--border); border-radius: 10px; display: flex; flex-direction: column; min-height: 0; min-width: 0; margin: 0; }
+.shd { padding: 12px 14px 10px; border-bottom: 1px solid var(--border); }
+.shd .row1 { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.shd h2 { margin-right: auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.switch { display: inline-flex; align-items: center; gap: 7px; font-size: 13px; cursor: pointer; user-select: none; }
+.switch input { appearance: none; width: 32px; height: 18px; border-radius: 9px; background: var(--blocked); position: relative; cursor: pointer; margin: 0; transition: background .15s; }
+.switch input::after { content: ""; position: absolute; top: 2px; left: 2px; width: 14px; height: 14px; border-radius: 50%; background: var(--card); transition: left .15s; }
+.switch input:checked { background: var(--good); }
+.switch input:checked::after { left: 16px; }
+.switch input:focus-visible { outline: 2px solid var(--text); outline-offset: 2px; }
+#sPend:empty { display: none; }
+#sPend { padding: 10px 14px 0; display: flex; flex-direction: column; gap: 8px; max-height: 55%; overflow: auto; flex: none; }
+.pcard { border: 1px solid var(--owner); border-radius: 10px; padding: 10px 12px; background: var(--card); }
+.pcard.info { border-color: var(--border-strong); }
+.pcard .ch { display: flex; gap: 8px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.pcard .ch .k { margin-left: auto; font-size: 12px; color: var(--muted); }
+.pcard .row { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 8px; }
+.pcard .row input.text { flex: 1; min-width: 160px; }
+pre.code { margin: 0; padding: 8px 10px; background: var(--surface); border-radius: 6px; font: 12px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; word-break: break-word; max-height: 260px; overflow: auto; }
+.q { margin-top: 8px; }
+.q .qh { font-size: 13px; margin-bottom: 6px; }
+.chip { font-size: 11px; background: var(--surface); border-radius: 4px; padding: 0 6px; color: var(--text-2); margin-right: 4px; }
+.opts { display: flex; flex-direction: column; gap: 4px; }
+.opt { text-align: left; font: inherit; font-size: 13px; padding: 7px 10px; border-radius: 8px; border: 1px solid var(--border-strong); background: var(--card); color: var(--text); cursor: pointer; display: flex; flex-direction: column; gap: 1px; }
+.opt span { font-size: 12px; color: var(--text-2); }
+.opt:hover { border-color: var(--text-2); }
+.opt.on { border-color: var(--text); box-shadow: inset 0 0 0 1px var(--text); }
+.opt[disabled] { cursor: default; }
+#sLog { flex: 1; overflow: auto; padding: 10px 14px; min-height: 0; }
+.msg { margin: 8px 0; font-size: 13px; }
+.msg .who { font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+.msg.u .tx { background: var(--surface); border-radius: 10px; padding: 7px 10px; display: inline-block; max-width: 100%; }
+.msg .tx { overflow-wrap: anywhere; }
+.msg .tx pre { margin: 6px 0; padding: 8px 10px; background: var(--surface); border-radius: 6px; font: 12px/1.45 ui-monospace, "Cascadia Mono", Consolas, monospace; white-space: pre-wrap; overflow-x: auto; }
+.msg .tx code { font: 12px ui-monospace, "Cascadia Mono", Consolas, monospace; background: var(--surface); border-radius: 4px; padding: 0 4px; }
+.msg .tx a { color: inherit; }
+details.tl { margin: 3px 0; font-size: 12px; }
+details.tl summary { cursor: pointer; color: var(--text-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; list-style-position: inside; }
+details.tl summary .tn { font-weight: 600; color: var(--text); }
+details.tl.err summary .tn { color: var(--critical); }
+details.tl .run { color: var(--working); }
+details.tl pre { margin: 4px 0 4px 14px; }
+.sys { font-size: 12px; color: var(--muted); margin: 6px 0; font-style: italic; }
+.comp { border-top: 1px solid var(--border); padding: 10px 14px 12px; flex: none; }
+.comp .row { display: flex; gap: 8px; align-items: center; margin-top: 6px; }
+.comp .row .m { margin-right: auto; }
+@media (max-width: 760px) {
+  .sbody { grid-template-columns: 1fr; height: auto; }
+  .slist { max-height: 40vh; }
+  .sdetail { min-height: 70vh; }
+}
 @media (max-width: 620px) {
   .stage { grid-template-columns: minmax(0, 1fr) 44px; }
   .stage .tiles { grid-column: 1 / -1; grid-row: 2; }
@@ -135,29 +267,95 @@ body.has-queue.queue-collapsed main { padding-bottom: 72px; }
 <main>
   <header>
     <h1>Monomachia progress</h1>
+    <nav class="tabs" role="tablist" aria-label="Views">
+      <button role="tab" data-view="progress">Progress</button>
+      <button role="tab" data-view="graph">Graph</button>
+      <button role="tab" data-view="sessions">Sessions <span class="count" id="sessCount"></span></button>
+    </nav>
     <button class="btn small" id="brainBtn" title="The project's knowledge as linked notes: weapons, systems, plans, docs and code (opens in a popup window)">Second brain</button>
     <span class="stamp" id="stamp"><span class="live"></span><span id="stampText">Loading…</span></span>
   </header>
-  <div class="kpis" id="kpis"></div>
-  <div class="legend">
-    <span><i class="sw done"></i>Done</span>
-    <span><i class="sw working"></i>In progress</span>
-    <span><i class="sw ready"></i>Ready to start</span>
-    <span><i class="sw owner"></i>Waits on your OK</span>
-    <span><i class="sw blocked"></i>Blocked</span>
-    <span><i class="sw" style="border:1px dashed var(--border-strong)"></i>Retired</span>
-    <span><i class="sw blocked" style="position:relative"><i style="position:absolute;inset:3px;border-radius:50%;background:var(--page)"></i></i>Review gate</span>
-    <span><i class="sw" style="border:2px solid var(--working)"></i>Launched</span>
-    <span><i class="sw ready" style="box-shadow:0 0 0 2px var(--page),0 0 0 4px var(--text)"></i>Queued</span>
-    <span style="color:var(--muted)">Right-click a task that hasn't started to queue it</span>
+
+  <div id="v-progress" class="view">
+    <div class="kpis" id="kpis"></div>
+    <div class="legend">
+      <span><i class="sw done"></i>Done</span>
+      <span><i class="sw working"></i>In progress</span>
+      <span><i class="sw ready"></i>Ready to start</span>
+      <span><i class="sw owner"></i>Waits on your OK</span>
+      <span><i class="sw blocked"></i>Blocked</span>
+      <span><i class="sw retired"></i>Retired</span>
+      <span><i class="sw blocked" style="position:relative"><i style="position:absolute;inset:3px;border-radius:50%;background:var(--page)"></i></i>Review gate</span>
+      <span><i class="sw launched"></i>Launched</span>
+      <span><i class="sw ready" style="box-shadow:0 0 0 2px var(--page),0 0 0 4px var(--text)"></i>Queued</span>
+      <span style="color:var(--muted)">Right-click a task that hasn't started to queue it</span>
+    </div>
+    <section id="waiting"></section>
+    <section><div class="sh"><h2>Lanes</h2><span class="m" id="laneMeta"></span></div><div class="lanes" id="lanes"></div><div id="others"></div></section>
+    <div id="plans"></div>
   </div>
-  <section id="waiting"></section>
-  <section><div class="sh"><h2>Lanes</h2><span class="m" id="laneMeta"></span></div><div class="lanes" id="lanes"></div><div id="others"></div></section>
-  <div id="plans"></div>
+
+  <div id="v-graph" class="view" hidden>
+    <div class="gbar">
+      <div class="seg" id="gPlans" role="group" aria-label="Plan"></div>
+      <label><input type="checkbox" id="gHideDone"> Hide done</label>
+      <label><input type="checkbox" id="gShowRetired"> Show retired</label>
+      <input type="search" id="gFind" placeholder="Find a task: id or words, Enter jumps" aria-label="Find a task">
+      <span class="sp"><span class="m">Drag or scroll to move · Ctrl+scroll to zoom</span>
+        <button class="btn small" id="gOut" aria-label="Zoom out">−</button><button class="btn small" id="gIn" aria-label="Zoom in">+</button><button class="btn small" id="gFit">Fit</button></span>
+    </div>
+    <div class="glegend">
+      <span><i class="sw done"></i>Done</span><span><i class="sw working"></i>In progress</span><span><i class="sw launched"></i>Launched</span>
+      <span><i class="sw ready"></i>Ready</span><span><i class="sw owner"></i>Waits on your OK</span><span><i class="sw blocked"></i>Blocked</span>
+      <span><svg width="12" height="12"><circle cx="6" cy="6" r="4" fill="var(--card)" stroke="var(--text-2)" stroke-width="1.5"/></svg>Review gate</span>
+      <span><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="var(--text)" stroke-width="2"/></svg>waits on</span>
+      <span><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="var(--text)" stroke-width="2" stroke-dasharray="6 4"/></svg>waited on by (when a task is picked)</span>
+      <span><svg width="28" height="8"><line x1="0" y1="4" x2="28" y2="4" stroke="var(--border-strong)" stroke-width="1.5" stroke-dasharray="2 3"/></svg>blocker already done</span>
+    </div>
+    <div class="gbody">
+      <div class="gwrap" id="gwrap">
+        <svg id="gsvg" role="img" aria-label="Task dependency graph">
+          <defs>
+            <marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill: var(--border-strong)"/></marker>
+            <marker id="arrHi" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0,1 L9,5 L0,9 z" style="fill: var(--text)"/></marker>
+          </defs>
+          <g id="gview"></g>
+        </svg>
+      </div>
+      <aside id="gpanel"></aside>
+    </div>
+  </div>
+
+  <div id="v-sessions" class="view" hidden>
+    <div class="sbody">
+      <aside class="slist">
+        <div class="sf">
+          <input type="search" id="sFind" placeholder="Filter by title or folder" aria-label="Filter sessions">
+          <label><input type="checkbox" id="sWaiting"> Only sessions waiting on you</label>
+        </div>
+        <ul id="sList"></ul>
+      </aside>
+      <section class="sdetail" id="sDetail">
+        <div class="shd" id="sHead"><div class="empty">Pick a session on the left.</div></div>
+        <div id="sPend"></div>
+        <div id="sLog"></div>
+        <div class="comp" id="sComp" hidden>
+          <textarea id="sText" rows="3" placeholder="Reply to this session (Ctrl+Enter sends)"></textarea>
+          <div class="row"><span class="m" id="sNote"></span><button class="btn small ghost" id="sUnqueue" hidden>Withdraw queued reply</button><button class="btn primary" id="sSend">Send</button></div>
+        </div>
+      </section>
+    </div>
+  </div>
 </main>
 <div id="tip"></div>
 <div id="menu" role="menu"></div>
 <div id="queue" aria-live="polite"><div class="in" id="queueIn"></div></div>
+<script type="module">
+// The graph layout (graph.mjs, also checked by the tests), for the Graph tab.
+import * as G from '/graph.mjs';
+window.G = G;
+window.dispatchEvent(new Event('graph-ready'));
+</script>
 <script>
 const $ = (id) => document.getElementById(id);
 // The second brain (tools/second-brain), served by this board under /brain/, in
@@ -171,6 +369,16 @@ $('brainBtn').addEventListener('click', () => {
   w.focus();
 });
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
+};
+async function post(url, body) {
+  const r = await fetch(url, { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+  return d;
+}
 const SHORT = { gr: 'GR', aa: 'AA', st: 'ST' };
 const LABEL = { done: 'Done', working: 'In progress', launched: 'Launched, its session is starting', ready: 'Ready to start', owner: 'Waits on your OK', blocked: 'Blocked', retired: 'Retired' };
 const STARTABLE = new Set(['ready', 'blocked', 'owner']);
@@ -198,8 +406,28 @@ function ago(ms) {
   if (s < 86400) return `${Math.round(s / 3600)} h ago`;
   return `${Math.round(s / 86400)} d ago`;
 }
-const planOf = (k) => data.plans.find((p) => p.key === k);
+const planOf = (k) => data?.plans.find((p) => p.key === k);
 const taskName = (k, id) => `${SHORT[k] ?? k} ${id}`;
+const taskOf = (ref) => { const [k, id] = ref.split(':'); return planOf(k)?.tasks[id] ?? null; };
+
+// ---------- views ----------
+
+let view = 'progress';
+function setView(v, push = true) {
+  if (!['progress', 'graph', 'sessions'].includes(v)) v = 'progress';
+  view = v;
+  for (const b of document.querySelectorAll('.tabs [data-view]')) b.setAttribute('aria-selected', String(b.dataset.view === v));
+  for (const name of ['progress', 'graph', 'sessions']) $(`v-${name}`).hidden = name !== v;
+  document.body.classList.toggle('wide', v !== 'progress');
+  if (push && location.hash !== `#${v}`) history.replaceState(null, '', v === 'progress' ? location.pathname : `#${v}`);
+  closeMenu();
+  if (v === 'graph') renderGraph(true);
+  if (v === 'sessions') { renderSessionList(); pollSession(true); }
+}
+document.querySelector('.tabs').addEventListener('click', (e) => { const b = e.target.closest('[data-view]'); if (b) setView(b.dataset.view); });
+window.addEventListener('hashchange', () => setView(location.hash.slice(1), false));
+
+// ---------- progress ----------
 
 function renderKpis() {
   const active = data.lanes.filter((l) => l.activity === 'active').length;
@@ -211,18 +439,28 @@ function renderKpis() {
       <div class="s">${left} left${p.counts.working ? ` · ${p.counts.working} in progress` : ''}</div></div>`;
   }).join('') + `<div class="kpi"><div class="l">Sessions at work</div><div class="v">${active} <small>of ${data.lanes.length} worktrees</small></div>
     <div class="s">transcript written in the last 3 min</div></div>
-    <div class="kpi"><div class="l">Waiting on you</div><div class="v">${waits}</div><div class="s">review gates and ready PRs</div></div>`;
+    <div class="kpi"><div class="l">Waiting on you</div><div class="v">${waits}</div><div class="s">prompts, review gates and ready PRs</div></div>`;
 }
 
 function waitingItems() {
   const items = [];
+  // Sessions switched to "Answer from board" that wait on the owner.
+  for (const s of sessions.list) {
+    for (const p of s.pending) {
+      const what = p.kind === 'permission' ? `wants to use ${p.tool}` : p.kind === 'question' ? 'asks you a question' : 'finished its turn and waits for your reply';
+      items.push({ sw: 'owner', text: `${s.title} ${what}`, k: ago(p.time), view: s.id });
+    }
+  }
   for (const p of data.plans) {
     for (const [id, t] of Object.entries(p.tasks)) {
       if (t.status === 'owner') items.push({ sw: 'owner', text: `${taskName(p.key, id)} ${t.title} can start once you OK ${t.ownerOk.map((g) => taskName(p.key, g)).join(', ')}`, k: p.name });
     }
   }
   for (const l of data.lanes) {
-    if (l.question) items.push({ sw: 'owner', text: `${l.app?.title || l.folder.split(/[\\/]/).pop()} asks: ${l.question}`, k: 'answer in its session', open: l.app?.id });
+    if (l.question) {
+      const s = sessions.list.find((x) => x.app && x.app === l.app?.id);
+      items.push({ sw: 'owner', text: `${l.app?.title || l.folder.split(/[\\/]/).pop()} asks: ${l.question}`, k: 'answer in its session', open: l.app?.id, view: s?.id });
+    }
   }
   for (const pr of data.prs ?? []) {
     if (!pr.isDraft) items.push({ sw: 'ready', text: `PR #${pr.number} ${pr.title} is ready for review`, k: `${pr.headRefName} → ${pr.baseRefName}`, url: pr.url });
@@ -232,7 +470,7 @@ function waitingItems() {
 function renderWaiting() {
   const items = waitingItems();
   $('waiting').innerHTML = `<div class="sh"><h2>Waiting on you</h2></div>` + (items.length
-    ? `<ul class="wait">${items.map((i) => `<li><i class="sw ${i.sw}"></i><span>${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.text)}</a>` : esc(i.text)}</span><span class="k">${esc(i.k)}</span>${i.open ? `<button class="btn small" data-open="${esc(i.open)}">Open</button>` : ''}</li>`).join('')}</ul>`
+    ? `<ul class="wait">${items.map((i) => `<li><i class="sw ${i.sw}"></i><span>${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.text)}</a>` : esc(i.text)}</span><span class="k">${esc(i.k)}</span>${i.view ? `<button class="btn small" data-view-session="${esc(i.view)}">View</button>` : ''}${i.open ? `<button class="btn small" data-open="${esc(i.open)}">Open</button>` : ''}</li>`).join('')}</ul>`
     : `<div class="empty">Nothing right now.</div>`);
 }
 
@@ -261,10 +499,11 @@ function laneCard(l) {
   const name = l.main ? 'Main checkout' : l.folder.split(/[\\/]/).pop();
   const act = l.activity === 'active' ? 'Session at work' : l.activity === 'recent' ? `Active ${ago(Math.max(l.session ?? 0, (l.last.time ?? 0) * 1000))}` : 'Idle';
   const plan = l.plan ? planOf(l.plan)?.name ?? l.plan : 'Other work';
+  const s = l.app && sessions.list.find((x) => x.app === l.app.id);
   return `<div class="lane ${l.activity === 'active' ? 'active' : ''}">
     <div class="top"><span class="name" title="${esc(l.path)}">${esc(name)}</span><span class="badge">${esc(plan)}</span></div>
     <div class="br">${esc(l.branch ?? `detached at ${l.head}`)}${l.locked ? ' · locked' : ''}</div>
-    ${l.app?.title ? `<div class="meta" title="${esc(l.app.title)}">Session: ${esc(l.app.title)}${l.app.archived ? ' (archived)' : ''}</div>` : ''}
+    ${l.app?.title ? `<div class="meta" title="${esc(l.app.title)}">Session: ${s ? `<a href="#sessions" data-view-session="${esc(s.id)}">${esc(l.app.title)}</a>` : esc(l.app.title)}${l.app.archived ? ' (archived)' : ''}</div>` : ''}
     ${laneTask(l)}
     ${l.question ? `<div class="ask"><i class="sw owner"></i><span>Asking you: ${esc(l.question)}</span>${l.app ? `<button class="btn small" data-open="${esc(l.app.id)}">Open</button>` : ''}</div>` : ''}
     <div class="act"><i class="dot ${l.activity}"></i>${act}</div>
@@ -314,9 +553,11 @@ function render() {
   if (!data?.plans) return;
   // Drop queued tasks that started or finished since they were queued.
   const before = queue.length;
-  queue = queue.filter((ref) => { const [k, id] = ref.split(':'); return STARTABLE.has(planOf(k)?.tasks[id]?.status); });
+  queue = queue.filter((ref) => STARTABLE.has(taskOf(ref)?.status));
   if (queue.length !== before) saveQueue();
-  renderKpis(); renderWaiting(); renderLanes(); renderPlans(); renderQueue();
+  if (view === 'progress') { renderKpis(); renderWaiting(); renderLanes(); renderPlans(); }
+  if (view === 'graph') renderGraph();
+  renderQueue();
 }
 
 // ---------- the launch queue ----------
@@ -339,7 +580,7 @@ function renderQueue() {
   document.body.classList.toggle('queue-collapsed', queueCollapsed);
   const byPlan = {};
   for (const ref of queue) (byPlan[ref.split(':')[0]] ??= []).push(ref);
-  const sessions = Object.keys(byPlan).length;
+  const count = Object.keys(byPlan).length;
   const rows = Object.entries(byPlan).map(([k, refs]) => {
     const p = planOf(k);
     const order = p.stages.flatMap((s) => s.ids);
@@ -353,7 +594,7 @@ function renderQueue() {
   }).join('');
   const toggle = `<button class="btn icon" id="qToggle" aria-expanded="${!queueCollapsed}" aria-label="${queueCollapsed ? 'Expand the launch queue' : 'Collapse the launch queue to the bottom'}" title="${queueCollapsed ? 'Expand' : 'Collapse'}"><i></i></button>`;
   $('queueIn').innerHTML = `<div class="qh"><h2>${toggle}Launch queue · ${queue.length} task${queue.length === 1 ? '' : 's'}</h2>
-      ${queue.length ? `${queueCollapsed ? '' : '<button class="btn" id="qClear">Clear</button>'}<button class="btn primary" id="qLaunch">Launch ${sessions === 1 ? 'a session' : `${sessions} sessions`}</button>` : `<button class="btn" id="qClose">Close</button>`}</div>
+      ${queue.length ? `${queueCollapsed ? '' : '<button class="btn" id="qClear">Clear</button>'}<button class="btn primary" id="qLaunch">Launch ${count === 1 ? 'a session' : `${count} sessions`}</button>` : `<button class="btn" id="qClose">Close</button>`}</div>
     ${queue.length && !queueCollapsed ? `<ul>${rows}</ul><div class="note">Each plan gets its own new session in the Claude app, with its own worktree. It starts with /goal to finish these tasks, asks wayfinder's questions as clickable choices before writing code, then builds them in plan order.</div>` : ''}
     ${queueMsg ? `<div class="msg ${queueMsg.err ? 'err' : ''}">${esc(queueMsg.text)}</div>` : ''}`;
 }
@@ -366,9 +607,7 @@ async function launchQueue() {
   const btn = $('qLaunch');
   if (btn) { btn.disabled = true; btn.textContent = 'Launching…'; }
   try {
-    const r = await fetch('/launch', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ tasks: queue }) });
-    const d = await r.json();
-    if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
+    const d = await post('/launch', { tasks: queue });
     queue = []; saveQueue();
     queueMsg = { text: d.launched.map((l) => `Opened a session for ${l.tasks.map((t) => taskName(...t.split(':'))).join(', ')} on ${l.branch}.`).join(' ') + ' If its prompt waits in the box, press Enter there.' };
     poll(true);
@@ -378,9 +617,11 @@ async function launchQueue() {
   render();
 }
 async function openSession(id) {
-  try { await fetch('/open', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ session: id }) }); } catch {}
+  try { await post('/open', { session: id }); } catch {}
 }
 document.addEventListener('click', (e) => {
+  const v = e.target.closest('[data-view-session]');
+  if (v) { e.preventDefault(); selectSession(v.dataset.viewSession); setView('sessions'); return; }
   const b = e.target.closest('button');
   if (!b) return;
   if (b.dataset.unqueue) toggleQueued(b.dataset.unqueue, false);
@@ -391,78 +632,87 @@ document.addEventListener('click', (e) => {
   else if (b.id === 'qLaunch') launchQueue();
 });
 
+// ---------- what can be done with a task (right-click menu and graph panel) ----------
+
+const liveLaunch = (ref) => (data.launches ?? []).find((l) => !l.endedAt && l.tasks.includes(ref)) ?? null;
+const endedLaunch = (ref) => (data.launches ?? []).find((l) => l.endedAt && l.tasks.includes(ref)) ?? null;
+const launchLabel = (l) => l.tasks.map((r) => taskName(...r.split(':'))).join(', ');
+// The task and its unstarted blockers in the same plan, blockers first.
+function chainOf(ref) {
+  const k = ref.split(':')[0];
+  const chain = [];
+  const add = (r) => {
+    const t = taskOf(r);
+    if (!t || !STARTABLE.has(t.status) || chain.includes(r)) return;
+    for (const b of t.blockers) if (!b.done && b.ref.startsWith(`${k}:`)) add(b.ref);
+    chain.push(r);
+  };
+  add(ref);
+  return chain;
+}
+function taskActions(ref) {
+  const t = taskOf(ref);
+  if (!t) return [];
+  const acts = [];
+  if (STARTABLE.has(t.status)) {
+    if (queue.includes(ref)) acts.push({ act: 'remove', label: 'Remove from launch queue' });
+    else {
+      acts.push({ act: 'add', label: 'Add to launch queue' });
+      const extra = chainOf(ref).filter((r) => r !== ref && !queue.includes(r));
+      if (extra.length) acts.push({ act: 'chain', label: `Add with its ${extra.length} unstarted blocker${extra.length === 1 ? '' : 's'}` });
+    }
+    acts.push({ act: 'launch', primary: true, label: queue.includes(ref) ? 'Launch the queue' : queue.length ? `Add and launch the queue (${queue.length + 1})` : 'Launch this task now' });
+  }
+  const live = liveLaunch(ref);
+  const ended = endedLaunch(ref);
+  if (live) acts.push({ act: 'end', label: `End work on ${launchLabel(live)}` });
+  else if (ended) acts.push({ disabled: true, label: `Work ended ${ago(ended.endedAt)}${ended.stoppedAt ? ', session stopped' : ', stops at its next step'}` });
+  if (!acts.length) acts.push({ disabled: true, label: `${LABEL[t.status]}: can't be queued` });
+  return acts;
+}
+const endQuestion = (l) => `Stop the session working on ${launchLabel(l)}? It stops at its next step. Its worktree, branch, commits and PR stay; you can message the session later to carry on.`;
+function runAction(act, ref) {
+  if (act === 'add') toggleQueued(ref, true);
+  else if (act === 'remove') toggleQueued(ref, false);
+  else if (act === 'chain') { queue = [...new Set([...queue, ...chainOf(ref)])]; queueMsg = null; saveQueue(); render(); }
+  else if (act === 'launch') { if (!queue.includes(ref)) toggleQueued(ref, true); launchQueue(); }
+}
+async function endWork(ref) {
+  const l = liveLaunch(ref);
+  if (!l) return;
+  try {
+    const d = await post('/end', { launch: l.id });
+    queueMsg = { text: `Ended work on ${d.ended.label}. Its session stops at its next step${d.ended.sessions ? '' : ' (no session found yet: it stops when one works in its worktree)'}.` };
+  } catch (err) { queueMsg = { err: true, text: `Couldn't end the work: ${err.message}` }; }
+  poll(true); render();
+}
+
 // ---------- right-click menu ----------
 
 const menu = $('menu');
 function closeMenu() { menu.style.display = 'none'; }
 document.addEventListener('contextmenu', (e) => {
-  const el = e.target.closest('.t');
+  const el = e.target.closest('.t, .gn');
   if (!el || !data) { closeMenu(); return; }
   e.preventDefault();
   tip.style.opacity = 0;
   const k = el.dataset.p, id = el.dataset.id, ref = `${k}:${id}`;
-  const t = planOf(k)?.tasks[id];
+  const t = taskOf(ref);
   if (!t) return;
   const head = `<div class="h">${taskName(k, id)} ${esc(t.title)}</div>`;
-  // A task launched from the board can have its work ended: the whole launch's
-  // session stops at its next step.
-  const launch = (data.launches ?? []).find((l) => !l.endedAt && l.tasks.includes(ref));
-  const lanes = launch ? launch.tasks.map((r) => taskName(...r.split(':'))).join(', ') : '';
-  const endItem = launch ? `<button data-act="end">End work on ${esc(lanes)}</button>` : '';
-  const ended = (data.launches ?? []).find((l) => l.endedAt && l.tasks.includes(ref));
-  const endedNote = !launch && ended ? `<button disabled>Work ended ${ago(ended.endedAt)}${ended.stoppedAt ? ', session stopped' : ', stops at its next step'}</button>` : '';
-  const askEnd = () => {
-    menu.innerHTML = `<div class="h">Stop the session working on ${esc(lanes)}? It stops at its next step. Its worktree, branch, commits and PR stay; you can message the session later to carry on.</div>
-      <button data-act="end-yes">Stop the session</button><button data-act="end-no">Cancel</button>`;
-    menu.querySelector('button')?.focus();
-  };
-  const endIt = async () => {
+  menu.innerHTML = head + taskActions(ref).map((a) => `<button ${a.act ? `data-act="${a.act}"` : ''} ${a.disabled ? 'disabled' : ''}>${esc(a.label)}</button>`).join('');
+  menu.onclick = (ev) => {
+    const act = ev.target.closest('button')?.dataset.act;
+    if (!act) return;
+    if (act === 'end') {
+      menu.innerHTML = `<div class="h">${esc(endQuestion(liveLaunch(ref)))}</div><button data-act="end-yes">Stop the session</button><button data-act="end-no">Cancel</button>`;
+      menu.querySelector('button')?.focus();
+      return;
+    }
     closeMenu();
-    try {
-      const r = await fetch('/end', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ launch: launch.id }) });
-      const d = await r.json();
-      if (!r.ok || d.error) throw new Error(d.error || `HTTP ${r.status}`);
-      queueMsg = { text: `Ended work on ${d.ended.label}. Its session stops at its next step${d.ended.sessions ? '' : ' (no session found yet: it stops when one works in its worktree)'}.` };
-    } catch (err) { queueMsg = { err: true, text: `Couldn't end the work: ${err.message}` }; }
-    poll(true); render();
+    if (act === 'end-yes') endWork(ref);
+    else if (act !== 'end-no') runAction(act, ref);
   };
-  if (!STARTABLE.has(t.status)) {
-    menu.innerHTML = head + (endItem || endedNote || `<button disabled>${LABEL[t.status]}: can't be queued</button>`);
-    menu.onclick = (ev) => {
-      const act = ev.target.closest('button')?.dataset.act;
-      if (act === 'end') askEnd();
-      else if (act === 'end-yes') endIt();
-      else if (act === 'end-no') closeMenu();
-    };
-  } else {
-    const p = planOf(k);
-    const chain = [];
-    const addChain = (r) => {
-      const [pk, pid] = r.split(':');
-      const tt = planOf(pk)?.tasks[pid];
-      if (!tt || !STARTABLE.has(tt.status) || chain.includes(r)) return;
-      for (const b of tt.blockers) if (!b.done && b.ref.startsWith(`${k}:`)) addChain(b.ref);
-      chain.push(r);
-    };
-    addChain(ref);
-    const extra = chain.filter((r) => r !== ref && !queue.includes(r));
-    menu.innerHTML = head + (queue.includes(ref)
-      ? `<button data-act="remove">Remove from launch queue</button>`
-      : `<button data-act="add">Add to launch queue</button>${extra.length ? `<button data-act="chain">Add with its ${extra.length} unstarted blocker${extra.length === 1 ? '' : 's'}</button>` : ''}`)
-      + `<button data-act="launch">${queue.includes(ref) ? 'Launch the queue' : queue.length ? `Add and launch the queue (${queue.length + 1})` : 'Launch this task now'}</button>`
-      + endItem + endedNote;
-    menu.onclick = (ev) => {
-      const act = ev.target.closest('button')?.dataset.act;
-      if (!act) return;
-      if (act === 'end') { askEnd(); return; }
-      if (act === 'end-yes') { endIt(); return; }
-      closeMenu();
-      if (act === 'add') toggleQueued(ref, true);
-      else if (act === 'remove') toggleQueued(ref, false);
-      else if (act === 'chain') { queue = [...new Set([...queue, ...chain])]; queueMsg = null; saveQueue(); render(); }
-      else if (act === 'launch') { if (!queue.includes(ref)) toggleQueued(ref, true); launchQueue(); }
-    };
-  }
   menu.style.display = 'block';
   const w = menu.offsetWidth, h = menu.offsetHeight;
   menu.style.left = Math.min(e.clientX, innerWidth - w - 8) + 'px';
@@ -472,6 +722,524 @@ document.addEventListener('contextmenu', (e) => {
 document.addEventListener('mousedown', (e) => { if (!e.target.closest('#menu')) closeMenu(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeMenu(); });
 window.addEventListener('scroll', closeMenu, { passive: true });
+
+// ---------- the graph ----------
+// One plan at a time, laid out by graph.mjs: a band per stage, a node per task,
+// an arrow from each blocker to the task it blocks. Hover or pick a task to
+// light its whole chain; right-click, or the panel, to queue, launch or end it.
+
+const gOpt = { plan: 'gr', hideDone: false, showRetired: false, ...store.get('al-graph', {}) };
+const gView = {}; // plan -> { k, x, y }
+let gLayout = null;
+let gSig = '';
+let gSel = store.get('al-graph-sel', null); // a task ref
+let gHover = null;
+let gFind = '';
+const saveGOpt = () => store.set('al-graph', gOpt);
+const nodeRef = (n) => (n.external ? n.id : `${gOpt.plan}:${n.id}`);
+const nodeKey = (ref) => (ref.startsWith(`${gOpt.plan}:`) ? ref.slice(gOpt.plan.length + 1) : ref);
+const shorten = (s, n) => (s.length > n ? `${s.slice(0, n - 1)}…` : s);
+
+function renderGraph(force) {
+  if (!data?.plans || !window.G || view !== 'graph') return;
+  if (!planOf(gOpt.plan)) gOpt.plan = data.plans[0].key;
+  const p = planOf(gOpt.plan);
+  $('gPlans').innerHTML = data.plans.map((x) => `<button data-plan="${x.key}" aria-pressed="${x.key === p.key}" title="${esc(x.name)}">${esc(x.name)}</button>`).join('');
+  $('gHideDone').checked = gOpt.hideDone;
+  $('gShowRetired').checked = gOpt.showRetired;
+  const sig = JSON.stringify([gOpt, Object.entries(p.tasks).map(([id, t]) => [id, t.status, t.blockers.length]), queue, gFind,
+    Object.values(p.tasks).flatMap((t) => t.blockers.filter((b) => !b.ref.startsWith(`${p.key}:`)).map((b) => taskOf(b.ref)?.status))]);
+  if (sig !== gSig || force) {
+    gSig = sig;
+    const hide = [...(gOpt.showRetired ? [] : ['retired']), ...(gOpt.hideDone ? ['done'] : [])];
+    gLayout = G.layoutPlan(p, { hide });
+    const byId = new Map(gLayout.nodes.map((n) => [n.id, n]));
+    const q = gFind.trim().toLowerCase();
+    const bands = gLayout.bands.map((b) => {
+      const ids = b.n === null && b.name === 'From other plans' ? [] : (p.stages.find((s) => s.name === b.name && s.n === b.n)?.ids ?? []);
+      const live = ids.filter((id) => p.tasks[id].status !== 'retired');
+      const done = live.filter((id) => p.tasks[id].status === 'done').length;
+      return `<g class="band"><rect x="4" y="${b.y}" width="${gLayout.width - 8}" height="${b.h}" rx="8"/>
+        <text x="16" y="${b.y + 18}">${b.n !== null ? `${b.n}  ` : ''}${esc(b.name)} <tspan class="bc">${live.length ? `${done}/${live.length} done` : ''}</tspan></text></g>`;
+    }).join('');
+    const edges = gLayout.edges.map((e, i) => {
+      const a = byId.get(e.from), b = byId.get(e.to);
+      return a && b ? `<path class="edge${e.done ? ' met' : ''}" data-e="${i}" d="${G.edgePath(a, b)}"/>` : '';
+    }).join('');
+    const nodes = gLayout.nodes.map((n) => {
+      const ref = nodeRef(n);
+      const [k, id] = ref.split(':');
+      const t = taskOf(ref);
+      const status = t?.status ?? (n.done ? 'done' : 'blocked');
+      const title = t?.title ?? '';
+      const hit = q && (id.toLowerCase().startsWith(q) || title.toLowerCase().includes(q));
+      return `<g class="gn s-${status}${queue.includes(ref) ? ' queued' : ''}${ref === gSel ? ' sel' : ''}${hit ? ' hit' : ''}" data-p="${k}" data-id="${esc(id)}" data-n="${esc(n.id)}" transform="translate(${n.x},${n.y})">
+        <rect class="ring" x="-4" y="-4" width="${n.w + 8}" height="${n.h + 8}" rx="9"/>
+        <rect class="box" width="${n.w}" height="${n.h}" rx="6"/>
+        <rect class="stripe" x="0.5" y="0.5" width="6" height="${n.h - 1}" rx="3"/>
+        <text class="gid" x="14" y="17">${esc(taskName(k, id))}${status === 'working' ? ' · in progress' : status === 'launched' ? ' · launched' : ''}</text>
+        <text class="gti" x="14" y="34">${esc(shorten(title, 25))}</text>
+        ${t?.gate ? `<circle class="gate" cx="${n.w - 12}" cy="12" r="4.5"/>` : ''}
+      </g>`;
+    }).join('');
+    $('gview').innerHTML = bands + edges + nodes;
+    if (!gView[p.key]) fitGraph();
+  }
+  applyGraphView();
+  applyFocus();
+  renderPanel();
+}
+
+function applyGraphView() {
+  const v = gView[gOpt.plan];
+  if (v) $('gview').setAttribute('transform', `translate(${v.x},${v.y}) scale(${v.k})`);
+}
+// Fit the width (the plan is tall: scroll down through it), top first; on a
+// narrow screen keep the text readable and start at the left.
+function fitGraph() {
+  if (!gLayout) return;
+  const box = $('gwrap').getBoundingClientRect();
+  if (!box.width) return;
+  const k = Math.max(0.45, Math.min(1, (box.width - 16) / gLayout.width));
+  gView[gOpt.plan] = { k, x: Math.max(8, (box.width - gLayout.width * k) / 2), y: 8 };
+  applyGraphView();
+}
+function zoomGraph(f, cx, cy) {
+  const v = gView[gOpt.plan];
+  if (!v) return;
+  const box = $('gwrap').getBoundingClientRect();
+  cx ??= box.width / 2; cy ??= box.height / 2;
+  const k = Math.max(0.15, Math.min(2.5, v.k * f));
+  v.x = cx - (cx - v.x) * (k / v.k);
+  v.y = cy - (cy - v.y) * (k / v.k);
+  v.k = k;
+  applyGraphView();
+}
+function centerOn(ref) {
+  const n = gLayout?.nodes.find((x) => nodeRef(x) === ref);
+  const v = gView[gOpt.plan];
+  if (!n || !v) return;
+  const box = $('gwrap').getBoundingClientRect();
+  v.x = box.width / 2 - (n.x + n.w / 2) * v.k;
+  v.y = box.height / 2 - (n.y + n.h / 2) * v.k;
+  applyGraphView();
+}
+
+// Light the hovered (else picked) task's chain: what it waits on, and what waits on it.
+function applyFocus() {
+  const svg = $('gsvg');
+  const focus = gHover ?? (gSel && gLayout?.nodes.some((n) => nodeRef(n) === gSel) ? gSel : null);
+  svg.classList.toggle('focus', !!focus);
+  if (!focus || !gLayout) return;
+  const key = nodeKey(focus);
+  const { up, down } = G.related(gLayout.edges, key);
+  for (const el of svg.querySelectorAll('.gn')) {
+    const n = el.dataset.n;
+    el.classList.toggle('rel', n === key || up.has(n) || down.has(n));
+  }
+  for (const el of svg.querySelectorAll('.edge')) {
+    const e = gLayout.edges[Number(el.dataset.e)];
+    const isUp = (e.to === key || up.has(e.to)) && up.has(e.from);
+    const isDown = (e.from === key || down.has(e.from)) && down.has(e.to);
+    el.classList.toggle('rel', isUp || isDown);
+    el.classList.toggle('down', isDown && !isUp);
+  }
+}
+
+function selectTask(ref, center) {
+  gSel = ref;
+  store.set('al-graph-sel', ref);
+  const k = ref?.split(':')[0];
+  if (ref && k !== gOpt.plan && planOf(k)) { gOpt.plan = k; saveGOpt(); renderGraph(true); }
+  for (const el of $('gsvg').querySelectorAll('.gn')) el.classList.toggle('sel', `${el.dataset.p}:${el.dataset.id}` === ref);
+  if (center && ref) centerOn(ref);
+  applyFocus();
+  renderPanel();
+}
+
+let panelConfirm = false;
+// Only when it changed: the page polls every few seconds, and a rebuilt button
+// would lose the click in flight.
+let panelHtml = '';
+const setPanel = (html) => { if (html !== panelHtml) { panelHtml = html; $('gpanel').innerHTML = html; } };
+function renderPanel() {
+  const t = gSel && taskOf(gSel);
+  if (!t) {
+    setPanel(`<div class="empty">Click a task to see what it waits on and what waits on it, and to queue, launch or end it. Right-click works too.</div>
+      <h4>This plan</h4><div class="m">${(() => { const p = planOf(gOpt.plan); return p ? `${p.counts.done} of ${p.total} done · ${p.counts.ready} ready · ${p.counts.blocked} blocked${p.counts.working ? ` · ${p.counts.working} in progress` : ''}` : ''; })()}</div>`);
+    return;
+  }
+  const [k, id] = gSel.split(':');
+  const dependents = [];
+  for (const p of data.plans) for (const [did, dt] of Object.entries(p.tasks)) if (dt.blockers.some((b) => b.ref === gSel)) dependents.push(`${p.key}:${did}`);
+  const row = (ref, met) => { const x = taskOf(ref); const [rk, rid] = ref.split(':'); return `<li data-pick="${esc(ref)}" class="${met ? 'met' : ''}"><i class="sw ${x?.status ?? 'blocked'}"></i><span>${esc(taskName(rk, rid))} ${esc(x?.title ?? '')}</span></li>`; };
+  const acts = taskActions(gSel);
+  const live = liveLaunch(gSel);
+  const lane = data.lanes.find((l) => l.working && l.plan === k && l.task === id);
+  setPanel(`<div class="m">${esc(planOf(k)?.name ?? k)}</div>
+    <h3>${esc(taskName(k, id))} ${esc(t.title)}</h3>
+    <div><i class="sw ${t.status}"></i> ${esc(LABEL[t.status])}${t.gate ? ' · review gate' : ''}${lane ? ` · in ${esc(lane.main ? 'the main checkout' : lane.folder.split(/[\\/]/).pop())}` : ''}${queue.includes(gSel) ? ' · queued' : ''}</div>
+    ${t.ownerOk.length ? `<div class="m">Also needs your OK of ${t.ownerOk.map((g) => taskName(k, g)).join(', ')}</div>` : ''}
+    ${panelConfirm && live ? `<div class="acts confirm"><div>${esc(endQuestion(live))}</div><button class="btn primary" data-pact="end-yes">Stop the session</button><button class="btn" data-pact="end-no">Cancel</button></div>`
+      : `<div class="acts">${acts.map((a) => `<button class="btn${a.primary ? ' primary' : ''}" ${a.act ? `data-pact="${a.act}"` : ''} ${a.disabled ? 'disabled' : ''}>${esc(a.label)}</button>`).join('')}</div>`}
+    <h4>Waits on (${t.blockers.length})</h4>${t.blockers.length ? `<ul>${t.blockers.map((b) => row(b.ref, b.done)).join('')}</ul>` : '<div class="m">Nothing: it can start any time.</div>'}
+    <h4>Unlocks (${dependents.length})</h4>${dependents.length ? `<ul>${dependents.map((r) => row(r, false)).join('')}</ul>` : '<div class="m">Nothing waits on it.</div>'}
+    <div class="m" style="margin-top:12px">Its whole chain is lit in the graph: solid arrows lead to what it waits on, dashed ones to what waits on it.</div>`);
+}
+$('gpanel').addEventListener('click', (e) => {
+  const pick = e.target.closest('[data-pick]');
+  if (pick) { selectTask(pick.dataset.pick, true); return; }
+  const act = e.target.closest('[data-pact]')?.dataset.pact;
+  if (!act || !gSel) return;
+  if (act === 'end') { panelConfirm = true; renderPanel(); return; }
+  panelConfirm = false;
+  if (act === 'end-yes') endWork(gSel);
+  else if (act === 'end-no') renderPanel();
+  else runAction(act, gSel);
+});
+$('gPlans').addEventListener('click', (e) => {
+  const b = e.target.closest('[data-plan]');
+  if (!b || b.dataset.plan === gOpt.plan) return;
+  gOpt.plan = b.dataset.plan; saveGOpt(); renderGraph(true);
+});
+$('gHideDone').addEventListener('change', (e) => { gOpt.hideDone = e.target.checked; saveGOpt(); delete gView[gOpt.plan]; renderGraph(true); });
+$('gShowRetired').addEventListener('change', (e) => { gOpt.showRetired = e.target.checked; saveGOpt(); delete gView[gOpt.plan]; renderGraph(true); });
+$('gFit').addEventListener('click', fitGraph);
+$('gIn').addEventListener('click', () => zoomGraph(1.25));
+$('gOut').addEventListener('click', () => zoomGraph(0.8));
+$('gFind').addEventListener('input', (e) => { gFind = e.target.value; renderGraph(); });
+$('gFind').addEventListener('keydown', (e) => {
+  if (e.key !== 'Enter') return;
+  const hit = $('gsvg').querySelector('.gn.hit');
+  if (hit) selectTask(`${hit.dataset.p}:${hit.dataset.id}`, true);
+});
+window.addEventListener('graph-ready', () => renderGraph(true));
+window.addEventListener('resize', () => { if (view === 'graph' && !gView[gOpt.plan]) fitGraph(); });
+
+// Pan by dragging or scrolling, zoom with Ctrl+scroll (or a trackpad pinch).
+{
+  const wrap = $('gwrap');
+  let drag = null;
+  wrap.addEventListener('pointerdown', (e) => {
+    if (e.button !== 0) return;
+    const v = gView[gOpt.plan];
+    if (!v) return;
+    drag = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y, moved: false, node: e.target.closest('.gn') };
+    wrap.setPointerCapture(e.pointerId);
+  });
+  wrap.addEventListener('pointermove', (e) => {
+    if (!drag) return;
+    const dx = e.clientX - drag.x, dy = e.clientY - drag.y;
+    if (!drag.moved && Math.hypot(dx, dy) < 4) return;
+    drag.moved = true;
+    wrap.classList.add('dragging');
+    const v = gView[gOpt.plan];
+    v.x = drag.vx + dx; v.y = drag.vy + dy;
+    applyGraphView();
+  });
+  const end = () => {
+    if (!drag) return;
+    wrap.classList.remove('dragging');
+    if (!drag.moved) {
+      if (drag.node) { panelConfirm = false; selectTask(`${drag.node.dataset.p}:${drag.node.dataset.id}`); }
+      else { panelConfirm = false; selectTask(null); }
+    }
+    drag = null;
+  };
+  wrap.addEventListener('pointerup', end);
+  wrap.addEventListener('pointercancel', end);
+  wrap.addEventListener('wheel', (e) => {
+    e.preventDefault();
+    const v = gView[gOpt.plan];
+    if (!v) return;
+    if (e.ctrlKey || e.metaKey) {
+      const box = wrap.getBoundingClientRect();
+      zoomGraph(Math.exp(-e.deltaY * 0.0025), e.clientX - box.left, e.clientY - box.top);
+    } else {
+      v.x -= e.shiftKey ? e.deltaY : e.deltaX;
+      v.y -= e.shiftKey ? 0 : e.deltaY;
+      applyGraphView();
+    }
+  }, { passive: false });
+  wrap.addEventListener('mouseover', (e) => {
+    const n = e.target.closest('.gn');
+    const ref = n ? `${n.dataset.p}:${n.dataset.id}` : null;
+    if (ref !== gHover) { gHover = ref; applyFocus(); }
+  });
+  wrap.addEventListener('mouseleave', () => { gHover = null; applyFocus(); });
+}
+
+// ---------- sessions ----------
+// Every Claude session active in the last three days. A session switched to
+// "Answer from board" hands its permission prompts, its questions and the end
+// of each turn to this page (relay-hook.mjs); the others are read-only here.
+
+const sessions = { list: [], detail: null, limit: 300, drafts: {} };
+let sSel = store.get('al-session', null);
+let sSigs = {};
+const sOpenTools = new Set();
+
+function selectSession(id) {
+  if (sSel && $('sText')) sessions.drafts[sSel] = $('sText').value;
+  sSel = id;
+  store.set('al-session', id);
+  sessions.detail = null;
+  sessions.limit = 300;
+  sSigs = {};
+  sOpenTools.clear();
+  $('sText').value = sessions.drafts[id] ?? '';
+  renderSessionList();
+  renderSessionDetail();
+  pollSession(true);
+}
+
+const sessionNeeds = (s) => s.pending.length > 0 || !!s.asking;
+function renderSessionCount() {
+  const n = sessions.list.filter(sessionNeeds).length;
+  $('sessCount').textContent = n ? String(n) : '';
+}
+function sessionPills(s) {
+  const pills = [];
+  for (const p of s.pending) {
+    pills.push(`<span class="pill need">${p.kind === 'permission' ? `Approve ${esc(p.tool)}` : p.kind === 'question' ? 'Asking you' : 'Waiting for your reply'}</span>`);
+  }
+  if (s.asking && !s.pending.some((p) => p.kind === 'question')) pills.push('<span class="pill need">Asking you (in the app)</span>');
+  if (s.queued) pills.push('<span class="pill">Reply queued</span>');
+  if (s.on) pills.push('<span class="pill">Answers from board</span>');
+  return pills.length ? `<div class="pills">${pills.join('')}</div>` : '';
+}
+const folderOf = (cwd) => String(cwd ?? '').split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? '';
+function renderSessionList() {
+  renderSessionCount();
+  if (view !== 'sessions') return;
+  const q = $('sFind').value.trim().toLowerCase();
+  const only = $('sWaiting').checked;
+  const list = sessions.list.filter((s) => (!only || sessionNeeds(s)) && (!q || `${s.title} ${s.cwd}`.toLowerCase().includes(q)));
+  const sig = JSON.stringify([list.map((s) => [s.id, s.title, s.active, s.pending, s.asking, s.queued, s.on, Math.round((Date.now() - s.activity) / 60000)]), sSel]);
+  if (sig === sSigs.list) return;
+  sSigs.list = sig;
+  $('sList').innerHTML = list.map((s) => `<li data-sess="${esc(s.id)}" class="${s.id === sSel ? 'on' : ''}" title="${esc(s.cwd ?? '')}">
+      <i class="dot ${s.active ? 'active' : 'recent'}"></i>
+      <div class="sm"><div class="st">${esc(s.title)}</div><div class="ss">${esc(folderOf(s.cwd))} · ${s.active ? 'at work' : esc(ago(s.activity))}</div>${sessionPills(s)}</div></li>`).join('')
+    || `<li class="empty">${sessions.list.length ? 'No session matches.' : 'No sessions in the last three days.'}</li>`;
+}
+$('sList').addEventListener('click', (e) => { const li = e.target.closest('[data-sess]'); if (li) selectSession(li.dataset.sess); });
+$('sFind').addEventListener('input', renderSessionList);
+$('sWaiting').addEventListener('change', renderSessionList);
+
+// A little Markdown: code blocks, inline code, bold, links.
+function md(text) {
+  return String(text).split(/```[^\n]*\n?/).map((part, i) => {
+    if (i % 2) return `<pre>${esc(part.replace(/\n$/, ''))}</pre>`;
+    return esc(part)
+      .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*\n]+)\*\*/g, '<b>$1</b>')
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>')
+      .replace(/\n/g, '<br>');
+  }).join('');
+}
+
+function inputPreview(tool, input) {
+  if (!input || typeof input !== 'object') return String(input ?? '');
+  if (tool === 'Bash' || tool === 'PowerShell') return `${input.command ?? ''}${input.description ? `\n\n# ${input.description}` : ''}`;
+  if (tool === 'Edit') return `${input.file_path}\n\n- ${String(input.old_string ?? '').slice(0, 1500)}\n+ ${String(input.new_string ?? '').slice(0, 1500)}`;
+  if (tool === 'Write') return `${input.file_path}\n\n${String(input.content ?? '').split('\n').slice(0, 40).join('\n')}`;
+  if (tool === 'ExitPlanMode') return String(input.plan ?? JSON.stringify(input, null, 2));
+  const s = JSON.stringify(input, null, 2);
+  return s.length > 3000 ? `${s.slice(0, 3000)}…` : s;
+}
+function ruleText(sug) {
+  return (sug ?? []).map((s) => {
+    if (s.type === 'setMode') return `switch to ${s.mode}`;
+    const rules = (s.rules ?? []).map((r) => `${r.toolName}${r.ruleContent ? `(${r.ruleContent})` : ''}`).join(', ');
+    return `${rules || 'this'}${s.directories ? ` ${s.directories.join(', ')}` : ''}`;
+  }).join('; ');
+}
+function questionsHtml(questions, live) {
+  return questions.map((q, i) => `<div class="q" data-qi="${i}" data-multi="${q.multiSelect ? 1 : 0}">
+      <div class="qh">${q.header ? `<span class="chip">${esc(q.header)}</span>` : ''}${esc(q.question)}${q.multiSelect ? ' <span class="m">(pick any)</span>' : ''}</div>
+      <div class="opts">${(q.options ?? []).map((o) => `<button class="opt" data-label="${esc(o.label)}" ${live ? '' : 'disabled'}><b>${esc(o.label)}</b>${o.description ? `<span>${esc(o.description)}</span>` : ''}</button>`).join('')}
+      ${live ? `<input class="text other" placeholder="Other: type your own answer">` : ''}</div></div>`).join('');
+}
+function pendingCard(p, d) {
+  const when = `<span class="k">${esc(ago(p.time))}</span>`;
+  const back = `<button class="btn small ghost" data-release="${esc(p.id)}" title="Stop waiting for the board: the app shows its own prompt">Hand back to the app</button>`;
+  if (p.kind === 'permission') {
+    const always = Array.isArray(p.suggestions) && p.suggestions.length;
+    return `<div class="pcard" data-pid="${esc(p.id)}"><div class="ch"><i class="sw owner"></i><b>Wants to use ${esc(p.tool)}</b>${when}</div>
+      <pre class="code">${esc(inputPreview(p.tool, p.input))}</pre>
+      <div class="row"><button class="btn primary" data-allow="${esc(p.id)}">Allow</button>
+        ${always ? `<button class="btn" data-always="${esc(p.id)}" title="Adds a permission rule">Allow, and don't ask again for ${esc(ruleText(p.suggestions))}</button>` : ''}
+        <button class="btn" data-deny="${esc(p.id)}">Deny</button><input class="text why" placeholder="Why (optional): sent to Claude with a deny"></div>
+      <div class="row">${back}</div></div>`;
+  }
+  if (p.kind === 'question') {
+    return `<div class="pcard" data-pid="${esc(p.id)}"><div class="ch"><i class="sw owner"></i><b>Asks you</b>${when}</div>
+      ${questionsHtml(p.input?.questions ?? [], true)}
+      <div class="row"><button class="btn primary" data-answer="${esc(p.id)}">Send answer${(p.input?.questions ?? []).length > 1 ? 's' : ''}</button>${back}</div></div>`;
+  }
+  return `<div class="pcard" data-pid="${esc(p.id)}"><div class="ch"><i class="sw owner"></i><b>Finished its turn and is waiting for your reply</b>${when}</div>
+    <div class="m">Type below and send. It waits up to 20 minutes, then goes idle; meanwhile the app shows it as working.</div>
+    <div class="row">${back}</div></div>`;
+}
+function renderPending(d) {
+  const cards = d.pending.map((p) => pendingCard(p, d));
+  // A question or a step waiting in the app, which this page can't answer.
+  if (d.open?.name === 'AskUserQuestion' && !d.pending.some((p) => p.kind === 'question')) {
+    cards.push(`<div class="pcard info"><div class="ch"><i class="sw owner"></i><b>Asks you, in the app</b><span class="k">${esc(ago(d.open.time))}</span></div>
+      ${questionsHtml(d.open.questions ?? [], false)}
+      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Answer in the app</button>` : ''}<span class="m">${d.on ? 'It was asked before this session was switched on.' : 'Switch on "Answer from board" to answer its next questions here.'}</span></div></div>`);
+  } else if (d.open && !d.pending.length && !d.active && Date.now() - (d.open.time ?? 0) > 30000) {
+    cards.push(`<div class="pcard info"><div class="ch"><b>Its last step hasn't finished: ${esc(d.open.name)}</b><span class="k">${esc(ago(d.open.time))}</span></div>
+      <pre class="code">${esc(d.open.summary ?? '')}</pre>
+      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Open in the app</button>` : ''}<span class="m">If it's waiting for your approval, answer it in the app${d.on ? '' : ', or switch on "Answer from board" for the next one'}.</span></div></div>`);
+  }
+  const sig = JSON.stringify([d.pending.map((p) => p.id), d.open?.id, d.open && !d.active, d.on]);
+  if (sig === sSigs.pend) return;
+  sSigs.pend = sig;
+  $('sPend').innerHTML = cards.join('');
+}
+function renderLog(d) {
+  const log = $('sLog');
+  const sig = JSON.stringify([d.id, d.entries.length, d.entries.at(-1)?.time, d.more, sessions.limit]);
+  if (sig === sSigs.log) return;
+  const atBottom = !sSigs.log || log.scrollHeight - log.scrollTop - log.clientHeight < 80;
+  sSigs.log = sig;
+  const results = new Map(d.entries.filter((e) => e.kind === 'result').map((e) => [e.tool, e]));
+  const toolIds = new Set(d.entries.filter((e) => e.kind === 'tool').map((e) => e.id));
+  const parts = d.entries.map((e) => {
+    if (e.kind === 'user') return `<div class="msg u"><div class="who">You${e.time ? ` · ${esc(new Date(e.time).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }))}` : ''}</div><div class="tx">${md(e.text)}</div></div>`;
+    if (e.kind === 'assistant') return `<div class="msg a"><div class="tx">${md(e.text)}</div></div>`;
+    if (e.kind === 'system') return `<div class="sys">${esc(e.text)}</div>`;
+    if (e.kind === 'tool') {
+      const r = results.get(e.id);
+      const input = typeof e.input === 'string' ? e.input : JSON.stringify(e.input, null, 2);
+      return `<details class="tl${r?.error ? ' err' : ''}" data-tool="${esc(e.id)}" ${sOpenTools.has(e.id) ? 'open' : ''}><summary><span class="tn">${esc(e.name)}</span> ${esc(e.summary)}${r ? '' : ' <span class="run">· no result yet</span>'}</summary>
+        <pre class="code">${esc(input)}</pre>${r ? `<pre class="code">${esc(r.text || '(no output)')}</pre>` : ''}</details>`;
+    }
+    if (e.kind === 'result' && !toolIds.has(e.tool)) return `<details class="tl${e.error ? ' err' : ''}"><summary><span class="tn">Result</span></summary><pre class="code">${esc(e.text)}</pre></details>`;
+    return '';
+  });
+  log.innerHTML = (d.more ? `<div style="text-align:center"><button class="btn small" id="sMore">Show earlier turns</button></div>` : '') + parts.join('');
+  if (atBottom) log.scrollTop = log.scrollHeight;
+}
+$('sLog').addEventListener('toggle', (e) => {
+  const id = e.target.dataset?.tool;
+  if (id) { if (e.target.open) sOpenTools.add(id); else sOpenTools.delete(id); }
+}, true);
+
+function renderSessionDetail() {
+  const d = sessions.detail;
+  if (!sSel) { $('sHead').innerHTML = '<div class="empty">Pick a session on the left.</div>'; $('sPend').innerHTML = ''; $('sLog').innerHTML = ''; $('sComp').hidden = true; return; }
+  if (!d || d.id !== sSel) {
+    const s = sessions.list.find((x) => x.id === sSel);
+    $('sHead').innerHTML = `<div class="row1"><h2>${esc(s?.title ?? 'Loading…')}</h2></div>`;
+    return;
+  }
+  const headSig = JSON.stringify([d.id, d.title, d.cwd, d.active, d.on, d.app, Math.round((Date.now() - d.activity) / 60000)]);
+  if (headSig !== sSigs.head) {
+    sSigs.head = headSig;
+    $('sHead').innerHTML = `<div class="row1"><h2 title="${esc(d.title)}">${esc(d.title)}</h2>
+        <label class="switch" title="While on, this session's prompts, questions and turn ends wait for this page"><input type="checkbox" id="sOn" ${d.on ? 'checked' : ''}><span>Answer from board</span></label>
+        ${d.app ? `<button class="btn small" data-open="${esc(d.app)}">Open in app</button>` : ''}</div>
+      <div class="m" title="${esc(d.cwd ?? '')}"><i class="dot ${d.active ? 'active' : 'recent'}"></i> ${d.active ? 'At work' : `Last active ${esc(ago(d.activity))}`} · ${esc(d.cwd ?? '')}</div>
+      <div class="m">${d.on ? 'On: its permission prompts and questions come here instead of the app (for up to 20 minutes each), and when a turn ends it waits for your reply here. Switch off to hand it back to the app.'
+        : 'Off: read-only here. Switch on to approve its commands, answer its questions and reply to it from this page.'}</div>`;
+  }
+  renderPending(d);
+  renderLog(d);
+  // The reply box.
+  $('sComp').hidden = false;
+  const waiting = d.pending.find((p) => p.kind === 'stop');
+  $('sSend').disabled = !d.on;
+  $('sSend').textContent = !d.on || waiting ? 'Send' : 'Queue reply';
+  $('sUnqueue').hidden = !d.queued;
+  $('sNote').textContent = !d.on ? 'Switch on "Answer from board" to reply from here.'
+    : waiting ? 'It\'s waiting for you: your reply goes straight in.'
+    : d.queued ? `Queued for when its turn next ends: "${shorten(d.queued.text, 60)}". Sending again replaces it.`
+    : d.active ? 'It\'s working: your reply goes in when this turn ends.'
+    : 'It\'s idle: your reply goes in when its turn next ends. To wake it now, type in the app.';
+}
+
+$('sDetail').addEventListener('change', async (e) => {
+  if (e.target.id !== 'sOn') return;
+  try { await post('/relay/on', { session: sSel, on: e.target.checked }); } catch (err) { alert(err.message); }
+  pollSession(true); pollSessions(true);
+});
+$('sDetail').addEventListener('click', async (e) => {
+  const opt = e.target.closest('.opt:not([disabled])');
+  if (opt) {
+    const q = opt.closest('.q');
+    if (q.dataset.multi !== '1') for (const o of q.querySelectorAll('.opt')) if (o !== opt) o.classList.remove('on');
+    opt.classList.toggle('on');
+    return;
+  }
+  const b = e.target.closest('button');
+  if (!b) return;
+  const card = b.closest('.pcard');
+  const send = async (body) => {
+    b.disabled = true;
+    try { await post('/relay/answer', body); card?.remove(); sSigs.pend = null; }
+    catch (err) { alert(`Couldn't answer: ${err.message}`); b.disabled = false; }
+    pollSession(true); pollSessions(true);
+  };
+  if (b.dataset.allow) send({ id: b.dataset.allow, behavior: 'allow' });
+  else if (b.dataset.always) send({ id: b.dataset.always, behavior: 'allow', always: true });
+  else if (b.dataset.deny) send({ id: b.dataset.deny, behavior: 'deny', message: card.querySelector('.why')?.value ?? '' });
+  else if (b.dataset.release) send({ id: b.dataset.release, release: true });
+  else if (b.dataset.answer) {
+    const picks = [...card.querySelectorAll('.q')].map((q) => {
+      const chosen = [...q.querySelectorAll('.opt.on')].map((o) => o.dataset.label);
+      const other = q.querySelector('.other')?.value.trim();
+      if (other) chosen.push(other);
+      return q.dataset.multi === '1' ? chosen : chosen.slice(-1);
+    });
+    if (picks.some((p) => !p.length)) { alert('Pick an answer for each question (or type one under Other).'); return; }
+    send({ id: b.dataset.answer, picks });
+  } else if (b.id === 'sMore') { sessions.limit += 300; sSigs.log = null; pollSession(true); }
+  else if (b.id === 'sUnqueue') { try { await post('/relay/unqueue', { session: sSel }); } catch {} pollSession(true); pollSessions(true); }
+  else if (b.id === 'sSend') sendReply();
+});
+async function sendReply() {
+  const text = $('sText').value.trim();
+  if (!text || !sSel) return;
+  $('sSend').disabled = true;
+  try {
+    const r = await post('/relay/reply', { session: sSel, text });
+    $('sText').value = '';
+    delete sessions.drafts[sSel];
+    $('sNote').textContent = r.delivered ? 'Sent: it carries on with your reply.' : 'Queued: it goes in when the turn ends.';
+  } catch (err) { $('sNote').textContent = `Couldn't send: ${err.message}`; }
+  $('sSend').disabled = false;
+  pollSession(true); pollSessions(true);
+}
+$('sText').addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) { e.preventDefault(); sendReply(); } });
+
+let sessionsTimer = null;
+async function pollSessions(once) {
+  try {
+    const d = await (await fetch('/sessions', { cache: 'no-store' })).json();
+    if (d.sessions) {
+      sessions.list = d.sessions;
+      renderSessionList();
+      if (view === 'progress' && data) { renderKpis(); renderWaiting(); }
+    }
+  } catch { /* the stamp shows the server's state */ }
+  if (once !== true) { clearTimeout(sessionsTimer); sessionsTimer = setTimeout(pollSessions, view === 'sessions' ? 3000 : 6000); }
+}
+let sessionTimer = null;
+async function pollSession(once) {
+  if (view === 'sessions' && sSel) {
+    try {
+      const r = await fetch(`/session?id=${encodeURIComponent(sSel)}&limit=${sessions.limit}`, { cache: 'no-store' });
+      const d = await r.json();
+      if (d.id === sSel) { sessions.detail = d; renderSessionDetail(); }
+      else if (d.error) { $('sHead').innerHTML = `<div class="empty">${esc(d.error)}</div>`; }
+    } catch { /* try again */ }
+  }
+  if (once !== true) { clearTimeout(sessionTimer); sessionTimer = setTimeout(pollSession, 2000); }
+}
+
 function tick() {
   const el = $('stamp');
   const stale = Date.now() - lastOk > 20000;
@@ -489,11 +1257,14 @@ async function poll(once) {
   if (once !== true) setTimeout(poll, 4000);
 }
 setInterval(tick, 1000);
+setView(location.hash.slice(1), false);
 poll();
+pollSessions();
+pollSession();
 
 const tip = $('tip');
 document.addEventListener('mouseover', (e) => {
-  const el = e.target.closest('.t');
+  const el = e.target.closest('.t, .gn');
   if (!el || !data) { tip.style.opacity = 0; return; }
   const p = planOf(el.dataset.p);
   const t = p?.tasks[el.dataset.id];

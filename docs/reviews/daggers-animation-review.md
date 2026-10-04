@@ -15,6 +15,8 @@ Every Daggers move, Shadow Step and Lightning Tempest now animate from clips, an
 
 ## Decisions for you
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Decision 1 is answered: the rules-authored lunges and the reach push retire, and a clip that falls short of the weapon's distance band is re-keyed with a longer step or reach, never slid. Decision 4's tuning change against the baseline gives way to a rebalance of each weapon as its animation lands, and the ±5-point rule retires.
+
 1. **The lunges, both ways.** The Daggers' lights are the first moves whose clips reach *further* than the demo's cones: at the 2.0 m duelling distance they put the whole 26 cm dagger into a defender, so their lunges shorten to put the reach rule's 17.5 cm in, each ending on its first touch (Quick Slice 0.3 → 0.15 m, Off-hand Slice 0.3 → 0.17, Twin Rip 0.4 → 0.38, Flurry Finisher 0.6 → 0.35). The other moves reach less far than their cones and lengthen as the Katana's and Greatsword's did (Spinning Backhand 0.4 → 1.1, Slide Slash 2.0 → 2.2, Reverse Spin none → 0.45, Flick 0.5 → 0.95, Needle Thrust 0.8 → 1.15). The Katana's question is still open. **Recommended: keep them for now and judge them in play with the others.**
 2. **The clip table changed where a probe of the blades showed the named clips don't fit their moves:**
    - Spinning Backhand plays AttackPolearm04, a whole-body spin (no one-handed or dual-wield clip spins), and Reverse Spin the same spin mirrored, so it turns the other way round (the table's AttackDW01 mirrored is a stab, not a spin).
@@ -94,6 +96,8 @@ As for the Katana (its table holds for the Daggers too, with these differences):
 | Condition 7: keyed or mocap clips for ultimates | Lightning Tempest plays from clips |
 
 ## The soak
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The target of staying within ±5 points of the baseline retires. Every weapon is rebalanced around its clips as its animation lands.
 
 A 300-match `soak:tune` with every Katana, Greatsword and Daggers move on its clip (Oct 3), against the baseline before any rules change (task 3):
 

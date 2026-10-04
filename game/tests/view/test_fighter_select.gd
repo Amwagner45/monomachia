@@ -65,7 +65,7 @@ func test_a_duel_starts_on_your_side_with_the_grid_focused() -> void:
 	assert_false(select.skill_row.visible, "you are not a computer")
 	assert_false(select.arena_row.visible, "the arena comes with the last side")
 	assert_eq(select.confirm.text, "Next: Opponent")
-	assert_eq(select.weapon_name.text, "Katana")
+	assert_eq(select.loadout_panel.cards.choice, &"katana")
 
 
 func test_the_opponent_s_side_has_the_skill_and_arena_rows_and_lock_in() -> void:
@@ -91,8 +91,7 @@ func test_walking_a_duel_with_keys_locks_in_the_picks() -> void:
 	await get_tree().process_frame
 	assert_eq(_focused(), select.grid, "the next side starts on its grid")
 	_key(KEY_LEFT)
-	_key(KEY_DOWN)
-	assert_eq(_focused(), select.skill_row)
+	_down_to(select.skill_row, _key.bind(KEY_DOWN))
 	_key(KEY_RIGHT)
 	_key(KEY_DOWN)
 	_key(KEY_RIGHT)
@@ -113,8 +112,7 @@ func test_walking_a_watch_with_a_controller() -> void:
 	await _open(MatchConfig.WATCH)
 	assert_eq(select.side_title.text, "Red fighter")
 	assert_true(select.skill_row.visible, "both sides are computers")
-	_pad(JOY_BUTTON_DPAD_DOWN)
-	assert_eq(_focused(), select.skill_row)
+	_down_to(select.skill_row, _pad.bind(JOY_BUTTON_DPAD_DOWN))
 	_pad(JOY_BUTTON_DPAD_LEFT)
 	_down_to(select.confirm, _pad.bind(JOY_BUTTON_DPAD_DOWN))
 	_pad(JOY_BUTTON_A)
@@ -190,7 +188,7 @@ func test_the_picks_it_opens_on_show() -> void:
 	MatchSelection.set_arena(d, MatchSelection.RANDOM)
 	select.start(d)
 	assert_eq(select.fighter_ids[select.grid.index], &"hunter")
-	assert_eq(select.weapon_name.text, "Twin Daggers")
+	assert_eq(select.loadout_panel.cards.choice, &"daggers")
 	select.show_side(1)
 	assert_eq(select.skill_row.index, 0)
 	assert_eq(select.arena_row.index, select.arena_row.chips.size() - 1)
@@ -201,7 +199,7 @@ func test_a_random_opponent_weapon_reads_random() -> void:
 	MatchSelection.set_random_weapon(d, 1, true)
 	select.start(d)
 	select.show_side(1)
-	assert_eq(select.weapon_name.text, "Random")
+	assert_eq(select.loadout_panel.cards.choice, WeaponCardRow.RANDOM)
 
 
 func test_the_preview_side_names_the_fighter() -> void:

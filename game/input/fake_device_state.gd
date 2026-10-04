@@ -64,6 +64,10 @@ func joy_info(device: int) -> Dictionary:
 	return (_pads[device].info as Dictionary).duplicate() if _pads.has(device) else {}
 
 
+func joy_known(device: int) -> bool:
+	return _pads.has(device) and bool(_pads[device].known)
+
+
 # ------------------------------------------------------------------ setters
 
 ## location: KEY_LOCATION_LEFT or _RIGHT for one key of a pair.
@@ -90,9 +94,12 @@ func release_mouse(button: int) -> void:
 
 
 ## Connects a controller and emits joy_connection_changed (unless notify is
-## false: a connection nobody heard).
-func plug_pad(device: int, name: String = "Xbox Series X Controller", info: Dictionary = {}, notify: bool = true) -> void:
-	_pads[device] = {"name": name, "info": info, "buttons": {}, "axes": {}}
+## false: a connection nobody heard). known: whether Godot knows its button
+## layout (joy_known).
+func plug_pad(
+	device: int, name: String = "Xbox Series X Controller", info: Dictionary = {}, notify: bool = true, known: bool = true
+) -> void:
+	_pads[device] = {"name": name, "info": info, "buttons": {}, "axes": {}, "known": known}
 	if notify:
 		joy_connection_changed.emit(device, true)
 

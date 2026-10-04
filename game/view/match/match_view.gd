@@ -14,16 +14,16 @@ extends Node3D
 ## _on_sim_event(), where the camera's shake and field-of-view kicks are
 ## already wired.
 ##
-## A fighter walking in its guard puts its feet down where its guard shuffle
-## lands them: the view reports each as a footfall, for the match's sound to
-## play its footstep there (MatchAudio).
+## A walking or running fighter puts its feet down where its clips land them
+## (Locomotion, authored-animation task 29): the view reports each as a
+## footfall, for the match's sound to play its footstep there (MatchAudio).
 ##
 ## With swing_debug on (F3 in a debug build, or --swing-debug), a
 ## SwingDebugView draws the hurt capsules, the blades' sweeps and where each
 ## outcome landed over the match (task 7.15).
 
 ## A fighter's foot came down on the ground at `at` while its footsteps are
-## its guard shuffle's (shuffles()).
+## its clips' (steps_from_clips()).
 signal footfall(side: int, at: Vector3)
 
 ## The most rules frames the view may be behind a fighter and still give its
@@ -140,17 +140,16 @@ func update_fighters(delta: float) -> void:
 			footfall.emit(i, at)
 
 
-## True when side `side`'s footsteps fall where its guard shuffle lands its
-## feet (reported as footfalls) rather than by the stride count: its legs are
-## the guard's, and the view is keeping up with it (drawn within
-## FOOTFALL_LAG rules frames; a match stepped without being drawn keeps the
-## stride count).
-func shuffles(side: int) -> bool:
+## True when side `side`'s footsteps fall where its clips land its feet
+## (reported as footfalls) rather than by the stride count: the view is
+## keeping up with it (drawn within FOOTFALL_LAG rules frames; a match
+## stepped without being drawn keeps the stride count).
+func steps_from_clips(side: int) -> bool:
 	if host == null or side >= fighters.size() or fighters[side].locomotion == null:
 		return false
 	var loco: Locomotion = fighters[side].locomotion
 	var f: Fighter = host.fighter(side)
-	if f == null or f.world == null or not loco.shuffles():
+	if f == null or f.world == null or loco.rules_frame() < 0:
 		return false
 	return f.world.frame - loco.rules_frame() <= FOOTFALL_LAG
 

@@ -23,17 +23,11 @@ extends Node3D
 ##   sweeps it, or down and forward in a guard;
 ## - its lean bends the spine, its crouch drops the hips over feet the leg IK
 ##   keeps where the clip has them, and its spin turns the whole body;
-## - under it all, the legs walk, jog and sprint with the rules' speed
-##   (Locomotion), over the clip for the held weapon (its WeaponHold's) at
-##   rest, all on the rules' clock, so they hold still through hit-stop and
-##   pause. They turn toward the way the fighter travels, or run backwards,
-##   while the chest keeps facing the opponent, and the body leans into the
-##   acceleration and braces when braking, the weapons riding with it;
-## - with a weapon whose hold has a guard stance (the Katana's), the fighter
-##   stands in it (GuardStance) over the relaxed idle instead of the hold's
-##   clip, unless it runs with its guard down: the feet planted on leg IK and
-##   stepping in the guard shuffle (GuardShuffle) as it walks, the pelvis
-##   lowered, swaying and bobbing, the weapon riding the pelvis;
+## - under it all, the legs walk, run and sprint in the packs' directional
+##   clips by the rules' velocity (Locomotion, authored-animation task 29),
+##   over the director's combat idle at rest, all on the rules' clock, so
+##   they hold still through hit-stop and pause; a sprint held backwards turns
+##   the whole body away (Locomotion.shown_away);
 ## - a knocked-down or knocked-out fighter plays the director's clips
 ##   (task 28: Knockdown01's phases, the KO's death), the legs off IK and
 ##   unlocked so they go with the fall; only with no clip in the tree for it
@@ -45,9 +39,7 @@ extends Node3D
 ## authored clips on each rules frame, and the legs' tree plays them over its
 ## blend (Locomotion.set_authored()):
 ## - the free state's idle is its weapon class's combat idle (the CC0
-##   fallback's without the packs), under the legs' blend; a weapon whose hold
-##   has a guard stance keeps the stance's relaxed clip until the stance goes
-##   (task 29);
+##   fallback's without the packs), under the legs' blend;
 ## - a state with a clip of its own (the stomp's hand-keyed Mikiri_Stomp)
 ##   plays it whole body, the weapon fixed in the clip's hand, the stand-in's
 ##   crouch and lean giving way as it fades in;
@@ -58,10 +50,9 @@ extends Node3D
 ##   the weapon fixed in the clip's hand, which the shift carries onto the
 ##   baked path; the Rogue, and either fighter on the fallback clips, has the
 ##   weapon posed on the baked path (SwingPlayer) and her hands pulled onto
-##   it by IK. The swing's own body keys, the lean and the guard stance stand
-##   aside;
-## - planted feet are held where they landed under the clips (FootLock)
-##   while an authored clip shows and while standing out of a guard stance.
+##   it by IK. The swing's own body keys stand aside;
+## - planted feet are held where they landed under every clip (FootLock),
+##   the legs' walks and runs too, unless the fighter is down.
 ## Moves without a baked swing keep the stand-in poses below.
 ##
 ## Shadow Step's blink (ClipDirector.blinks()) hides the model and its floor
@@ -90,8 +81,8 @@ const GLOW_COLORS: Dictionary[StringName, Color] = {
 }
 ## The clip a knocked-out fighter falls with.
 const DEATH_CLIP: StringName = &"Death01"
-## Frames the legs take to pass between a held clip and the stance's legs
-## (_legs_free()).
+## Frames the legs take to pass between a held clip and the legs walking
+## under it (_legs_free()).
 const LEGS_RAMP: float = 4.0
 ## The stand-in clips a knocked-down fighter falls and rises with (the clip
 ## table's fallback) until task 28 brings the knockdown clips.
@@ -116,12 +107,6 @@ var locomotion: Locomotion
 var last_pose: StickPose.Pose
 ## Plays swings, and blends the weapons between what poses them.
 var swing_player: SwingPlayer = SwingPlayer.new()
-## How far the guard stance showed in the last pose (0 to 1), how far its
-## weight had shifted toward the front foot (m), and how far its pelvis sank
-## for the legs to reach the feet (m), for tests and tools.
-var stance: float = 0.0
-var sway: float = 0.0
-var sink: float = 0.0
 ## The clip director's last answer (null before the first frame), what it
 ## plays from, and the foot lock under the clips.
 var shot: ClipDirector.Shot = null
@@ -218,7 +203,7 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 			_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
 		_show_authored(f, alpha)
-		locomotion.update(f, GuardStance.CLIP if _in_guard() else StringName(shot.idle), seconds, alpha, _in_guard())
+		locomotion.update(f, StringName(shot.idle), seconds, alpha)
 		_pose(f, p, seconds, alpha)
 		if down:
 			# the legs go with the fall: no footfalls carry over
@@ -363,14 +348,9 @@ static func _playing_swing(f: Fighter) -> Swing:
 	return f.atk.def.swing if f.state == &"attack" and f.atk != null else null
 
 
-## True when the held weapon's hold stands in the guard stance.
-func _in_guard() -> bool:
-	return model.hold != null and model.hold.guard
-
-
 ## Poses the body and the weapons, `seconds` into the rules' clock, `alpha`
 ## of the way from the step before to the last.
-func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
+func _pose(f: Fighter, p: StickPose.Pose, _seconds: float, alpha: float) -> void:
 	var rig: FighterRig = model.rig
 	var swung: bool = SwingPlayer.plays(f) and not model.weapons.is_empty()
 	var authored: float = shot.authored() if shot != null else 0.0
@@ -388,30 +368,19 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.body.clear()
 	rig.body.spine_pitch = lean
 	rig.body.hips_offset = Vector3(0.0, -crouch, 0.0)
-	locomotion.pose_body(rig.body)
-	# a swing's body (its coil, shift and dip) takes over from the stance's
+	# a swing's body (its coil, shift and dip)
 	var swing_body: SwingPlayer.Body = swing_player.body(f, alpha)
 	if driving:
 		# the clip turns the body itself
 		swing_body.weight = 0.0
 	swing_body.apply(rig.body)
-	# the stance as far as the legs are the guard's; the clips' feet as they
-	# run with the guard down. A clip on the upper body alone (the Iai's
-	# stance walked in) leaves the legs to it.
-	var whole_body: float = authored * (1.0 - _legs_free(f))
-	stance = locomotion.shown[0] * (1.0 - whole_body) if _in_guard() else 0.0
-	sway = GuardStance.sway(seconds) * stance
-	sink = 0.0
 	rig.clip_feet = 1.0
-	model.rotation = Vector3(0.0, spin, 0.0)
-	if stance > 0.0:
-		sink = GuardStance.pose(rig, stance, seconds, locomotion.shuffle, spin, 1.0 - swing_body.weight)
-	# planted feet held under the clips: an authored one, or the idle out of
-	# a guard stance
+	# a sprint held backwards turns the whole body away (task 29)
+	model.rotation = Vector3(0.0, spin + locomotion.shown_away, 0.0)
+	# planted feet held where they landed under every clip, the legs' too
 	rig.foot_lock = foot_lock
 	rig.rules_frame = f.world.frame if f.world != null else 0
-	# (not once the legs start passing to a stance: they let go over its ramp)
-	foot_lock.enabled = not down and ((whole_body > 0.0 and _legs_free(f) <= 0.0) or (stance <= 0.0 and locomotion.speed < 0.05))
+	foot_lock.enabled = not down
 	var playing: Swing = _playing_swing(f) if driving else null
 	if playing != null:
 		# the reach correction carries the body above the hips, and the arms
@@ -444,18 +413,13 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 		swing_poses = SwingPlayer.guard_poses(f.moveset(), model.weapons.size())
 	var sweeps: Array[Vector3] = _strike_sweeps(f)
 	var hands: Array[StickPose.Hand] = [p.right, p.left]
-	# the weapons ride the stance's pelvis, sunk, and the shuffle's bob (on
-	# its spring), the lean and the brace with the upper body
-	var rides: Vector3 = (GuardStance.offset(seconds) + Vector3(0.0, locomotion.shuffle.shown_weapon_bob, 0.0)) * stance * (1.0 - swing_body.weight)
-	rides.y -= sink
-	var carry: Transform3D = Transform3D(Basis.IDENTITY, rides) * locomotion.carry(model.skeleton)
 	var poses: Dictionary[int, Transform3D] = {}
 	for i: int in model.weapons.size():
 		if swing_poses.has(i):
-			poses[i] = swing_poses[i] if swung else carry * swing_poses[i]
+			poses[i] = swing_poses[i]
 			continue
 		var hand: StickPose.Hand = hands[i]
-		var xf: Transform3D = carry * FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
+		var xf: Transform3D = FighterRig.weapon_frame(hand.pos, hand.dir, edge_for(hand.dir, sweeps[i]))
 		poses[i] = _within_reach(i, xf, rig.body)
 	# a change of what poses the weapons blends rather than jumps
 	var shown: Dictionary[int, Transform3D] = swing_player.show(f, alpha, poses)
@@ -542,9 +506,6 @@ func _let_go() -> void:
 	model.rig.body.clear()
 	model.rig.leg_weight = 0.0
 	model.rotation = Vector3.ZERO
-	stance = 0.0
-	sway = 0.0
-	sink = 0.0
 	# the legs stand still while it falls: no footfalls carry over
 	locomotion.footfalls.clear()
 

@@ -1094,10 +1094,95 @@
 				"daggers"
 			]
 		},
+		"Run01_Backward": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Run",
+			"source": "Run01_Backward",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 18,
+				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Run01_BackwardLeft": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Run",
+			"source": "Run01_BackwardLeft",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 18,
+				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Run01_BackwardRight": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Run",
+			"source": "Run01_BackwardRight",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 18,
+				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
 		"Run01_Forward": {
 			"pack": "Human Melee Animations",
 			"dir": "Movement/Run",
 			"source": "Run01_Forward",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 18,
+				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Run01_ForwardLeft": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Run",
+			"source": "Run01_ForwardLeft",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 18,
+				"settle": 18
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Run01_ForwardRight": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Run",
+			"source": "Run01_ForwardRight",
 			"mirror": false,
 			"loop": true,
 			"markers": {
@@ -1199,6 +1284,74 @@
 			"groups": [
 				"states",
 				"greatsword"
+			]
+		},
+		"Sprint01_ForwardLeft": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Sprint",
+			"source": "Sprint01_ForwardLeft",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 16,
+				"settle": 16
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Sprint01_ForwardRight": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Sprint",
+			"source": "Sprint01_ForwardRight",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 16,
+				"settle": 16
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Sprint01_Left": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Sprint",
+			"source": "Sprint01_Left",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 16,
+				"settle": 16
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Sprint01_Right": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Sprint",
+			"source": "Sprint01_Right",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 16,
+				"settle": 16
+			},
+			"provisional": true,
+			"groups": [
+				"states"
 			]
 		},
 		"StrafeRun01_Left": {
@@ -1354,10 +1507,95 @@
 				"katana"
 			]
 		},
+		"Walk01_Backward": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Walk",
+			"source": "Walk01_Backward",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 24,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Walk01_BackwardLeft": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Walk",
+			"source": "Walk01_BackwardLeft",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 24,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Walk01_BackwardRight": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Walk",
+			"source": "Walk01_BackwardRight",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 24,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
 		"Walk01_Forward": {
 			"pack": "Human Melee Animations",
 			"dir": "Movement/Walk",
 			"source": "Walk01_Forward",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 24,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Walk01_ForwardLeft": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Walk",
+			"source": "Walk01_ForwardLeft",
+			"mirror": false,
+			"loop": true,
+			"markers": {
+				"windup": 0,
+				"contact": 0,
+				"contact_end": 24,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
+		"Walk01_ForwardRight": {
+			"pack": "Human Melee Animations",
+			"dir": "Movement/Walk",
+			"source": "Walk01_ForwardRight",
 			"mirror": false,
 			"loop": true,
 			"markers": {

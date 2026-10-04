@@ -319,10 +319,11 @@ func test_an_opener_starts_from_the_guard_it_stands_in() -> void:
 		W.step([SimHelpers.idle(), SimHelpers.idle()])
 
 
-## Under the Katana's stance the guard rides the lowered pelvis (the
-## stand-in's guard is gone); the opener blends from it into the swing over
-## at most BLEND_FRAMES frames, then plays it exactly.
-func test_the_guard_rides_the_stance_and_the_opener_blends_from_it() -> void:
+## The guard stands where the swings' guard has it (the stand-in's guard is
+## gone, and since authored-animation task 29 so is the guard stance it rode);
+## the opener blends from it into the swing over at most BLEND_FRAMES frames,
+## then plays it exactly.
+func test_the_guard_stands_in_the_swings_guard_and_the_opener_blends_from_it() -> void:
 	var weapon: WeaponDef = _slashing(&"katana")
 	var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
 	var f: Fighter = W.fighters[0]
@@ -333,8 +334,7 @@ func test_the_guard_rides_the_stance_and_the_opener_blends_from_it() -> void:
 	var guard: Transform3D = SwingPlayer.guard_poses(weapon, 1)[0]
 	var shown: Transform3D = v.model.weapons[0].transform
 	assert_lt(rad_to_deg(shown.basis.y.angle_to(guard.basis.y)), NEAR_DEG, "the guard's blade")
-	assert_gt(shown.origin.distance_to(guard.origin), 0.05, "riding the stance's lowered pelvis")
-	assert_almost_eq(shown.origin.y, guard.origin.y - GuardStance.CROUCH, 0.04, "about as low as the stance")
+	assert_lt(shown.origin.distance_to(guard.origin), NEAR_POS, "where the guard has it")
 	var swing: Swing = (weapon.moves[weapon.light_start] as AttackDef).swing
 	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
 	var before: Vector3 = shown.origin
@@ -343,7 +343,7 @@ func test_the_guard_rides_the_stance_and_the_opener_blends_from_it() -> void:
 		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
 		var now: Vector3 = v.model.weapons[0].transform.origin
 		var own: float = _own_speed(swing, f.atk.frame - 2, f.atk.frame)
-		assert_lt(now.distance_to(before), own + GuardStance.CROUCH * 0.5,
+		assert_lt(now.distance_to(before), own + 0.01,
 				"frame %d: no jump (moved %.1f cm)" % [f.atk.frame, now.distance_to(before) * 100.0])
 		before = now
 		var miss: Vector2 = _miss(v, 0, swing.sample(SF.RIGHT, float(f.atk.frame)))
@@ -352,16 +352,15 @@ func test_the_guard_rides_the_stance_and_the_opener_blends_from_it() -> void:
 		elif exact_from >= 0:
 			assert_lt(miss.x, NEAR_POS, "frame %d: the swing exactly once blended" % f.atk.frame)
 		W.step([SimHelpers.idle(), SimHelpers.idle()])
-	assert_between(exact_from, 2, int(SwingPlayer.BLEND_FRAMES) + 1, "blended over the first frames only")
+	assert_between(exact_from, 0, int(SwingPlayer.BLEND_FRAMES) + 1, "blended over the first frames only")
 
 
 ## Through the Katana's L-L-L-L and the strings stopped after one, two and
 ## three lights, the shown grip moves no more in a frame at a chain point
 ## than the swings around it move on their own, though a follow-up's entry
-## starts from the hand-off key, which the move before had not reached (the
-## opener also closes the gap from the guard riding the stance); a stopped
-## string runs its exit to the guard, then blends to the guard as it rides
-## the stance, without a jump. The exit reaches the guard on the move's last
+## starts from the hand-off key, which the move before had not reached; a
+## stopped string runs its exit to the guard, then settles on it without a
+## jump. The exit reaches the guard on the move's last
 ## frame, which the rules never show: the attack ends on the step that
 ## reaches it, so the last frame shown is a frame short of the guard.
 func test_strings_never_jump_and_a_stopped_string_ends_on_the_guard() -> void:
@@ -390,7 +389,7 @@ func test_strings_never_jump_and_a_stopped_string_ends_on_the_guard() -> void:
 			var from: Swing = (weapon.moves[was["move"]] as AttackDef).swing if was["move"] != &"" else null
 			var at: int = now["frame"]
 			var own: float = _own_speed(swing, at - 1, at, from)
-			var allow: float = 0.005 if from != null else 0.005 + GuardStance.CROUCH * 0.5
+			var allow: float = 0.005 if from != null else 0.01
 			if from != null:
 				var last: int = was["frame"]
 				own = maxf(own, _own_speed(from, last - 1, last))
@@ -411,9 +410,9 @@ func test_strings_never_jump_and_a_stopped_string_ends_on_the_guard() -> void:
 		var settle: float = (played[-1]["grip"] as Vector3).distance_to(played[last_attack]["grip"])
 		for i: int in range(last_attack + 1, played.size()):
 			var moved: float = (played[i]["grip"] as Vector3).distance_to(played[i - 1]["grip"])
-			assert_lt(moved, 0.6 * settle + 0.005, "L x%d: then on to the guard riding the stance over a few frames, no jump (%.1f of %.1f cm)" % [
+			assert_lt(moved, 0.6 * settle + 0.005, "L x%d: then on to the guard over a few frames, no jump (%.1f of %.1f cm)" % [
 					n, moved * 100.0, settle * 100.0])
-		assert_almost_eq((played[-1]["grip"] as Vector3).y, guard.origin.y - GuardStance.CROUCH, 0.04, "L x%d: riding it" % n)
+		assert_almost_eq((played[-1]["grip"] as Vector3).y, guard.origin.y, 0.04, "L x%d: on it" % n)
 	assert_gt(played_lights, 1, "the string has follow-ups")
 	assert_gt(largest_gap, 0.008, "some follow-up's entry started away from the shown grip, so the test can fail")
 
@@ -613,93 +612,3 @@ func test_the_cocked_hold_shows_on_the_skeleton() -> void:
 	assert_between(held, 2, 4, "the hand holds still for %d frames before the strike (%s)" % [held, ", ".join(moves)])
 	var hips_then: float = _at(rec, float(cut.startup - 1))["hips"] - _at(rec, float(cut.startup - 2))["hips"]
 	assert_gt(absf(hips_then), 1.0, "while the hips set off")
-
-
-## PoseCheck's knees pass through a coiled cut on both fighters: the feet
-## stay planted and the knees over the toes as the hips turn and shift.
-func test_the_knees_pass_pose_check_through_a_coiled_cut() -> void:
-	for id: StringName in [&"rogue", &"hunter"]:
-		var bench: MoveBench = MoveBench.new(self, id, _coiling(&"katana"))
-		var steps: Array[MoveBench.Step] = await bench.play(&"k_l1")
-		assert_gt(steps.size(), 20, "%s: the cut played" % id)
-		for s: MoveBench.Step in steps:
-			for fail: String in s.report.failures():
-				assert_false(fail.contains("knee"), "%s frame %d: %s" % [id, s.frame, fail])
-	MoveBench.free_all()
-
-
-# ------------------------------------------------------------ footwork (14.13)
-
-## The posed ankles in the world, by side, for a view standing at `pos`
-## facing `yaw`.
-func _ankles(v: FighterView, pos: Vector3, yaw: float) -> Dictionary[String, Vector3]:
-	var poses: Array[Transform3D] = await _posed(v)
-	var place: Transform3D = Transform3D(Basis(Vector3.UP, yaw), pos) * v.model.transform
-	var out: Dictionary[String, Vector3] = {}
-	for side: String in FighterRig.SIDES:
-		out[side] = place * poses[v.model.skeleton.find_bone(side + "Foot")].origin
-	return out
-
-
-## For each of the Katana's lunging lights, played from the guard: the front
-## foot touches down on the first active frame (±1), the rear foot after it,
-## and on the posed skeleton the feet that stand slide less than 1 cm a frame
-## in the world while the fighter lunges over them.
-func test_the_front_foot_lands_on_the_first_active_frame() -> void:
-	var lights: Array[StringName] = [&"k_l1", &"k_l2", &"k_l3", &"k_l4"]
-	var weapon: WeaponDef = _string_weapon(&"katana", lights)
-	for id: StringName in lights:
-		var def: AttackDef = weapon.moves[id]
-		assert_gt(def.lunge, 0.0, "%s lunges" % id)
-		var W: World = SimHelpers.make_world(weapon, Moves.KATANA, 3.0)
-		var f: Fighter = W.fighters[0]
-		var v: FighterView = _view(&"rogue", weapon)
-		var show: Callable = func() -> void:
-			v.update_from(f, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw, 1.0, 1.0 / 60.0, 0.0)
-		for i: int in 6:
-			W.step([SimHelpers.idle(), SimHelpers.idle()])
-			show.call()
-			await _posed(v)
-		var start: float = f.pos.z
-		assert_true(f.start_attack(id), "%s starts" % id)
-		var landed: Dictionary[String, int] = {}
-		var was: Dictionary[String, Vector3] = await _ankles(v, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw)
-		var worst: float = 0.0
-		var planted_frames: int = 0
-		while f.state == &"attack":
-			W.step([SimHelpers.idle(), SimHelpers.idle()])
-			if f.state != &"attack":
-				break
-			show.call()
-			var shuffle: GuardShuffle = v.locomotion.shuffle
-			var now: Dictionary[String, Vector3] = await _ankles(v, Vector3(f.pos.x, f.pos.y, f.pos.z), f.yaw)
-			for side: String in FighterRig.SIDES:
-				if shuffle.landed.has(side) and not landed.has(side):
-					landed[side] = f.atk.frame
-				var foot: GuardShuffle.Foot = shuffle.feet[side]
-				if not foot.swinging and not shuffle.landed.has(side) and foot.prev_height == 0.0:
-					worst = maxf(worst, Vector2(now[side].x - was[side].x, now[side].z - was[side].z).length())
-					planted_frames += 1
-			was = now
-		assert_gt(f.pos.z - start, 0.2, "%s lunged" % id)
-		assert_true(landed.has("Right"), "%s: the front foot stepped" % id)
-		assert_eq(landed.get("Right", -99), def.startup + 1, "%s: the front foot lands on the first active frame" % id)
-		assert_gt(landed.get("Left", 999), landed.get("Right", -99), "%s: the rear foot after it" % id)
-		assert_gt(planted_frames, 20, "%s: feet stood on most frames" % id)
-		assert_lt(worst, 0.01, "%s: planted feet slide %.1f mm at most" % [id, worst * 1000.0])
-
-
-## A move with no swing keeps the stand-in's attack: the feet ride with the
-## fighter and take no strike steps.
-func test_moves_without_a_swing_keep_the_feet_riding() -> void:
-	var bare: WeaponDef = SF.without_swings(&"katana")
-	var W: World = SimHelpers.make_world(bare, Moves.KATANA, 3.0)
-	var f: Fighter = W.fighters[0]
-	var v: FighterView = _view(&"rogue", bare)
-	for i: int in 4:
-		W.step([SimHelpers.idle(), SimHelpers.idle()])
-		v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
-	W.step([SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
-	W.step([SimHelpers.idle(), SimHelpers.idle()])
-	v.update_from(f, Vector3.ZERO, 0.0, 1.0, 1.0 / 60.0, 0.0)
-	assert_true(v.locomotion.shuffle.riding, "riding through the stand-in's attack")

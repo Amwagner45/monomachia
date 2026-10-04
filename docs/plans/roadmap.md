@@ -33,10 +33,11 @@ The finished game of `docs/design.md`: nine weapons, eight fighters and several 
 
 ### Phase 1: Consolidation
 
-- [ ] **R1. CI green on clones without the Kevin Iglesias clips.** The two tests that fail on CI pass on a clone without the clip libraries, so the typecheck, the soak and the Windows export run on CI again.
+- [x] **R1. CI green on clones without the Kevin Iglesias clips.** The two tests that fail on CI pass on a clone without the clip libraries, so the typecheck, the soak and the Windows export run on CI again.
   - Delivers: `test_whole_attacks_keep_the_weapon_in_the_hands` (`game/tests/view/test_fighter_view.gd`) and `test_the_cocked_hold_shows_on_the_skeleton` (`game/tests/view/test_swing_player.gd`) pass without the libraries: either the weapon rides the CC0 stand-in clips' hands, or each test runs in the packs-missing mode or becomes a `test_local_` test where it really needs the clips; the 15 local-only tests keep skipping. It lands first, since godot-rebuild 26.2's and 26.3's Checks need CI green.
   - Check: a CI run on the branch is green end to end (tests, typecheck, the 4-match soak, the export job); locally, with the libraries, the full suite still passes.
   - Blocked by: none
+  - Done Oct 4 (PR #32, bddf6c8): both tests skip as local-only through `ClipLibraries.available()`, the way the other clip tests do, and CI ran green end to end (tests, typecheck, soak and the Windows export). The no-packs fault the first test caught is recorded in godot-rebuild step 3 and accepted until milestone 1 retires the stand-ins.
 - [ ] **R2. The milestone-1 spec and plan reach `feature/godot-rebuild`.** The docs pull request merges, so the spec, the plan and this roadmap reach `master` with the consolidation.
   - Delivers: `docs/milestone-1-spec`'s draft pull request into `feature/godot-rebuild` (the spec, `docs/plans/milestone-1.md`, this roadmap and the design-doc updates of milestone-1 task 1) marked ready and merged.
   - Check: the merged branch's tests pass; the lanes board follows the roadmap and milestone-1 plans from `feature/godot-rebuild`.

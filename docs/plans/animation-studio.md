@@ -45,7 +45,7 @@ Spec: `docs/specs/animation-studio.md` · branch `feature/animation-studio`, off
 - Never commit an Iglesias file, a clip converted from one, a screenshot of one, `.anim-refine/` or `game/tools/anim_studio/.refinements.json`.
 - Data files keep their hand formatting: one move per line in `move_clips.json`, numbers in `JsFormat.num()` style, tabs. A load and save with no edits writes identical bytes.
 - Every task ends with:
-  - `npm test` and `npm run typecheck` passing, apart from the failure inherited from the base, `test_whole_attacks_keep_the_weapon_in_the_hands`, until the authored-animation lane fixes it;
+  - `npm test` and `npm run typecheck` passing (`test_whole_attacks_keep_the_weapon_in_the_hands`, once a failure inherited from the base on clones without the packs, has been local-only since Oct 4);
   - `git checkout -- game/default_bus_layout.tres` (Godot test runs rewrite it);
   - a commit and a push.
 - New worktrees lack gitignored files. Before Godot runs in one, copy `.godot-path` (and `.assets-src-path`) and junction `node_modules` from the main checkout.

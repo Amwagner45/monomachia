@@ -596,7 +596,11 @@ func test_the_weight_shifts_back_and_the_pelvis_dips_at_contact() -> void:
 
 ## A 2-4 frame cocked hold shows on the skeleton: the hand stays still while
 ## the hips and chest already begin to turn into the cut.
+## Local-only: the keyed grip is in the Rogue's reach only over the packs' combat idle.
 func test_the_cocked_hold_shows_on_the_skeleton() -> void:
+	if not ClipLibraries.available():
+		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
+		return
 	var weapon: WeaponDef = _coiling(&"katana")
 	var cut: AttackDef = weapon.moves[weapon.light_start]
 	var rec: Array[Dictionary] = await _play_posed(&"rogue", weapon)

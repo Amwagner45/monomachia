@@ -30,13 +30,17 @@ extends Node
 ## release's). Every step is drawn, as in play, so the ribbon is laid frame
 ## by frame, and the camera stands off her front left, raised to see the
 ## stroke's arc.
+##
+## "training_swap" shows the Hunter dummy, picked with the Greatsword, after
+## Thrust was chosen for it (23.2): it swapped to the Katana, which the HUD's
+## plate names, and is 30 steps into its drill.
 
 const SEED: int = 7
 
 @export_enum(
 	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
 	"iai_stance", "iai_vertical", "iai_horizontal", "select_duel", "select_watch",
-	"trail_light", "trail_unblockable", "trail_moonsplitter",
+	"trail_light", "trail_unblockable", "trail_moonsplitter", "training_swap",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
@@ -162,6 +166,13 @@ func _ready() -> void:
 			_iai(shot)
 		"trail_light", "trail_unblockable", "trail_moonsplitter":
 			_trail(shot)
+		"training_swap":
+			var cfg: MatchConfig = MatchConfig.default_training(SEED)
+			_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(FakeDeviceState.new()))
+			host.step(Match.INTRO_FRAMES + 20)
+			_place_apart(2.6)
+			host.set_training_behaviour(&"thrust")
+			host.step(30)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
 	if shot == "dropped":

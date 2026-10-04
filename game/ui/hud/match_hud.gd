@@ -89,11 +89,13 @@ func bind(p_host: MatchHost) -> void:
 		host.sim_event.disconnect(_on_sim_event)
 		host.stepped.disconnect(_on_stepped)
 		host.match_finished.disconnect(_on_match_finished)
+		host.loadout_changed.disconnect(_on_loadout_changed)
 	host = p_host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
 	host.stepped.connect(_on_stepped)
 	host.match_finished.connect(_on_match_finished)
+	host.loadout_changed.connect(_on_loadout_changed)
 	if host.is_started():
 		_on_match_started(host.config)
 
@@ -161,6 +163,12 @@ func _on_match_started(cfg: MatchConfig) -> void:
 		_plates[i].text = s.display_name() + (" (You)" if i == me else "")
 		_weapons[i].text = Moves.WEAPONS[s.weapon_id].name
 	_refresh_announcement()
+
+
+## A side's weapon changed mid-match (the training dummy's): its plate names
+## the new one.
+func _on_loadout_changed(side: int) -> void:
+	_weapons[side].text = host.fighter(side).weapon.name
 
 
 ## The results take the screen: the HUD clears its centre text and hint and

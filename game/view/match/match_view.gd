@@ -98,11 +98,13 @@ func bind(p_host: MatchHost) -> void:
 	if host != null:
 		host.match_started.disconnect(_on_match_started)
 		host.sim_event.disconnect(_on_sim_event)
+		host.loadout_changed.disconnect(_on_loadout_changed)
 	host = p_host
 	if effects != null:
 		effects.host = host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
+	host.loadout_changed.connect(_on_loadout_changed)
 	if swing_debug_view != null:
 		swing_debug_view.bind(host)
 	if host.is_started():
@@ -202,6 +204,13 @@ func _on_match_started(cfg: MatchConfig) -> void:
 	camera.fov_kick = 0.0
 	camera.current = true
 	snap_camera()
+
+
+## A side's weapon changed mid-match (the training dummy's): its fighter
+## holds the new one.
+func _on_loadout_changed(side: int) -> void:
+	if side < fighters.size():
+		fighters[side].set_weapon(host.fighter(side).weapon.id)
 
 
 func _load_arena(id: StringName) -> void:

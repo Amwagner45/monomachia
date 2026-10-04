@@ -45,7 +45,10 @@ extends Node
 ## Training runs the rules' endless match against the dummy, with its upkeep
 ## (TrainingUpkeep: getting up after a K.O., the refill, the dummy re-arming)
 ## stepped after each rules step, inside the fixed step. set_refill() turns
-## the refill off and on; every match starts with it on. Versus samples two
+## the refill off and on; every match starts with it on.
+## set_training_behaviour() tells the dummy what to do, swapping its weapon
+## in the rules first when it can't (TrainingUpkeep.weapon_for), and
+## loadout_changed tells the view and the HUD. Versus samples two
 ## humans on two different devices.
 
 ## The match was (re)started from a config: views rebuild from it.
@@ -59,6 +62,9 @@ signal match_finished(results: MatchResults)
 signal pause_changed(paused: bool)
 ## stop() threw the match away (quit to menu).
 signal stopped
+## A side's weapon changed mid-match (the training dummy's, for a behaviour):
+## views re-read fighter(side).weapon.
+signal loadout_changed(side: int)
 
 const DT: float = SimConst.DT
 const MAX_STEPS_PER_FRAME: int = 6
@@ -355,6 +361,35 @@ func label(action: String, side: int) -> String:
 ## Whether Training refills health (always true outside Training).
 func refill() -> bool:
 	return _upkeep == null or _upkeep.refill
+
+
+## The training dummy's behaviour (TrainingBrain.BEHAVIOURS), or &"" outside
+## Training.
+func training_behaviour() -> StringName:
+	var b: TrainingBrain = _dummy_brain()
+	return b.behaviour if b != null else &""
+
+
+## Tells the training dummy what to do. When its weapon can't perform the
+## behaviour, it swaps to one that can (back to the select's pick whenever
+## that one can) and loadout_changed fires. Nothing happens outside Training.
+func set_training_behaviour(behaviour: StringName) -> void:
+	var b: TrainingBrain = _dummy_brain()
+	if b == null or not TrainingBrain.BEHAVIOURS.has(behaviour):
+		return
+	var w: WeaponDef = _upkeep.weapon_for(behaviour)
+	var swapped: bool = w != world.fighters[_upkeep.dummy].weapon
+	if swapped:
+		_upkeep.swap_dummy_weapon(w)
+	b.set_behaviour(behaviour)
+	if swapped:
+		loadout_changed.emit(_upkeep.dummy)
+
+
+func _dummy_brain() -> TrainingBrain:
+	if _upkeep == null:
+		return null
+	return _brains[_upkeep.dummy] as TrainingBrain
 
 
 ## Turns Training's refill off or on (key 0 on the Training panel).

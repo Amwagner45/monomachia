@@ -125,6 +125,12 @@ func setup(p_fighter: StringName, p_palette: int, p_weapon: StringName, p_side: 
 	_light_weapons(Color.BLACK)
 
 
+## Holds another weapon (the training dummy's swap), keeping everything else.
+func set_weapon(p_weapon: StringName) -> void:
+	weapon_id = p_weapon
+	_hold(p_weapon)
+
+
 func side_color() -> Color:
 	return LookPalette.side_color(palette)
 

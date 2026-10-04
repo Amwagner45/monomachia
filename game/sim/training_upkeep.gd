@@ -18,6 +18,14 @@ extends RefCounted
 ##   re-armed as soon as its disarm stagger ended.) The player picks theirs up.
 ##
 ## The frames are the world's (World.frame), so hit-stop doesn't count.
+##
+## Choosing the dummy's behaviour (task 23.2): weapon_for() gives the weapon
+## that performs it, the one picked in the select (picked) whenever it can,
+## else the first in the select's order (Moves.PLAYABLE_WEAPONS) that can;
+## the unblockable drills need an ability with their counter kind
+## (TrainingBrain.weapon_ability_for), so new unblockables count without a
+## table. swap_dummy_weapon() changes it cleanly, as Game.swapDummyWeapon()
+## did: anything that belongs to the old weapon stops first.
 
 ## Frames unhurt before the refill starts.
 const REFILL_AFTER: int = 90
@@ -31,6 +39,8 @@ var refill: bool = true
 var world: World
 ## The dummy's side.
 var dummy: int
+## The dummy's weapon at the start, picked in the select.
+var picked: WeaponDef
 ## Per side: the world frame it was last hurt, and its HP after the last step.
 var _last_hurt: Array[int] = [0, 0]
 var _prev_hp: Array[float] = [SimConst.HP_MAX, SimConst.HP_MAX]
@@ -41,6 +51,7 @@ var _disarmed_at: int = -1
 func _init(p_world: World, p_dummy: int = 1) -> void:
 	world = p_world
 	dummy = p_dummy
+	picked = world.fighters[dummy].weapon
 	for i: int in 2:
 		_prev_hp[i] = world.fighters[i].hp
 
@@ -63,6 +74,42 @@ func step() -> void:
 				f.ult_used = false
 		if i == dummy:
 			_upkeep_dummy_weapon(f, unhurt)
+
+
+## Whether weapon w can perform a dummy behaviour (TrainingBrain.BEHAVIOURS):
+## the unblockable drills need an ability with their counter kind.
+static func can_perform(w: WeaponDef, behaviour: StringName) -> bool:
+	if behaviour == &"thrust" or behaviour == &"sweep" or behaviour == &"slam":
+		return TrainingBrain.weapon_ability_for(w, behaviour) != &""
+	return true
+
+
+## The weapon the dummy performs a behaviour with: the picked one when it
+## can, else the first in the select's order that can.
+func weapon_for(behaviour: StringName) -> WeaponDef:
+	if can_perform(picked, behaviour):
+		return picked
+	for id: StringName in Moves.PLAYABLE_WEAPONS:
+		var w: WeaponDef = Moves.WEAPONS[id]
+		if can_perform(w, behaviour):
+			return w
+	return picked
+
+
+## Hands the dummy weapon w: an impale lets go, a state that belongs to the
+## old weapon (an attack, an ultimate, a recall, a pickup, the disarm
+## stagger) ends, and the dummy is armed with w's default abilities, its old
+## weapon gone from the floor.
+func swap_dummy_weapon(w: WeaponDef) -> void:
+	var f: Fighter = world.fighters[dummy]
+	f.release_if_impaling()
+	if [&"attack", &"ult", &"ultChoice", &"recall", &"pickup", &"disarmStagger"].has(f.state):
+		f.to_free()
+	f.weapon = w
+	f.armed = true
+	f.abilities = w.default_abilities.duplicate()
+	world.remove_dropped_weapon(dummy)
+	_disarmed_at = -1
 
 
 func _upkeep_dummy_weapon(f: Fighter, unhurt: int) -> void:

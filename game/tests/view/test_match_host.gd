@@ -548,6 +548,51 @@ func test_a_new_match_starts_with_refill_on() -> void:
 	assert_true(host.refill())
 
 
+func _training(dummy_weapon: StringName) -> MatchHost:
+	var host: MatchHost = _host()
+	var cfg: MatchConfig = MatchConfig.default_training(5)
+	cfg.sides[1].weapon_id = dummy_weapon
+	host.start(cfg)
+	host.step(Match.INTRO_FRAMES + 5)
+	return host
+
+
+func test_each_behaviour_on_each_dummy_weapon_ends_with_a_weapon_that_can_do_it() -> void:
+	for picked: StringName in Moves.PLAYABLE_WEAPONS:
+		var host: MatchHost = _training(picked)
+		for b: StringName in TrainingBrain.BEHAVIOURS:
+			host.set_training_behaviour(b)
+			assert_eq(host.training_behaviour(), b)
+			assert_eq((host.brain(1) as TrainingBrain).behaviour, b)
+			var w: WeaponDef = host.fighter(1).weapon
+			assert_true(TrainingUpkeep.can_perform(w, b), "%s from the %s: the %s" % [b, picked, w.id])
+			host.step(30)
+			assert_null(host.world.weapon_of(1), "no dropped weapon left behind")
+			assert_true(host.fighter(1).armed)
+
+
+func test_a_swap_tells_the_views_and_a_return_goes_back_to_the_picked_weapon() -> void:
+	var host: MatchHost = _training(&"greatsword")
+	watch_signals(host)
+	host.set_training_behaviour(&"lights")
+	assert_signal_not_emitted(host, "loadout_changed", "the Greatsword can throw lights")
+	host.set_training_behaviour(&"thrust")
+	assert_signal_emitted_with_parameters(host, "loadout_changed", [1])
+	assert_eq(host.fighter(1).weapon.id, &"katana")
+	assert_eq(host.fighter(1).abilities[0], &"k_thrust", "the practised thrust on the light slot")
+	host.set_training_behaviour(&"heavies")
+	assert_eq(host.fighter(1).weapon.id, &"greatsword", "back to the picked Greatsword")
+	assert_signal_emit_count(host, "loadout_changed", 2)
+
+
+func test_the_dummy_behaviour_outside_training_does_nothing() -> void:
+	var host: MatchHost = _host()
+	host.start(_cpu_config(7))
+	host.set_training_behaviour(&"slam")
+	assert_eq(host.training_behaviour(), &"")
+	assert_eq(host.fighter(1).weapon.id, &"greatsword")
+
+
 func test_only_training_has_upkeep() -> void:
 	var host: MatchHost = _host()
 	host.start(_cpu_config(7))

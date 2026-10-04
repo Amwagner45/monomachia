@@ -184,15 +184,30 @@ func test_restart_replays_the_match_with_the_next_seed() -> void:
 	assert_ne(host.config.world_seed, before.world_seed, "the next seed")
 
 
-func test_restart_in_training_keeps_the_refill_setting() -> void:
+func test_restart_in_training_keeps_the_refill_setting_and_the_behaviour() -> void:
 	var cfg: MatchConfig = MatchConfig.default_training(3)
 	cfg.arena_id = ArenaScenes.STANDIN
 	main.call("start_match", cfg)
 	host.set_refill(false)
+	host.set_training_behaviour(&"thrust")
 	host.pause()
 	_pause_menu().restart_button.pressed.emit()
 	assert_eq(host.config.mode, MatchConfig.TRAINING)
 	assert_false(host.refill(), "still off after Restart")
+	assert_eq(host.training_behaviour(), &"thrust", "the dummy still thrusts")
+	assert_eq(host.fighter(1).weapon.id, &"katana", "with the Katana it swapped to")
+
+
+func test_a_new_training_from_the_menu_starts_afresh() -> void:
+	var cfg: MatchConfig = MatchConfig.default_training(3)
+	cfg.arena_id = ArenaScenes.STANDIN
+	main.call("start_match", cfg)
+	host.set_refill(false)
+	host.set_training_behaviour(&"block")
+	main.call("quit_to_menu")
+	main.call("start_match", cfg.with_seed(4))
+	assert_true(host.refill(), "refill on")
+	assert_eq(host.training_behaviour(), &"idle", "Stand still")
 
 
 func test_quit_to_menu_returns_to_the_main_menu_over_the_duel() -> void:

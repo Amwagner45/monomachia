@@ -260,11 +260,15 @@ func rematch() -> void:
 
 
 ## The pause's Restart: the same match again with the next seed, at once.
-## Training keeps its refill setting.
+## Training keeps its refill setting and the dummy's behaviour (a new
+## Training from the menu starts on Stand still with refill on).
 func restart() -> void:
 	var refill: bool = host.refill()
+	var behaviour: StringName = host.training_behaviour()
 	rematch()
 	host.set_refill(refill)
+	if behaviour != &"":
+		host.set_training_behaviour(behaviour)
 
 
 ## From the results: the select for the mode just played, on its last picks,

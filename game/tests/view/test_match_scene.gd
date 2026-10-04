@@ -307,6 +307,29 @@ func test_a_dropped_weapon_is_in_the_toon_look() -> void:
 				assert_true(ToonMaterials.is_outlined(m), "weapons are outlined on every preset")
 
 
+func test_the_view_and_hud_follow_the_dummy_s_weapon_swap() -> void:
+	var cfg: MatchConfig = _with_standin(MatchConfig.default_training(5))
+	host.start(cfg)
+	host.step(Match.INTRO_FRAMES + 5)
+	var dummy: Fighter = host.fighter(1)
+	dummy.disarm(host.fighter(0), &"parried")
+	host.step(1)
+	view.render(1.0 / 60.0)
+	assert_not_null(view.get_node_or_null("Dropped1"), "the Greatsword on the floor")
+	host.set_training_behaviour(&"thrust")
+	view.render(1.0 / 60.0)
+	var fv: FighterView = view.fighters[1]
+	assert_eq(fv.weapon_id, &"katana")
+	assert_eq(fv.model.weapon_look.id, &"katana", "the dummy holds the Katana")
+	var plate: Label = hud.find_child("Weapon1", true, false)
+	assert_eq(plate.text, Moves.KATANA.name, "the plate names it")
+	await get_tree().process_frame
+	assert_null(view.get_node_or_null("Dropped1"), "no Greatsword left on the floor")
+	host.set_training_behaviour(&"slam")
+	assert_eq(fv.model.weapon_look.id, &"greatsword", "and back")
+	assert_eq(plate.text, Moves.GREATSWORD.name)
+
+
 func test_a_body_flash_fades_with_the_rules_not_the_wall_clock() -> void:
 	host.start(_cpu())
 	host.step(Match.INTRO_FRAMES + 5)

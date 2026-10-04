@@ -26,7 +26,8 @@ Each task is finished, tested (`npm test`, `npm run typecheck`), committed and p
   - Blocked by: SB.5.
 - [ ] **SB.7 The board's button and routes (local, untracked).** A "Second brain" header button opening `/brain/` in a named popup; `/brain/*` served by `brainHandler` loaded from the newest ref holding `brain/Home.md`.
   - Check: by hand on http://localhost:5197, the button opens the popup, a second click reuses it, and plan ticks match the board.
+  - Status: drafted and tested on a copy of the board at port 5195 (`docs/plans/second-brain-board-patch.md`). This session can't write to the board's worktree, so the board's own session applies it and restarts the board.
   - Blocked by: SB.5.
-- [ ] **SB.8 Docs.** README and CLAUDE.md name `npm run brain`, the viewer and the vault's rules (hand-written notes in `brain/`, generated ones never committed).
+- [x] **SB.8 Docs.** README and CLAUDE.md name `npm run brain`, the viewer and the vault's rules (hand-written notes in `brain/`, generated ones never committed).
   - Check: the commands in the docs run.
   - Blocked by: SB.4, SB.6.

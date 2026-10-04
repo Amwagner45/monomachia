@@ -110,6 +110,8 @@ in a headless browser and saves screenshots to `shots/` (needs Playwright:
 | `tests` | Rule tests. |
 | `scripts` | Soak runner, counter lab, headless browser checks, post-build step. |
 | `scripts/audio` | The Godot build's audio: `npm run audio:sonniss` cuts sounds from the Sonniss bundle zips, `npm run audio:synth` generates the rest, `npm run audio:music` the placeholder music. Output and sources list in `game/assets/audio`. |
+| `brain` | The second brain: an Obsidian vault of the project's knowledge. Hand-written concept notes live here; `npm run brain` generates the rest (a note per glossary term, plan task, doc section and `game/` folder) into `brain/generated/`, which isn't committed. `npm run brain:serve` opens it in a web viewer at http://localhost:5196. |
+| `tools/second-brain` | Builds the vault and serves its viewer. See `docs/specs/second-brain.md`. |
 
 ## Publishing on GitHub
 

@@ -6,13 +6,13 @@ Each task is finished, tested (`npm test`, `npm run typecheck`), committed and p
 
 ## Tasks
 
-- [ ] **SB.1 Parsers.** `tools/second-brain/vault.mjs` with `safeName`, `taskIdsInSubject`, `parseGlossary`, `splitSections`, `parseScriptSummary`, `parsePlan` (tasks with done marks, text, "Blocked by" ids, stages from the build order with ranges expanded).
+- [x] **SB.1 Parsers.** `tools/second-brain/vault.mjs` with `safeName`, `taskIdsInSubject`, `parseGlossary`, `splitSections`, `parseScriptSummary`, `parsePlan` (tasks with done marks, text, "Blocked by" ids, stages from the build order with ranges expanded).
   - Check: `tests/second-brain.test.mjs` covers each parser on fixture text, including `(godot-rebuild 22.6, 22.8-22.10, first step)` and the `16.1–16.7` en-dash ranges.
   - Blocked by: none.
-- [ ] **SB.2 The vault builder.** `buildVault(source)` returns the hand-written notes under `brain/` and the generated glossary, plan (stages and tasks with Blocks), docs sections and code-map notes, with unique safe names; `linksIn` and `resolveLinks` find wikilinks and their targets.
+- [x] **SB.2 The vault builder.** `buildVault(source)` returns the hand-written notes under `brain/` and the generated glossary, plan (stages and tasks with Blocks), docs sections and code-map notes, with unique safe names; `linksIn` and `resolveLinks` find wikilinks and their targets.
   - Check: an in-memory source builds the expected notes; a task links its blockers, the tasks it blocks, its stage and the code folders whose commits name it; no generated link is unresolved.
   - Blocked by: SB.1.
-- [ ] **SB.3 Sources and `npm run brain`.** `sources.mjs` with `fsSource(dir)` and `gitSource(repo, ref)`; `build.mjs` writes `brain/generated/`; `brain/generated/` git-ignored; `npm run brain` script.
+- [x] **SB.3 Sources and `npm run brain`.** `sources.mjs` with `fsSource(dir)` and `gitSource(repo, ref)`; `build.mjs` writes `brain/generated/`; `brain/generated/` git-ignored; `npm run brain` script.
   - Check: `fsSource` and `gitSource('HEAD')` list and read the same tracked doc; `npm run brain` writes notes and a rerun changes nothing.
   - Blocked by: SB.2.
 - [ ] **SB.4 Hand-written notes.** `brain/Home.md` and the concept notes: weapons (Katana, Greatsword, Twin Daggers, Bare hands, the planned five), fighters, posture, parry, clash, disarm, strings, ultimates, the round and match flow, arenas, modes, the computer opponent, architecture (sim/view split, golden replays, swings), sound, the HUD and menus, the rebuild and its decisions; `.obsidian/app.json` with sensible defaults.

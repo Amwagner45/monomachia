@@ -18,3 +18,8 @@ Sonniss*.zip
 # Temporary git worktrees made by Claude Code workflows
 .claude/worktrees/
 .godot-path
+
+# Second brain: generated notes and Obsidian workspace state
+brain/generated/
+brain/.obsidian/workspace*.json
+brain/.obsidian/cache

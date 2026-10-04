@@ -116,6 +116,14 @@ func first_human_side() -> int:
 	return -1
 
 
+## The training dummy's side, or -1 (Training puts it on side 1).
+func dummy_side() -> int:
+	for i: int in sides.size():
+		if sides[i].controller == MatchSide.DUMMY:
+			return i
+	return -1
+
+
 func human_count() -> int:
 	var n: int = 0
 	for s: MatchSide in sides:

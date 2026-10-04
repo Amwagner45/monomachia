@@ -279,7 +279,10 @@ func test_a_hit_plays_from_a_3d_voice_at_its_contact_point() -> void:
 func test_a_dodge_plays_at_the_dodging_fighter() -> void:
 	var log := _record_places()
 	_fought()
+	# a roll tumbles (authored-animation task 30); a backstep keeps the swish
 	host.sim_event.emit({"t": &"dodge", "f": 1, "back": false})
+	assert_almost_eq(_at(log, &"roll"), _chest(1), Vector3.ONE * 1e-4)
+	host.sim_event.emit({"t": &"dodge", "f": 1, "back": true})
 	assert_almost_eq(_at(log, &"dodge_swish"), _chest(1), Vector3.ONE * 1e-4)
 	assert_almost_eq(_at(log, &"dodge_cloth"), _chest(1), Vector3.ONE * 1e-4)
 
@@ -416,7 +419,7 @@ func test_a_new_match_starts_every_stride_afresh() -> void:
 		assert_eq(audio.footsteps._travel[i], 0.0, "fighter %d's stride" % i)
 
 
-## A footfall the view reports (the guard shuffle's) plays a footstep where
+## A footfall the view reports (the clips' feet) plays a footstep where
 ## the foot came down; the duel behind the menus stays silent.
 func test_a_footfall_from_the_view_plays_a_footstep_there() -> void:
 	var view: MatchView = host.get_node("View")
@@ -430,9 +433,10 @@ func test_a_footfall_from_the_view_plays_a_footstep_there() -> void:
 	assert_eq(log.size(), 1, "nothing behind the menus")
 
 
-## Walking in its guard, the Katana fighter's footsteps fall where the guard
-## shuffle puts its feet down, and the stride count makes none for it.
-func test_a_guard_walk_steps_where_the_shuffle_s_feet_land() -> void:
+## Walking in its guard, a drawn fighter's footsteps fall where its clips
+## put its feet down (authored-animation task 29), and the stride count makes
+## none for it.
+func test_a_guard_walk_steps_where_the_clips_feet_land() -> void:
 	var fake := FakeDeviceState.new()
 	host.input = InputDevices.new(fake)
 	host.start(MatchConfig.default_duel())
@@ -443,26 +447,28 @@ func test_a_guard_walk_steps_where_the_shuffle_s_feet_land() -> void:
 	view.footfall.connect(func(side: int, at: Vector3) -> void:
 		if side == 0:
 			footfalls.append(at))
-	# the footsteps that aren't the opponent's: its own fall at its feet
+	# the footsteps that aren't the opponent's: nearer this fighter (each
+	# fighter's fall at its own feet)
 	var mine: Array[Vector3] = []
 	audio.player.played.connect(func(cue: StringName, voice: Node) -> void:
 		if cue != &"footstep":
 			return
 		var at: Vector3 = (voice as Node3D).global_position
+		var me: Fighter = host.fighter(0)
 		var other: Fighter = host.fighter(1)
-		if at.distance_to(Vector3(other.pos.x, other.pos.y, other.pos.z)) > 1e-4:
+		if at.distance_to(Vector3(me.pos.x, me.pos.y, me.pos.z)) < at.distance_to(Vector3(other.pos.x, other.pos.y, other.pos.z)):
 			mine.append(at))
 	# block and strafe left, round the opponent
 	fake.press_key(KEY_L)
 	fake.press_key(KEY_A)
-	for i: int in 90:
+	for i: int in 150:
 		host.step(1)
 		view.render(1.0 / 60.0)
 	fake.release_key(KEY_A)
 	for i: int in 20:
 		host.step(1)
 		view.render(1.0 / 60.0)
-	assert_true(view.shuffles(0), "the guard's legs")
+	assert_true(view.steps_from_clips(0), "the view keeps up")
 	gut.p("%d footfalls" % footfalls.size())
 	assert_gt(footfalls.size(), 4, "the feet step")
 	assert_eq(mine.size(), footfalls.size(), "a footstep for each footfall, and none from the stride count")

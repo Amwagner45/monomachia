@@ -281,7 +281,7 @@ func is_invulnerable() -> bool:
 		var b: int = atk.def.invuln[1]
 		return atk.frame >= a and atk.frame <= b
 	if state == &"recall":
-		return sf <= 16
+		return sf <= SimConst.RECALL_BURST_FRAME
 	if state == &"ult" and ult != null and ult.kind == &"tempest" and ult.phase == &"flash":
 		return true
 	if state == &"disarmStagger":
@@ -1365,6 +1365,34 @@ func _update_stomp() -> void:
 		set_state(&"free")
 
 
+## The recall's power-up burst (authored-animation task 30b), as the weapon
+## returns: an opponent within the recalled weapon's duelling distance and
+## not invulnerable (a dodge's or a knockdown's frames) is blasted
+## RECALL_BURST_KNOCKBACK away and knocked down, with no damage or posture; a
+## guard doesn't stop it. The burst flares either way (`recallBurst`, with
+## whether it hit).
+func _recall_burst() -> void:
+	var o: Fighter = opp
+	var reach: float = weapon.duel_distance if weapon != null else 0.0
+	var d: float = Vector2(o.pos.x - pos.x, o.pos.z - pos.z).length()
+	var hit: bool = d <= reach and not o.is_invulnerable()
+	world.emit({
+		"t": &"recallBurst",
+		"f": id,
+		"on": o.id,
+		"hit": hit,
+		"reach": reach,
+		"pos": SimEvents.vec3(V3.make(pos.x, 1.0, pos.z)),
+	})
+	if not hit:
+		return
+	o.release_if_impaling()
+	o.enter_knockdown()
+	o.knock(pos.x, pos.z, SimConst.RECALL_BURST_KNOCKBACK, SimConst.RECALL_BURST_KNOCK_FRAMES)
+	world.emit({"t": &"knockdown", "f": o.id, "attacker": id})
+	world.hitstop = SimConst.RECALL_BURST_HITSTOP
+
+
 func begin_leap(attacker: Fighter) -> void:
 	set_state(&"leap", 32)
 	script_from = V3.make(pos.x, pos.y, pos.z)
@@ -1609,16 +1637,17 @@ func _update_ult_choice() -> void:
 		return
 	if inp.buffered(Btn.LIGHT, 6) or sf >= state_dur:
 		inp.consume(Btn.LIGHT)
-		set_state(&"recall", 26)
+		set_state(&"recall", SimConst.RECALL_FRAMES)
 		world.emit({"t": &"recall", "f": id})
 
 
 func _update_recall() -> void:
 	_brake()
-	if sf == 16:
+	if sf == SimConst.RECALL_BURST_FRAME:
 		world.remove_dropped_weapon(id)
 		armed = true
 		world.emit({"t": &"pickup", "f": id})
+		_recall_burst()
 	if sf >= state_dur:
 		set_state(&"free")
 

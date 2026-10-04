@@ -162,9 +162,9 @@ func test_the_close_views_keep_the_attacker_in_their_crops() -> void:
 		MoveBench.free_all()
 
 
-## The feet view looks down on the fighter's feet from in front on its
-## left, square to the line between them so neither hides the other, both
-## feet and their toes in the crop.
+## The feet view looks down on the fighter's feet from in front, square to
+## the line between them so neither hides the other, both feet and their
+## toes in the crop.
 func test_the_feet_view_sees_both_feet_side_by_side() -> void:
 	for id: StringName in FighterLook.IDS:
 		var sheet: MoveSheet = _sheet(PackedStringArray(["--fighter=" + id, "--drive=guard_forward"]))
@@ -319,7 +319,7 @@ func test_the_strafe_and_backpedal_drives_move_the_way_they_say() -> void:
 		assert_true(MoveSheet.VIEW_NAMES.has(MoveSheet.DRIVES[id]["views"][0]), "%s: its own view" % id)
 
 
-## The guard drives walk the same ways blocking, in the guard shuffle, seen
+## The guard drives walk the same ways blocking, seen
 ## from above too, every other frame.
 func test_the_guard_drives_walk_blocking() -> void:
 	var moving: Dictionary[StringName, Vector2] = {
@@ -410,16 +410,15 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 	assert_eq(sheet.strip.size(), frames.size(), "a cell per chosen frame")
 	assert_gt(sheet.bench.spacing, 20.0, "the opponent far off, out of the way")
 	var first: PackedStringArray = sheet.strip[0]
-	assert_true(first[0].begins_with("frame 1 · 0.00 m/s"), first[0])
-	assert_eq(first[1], "guard · feet down", "the Katana standing in its guard")
-	assert_eq(first[2], "upright")
+	assert_true(first[0].begins_with("frame 1 · 0.00 m/s · legs "), first[0])
+	assert_true(first[1].begins_with("idle 1.00 · phase "), "the Katana standing in its combat idle: %s" % first[1])
 	var last: PackedStringArray = sheet.strip[-1]
-	assert_true(last[0].begins_with("frame %d · 7.20 m/s" % inputs.size()), last[0])
-	assert_true(last[1].begins_with("sprint 1.00 · phase "), last[1])
+	assert_true(last[0].begins_with("frame %d · 7.20 m/s · legs +0°" % inputs.size()), last[0])
 	var loco: Locomotion = sheet.bench.view.locomotion
-	assert_eq(last[1], "sprint 1.00 · phase %.2f" % loco.shown_phase)
+	assert_eq(last[1], "%s 1.00 · phase %.2f" % [String(loco.clips[&"sprint"][0]).get_file(), loco.shown_phase])
 	assert_string_contains(sheet.title[0], "rest_to_sprint")
-	assert_string_contains(sheet.title[2], "strides: walk %.2f m, jog %.2f, sprint %.2f" % [loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride])
+	assert_string_contains(sheet.title[2], "strides ahead: walk %.2f m, run %.2f, sprint %.2f" % [
+		loco.gaits[loco.clips[&"walk"][0]].stride, loco.gaits[loco.clips[&"run"][0]].stride, loco.gaits[loco.clips[&"sprint"][0]].stride])
 	var cell: Vector2i = MoveSheet.cell_size(&"side")
 	var rows: int = ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
 	assert_eq(image.get_size(), Vector2i(
@@ -427,7 +426,7 @@ func test_a_drive_strip_has_a_captioned_cell_per_chosen_frame() -> void:
 		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 
 
-func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> void:
+func test_a_strafe_strip_gives_the_legs_way_with_a_block_of_rows_per_view() -> void:
 	assert_eq(_sheet(PackedStringArray(["--drive=strafe_left"])).views, [&"front"] as Array[StringName], "the drive's own view")
 	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=strafe_left", "--every=24", "--views=front,side"]))
 	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"strafe_left")
@@ -435,16 +434,14 @@ func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> 
 	var image: Image = await sheet.render_drive(&"strafe_left")
 	assert_almost_eq(sheet.bench.spacing, float(MoveSheet.DRIVES[&"strafe_left"]["spacing"]), 1e-6)
 	assert_eq(sheet.strip.size(), frames.size(), "captions per chosen frame")
-	assert_eq(sheet.strip[0][0], "frame 1 · 0.00 m/s", "at rest, nothing about the legs")
 	var strafing: int = frames.find(72)
 	assert_gt(strafing, 0)
-	assert_eq(sheet.strip[strafing][0], "frame 72 · 3.50 m/s · legs +80°", "strafing left, the legs turned left")
+	assert_true(sheet.strip[strafing][0].begins_with("frame 72 · 3.50 m/s · legs +9"), "strafing left: %s" % sheet.strip[strafing][0])
 	var loco: Locomotion = sheet.bench.view.locomotion
-	loco.backwards = true
-	loco.shown_leg_yaw = deg_to_rad(-45.0)
-	assert_eq(MoveSheet.drive_caption(9, loco)[0], "frame 9 · %.2f m/s · legs -45° back" % loco.speed, "running backwards")
-	loco.shown_leg_yaw = 0.0
-	assert_eq(MoveSheet.drive_caption(9, loco)[0], "frame 9 · %.2f m/s · legs 0° back" % loco.speed, "straight back")
+	assert_true(sheet.strip[strafing][1].begins_with(String(loco.clips[&"run"][2]).get_file() if loco.clips[&"run"][2] != "" else String(loco.clips[&"walk"][2]).get_file()), sheet.strip[strafing][1])
+	loco.shown_away = deg_to_rad(-170.0)
+	assert_string_contains(MoveSheet.drive_caption(9, loco)[0], " · turned away -170°", "a sprint held backwards")
+	loco.shown_away = 0.0
 	# the front view's cells first, then the side view's
 	var cell: Vector2i = MoveSheet.cell_size(&"front")
 	var rows: int = 2 * ceili(frames.size() / float(MoveSheet.STRIP_COLUMNS))
@@ -452,7 +449,7 @@ func test_a_strafe_strip_gives_the_legs_turn_with_a_block_of_rows_per_view() -> 
 		mini(MoveSheet.STRIP_COLUMNS, frames.size()) * (cell.x + MoveSheet.GAP) - MoveSheet.GAP,
 		MoveSheet.HEADER_HEIGHT + rows * (MoveSheet.GAP + MoveSheet.STRIP_CAPTION_HEIGHT + cell.y)))
 	assert_eq(sheet.title[1].get_slice(" · ", 0), "views: front, side")
-	assert_string_contains(sheet.title[1], "legs: their turn, + to the left; back: running backwards; guard: shuffling; weight: the stance's shift, + to the front foot")
+	assert_string_contains(sheet.title[1], "legs: the way they travel, + to the left; held: the feet the foot lock holds")
 
 
 func test_the_brake_drives_run_then_let_go() -> void:
@@ -475,56 +472,26 @@ func test_the_brake_drives_run_then_let_go() -> void:
 	assert_eq(pushes[-1].buttons, 1 << Btn.SPRINT, "sprinting when it lets go")
 
 
-func test_a_strip_caption_gives_the_lean_and_the_brace() -> void:
+func test_a_strip_caption_gives_the_turn_on_the_spot_and_the_held_feet() -> void:
 	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=run_brake"]))
 	var loco: Locomotion = sheet.bench.view.locomotion
-	assert_eq(MoveSheet.drive_caption(1, loco)[2], "upright")
-	var cases: Array = [
-		[Vector3(0.0, 0.0, -deg_to_rad(11.0)), 0.05, "lean 11° back · hips down 5 cm"],
-		[Vector3(0.0, 0.0, 0.07), 0.0, "lean 4° forward"],
-		[Vector3(0.1, 0.0, 0.02), 0.012, "lean 6° left · hips down 1 cm"],
-		[Vector3(-0.1, 0.0, 0.0), 0.0, "lean 6° right"],
-		[Vector3(0.0, 0.0, 0.005), 0.0, "upright"],
-	]
-	for c: Array in cases:
-		loco.lean.shown_tilt = c[0]
-		loco.lean.shown_drop = c[1]
-		assert_eq(MoveSheet.drive_caption(1, loco)[2], c[2])
+	assert_eq(MoveSheet.drive_caption(1, loco)[2], "feet free")
+	assert_eq(MoveSheet.drive_caption(1, loco, ["Left", "Right"])[2], "held: left, right")
+	loco.shown_turn = 0.5
+	loco.turn_left = false
+	assert_eq(MoveSheet.drive_caption(1, loco, ["Right"])[2], "turning right 0.50 · held: right")
+	loco.shown_turn = 0.0
 	assert_gte(MoveSheet.STRIP_CAPTION_HEIGHT, 2 * MoveSheet.TEXT_MARGIN + 3 * MoveSheet.CAPTION_FONT * 5 / 4, "room for three lines")
-	# standing in the guard: the guard's legs, which foot is up, and the
-	# stance's weight shift, toward the front foot or the rear
-	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "guard · feet down · weight +2 cm")
-	assert_eq(MoveSheet.drive_caption(1, loco, -0.03)[1], "guard · feet down · weight -3 cm")
-	assert_eq(MoveSheet.drive_caption(1, loco, 0.004)[1], "guard · feet down", "under half a centimetre")
-	loco.shuffle.feet["Left"].swinging = true
-	assert_eq(MoveSheet.drive_caption(1, loco)[1], "guard · left foot up")
-	loco.shuffle.feet["Left"].swinging = false
-	# going over to the clips or back: the blend, and the guard's weight
-	loco.shown_guard = 0.5
-	assert_eq(MoveSheet.drive_caption(1, loco, 0.021)[1], "guard 0.50 · idle 1.00", "no room for the weight shift")
-	loco.shown_guard = 0.0
-	assert_eq(MoveSheet.drive_caption(1, loco)[1], "idle 1.00 · phase 0.00", "the clips' legs")
 
 
-## The stand drive holds still through a whole weight shift of the guard
-## stance, at the duelling distance, seen from in front and side on.
-func test_the_stand_drive_holds_still_through_a_whole_weight_shift() -> void:
+func test_the_stand_drive_holds_still() -> void:
 	var inputs: Array[RawInput] = MoveSheet.drive_inputs(&"stand")
-	assert_gte(inputs.size(), int(GuardStance.SHIFT_PERIOD * 60.0), "a whole sway")
+	assert_gte(inputs.size(), 300, "five seconds and more")
 	for r: RawInput in inputs:
 		assert_eq(Vector2(r.mx, r.my), Vector2.ZERO, "still")
 		assert_eq(r.buttons, 0, "nothing pressed")
 	assert_eq(MoveSheet.DRIVES[&"stand"]["views"], [&"front", &"side"])
 	assert_eq(float(MoveSheet.DRIVES[&"stand"]["spacing"]), PoseCheck.SPACING, "at the duelling distance")
-	# its strip captions the shift
-	var sheet: MoveSheet = _sheet(PackedStringArray(["--drive=stand", "--every=75", "--views=side"]))
-	await sheet.render_drive(&"stand")
-	var shifts: Array[String] = []
-	for cell: PackedStringArray in sheet.strip:
-		shifts.append(cell[1])
-	gut.p(shifts)
-	assert_true(shifts.any(func(s: String) -> bool: return s.contains("weight +")), "toward the front foot")
-	assert_true(shifts.any(func(s: String) -> bool: return s.contains("weight -")), "and the rear")
 
 
 func test_the_sheet_lays_out_its_header_rows_and_cells() -> void:

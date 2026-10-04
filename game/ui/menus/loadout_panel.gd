@@ -6,7 +6,8 @@ extends VBoxContainer
 ## its ultimate, and the two block-ability slots, each an OptionRow of the
 ## weapon's three abilities under its button badge (a label over the row, so
 ## the chips fit the select's left column), with the chosen one's description. Random hides the blurb, the ultimate and the slots; the
-## training dummy gets no slots.
+## training dummy gets no slots, and a note on how Training is driven (the
+## demo's) in their place.
 ##
 ## Editing a draft (edit()), the panel applies each pick through
 ## MatchSelection's rules (a new weapon resets the abilities and ends a random
@@ -24,6 +25,8 @@ signal ability_chosen(slot: int, ability_id: StringName)
 ## A pick changed the draft being edited.
 signal changed
 
+## The training dummy's note (the demo's, for this build's controls).
+const DUMMY_NOTE: String = "In Training you tell the dummy what to do from the panel on screen (keys 1–9 or a click), or from the pause menu on a controller. Health refills on its own; key 0 turns that off."
 ## The text column's width (px).
 const TEXT_WIDTH: float = 400.0
 ## The panel's width (px): the widest pair of ability rows (the
@@ -39,6 +42,8 @@ var slots: Array[OptionRow] = []
 ## The button badge over each slot.
 var slot_badges: Array[Label] = []
 var slot_descs: Array[Label] = []
+## How the training dummy is told what to do, shown on its side.
+var dummy_note: Label
 ## The weapon whose abilities the slots offer.
 var weapon_id: StringName = &""
 ## The draft being edited and its side, or null.
@@ -74,6 +79,10 @@ func _init() -> void:
 		var desc: Label = _wrapped(UiTheme.MUTED, 15)
 		desc.name = "SlotDesc%d" % slot
 		slot_descs.append(desc)
+	dummy_note = _wrapped(UiTheme.MUTED, 16)
+	dummy_note.name = "DummyNote"
+	dummy_note.text = DUMMY_NOTE
+	dummy_note.visible = false
 	weapon_chosen.connect(_apply_weapon)
 	random_chosen.connect(_apply_random)
 	ability_chosen.connect(_apply_ability)
@@ -116,6 +125,7 @@ func show_side(side: MatchSide, random: bool = false, offer_random: bool = false
 		ultimate_desc.text = info.ultimate_desc
 	var picks: bool = known and with_abilities and not random
 	abilities_title.visible = picks
+	dummy_note.visible = known and not with_abilities and not random
 	weapon_id = side.weapon_id
 	var chosen: Array[StringName] = side.resolved_abilities()
 	for slot: int in 2:

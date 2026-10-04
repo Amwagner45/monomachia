@@ -43,7 +43,7 @@ extends Node3D
 ## sprinting; run_brake and sprint_brake: running or sprinting at it, then
 ## letting go; strafe_left and strafe_right round the opponent, backpedal and
 ## back_left away from it, each then stopping; the guard_ drives the same
-## while blocking, in the guard shuffle; tap_steps: a tap step each way;
+## while blocking; tap_steps: a tap step each way;
 ## iai_walk: walking in the Iai stance; carry_walk, carry_lift and
 ## carry_guard: the Greatsword going onto the shoulder as it walks, then
 ## standing and strafing, attacking from it, or raising the guard off it
@@ -63,8 +63,8 @@ extends Node3D
 ## "defender_weapon", and the fighter's HP, "hp"),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
-## speed, the legs' turn, Locomotion's blend and the step phase or the
-## guard's feet, and the lean and the brace, a block of rows per view.
+## speed, the way the legs travel, Locomotion's blend and the step phase,
+## the turn on the spot and the feet the foot lock holds, a block of rows per view.
 ##
 ## The defender holds the Katana and takes no input, so a move that reaches it
 ## lands as the rules say. The stage is the preview's studio, and the chosen
@@ -106,7 +106,7 @@ const LIGHT: int = 1 << Btn.LIGHT
 ##   strafe near enough (under 9 m) that the rules keep the distance, so the
 ##   fighter circles it;
 ## - every (optional): every how many frames the strip shows one, when
-##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames;
+##   --every= doesn't say;
 ## - defender (optional): the opponent's input, segments as for input
 ##   (otherwise it takes none).
 const DRIVES: Dictionary[StringName, Dictionary] = {
@@ -152,43 +152,86 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"views": [&"front"],
 		"spacing": 8.0,
 	},
+	&"sprint_away": {
+		"input": [[12, 0.0, 0.0, 0], [50, 0.0, -1.0, 1 << Btn.SPRINT], [30, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, sprinting straight back from the opponent for 50 (the body turns away), then stopping (and turning back)",
+		"views": [&"side"],
+		"spacing": 8.0,
+	},
+	&"turn_on_spot": {
+		"input": [[150, 0.0, 0.0, 0]],
+		"defender": [[10, 0.0, 0.0, 0], [100, 1.0, 0.0, 0], [40, 0.0, 0.0, 0]],
+		"notes": "standing still while the opponent strafes round it for 100 frames: the legs step round each 30° the facing turns",
+		"views": [&"front", &"feet"],
+		"spacing": 3.0,
+		"every": 4,
+	},
+	&"rolls": {
+		"input": [[12, 0.0, 0.0, 0], [1, 1.0, 0.0, 1 << Btn.DODGE], [30, 0.0, 0.0, 0], [1, -1.0, 0.0, 1 << Btn.DODGE], [30, 0.0, 0.0, 0],
+			[1, 0.0, 1.0, 1 << Btn.DODGE], [30, 0.0, 0.0, 0], [1, 0.0, -1.0, 1 << Btn.DODGE], [30, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then a roll right, left, forward and back, each let go for 30 (task 30: Roll01, the body turned toward the roll)",
+		"views": [&"front"],
+		"spacing": 8.0,
+		"every": 3,
+	},
+	&"backstep": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, 1 << Btn.DODGE], [30, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then a backstep (dodge with the stick let go: Dodge01's lean back), let go for 30",
+		"views": [&"side"],
+		"spacing": 8.0,
+		"every": 2,
+	},
+	&"jump": {
+		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, 1 << Btn.JUMP], [50, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, then a jump on the spot: Jump01_Begin, Jump01 in the air, Jump01_Land",
+		"views": [&"side"],
+		"spacing": 8.0,
+		"every": 3,
+	},
+	&"dodge_attack": {
+		"input": [[12, 0.0, 0.0, 0], [1, 1.0, 0.0, 1 << Btn.DODGE], [13, 0.0, 0.0, 0], [1, 0.0, 0.0, 1 << Btn.LIGHT], [44, 0.0, 0.0, 0]],
+		"notes": "a roll right, then the dodge light out of it: the body turns back to the opponent over the attack's first 3 frames",
+		"views": [&"front"],
+		"spacing": 3.0,
+		"every": 2,
+	},
 	&"stand": {
 		"input": [[330, 0.0, 0.0, 0]],
-		"notes": "standing still for 330 frames, a whole weight shift of the guard stance",
+		"notes": "standing still for 330 frames",
 		"views": [&"front", &"side"],
 		"spacing": PoseCheck.SPACING,
 	},
 	&"guard_forward": {
 		"input": [[12, 0.0, 0.0, BLOCK], [48, 0.0, 1.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
-		"notes": "blocking: still for 12 frames, shuffling at the opponent for 48, then stopping",
+		"notes": "blocking: still for 12 frames, walking at the opponent for 48, then stopping",
 		"views": [&"side", &"feet"],
 		"spacing": 8.0,
 		"every": 2,
 	},
 	&"guard_backpedal": {
 		"input": [[12, 0.0, 0.0, BLOCK], [48, 0.0, -1.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
-		"notes": "blocking: still for 12 frames, shuffling back from the opponent for 48, then stopping",
+		"notes": "blocking: still for 12 frames, walking back from the opponent for 48, then stopping",
 		"views": [&"side", &"feet"],
 		"spacing": 8.0,
 		"every": 2,
 	},
 	&"guard_strafe_left": {
 		"input": [[12, 0.0, 0.0, BLOCK], [48, -1.0, 0.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
-		"notes": "blocking: still for 12 frames, shuffling left round the opponent for 48, then stopping",
+		"notes": "blocking: still for 12 frames, walking left round the opponent for 48, then stopping",
 		"views": [&"front", &"feet"],
 		"spacing": 8.0,
 		"every": 2,
 	},
 	&"guard_strafe_right": {
 		"input": [[12, 0.0, 0.0, BLOCK], [48, 1.0, 0.0, BLOCK], [24, 0.0, 0.0, BLOCK]],
-		"notes": "blocking: still for 12 frames, shuffling right round the opponent for 48, then stopping",
+		"notes": "blocking: still for 12 frames, walking right round the opponent for 48, then stopping",
 		"views": [&"front", &"feet"],
 		"spacing": 8.0,
 		"every": 2,
 	},
 	&"guard_back_left": {
 		"input": [[12, 0.0, 0.0, BLOCK], [48, -0.7071, -0.7071, BLOCK], [24, 0.0, 0.0, BLOCK]],
-		"notes": "blocking: still for 12 frames, shuffling back and to the left for 48, then stopping",
+		"notes": "blocking: still for 12 frames, walking back and to the left for 48, then stopping",
 		"views": [&"front", &"feet"],
 		"spacing": 8.0,
 		"every": 2,
@@ -344,7 +387,7 @@ const LANDMARKS: Array[String] = ["start", "windup", "cocked", "contact", "relea
 ## and the gap between rows and cells.
 const CELL_HEIGHT: int = 360
 const CAPTION_HEIGHT: int = 64
-## A strip cell's caption, a line taller for the lean.
+## A strip cell's caption, a line taller for the feet.
 const STRIP_CAPTION_HEIGHT: int = 88
 const HEADER_HEIGHT: int = 156
 const GAP: int = 6
@@ -651,8 +694,15 @@ func aim(view: StringName) -> void:
 			# turned under a chest that faces the camera
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-20.0)) * 4.2 + Vector3(0.0, 1.0, 0.0), a + Vector3(0.0, 0.95, 0.0), 40.0)
 		&"feet":
-			# down on the feet from its left, square to the line between them
-			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(60.0)) * 2.0 + Vector3(0.0, 1.3, 0.0), a + Vector3(0.0, 0.2, 0.0), 38.0)
+			# down on the feet from in front, square to the line between
+			# them as they stand (the side of it the fighter faces)
+			var ankles: PackedVector3Array = _ankles()
+			var across: Vector3 = ((ankles[0] - ankles[1]) * Vector3(1.0, 0.0, 1.0)).normalized().rotated(Vector3.UP, PI / 2.0)
+			if across.length() < 0.5:
+				across = forward
+			if across.dot(forward) < 0.0:
+				across = -across
+			_look_from(a + across * 2.0 + Vector3(0.0, 1.3, 0.0), a + Vector3(0.0, 0.2, 0.0), 38.0)
 		&"close":
 			_look_from(a + forward.rotated(Vector3.UP, deg_to_rad(-30.0)) * 2.1 + Vector3(0.0, 1.6, 0.0),
 				a + forward * 0.3 + Vector3(0.0, 1.4, 0.0), 44.0)
@@ -677,6 +727,15 @@ func _look_from(pos: Vector3, target: Vector3, fov: float) -> void:
 
 ## Where the attacker's hands grip, in world space: the grip points of the
 ## hands on posed weapons, or the hands themselves when none are posed.
+## The attacker's ankles in the world as last posed, right then left.
+func _ankles() -> PackedVector3Array:
+	var sk: Skeleton3D = bench.view.model.skeleton
+	var out: PackedVector3Array = []
+	for side: String in ["Right", "Left"]:
+		out.append(sk.global_transform * sk.get_bone_global_pose(sk.find_bone(side + "Foot")).origin)
+	return out
+
+
 func _hands() -> PackedVector3Array:
 	var model: FighterModel = bench.view.model
 	var sk: Skeleton3D = model.skeleton
@@ -930,7 +989,7 @@ func render_drive(drive_id: StringName) -> Image:
 		if not chosen.has(i + 1):
 			continue
 		await bench.frame()
-		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
+		var lines: PackedStringArray = drive_caption(i + 1, loco, _held(bench.view))
 		if bench.attacker.state == &"attack":
 			lines[0] += " · %s frame %d" % [bench.attacker.atk.def.id, bench.attacker.atk.frame]
 		elif bench.attacker.state != &"free":
@@ -952,10 +1011,11 @@ func render_drive(drive_id: StringName) -> Image:
 	title = PackedStringArray([
 		"%s (palette A) with the %s: %s (%s)%s" % [bench.view.model.look.display_name, bench.weapon.name, drive_id, DRIVES[drive_id]["notes"],
 			" · swings from " + swings_path if swings_path != "" else ""],
-		"views: %s · every %d frames · the opponent %.1f m off · legs: their turn, + to the left; back: running backwards; guard: shuffling; weight: the stance's shift, + to the front foot" % [
+		"views: %s · every %d frames · the opponent %.1f m off · legs: the way they travel, + to the left; held: the feet the foot lock holds" % [
 			", ".join(view_names), every, bench.spacing],
-		"blend: walk at %.2f m/s, jog at %.2f, sprint at %.2f · strides: walk %.2f m, jog %.2f, sprint %.2f" % [
-			Locomotion.WALK_SPEED, loco.run_speed, loco.sprint_speed, loco.gaits[0].stride, loco.gaits[1].stride, loco.gaits[2].stride],
+		"blend: walk at the clips' pace (%.2f m/s ahead), run at %.2f that way, sprint at %.2f · strides ahead: walk %.2f m, run %.2f, sprint %.2f" % [
+			loco.walk_speed(0.0), loco.run_speed, loco.sprint_speed, loco.gaits[loco.clips[&"walk"][0]].stride,
+			loco.gaits[loco.clips[&"run"][0]].stride, loco.gaits[loco.clips[&"sprint"][0]].stride],
 	])
 	var width: int = 1
 	if not grid.is_empty():
@@ -964,62 +1024,39 @@ func render_drive(drive_id: StringName) -> Image:
 	return compose(header, grid)
 
 
-## A strip frame's caption: the frame and speed, and the legs' turn when they
-## turn or run backwards; then the blend's weights (those over 0) and the
-## step phase, or with the guard's legs which foot is up (while the legs go
-## over to the guard or back, its weight and the blend), and otherwise the
-## guard stance's weight shift `sway` (m, + toward the front foot); then the
-## lean, its angle and the way the body tips, and the brace's drop of the
-## hips.
-static func drive_caption(frame: int, loco: Locomotion, sway: float = 0.0) -> PackedStringArray:
+## A strip frame's caption: the frame, the speed and the way the legs
+## travel (+ to the left), with the body's turn away for a sprint held
+## backwards; then the blend's clips and weights (those over 0.005) and the
+## step phase; then the turn on the spot while it plays, and which feet the
+## foot lock holds (`held`: "Left", "Right").
+static func drive_caption(frame: int, loco: Locomotion, held: Array = []) -> PackedStringArray:
+	var first: String = "frame %d · %.2f m/s · legs %+.0f°" % [frame, loco.speed, rad_to_deg(loco.way)]
+	if absf(loco.shown_away) >= deg_to_rad(0.5):
+		first += " · turned away %+.0f°" % rad_to_deg(loco.shown_away)
 	var weights: PackedStringArray = []
-	for i: int in 4:
-		if loco.shown[i] > 0.005:
-			weights.append("%s %.2f" % [Locomotion.NODES[i], loco.shown[i]])
-	var first: String = "frame %d · %.2f m/s" % [frame, loco.speed]
-	var turn: float = rad_to_deg(loco.shown_leg_yaw)
-	if absf(turn) >= 0.5 or loco.backwards:
-		first += " · legs %s%s" % ["%+.0f°" % turn if absf(turn) >= 0.5 else "0°", " back" if loco.backwards else ""]
+	if loco.shown_idle > 0.005:
+		weights.append("idle %.2f" % loco.shown_idle)
+	for c: Array in loco.shown_clips:
+		if float(c[1]) > 0.005:
+			weights.append("%s %.2f" % [String(c[0]).get_file(), float(c[1])])
 	var second: String = "%s · phase %.2f" % [" ".join(weights), loco.shown_phase]
-	if loco.shown_guard >= 0.995:
-		second = "guard · " + _feet_text(loco.shuffle)
-	elif loco.shown_guard >= 0.005:
-		second = "guard %.2f · %s" % [loco.shown_guard, " ".join(weights)]
-	# the weight shift has no room beside the blend while the legs go over
-	if loco.shown_guard < 0.005 or loco.shown_guard >= 0.995:
-		second += _sway_text(sway)
-	return PackedStringArray([first, second, _lean_text(loco.lean)])
+	var third: String = ""
+	if loco.shown_turn > 0.005:
+		third = "turning %s %.2f · " % ["left" if loco.turn_left else "right", loco.shown_turn]
+	if held.is_empty():
+		third += "feet free"
+	else:
+		third += "held: %s" % ", ".join(PackedStringArray(held.map(func(x: Variant) -> String: return String(x).to_lower())))
+	return PackedStringArray([first, second, third])
 
 
-## "right foot up", "left foot up" or "feet down": the guard shuffle's feet.
-static func _feet_text(shuffle: GuardShuffle) -> String:
-	for side: String in GuardShuffle.SIDES:
-		if shuffle.feet[side].swinging:
-			return "%s foot up" % side.to_lower()
-	return "feet down"
-
-
-## "upright", or "lean 11° back", with " · hips down 5 cm" while braced.
-static func _lean_text(lean: Lean) -> String:
-	var t: Vector3 = lean.shown_tilt
-	var angle: float = rad_to_deg(t.length())
-	var out: String = "upright"
-	if angle >= 0.5:
-		var way: String = "left" if t.x > 0.0 else "right"
-		if absf(t.z) >= absf(t.x):
-			way = "forward" if t.z > 0.0 else "back"
-		out = "lean %.0f° %s" % [angle, way]
-	if lean.shown_drop >= 0.005:
-		out += " · hips down %.0f cm" % (lean.shown_drop * 100.0)
+## The feet view `v`'s foot lock holds now ("Left", "Right").
+static func _held(v: FighterView) -> Array:
+	var out: Array = []
+	for side: String in ["Left", "Right"]:
+		if v.foot_lock != null and v.foot_lock.holds(side):
+			out.append(side)
 	return out
-
-
-## " · weight +2 cm" from the guard stance's weight shift `sway` (m, +
-## toward the front foot); nothing under half a centimetre.
-static func _sway_text(sway: float) -> String:
-	if absf(sway) < 0.005:
-		return ""
-	return " · weight %+.0f cm" % (sway * 100.0)
 
 
 ## Lays out a sheet: the header on top, then each row's caption over its

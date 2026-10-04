@@ -10,6 +10,11 @@ extends RefCounted
 ## `<pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx`, or, for a
 ## clip marked `shared` (the masked poses, whose files for both sets sit in
 ## one folder), `<pack>/Animations/<dir>/<set>@<source>.fbx`.
+##
+## A composed clip (authored-animation task 22) has no file of its own: the
+## import tool builds it from two other clips, one on the upper body over
+## the other's hips and legs (ImportClips.compose()), each from a source frame
+## of its own ("compose": {"upper", "upper_from", "legs", "legs_from"}).
 
 const PATH: String = "res://assets/kevin_iglesias/clip_manifest.json"
 ## The markers, in the order they fall.
@@ -38,6 +43,16 @@ class Clip:
 	var provisional: bool = false
 	## The catalogue pages it is a candidate on (GROUPS).
 	var groups: Array[StringName] = []
+	## A composed clip's two clips (ids of clips with files) and the source
+	## frame each starts from; empty for a clip with a file.
+	var upper: StringName = &""
+	var upper_from: int = 0
+	var legs: StringName = &""
+	var legs_from: int = 0
+
+	## Whether the import tool builds it from two other clips.
+	func composed() -> bool:
+		return upper != &""
 
 	## The clip's file for a set, relative to the Iglesias packs' folder.
 	func file(set_name: StringName, set_folder: String) -> String:
@@ -77,6 +92,12 @@ static func read(path: String = PATH) -> ClipManifest:
 		var c: Clip = m._clip(StringName(key), clips_data[key])
 		if c != null:
 			m.clips[c.id] = c
+	for c: Clip in m.clips.values():
+		if not c.composed():
+			continue
+		for part: StringName in [c.upper, c.legs]:
+			if not m.clips.has(part) or m.clips[part].composed():
+				m.errors.append("%s: composed from %s, which is not a clip with a file" % [c.id, part])
 	return m
 
 
@@ -86,6 +107,15 @@ func in_group(group: StringName) -> Array[StringName]:
 	for c: Clip in clips.values():
 		if c.groups.has(group):
 			out.append(c.id)
+	return out
+
+
+## The clips with files of their own (not composed), in id order.
+func sourced() -> Array[Clip]:
+	var out: Array[Clip] = []
+	for c: Clip in clips.values():
+		if not c.composed():
+			out.append(c)
 	return out
 
 
@@ -102,9 +132,27 @@ func _clip(id: StringName, d: Variant) -> Clip:
 		return null
 	var c: Clip = Clip.new()
 	c.id = id
-	for field: String in ["pack", "dir", "source"]:
-		if not (d as Dictionary).get(field) is String or str(d[field]) == "":
-			errors.append("%s: no %s" % [id, field])
+	var compose: Variant = (d as Dictionary).get("compose")
+	if compose is Dictionary:
+		c.upper = StringName(str(compose.get("upper", "")))
+		c.legs = StringName(str(compose.get("legs", "")))
+		if c.upper == &"" or c.legs == &"":
+			errors.append("%s: a composed clip names its upper and legs clips" % id)
+			c.upper = &"?" if c.upper == &"" else c.upper
+		for field: String in ["upper_from", "legs_from"]:
+			var v: Variant = compose.get(field, 0)
+			if not (v is float or v is int) or float(v) != floorf(float(v)) or float(v) < 0.0:
+				errors.append("%s: %s is not a whole source frame" % [id, field])
+			else:
+				c.set(field, int(v))
+		if d.get("mirror", false) == true:
+			errors.append("%s: a composed clip isn't mirrored" % id)
+	elif compose != null:
+		errors.append("%s: compose is not an object" % id)
+	else:
+		for field: String in ["pack", "dir", "source"]:
+			if not (d as Dictionary).get(field) is String or str(d[field]) == "":
+				errors.append("%s: no %s" % [id, field])
 	c.pack = str(d.get("pack", ""))
 	c.dir = str(d.get("dir", ""))
 	c.source = str(d.get("source", ""))

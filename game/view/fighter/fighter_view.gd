@@ -63,6 +63,9 @@ extends Node3D
 ##   while an authored clip shows and while standing out of a guard stance.
 ## Moves without a baked swing keep the stand-in poses below.
 ##
+## Shadow Step's blink (ClipDirector.blinks()) hides the model and its floor
+## marks.
+##
 ## A body flash (hit, disarm, KO) and a blade's glow (an unblockable winding
 ## up, a charging heavy, an ultimate) are material overlays, timed on the
 ## rules' frames: the toon materials underneath are left alone. A floor ring
@@ -216,6 +219,10 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 		_pose(f, p, seconds, alpha)
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
+	# Shadow Step's blink hides the fighter and its floor marks (task 22)
+	var shown: bool = not ClipDirector.blinks(f)
+	model.visible = shown
+	_floor.visible = shown
 	var lit: float = flash_left(frame)
 	if lit > 0.0:
 		_light_body(Color(_flash_color, minf(FLASH_MAX, lit)))

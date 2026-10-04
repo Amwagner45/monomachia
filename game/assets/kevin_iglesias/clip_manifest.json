@@ -1,5 +1,5 @@
 {
-	"about": "The Iglesias clips the game uses. No animation data: tools/import_clips.gd converts each clip from the packs (.assets-src-path) into the gitignored libraries. A clip's file is <pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx, or <pack>/Animations/<dir>/<set>@<source>.fbx for a shared one (the masked poses, both sets' files in one folder). Markers are source frames (30 fps): wind-up start, contact start, contact end, settle; for a clip that isn't an attack they mark its main action's start and end. Markers marked provisional are set when the clip is fitted to its move; until then an attack's come from its striking hand or foot's fastest frames, and other clips' split them evenly. Groups name the catalogue pages a clip is a candidate on.",
+	"about": "The Iglesias clips the game uses. No animation data: tools/import_clips.gd converts each clip from the packs (.assets-src-path) into the gitignored libraries. A clip's file is <pack>/Animations/<Male|Female>/<dir>/<set>@<source>.fbx, or <pack>/Animations/<dir>/<set>@<source>.fbx for a shared one (the masked poses, both sets' files in one folder). Markers are source frames (30 fps): wind-up start, contact start, contact end, settle; for a clip that isn't an attack they mark its main action's start and end. Markers marked provisional are set when the clip is fitted to its move; until then an attack's come from its striking hand or foot's fastest frames, and other clips' split them evenly. A composed clip (\"compose\") has no file: the import tool builds it from two of the clips above, one on the upper body over the other's hips and legs, each from its own source frame. Groups name the catalogue pages a clip is a candidate on.",
 	"sets": {
 		"HumanM": "Male",
 		"HumanF": "Female"
@@ -458,6 +458,23 @@
 			"provisional": true,
 			"groups": [
 				"greatsword"
+			]
+		},
+		"AttackPolearm04_Mirror": {
+			"pack": "Human Melee Animations",
+			"dir": "Combat/Polearm",
+			"source": "AttackPolearm04",
+			"mirror": true,
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 10,
+				"contact_end": 12,
+				"settle": 30
+			},
+			"provisional": true,
+			"groups": [
+				"daggers"
 			]
 		},
 		"AttackPunch01_L": {
@@ -1111,6 +1128,25 @@
 				"daggers"
 			]
 		},
+		"SerpentSweep01": {
+			"compose": {
+				"upper": "Attack1H04_R",
+				"upper_from": 2,
+				"legs": "RunSlide01",
+				"legs_from": 9
+			},
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 9,
+				"contact_end": 13,
+				"settle": 30
+			},
+			"provisional": false,
+			"groups": [
+				"daggers"
+			]
+		},
 		"SheatheHips01_R": {
 			"pack": "Human Melee Animations",
 			"dir": "Misc/Unsheathe",
@@ -1126,6 +1162,25 @@
 			"provisional": true,
 			"groups": [
 				"katana"
+			]
+		},
+		"SlideSlash01": {
+			"compose": {
+				"upper": "Attack1H01_R",
+				"upper_from": 2,
+				"legs": "RunSlide01",
+				"legs_from": 0
+			},
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 7,
+				"contact_end": 9,
+				"settle": 20
+			},
+			"provisional": false,
+			"groups": [
+				"daggers"
 			]
 		},
 		"Sprint01_Forward": {

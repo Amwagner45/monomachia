@@ -292,8 +292,6 @@ func test_moonsplitter_holds_its_wind_up_and_cuts_with_the_wave() -> void:
 	c = ClipDirector.ult_clip(f, bare)
 	assert_eq(c.name, "ual/Sword_Heavy_Combo", "without the packs, the fallback")
 	assert_almost_eq(c.time, 2.0 * 18.0 / 70.0, 1e-6, "stretched over the wind-up and release")
-	f.ult.kind = &"tempest"
-	assert_null(ClipDirector.ult_clip(f, ctx), "the Daggers' ultimate keeps its stand-in")
 
 
 func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
@@ -329,6 +327,42 @@ func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
 	f.ult.pf = 5
 	assert_almost_eq(ClipDirector.ult_clip(f, bare).time, 1.4 * 35.0 / 70.0, 1e-6, "without the packs the dash stretched over the aim and dash")
 
+
+
+func test_tempest_spins_cutting_on_each_hit_and_ends_on_the_outward_slash() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA)
+	var f: Fighter = W.fighters[0]
+	var lengths: Dictionary[String, float] = {"ual/Sword_Aerial_Combo": 1.0, "ual/Sword_Heavy_Combo": 1.9, "HumanM/AttackDW02": 37.0 / 30.0}
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	f.state = &"ult"
+	f.ult = UltState.make(&"tempest", &"flash", 0, &"vertical", 0, false)
+	var at: Callable = func(phase: StringName, pf: int, spins: int = 0, c: ClipDirector.Context = ctx) -> Array:
+		f.ult.phase = phase
+		f.ult.pf = pf
+		f.ult.spins = spins
+		var clip: ClipDirector.Clip = ClipDirector.ult_clip(f, c)
+		return [clip.name, snappedf(clip.time * 30.0, 1e-4)]
+	assert_eq(at.call(&"flash", 8), ["ual/Sword_Aerial_Combo", 2.0], "the flash eases into the first slash")
+	# the spin's hit lands on its fifth frame (Fighter._ult_tempest()): each
+	# slash cuts there (the combo's cuts at source frames 7 and 22), in turn
+	assert_eq(at.call(&"spin", 5, 0), ["ual/Sword_Aerial_Combo", 7.0], "the first spin cuts on its hit")
+	assert_eq(at.call(&"spin", 5, 1), ["ual/Sword_Aerial_Combo", 22.0], "the second the other slash")
+	assert_eq(at.call(&"spin", 5, 4), ["ual/Sword_Aerial_Combo", 7.0], "and in turn")
+	assert_eq(at.call(&"final", 8), ["HumanM/AttackDW02", 18.0], "the final's outward slash cuts on its hit")
+	assert_eq(at.call(&"recover", 24), ["HumanM/AttackDW02", 37.0], "recovering to the clip's end")
+	var bare: ClipDirector.Context = ClipDirector.Context.make(&"hunter", false, lengths)
+	assert_eq(at.call(&"spin", 5, 1, bare)[0], "ual/Sword_Aerial_Combo", "the spins are CC0: they play without the packs")
+	assert_eq(at.call(&"final", 8, 0, bare)[0], "ual/Sword_Heavy_Combo", "the final's fallback")
+	# each spin fades in as a follow-up
+	f.ult.phase = &"spin"
+	f.ult.pf = 9
+	f.ult.spins = 2
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	W.frame += 1
+	f.ult.pf = 0
+	f.ult.spins = 3
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.move, shot.fade, shot.since], [&"tempest", ClipDirector.FADES[&"follow_up"], 0], "the next spin fades in")
 
 # ------------------------------------------------------------------ the shoulder carry (task 18)
 
@@ -542,3 +576,26 @@ func test_the_stomped_thruster_plays_its_pin_fitted_to_the_stun() -> void:
 	assert_almost_eq(clip.time, 0.5 * ctx.lengths[pinned], 0.0001, "fitted to the stun")
 	f.enter_stun(SimConst.LEAP_STUN)
 	assert_null(ClipDirector.state_clip(f, ctx), "another stun keeps the stand-in")
+
+
+func test_shadow_step_plays_the_roll_and_blinks_through_its_active_frames() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 2.0)
+	var f: Fighter = W.fighters[0]
+	var def: AttackDef = Moves.DAGGERS.moves[&"d_shadow"]
+	assert_eq(def.swing.clips, [&"Roll01"] as Array[StringName], "played from Roll01")
+	assert_eq(def.swing.speed, 2.0, "sped up")
+	var lengths: Dictionary[String, float] = {}
+	for set_name: StringName in ClipLibraries.SETS:
+		lengths["%s/Roll01" % set_name] = 39.0 / 30.0
+	var ctx: ClipDirector.Context = ClipDirector.Context.make(&"hunter", true, lengths)
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.BLOCK, Btn.HEAVY), SimHelpers.idle()])
+	var blinked: Array[int] = []
+	while f.state == &"attack":
+		assert_eq(shot.drive, ClipDirector.ATTACK, "frame %d: the roll drives" % f.atk.frame)
+		assert_eq(shot.clip.name, "HumanM/Roll01")
+		if ClipDirector.blinks(f):
+			blinked.append(f.atk.frame)
+		shot = _next(W, shot, ctx)
+	assert_eq(blinked.size(), def.active, "hidden through the active frames")
+	assert_eq(blinked[0], def.startup + 1, "from the first")
+	assert_false(ClipDirector.blinks(f), "shown again after it")

@@ -32,12 +32,25 @@ func test_every_clip_has_its_four_markers_in_order() -> void:
 
 func test_every_clip_names_its_file() -> void:
 	var m: ClipManifest = ClipManifest.read()
-	for clip: ClipManifest.Clip in m.clips.values():
+	for clip: ClipManifest.Clip in m.sourced():
 		var f: String = clip.file(&"HumanM", "Male")
 		# a shared clip's files (the masked poses) sit in one folder for both sets
 		var folder: String = clip.dir if clip.shared else "Male/"
 		assert_true(f.begins_with(clip.pack + "/Animations/" + folder), "%s: %s" % [clip.id, f])
 		assert_true(f.ends_with("HumanM@%s.fbx" % clip.source), "%s: %s" % [clip.id, f])
+
+
+func test_composed_clips_are_built_from_two_clips_with_files() -> void:
+	var m: ClipManifest = ClipManifest.read()
+	var composed: Array[ClipManifest.Clip] = []
+	for clip: ClipManifest.Clip in m.clips.values():
+		if clip.composed():
+			composed.append(clip)
+			assert_false(m.sourced().has(clip), "%s has no file of its own" % clip.id)
+			assert_false(m.clips[clip.upper].composed(), "%s: its upper clip has a file" % clip.id)
+			assert_false(m.clips[clip.legs].composed(), "%s: its legs clip has a file" % clip.id)
+	assert_false(composed.is_empty(), "Slide Slash's cut over the slide (task 22)")
+	assert_eq(m.sourced().size() + composed.size(), m.clips.size())
 
 
 func test_a_bad_manifest_is_reported() -> void:
@@ -47,6 +60,8 @@ func test_a_bad_manifest_is_reported() -> void:
 		"A": {"pack": "P", "dir": "D", "source": "A", "groups": ["katana"], "markers": {"windup": 0, "contact": 9, "contact_end": 4, "settle": 20}},
 		"B": {"pack": "P", "dir": "D", "source": "B", "groups": ["swords"], "markers": {"windup": 0, "contact": 1.5, "settle": 20}},
 		"C": {"dir": "D", "source": "C", "markers": {"windup": 0, "contact": 1, "contact_end": 2, "settle": 3}},
+		"E": {"compose": {"upper": "A", "upper_from": 1.5, "legs": "F"}, "groups": ["katana"], "markers": {"windup": 0, "contact": 1, "contact_end": 2, "settle": 3}},
+		"G": {"compose": {"upper": "A"}, "mirror": true, "groups": ["katana"], "markers": {"windup": 0, "contact": 1, "contact_end": 2, "settle": 3}},
 	}}))
 	f.close()
 	var m: ClipManifest = ClipManifest.read(path)
@@ -57,6 +72,11 @@ func test_a_bad_manifest_is_reported() -> void:
 	assert_string_contains(text, "C: no pack")
 	assert_string_contains(text, "B: unknown group swords")
 	assert_string_contains(text, "C: no groups")
+	assert_string_contains(text, "E: upper_from is not a whole source frame")
+	assert_string_contains(text, "E: composed from F, which is not a clip with a file")
+	assert_string_contains(text, "G: a composed clip names its upper and legs clips")
+	assert_string_contains(text, "G: a composed clip isn't mirrored")
+	assert_false(text.contains("E: no pack"), "a composed clip has no file")
 	DirAccess.remove_absolute(ProjectSettings.globalize_path(path))
 
 

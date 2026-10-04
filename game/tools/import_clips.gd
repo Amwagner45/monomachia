@@ -19,7 +19,8 @@ extends SceneTree
 ##      leg-to-hips ratio over Kevin's rig's, because our fighters' legs are
 ##      longer for their hips height (docs/research/retarget-prototype.md);
 ##    - mirrors the clips the manifest marks (left and right swapped);
-##    - sets the loop mode, and names the clip by its manifest id.
+##    - sets the loop mode, and names the clip by its manifest id;
+##    - then builds each composed clip from two of them (compose()).
 ##
 ## Roll01 [RM] is staged and imported beside the clips for its root track
 ## alone (ROOT_SOURCES): `--build` prints its ground travel, normalised to
@@ -79,7 +80,7 @@ func stage(m: ClipManifest) -> int:
 	var missing: PackedStringArray = []
 	var copied: int = 0
 	for set_name: StringName in m.sets:
-		for clip: ClipManifest.Clip in m.clips.values() + root_clips():
+		for clip: ClipManifest.Clip in m.sourced() + root_clips():
 			var src: String = source_path(m, set_name, clip)
 			var dest: String = staged_path(set_name, clip)
 			wanted[dest.get_file()] = true
@@ -101,7 +102,7 @@ func stage(m: ClipManifest) -> int:
 		if not wanted.has(base):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(STAGING.path_join(f)))
 			removed += 1
-	print("import_clips: staged %d clips for %d sets (%d copied, %d stale files removed)" % [m.clips.size(), m.sets.size(), copied, removed])
+	print("import_clips: staged %d clips for %d sets (%d copied, %d stale files removed)" % [m.sourced().size(), m.sets.size(), copied, removed])
 	return 0
 
 
@@ -266,7 +267,7 @@ static func build_set(m: ClipManifest, set_name: StringName) -> AnimationLibrary
 	var target_ratio: float = leg_ratio(target.skeleton)
 	target.free()
 	var lib: AnimationLibrary = AnimationLibrary.new()
-	for clip: ClipManifest.Clip in m.clips.values():
+	for clip: ClipManifest.Clip in m.sourced():
 		var path: String = staged_path(set_name, clip)
 		if not ResourceLoader.exists(path):
 			printerr("import_clips: %s is not imported; run `node scripts/godot.mjs clips`" % path)
@@ -291,7 +292,55 @@ static func build_set(m: ClipManifest, set_name: StringName) -> AnimationLibrary
 		# A fixed sub-resource id, so the saved file doesn't change from run to run.
 		anim.resource_scene_unique_id = "clip_" + staged_path(set_name, clip).get_file().get_basename().get_slice("@", 1)
 		lib.add_animation(clip.id, anim)
+	for clip: ClipManifest.Clip in m.clips.values():
+		if not clip.composed():
+			continue
+		var anim: Animation = compose(lib.get_animation(clip.upper), lib.get_animation(clip.legs), clip.upper_from, clip.legs_from)
+		anim.loop_mode = Animation.LOOP_LINEAR if clip.loop else Animation.LOOP_NONE
+		anim.resource_name = String(clip.id)
+		anim.resource_scene_unique_id = "clip_" + String(clip.id)
+		lib.add_animation(clip.id, anim)
 	return lib
+
+
+## A composed clip (authored-animation task 22): clip `upper` from source
+## frame `upper_from` on the upper body, over clip `legs` from `legs_from`
+## on the hips and legs (Locomotion.is_leg_bone(), as the upper-body blend
+## splits them), keyed on every source frame for as long as `upper` runs on
+## (`legs` held at its end if it runs out). The spine is turned so the upper
+## body stands as it did over its own clip's hips, lowered or raised with the
+## legs' (leaning back with a slide's hips, a cut would go into the floor).
+static func compose(upper: Animation, legs: Animation, upper_from: int, legs_from: int) -> Animation:
+	var out: Animation = Animation.new()
+	var fps: float = ClipManifest.SOURCE_FPS
+	var frames: int = maxi(0, roundi(upper.length * fps) - upper_from)
+	out.length = frames / fps
+	var hips: NodePath = NodePath(SKELETON + ":Hips")
+	var upper_hips: int = upper.find_track(hips, Animation.TYPE_ROTATION_3D)
+	var legs_hips: int = legs.find_track(hips, Animation.TYPE_ROTATION_3D)
+	for src: Animation in [upper, legs]:
+		var from: int = legs_from if src == legs else upper_from
+		for t: int in src.get_track_count():
+			var path: NodePath = src.track_get_path(t)
+			var bone: String = path.get_concatenated_subnames()
+			var type: int = src.track_get_type(t)
+			if Locomotion.is_leg_bone(bone) != (src == legs) or (type != Animation.TYPE_ROTATION_3D and type != Animation.TYPE_POSITION_3D):
+				continue
+			var nt: int = out.add_track(type)
+			out.track_set_path(nt, path)
+			for k: int in frames + 1:
+				var at: float = minf((k + from) / fps, src.length)
+				if type == Animation.TYPE_POSITION_3D:
+					out.position_track_insert_key(nt, k / fps, src.position_track_interpolate(t, at))
+					continue
+				var q: Quaternion = src.rotation_track_interpolate(t, at)
+				if bone == "Spine" and upper_hips >= 0 and legs_hips >= 0:
+					var ha: Quaternion = upper.rotation_track_interpolate(upper_hips, at)
+					var hs: Quaternion = legs.rotation_track_interpolate(legs_hips, minf((k + legs_from) / fps, legs.length))
+					q = hs.inverse() * ha * q
+				out.rotation_track_insert_key(nt, k / fps, q)
+	return out
+
 
 
 ## Leaves only rotation tracks on profile bones other than Root, and the

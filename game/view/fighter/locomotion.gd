@@ -176,6 +176,11 @@ const AUTHORED_SLOTS: Array[StringName] = [&"clip_a", &"clip_b", &"clip_a_upper"
 const LEG_BONES: Array[String] = ["Root", "Hips", "UpperLeg", "LowerLeg", "Foot", "Toes"]
 
 
+## Whether the upper-body blend leaves bone `bone` to the legs' blend.
+static func is_leg_bone(bone: String) -> bool:
+	return LEG_BONES.any(func(leg: String) -> bool: return bone == leg or bone.ends_with(leg))
+
+
 func _init(p_model: FighterModel, fighter_id: StringName) -> void:
 	model = p_model
 	gaits = gaits_of(model, fighter_id)
@@ -475,7 +480,7 @@ func _build() -> void:
 	var sk: Skeleton3D = model.skeleton
 	for b: int in sk.get_bone_count():
 		var bone: String = sk.get_bone_name(b)
-		if not LEG_BONES.any(func(leg: String) -> bool: return bone == leg or bone.ends_with(leg)):
+		if not is_leg_bone(bone):
 			upper.set_filter_path(NodePath("%s:%s" % [prefix, bone]), true)
 	_root.add_node(&"upper", upper)
 	_root.connect_node(&"upper", 0, &"move")

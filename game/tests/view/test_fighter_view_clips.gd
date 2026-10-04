@@ -197,3 +197,19 @@ func test_the_hud_notes_the_missing_packs() -> void:
 		host.start(MatchConfig.make(MatchConfig.WATCH, MatchSide.computer(&"rogue", &"katana", 0, &"hard"),
 			MatchSide.computer(&"hunter", &"daggers", 1, &"hard"), 7, ArenaScenes.STANDIN))
 		assert_eq(hud.packs_note(), "", "with the packs, no note")
+
+
+func test_shadow_steps_blink_hides_the_fighter() -> void:
+	var W: World = SimHelpers.make_world(Moves.DAGGERS, Moves.KATANA, 2.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"rogue", Moves.DAGGERS)
+	W.step([SimHelpers.btn(Btn.BLOCK, Btn.HEAVY), SimHelpers.idle()])
+	var shown: Array[bool] = []
+	while f.state == &"attack":
+		_show(v, f)
+		assert_eq(v.model.visible, not ClipDirector.blinks(f), "frame %d" % f.atk.frame)
+		shown.append(v.model.visible)
+		W.step([SimHelpers.idle(), SimHelpers.idle()])
+	_show(v, f)
+	assert_true(v.model.visible, "shown once it is over")
+	assert_true(shown.has(false) and shown[0], "shown, hidden, then shown: %s" % [shown])

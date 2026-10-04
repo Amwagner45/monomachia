@@ -101,6 +101,16 @@ func test_a_test_run_never_saves_over_the_players_files() -> void:
 	assert_eq(GameSettings.save_path_for_run(ControlProfiles.PATH, false), ControlProfiles.PATH)
 
 
+## Nor do they read them: the game's controls start as one fresh "Player 1"
+## profile, whatever the player saved to user://controls.cfg.
+func test_a_test_run_starts_from_fresh_controls_profiles() -> void:
+	assert_true(OS.has_environment(GameSettings.DEFAULTS_ENV))
+	assert_eq(GameServices.profiles.names(), PackedStringArray(["Player 1"]))
+	assert_eq(GameServices.profiles.active, 0)
+	assert_eq(GameServices.profiles.active_profile().kb, Bindings.default_kb())
+	assert_eq(GameServices.profiles.active_profile().pad, Bindings.default_pad())
+
+
 ## A finished match's results, as the host hands them over.
 func _results_after(cfg: MatchConfig) -> ResultsScreen:
 	cfg.arena_id = ArenaScenes.STANDIN

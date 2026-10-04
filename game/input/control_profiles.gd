@@ -120,3 +120,10 @@ static func load_from(path: String = PATH) -> ControlProfiles:
 	var saved_active: Variant = cfg.get_value(SECTION, "active", 0)
 	store.set_active(int(saved_active) if (saved_active is int or saved_active is float) else 0)
 	return store
+
+
+## The profiles a run starts with: one fresh profile when the run asks for the
+## defaults (GameSettings.DEFAULTS_ENV, test and shot runs), so what a player
+## saved can't change them; the saved ones otherwise.
+static func load_for_run(use_defaults: bool = OS.has_environment(GameSettings.DEFAULTS_ENV), path: String = PATH) -> ControlProfiles:
+	return ControlProfiles.new() if use_defaults else load_from(path)

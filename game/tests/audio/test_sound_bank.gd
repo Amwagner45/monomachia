@@ -7,7 +7,7 @@ const EXPECTED_EVENTS: Array[StringName] = [
 	&"swing", &"telegraph", &"hit", &"block", &"parry", &"counter", &"evade", &"disarm",
 	&"stagger", &"dodge", &"jump", &"land", &"step", &"ko", &"ultReady", &"ultStart",
 	&"ultChoice", &"ultWave", &"ultDash", &"ultImpale", &"ultBurst", &"ultLightning",
-	&"recall", &"pickup", &"weaponBounce", &"counterReady", &"backstabReady",
+	&"recall", &"pickup", &"recallBurst", &"weaponBounce", &"counterReady", &"backstabReady",
 	&"roundStart", &"fight", &"roundOver", &"matchOver",
 	&"ui_move", &"ui_select", &"ui_back",
 ]
@@ -60,7 +60,7 @@ func test_every_cue_is_used_by_an_event_or_documented_as_direct() -> void:
 	# Footsteps follow the walk cycle and the ambience follows the arena, not events.
 	var direct: Array[StringName] = [&"footstep", &"ambience_shrine"]
 	var used := SoundBank.all_event_cues()
-	for extra: StringName in [&"whoosh_heavy", &"whoosh_small", &"whoosh_colossal", &"hit_blade", &"hit_dagger",
+	for extra: StringName in [&"roll", &"whoosh_heavy", &"whoosh_small", &"whoosh_colossal", &"hit_blade", &"hit_dagger",
 			&"hit_fist", &"hit_fist_heavy", &"hit_colossal", &"clang_heavy", &"parry_flash", &"parry_redirect",
 			&"weapon_clatter"]:
 		used.append(extra)
@@ -98,6 +98,18 @@ func test_counters_by_kind() -> void:
 	assert_eq(_cue_names({"t": "counter", "kind": "evade"}), [&"dodge_swish", &"taiko_light"] as Array[StringName])
 	var taiko: Dictionary = SoundBank.cues_for({"t": "counter", "kind": "stomp"})[2]
 	assert_almost_eq(float(taiko["delay"]), 0.03, 0.0001)
+
+
+## A roll and a backstep sound apart (authored-animation task 30): the
+## backstep keeps the dash's swish and cloth, a roll tumbles.
+func test_a_roll_and_a_backstep_play_different_cues() -> void:
+	var roll: Array[StringName] = _cue_names({"t": "dodge", "f": 0, "back": false})
+	var backstep: Array[StringName] = _cue_names({"t": "dodge", "f": 0, "back": true})
+	assert_eq(roll, [&"roll"] as Array[StringName])
+	assert_eq(backstep, [&"dodge_swish", &"dodge_cloth"] as Array[StringName])
+	for cue: StringName in roll:
+		assert_false(backstep.has(cue))
+	assert_eq((SoundBank.CUES[&"roll"]["files"] as Array).size(), 3, "three takes")
 
 
 func test_swing_whoosh_follows_weapon_and_weight() -> void:

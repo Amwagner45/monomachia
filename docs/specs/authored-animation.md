@@ -1,6 +1,6 @@
 # Spec: Authored animation and the dodge roll
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); tasks 1–28 done (the Katana's review, task 14, `docs/reviews/katana-animation-review.md`, taken as passed when the owner set the next tasks going on Oct 3; its lunge and PoseCheck questions are still open); the Greatsword's review (task 20, `docs/reviews/greatsword-animation-review.md`) passed on Oct 3, its balance left to a tuning change after the Daggers; the Daggers' review (task 23, `docs/reviews/daggers-animation-review.md`) passed on Oct 3, their balance going into the same tuning change; bare hands' review (task 25, `docs/reviews/bare-hands-animation-review.md`) passed on Oct 3 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/authored-animation.md`, Oct 3); tasks 1–30 and 30b done, the reactions and movement review (task 31, `docs/reviews/reactions-movement-animation-review.md`) waiting on the owner (the Katana's review, task 14, `docs/reviews/katana-animation-review.md`, taken as passed when the owner set the next tasks going on Oct 3; its lunge and PoseCheck questions are still open); the Greatsword's review (task 20, `docs/reviews/greatsword-animation-review.md`) passed on Oct 3, its balance left to a tuning change after the Daggers; the Daggers' review (task 23, `docs/reviews/daggers-animation-review.md`) passed on Oct 3, their balance going into the same tuning change; bare hands' review (task 25, `docs/reviews/bare-hands-animation-review.md`) passed on Oct 3 · branch `feature/authored-animation`, off `feature/godot-rebuild` (at 8cb57c3, after PR #10; PR #11 merged in at task 1)
 
 > **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This spec closes after task 30b, and its premise is reversed: animation leads, so each attack's frame data and footwork come from its clip, and only the protected timings and jump arcs stay rules numbers. Its timing fit (1.0–2.0×), in-place clips, short crossfades and rules-authored lunges are superseded; tasks 32–35 (draws, victories, retiring the stand-ins) move into the slice spec, and the import, bake and clip-director code carry over.
 
@@ -48,7 +48,7 @@ The raw Iglesias files and the clips converted from them stay out of the public 
 10. [x] As a Greatsword player, I want attacks started from the shoulder to take longer, so that the carry is a real trade-off and not just a look.
 11. [x] As a Daggers player, I want my fighter to idle with the daggers in a reverse grip and flip them forward to attack, so that the Rogue's style survives the clips.
 12. [x] As a bare-hands fighter, I want real punches and kicks, so that disarmed play looks like fighting, not flailing.
-13. As a player, I want the ultimates, block abilities, counters (stomp, leap, evade), Flash, Shadow Step and the jump attacks to have authored motion too, so that nothing looks procedural next to the rest.
+13. [x] As a player, I want the ultimates, block abilities, counters (stomp, leap, evade), Flash, Shadow Step and the jump attacks to have authored motion too, so that nothing looks procedural next to the rest.
 
 ### Defending and reactions
 
@@ -66,15 +66,15 @@ The raw Iglesias files and the clips converted from them stay out of the public 
 
 ### Movement and dodge
 
-22. As a player, I want my fighter to walk, run and strafe with real directional clips in every direction, so that circling the opponent looks natural.
-23. As a player, I want to sprint with real sprint clips, and turn in place with real turn clips, so that movement is grounded.
-24. As a player, I want my feet to stay planted and never slide, so that the fighter looks connected to the floor.
-25. As a player, I want a directional dodge to be a roll in that direction, so that dodges look evasive.
+22. [x] As a player, I want my fighter to walk, run and strafe with real directional clips in every direction, so that circling the opponent looks natural.
+23. [x] As a player, I want to sprint with real sprint clips, and turn in place with real turn clips, so that movement is grounded.
+24. [x] As a player, I want my feet to stay planted and never slide, so that the fighter looks connected to the floor.
+25. [x] As a player, I want a directional dodge to be a roll in that direction, so that dodges look evasive.
 26. As a player, I want the roll to keep today's distance, timing and invulnerability, so that what I learned about dodging still applies.
 27. As a player, I want the roll's travel to follow the roll itself, fast while tumbling and easing on the recovery, so that the body and the ground match.
-28. As a player, I want a dodge attack out of a roll to come up facing the opponent, so that dodge attacks still land.
-29. As a player, I want the no-direction backstep to stay a quick hop back, so that backstep attacks and the evade counter keep their feel.
-30. As a player, I want a distinct roll sound, so that I can hear a dodge.
+28. [x] As a player, I want a dodge attack out of a roll to come up facing the opponent, so that dodge attacks still land.
+29. [x] As a player, I want the no-direction backstep to stay a quick hop back, so that backstep attacks and the evade counter keep their feel.
+30. [x] As a player, I want a distinct roll sound, so that I can hear a dodge.
 
 ### Round flow
 
@@ -195,6 +195,7 @@ All of these get rule tests and a soak run.
   - A guard raised from the shoulder (a block or a parry press) clears the flag but starts the same 6-frame lift, and an attack started before that lift ends waits for the rest of it. So a block ability pressed with the guard pays all 6 frames, one pressed a frame later pays 5, and one from a guard already up pays none (settled in plan task 15).
   - While lifting, the attack holds its frame 0, and the ultimate holds its first phase.
   - The flag is part of the fighter's state, so the presentation and the computer opponent read it.
+- **The recall's power-up burst** (added by the owner on Oct 4, 2026, plan task 30b). The recall (the disarmed ultimate's choice: 26 frames, the weapon back in the hand on frame 16, invulnerable up to it) bursts on frame 16: an opponent within the recalled weapon's duelling distance (Katana 2.5, Greatsword 3.0, Daggers 2.0 m) that isn't invulnerable (a dodge's i-frames, down, a counter's leap or stomp) is knocked back 2.0 m (`RECALL_BURST_KNOCKBACK`, twice a heavy's 1.0) over 14 frames and knocked down, with no damage or posture, and 6 frames of hit-stop. A guard doesn't stop it and it can't be parried. The `recallBurst` event (`f`, `on`, `hit`, `reach`, `pos`) fires either way, with `knockdown` after it on a hit.
 - **The computer opponent** knows about knockdowns (it doesn't attack a downed fighter until the stand-up's guard window) and about the shoulder lift (its timing and reach estimates for Greatsword attacks include it).
 
 ### Presentation
@@ -214,6 +215,7 @@ All of these get rule tests and a soak run.
   - Sprint01 in its five forward directions at sprint speed;
   - Turn01 Left and Right when the facing changes by more than about 30° while standing.
   The playback rate follows the measured stride of each clip, as the step phase does today. The hip-turn strafing, the reversed cycle, the lean and the guard shuffle are retired; foot locking only keeps planted feet still.
+  Built in task 29 (`Locomotion`): eight ways every 45° (Walk01 and Run01 ahead, back and on the four diagonals, StrafeWalk01 and StrafeRun01 sideways, Sprint01 on the forward five), each fighter's clips measured once by `FootPhase` for the way they travel, their stride, mid-stances and foot contacts (the packs' walks show 2.2 m/s, runs 4.1–4.6, sprints 5.3–6.3; a clip's diagonal is its forward cycle turned). The blend is anchored at the walks' own pace, the rules' running speed that way (3.9 ahead, 3.5 sideways, 3.0 back, an ellipse between) and the sprint, scaled by the weapon; a way with no clip at a gait plays the gait below. Setting off and stopping cross over from the combat idle in 6 rules frames (the locomotion crossfade): the rules' tap step reaches its speed in one frame, and the combat idles stand wider and lower than the walks. On the owner's answers (Oct 4): a tap step is one walking step, half a cycle of the walk its way over the step's 8 frames; a sprint held backwards (past 112.5° from ahead, where Sprint01 has no clip) turns the whole body away to sprint on Sprint01, on a spring (about a third of a second), and back once the sprint ends. Turn01 stands upright with its feet together and its turn is in the root, which the import strips, so it is laid on the combat idle's legs as a difference from its own first frame: the feet lift and step while the stance stays the idle's, the rules turning the body; it plays over 30 rules frames whenever the facing has turned 30° from where the feet were set. Foot locking holds planted feet under the legs too (a held foot moves under 1 cm), and footsteps fall at the clips' foot contacts while the view keeps up (`MatchView.steps_from_clips()`), the stride count standing in only for a match stepped without being drawn. The Katana's guard stance is gone with the shuffle: it idles in CombatIdle1H01 like the Daggers. Without the packs: the CC0 library's eight walks (`Walk_Fwd` and the rest), `Jog_Fwd` and `Sprint` ahead, no turn.
 - **Foot locking under every clip.** The leg IK holds a planted foot where it landed under every clip, not only locomotion: the attacks, the reactions and the roll's getting-up too. The retargeting prototype found planted feet creeping up to 6 cm on our fighters (where the hip joints sit on the pelvis differs between the rigs), and the owner chose at the task 1 gate to lock them everywhere (planted feet move under 1 cm).
 - **Stances.**
   - The free state's idle is the weapon class's combat idle: CombatIdle1H01 for the Katana (two hands on the grip with IK) and the Daggers (in reverse grip), CombatIdle2H01 for the Greatsword, CombatIdle01 for bare hands.
@@ -237,6 +239,7 @@ All of these get rule tests and a soak run.
   - Knockdown plays Knockdown01 Fall, Ground and StandUp fitted to the three phases. Settled in task 28 from the clips' markers, with the phases' lengths unchanged: the fall (20 frames) plays Knockdown01_Fall at 2.0, landing (the hips on the floor) on its source frame 20 as the fall ends; the ground (30) loops Knockdown01_Ground at 1.0; the stand-up (25) plays Knockdown01_StandUp from its source frame 6 (the frames before lie still) at 2.0, up on its frame 31 as the stand-up ends. The legs go off IK and unlocked while down. Without the packs, Hit_Knockback falls and LayToIdle lies and rises.
   - KO plays CombatDeath01–04, picked by the final blow's direction (front or back) and strength (light or heavy). It is slowed by the final-blow slow motion. Built in task 28: the rules keep the final blow's weight and side (`Fighter.ko_heavy`, `ko_from_behind`: a heavy, any move that isn't a light; from behind, more than 90° off the fighter's facing); from the front a light blow reels the fighter round to collapse sideways (CombatDeath01) and a heavy one blows it flat on its back (02); from behind a light one turns it round to fall back (03) and a heavy one doubles it over onto its face (04). It plays at 1.0 on the rules' frames from the blow, so the slow motion slows it, and holds lying at its end. Without the packs, Death01.
 - **Dodge.** A roll plays Roll01 with the body turned toward the roll's direction. It turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames, so the attack comes up facing them. The backstep plays Dodge01 (to be confirmed in the prototype). The ghost trail planned in 15.9 is dropped. A new roll sound (cloth and a thump) plays on the `dodge` event when it isn't a backstep; the backstep keeps the dash whoosh.
+  Built in task 30 (`ClipDirector.move_clip()`, `roll_turn()`): the roll plays Roll01's tumble (its source frames 0–22, the stretch its root travels, which the roll curve was read from) over the 16 travel frames and its getting-up (frames 22–39) over the 9 recovery frames, so body and ground agree (the owner's choice: about 2.75× and 3.8×, past the 1.0–2.0 range); the whole model turns toward the roll over its first 2 frames (`Shot.turn`; a roll straight back turns it round, away from the opponent), back over the recovery, or over a dodge attack's first 3 frames from where the roll stood. Roll01 ends standing upright and relaxed, from which the legs' 6-frame crossfade takes it to the combat idle. The backstep (and the evade counter's back-dash) plays Dodge01's lean back (frames 0–12) over its travel and on at 2.0 through its recovery as it comes upright, unturned. The roll's sound is three takes cut from the Sonniss bundle (`roll_01`–`03`: a T-shirt or canvas cloth tumble over an instrument case set down on concrete, pitched down and low-passed), played instead of the swish and cloth when the `dodge` event isn't a backstep. The other states: the jump plays Jump01_Begin from its frame 5 (the rules leave the ground at once) at 2.0, then Jump01's airborne frames 14–28 at 1.0; the land Jump01_Land from its touch-down (frame 3) at 2.0, unless the guard is up; the leap Jump01_Begin over its 10-frame spring, then Fall01 looped; the pick-up Loot01_Begin from its frame 4 at 2.0, at the ground (its frame 18) on the attach frame (14) as the weapon comes back into the clip's hand, then Loot01_Stop over the rest. The evade's lunge is the weapon's Counter Lunge, already a clip. The weapon leaves the hand on a disarm and returns on the pick-up (and, task 30b, the recall). Without the packs: UAL Roll (run backwards for the backstep), Jump_Start, Jump, Jump_Land, NinjaJump_Start and PickUp_Table, stretched over their states.
 - **Intro.**
   - The Katana is drawn from its saya at the left hip (Unsheathe Hips01_R).
   - The Daggers are drawn from two leather sheaths at the small of the back (Unsheathe Hips01_Both, with its hand targets moved onto the sheaths by IK). The sheaths are new meshes built in code, like the saya.
@@ -370,7 +373,7 @@ Two-handed weapons on one-handed clips (the Katana) put the off hand on the grip
 | Stunned, stagger, disarm stagger, impaled | Stun01 | UAL Hit_Knockback |
 | Knockdown | Knockdown01 Fall, Ground, StandUp (from frame 6), fitted to the phases (task 28) | UAL Hit_Knockback, LayToIdle |
 | Pick-up | Basic Motions Loot01 | UAL PickUp_Table |
-| Recall | Unsheathe for the weapon | UAL Sword_Idle |
+| Recall | Power_Up: hand-keyed, CC0 (KeyedClips), after a Super Saiyan power-up (the owner's reference): feet planted wide, a gather, then the chest thrown out, the head back shouting and the fists clenched low at the sides, bursting on frame 16 as the weapon returns, and up to ready; with a golden flame aura, white wind streaks and, on the burst, a golden flare and shockwave (RecallAura). Changed from the unsheathes on Oct 4, 2026, at the owner's request (task 30b) | none needed (committed) |
 | KO | CombatDeath01–04, by the final blow's side and weight (task 28) | UAL Death01 |
 | Intro, victory | As above | UAL Idle, Yes |
 
@@ -435,7 +438,7 @@ A good test checks behaviour at a public seam, not how the code works inside: bu
 > **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** New clips are planned in the slice spec, among them the deflect pairs, paired clips and authored transitions, hand-keyed in Blender beside the owned Kevin Iglesias packs. No animation packs are bought for the existing content.
 
 - Motion capture or new clips beyond the two hand-keyed victory clips (Daggers toss, Greatsword plant).
-- Rule changes other than the knockdown, the Greatsword's shoulder carry, the roll curve and the retuned frame data.
+- Rule changes other than the knockdown, the Greatsword's shoulder carry, the roll curve, the recall's burst (added by the owner, task 30b) and the retuned frame data.
 - Ground attacks on downed fighters, and get-up choices.
 - The match intro's gates and walk-out, and the character select screen. This feature adds only the draw at the round intro and the victory poses.
 - Publishing converted Iglesias clips, unless Kevin confirms in writing that it's allowed.
@@ -468,6 +471,7 @@ The godot-rebuild spec is updated on this branch where these change it. Its plan
 - **Dodge:** design.md said "a dash, not a roll" (Movement) and "a dash with brief invincibility frames" (Defending). It's now a roll in any direction; the backstep stays.
 - **Knockdowns** are new: big hits knock down, and the downed fighter is invulnerable.
 - **Greatsword:** carried on the shoulder while moving, and attacks from there are slower.
+- **The recall** (the disarmed ultimate's re-arm) bursts as the weapon returns, blasting a near opponent 2.0 m away and down (task 30b).
 - **Assets:** licensed Iglesias packs join the CC0 sources, used in builds but not published.
 
 design.md is updated on this branch for all four.

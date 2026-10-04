@@ -34,6 +34,7 @@ export const POOLS = {
   // movement
   dodge_swish: { files: /^gen_dodge_\d+\.wav$/, loudnessDb: -22.5, ceilingDb: -3 },
   dodge_cloth: { files: /^dodge_cloth_\d+\.wav$/, loudnessDb: -20.5, ceilingDb: -3 },
+  roll: { files: /^roll_\d+\.wav$/, loudnessDb: -19, ceilingDb: -3 },
   step_scuff: { files: /^gen_step_scuff_\d+\.wav$/, loudnessDb: -18.5, ceilingDb: -3 },
   footstep: { files: /^gen_footstep_stone_\d+\.wav$/, loudnessDb: -21.5, ceilingDb: -3 },
   land: { files: /^gen_land_\d+\.wav$/, loudnessDb: -15, ceilingDb: -1 },

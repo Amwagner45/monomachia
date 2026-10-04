@@ -40,7 +40,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 ### Playing a duel
 
 1. [ ] As a player, I want to start Monomachia as a Windows program, so that I can play without a browser.
-2. [ ] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
+2. [x] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
 3. [ ] As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
 4. [ ] As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
 5. [ ] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
@@ -104,7 +104,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 43. [ ] As a player, I want real fighters with clothing, hair and a silhouette I can recognise, so that the game looks like the dark fantasy it's meant to be.
 44. [ ] As a player, I want to choose between at least two fighters (the Rogue and the Hunter), each able to wield any of the three weapons, so that fighter and weapon are separate choices.
-45. [ ] As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
+45. [x] As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
 46. [ ] As a player, I want a toon look with ink outlines and a painted, ink-wash finish, so that the game has its own style.
 47. [ ] As a player, I want the arena to float above a dark fantasy, ancient oriental landscape of mountains, buildings and water, so that the setting feels grand.
 48. [ ] As a player, I want weapon trails (white for normal attacks, red for unblockables, gold for ultimates), sparks on clangs, a glowing aura when an ultimate is ready and a marker on a dropped weapon, so that the fight stays readable.
@@ -439,7 +439,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 
 - The other six weapons (Odachi, Giant Hammer, Staff, Sword & Shield, Bladed Whip, Scythe) and their ultimates.
 - The other six fighters (Knight, Samurai, Orc, Aristocrat, Monk, Skeleton Knight), per-fighter bare-hand moves and per-fighter computer personalities.
-- The character select screen of the design doc (model on the right, loadout on the left, lock-in, gate opening), the match intro with gates and fighter intros, and victory poses. The rebuild ships a simpler fighter and loadout select.
+- The character select's gate cinematic in the design doc (the gate opening on lock in, the arena seen through it), the match intro with gates and fighter intros, and victory poses. The rebuild's fighter select follows the design's layout (a fighter grid, the fighter's 3D preview on the right, the loadout on the left, an arena slot and lock in) without them. (The authored-animation feature adds the weapon draw at the round intro and each weapon's victory pose.)
 - Arenas other than the floating Moonlit Shrine, and stage select.
 - Real music (placeholders only), voices and announcers.
 - Online play, accounts, progression and cosmetics.

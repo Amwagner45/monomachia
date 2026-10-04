@@ -26,10 +26,11 @@ func _init() -> void:
 	box.add_child(gap)
 	add_button("Rematch", "", func() -> void: rematch.emit())
 	add_button("Main menu", "", func() -> void: main_menu.emit())
+	back_pops = false
 	back_requested.connect(func() -> void: main_menu.emit())
 
 
-## Fills the screen from a match's results.
+## Fills the screen from a match's results (its ScreenStack opens it).
 func show_results(r: MatchResults) -> void:
 	results = r
 	_title.text = r.title()
@@ -52,7 +53,6 @@ func show_results(r: MatchResults) -> void:
 		_cell(String(row[1]), UiTheme.MUTED, HORIZONTAL_ALIGNMENT_LEFT)
 		_cell(r.stat_text(0, row[0]), &"", HORIZONTAL_ALIGNMENT_CENTER)
 		_cell(r.stat_text(1, row[0]), &"", HORIZONTAL_ALIGNMENT_CENTER)
-	open()
 
 
 func _cell(text: String, variation: StringName, align: HorizontalAlignment) -> Label:

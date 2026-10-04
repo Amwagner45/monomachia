@@ -13,6 +13,9 @@ extends Node
 ## fighters --spacing= metres apart (2.5 by default), to check that the
 ## player never hides the opponent from the gameplay camera.
 ##
+## "select_duel" and "select_watch" show the fighter select (22.5): a Duel on
+## your side, and Watch on its second side.
+##
 ## "iai_stance", "iai_vertical" and "iai_horizontal" show the player's Rogue
 ## with the Katana's Iai Slash against an idle training dummy: sheathed in the
 ## stance, from her front left so the left hip shows, and each draw on frame
@@ -24,7 +27,7 @@ const SEED: int = 7
 
 @export_enum(
 	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
-	"iai_stance", "iai_vertical", "iai_horizontal",
+	"iai_stance", "iai_vertical", "iai_horizontal", "select_duel", "select_watch",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
@@ -105,6 +108,18 @@ func _ready() -> void:
 			host.step(420)
 		"title":
 			_main()
+			host.step(420)
+		"select_duel":
+			# the fighter select on your side, over the duel behind the menus
+			_main()
+			main.call("open_select", MatchConfig.DUEL)
+			host.step(420)
+		"select_watch":
+			# the Watch select on its second side: the skill row, the arena
+			# slot and Lock in
+			_main()
+			main.call("open_select", MatchConfig.WATCH)
+			(main.get("select") as FighterSelect).show_side(1)
 			host.step(420)
 		"mirror":
 			_gameplay(MatchConfig.DUEL, MatchConfig.make(

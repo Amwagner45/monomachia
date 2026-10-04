@@ -236,6 +236,28 @@ func test_the_title_is_set_in_the_theme() -> void:
 	assert_eq(_font_of(_labelled(title, "MONOMACHIA")), DISPLAY_FONT)
 	var prompt: Control = _labelled(title, "Press any key or button")
 	assert_eq(_font_of(prompt), UI_FONT)
+	# the demo's title: 一騎討ち down the side, the 一騎 seal, the device note
+	assert_eq(_font_of(_labelled(title, "一\n騎\n討\nち")), DISPLAY_FONT)
+	var seal: Label = _labelled(title, "一\n騎") as Label
+	assert_eq(_font_of(seal), DISPLAY_FONT)
+	_assert_color(_flat(seal, &"normal").bg_color, LACQUER, "the seal")
+	assert_eq(_flat(seal, &"normal").corner_radius_top_left, 8)
+	assert_not_null(_labelled(title, TitleScreen.DEVICE_NOTE))
+
+
+func test_the_main_menu_has_the_logo_over_its_entries() -> void:
+	var menu: MainMenu = MainMenu.new()
+	add_child_autofree(menu)
+	var duel: Button = menu.add_button("Duel", "vs computer", func() -> void: pass)
+	_assert_themed(menu)
+	var logo: Label = _labelled(menu, "MONOMACHIA") as Label
+	assert_eq(_font_of(logo), DISPLAY_FONT)
+	_assert_color(logo.get_theme_color(&"font_color"), GOLD, "the gold logo")
+	assert_not_null(_labelled(menu, "一騎討ち · Single combat"))
+	var sub: Label = duel.get_node("Sub")
+	assert_eq(sub.theme_type_variation, UiTheme.EYEBROW, "the sublabel is small spaced capitals")
+	assert_true(sub.uppercase)
+	assert_eq(duel.text, "Duel", "the entry's own text is its name")
 
 
 func test_menus_are_a_themed_panel_of_menu_entries_under_a_display_heading() -> void:
@@ -250,6 +272,31 @@ func test_menus_are_a_themed_panel_of_menu_entries_under_a_display_heading() -> 
 	_assert_color(lit.border_color, LACQUER, "the focus bar")
 	assert_eq(lit.border_width_left, 3)
 	_assert_color(_flat(menu.panel, &"panel").border_color, LINE, "the panel's border")
+
+
+## The menus' option and slider rows (22.2): unboxed until focused, then the
+## menu entry's lacquer wash and bar; options as the demo's .seg .opt, the
+## chosen one in gold.
+func test_option_and_slider_rows_are_set_in_the_theme() -> void:
+	var menu: MenuScreen = MenuScreen.new()
+	add_child_autofree(menu)
+	var row: OptionRow = menu.add_options("Graphics", ["High", "Low"] as Array[String], 0, func(_i: int) -> void: pass)
+	var slider: SliderRow = menu.add_slider("Music", 50, func(_v: int) -> void: pass)
+	_assert_themed(menu)
+	assert_false(_flat(row, &"panel").draw_center and _flat(row, &"panel").bg_color.a > 0.0, "no box until focused")
+	row.grab_focus()
+	_assert_color(_flat(row, &"panel").border_color, LACQUER, "the focus bar")
+	assert_eq(_flat(row, &"panel").border_width_left, 3)
+	var on: StyleBoxFlat = _flat(row.chips[0], &"normal")
+	_assert_color(on.border_color, GOLD, "the chosen option")
+	_assert_color(on.bg_color, INK_3)
+	var off: StyleBoxFlat = _flat(row.chips[1], &"normal")
+	_assert_color(off.border_color, LINE, "the others")
+	_assert_color(off.bg_color, INK_2)
+	_assert_color(_flat(row.chips[1], &"hover").border_color, GOLD_DIM, "a hovered option")
+	assert_eq(_font_of(row.chips[0]), UI_FONT)
+	_assert_color(_flat(slider.slider, &"grabber_area").bg_color, GOLD, "the slider's fill")
+	_assert_color(_flat(slider.slider, &"slider").bg_color, LINE, "and its track")
 
 
 func test_results_are_set_in_the_theme() -> void:

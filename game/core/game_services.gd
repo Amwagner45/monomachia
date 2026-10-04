@@ -69,6 +69,15 @@ func graphics_preset() -> GraphicsPreset:
 	return settings.graphics_preset()
 
 
+## Applies the chosen preset again, to the renderer, the root viewport and
+## every scene in the tree, after the Settings screen changes it. What a scene
+## builds from the preset when it loads (the backdrop's detail, particle
+## counts) follows at the next load; lights, shadows, fog, glow, outlines,
+## post quality and render scale change at once.
+func apply_graphics() -> void:
+	GraphicsApplier.apply(graphics_preset(), get_tree().root, get_viewport())
+
+
 ## A match host starts being played (Duel, Training, Watch or Versus; not the
 ## duel behind the menus).
 func begin_match(host: Node) -> void:

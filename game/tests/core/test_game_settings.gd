@@ -207,3 +207,38 @@ func test_the_layout_levels_come_from_the_bus_layout_file() -> void:
 	assert_eq(GameSettings.layout_volume_db(&"Master"), 0.0)
 	AudioServer.set_bus_volume_db(AudioServer.get_bus_index(&"Music"), -30.0)
 	assert_eq(GameSettings.layout_volume_db(&"Music"), -6.0, "whatever the bus is set to now")
+
+
+## Reduce flashes and shaking (off) and button hints (on), the Settings
+## screen's two switches (task 22.9; the effects (18.11) and the prompts
+## (24.4) read them).
+func test_reduce_flashes_starts_off_and_button_hints_on() -> void:
+	var settings := GameSettings.new()
+	assert_false(settings.reduce_flashes)
+	assert_true(settings.button_hints)
+	assert_false(GameSettings.load_from(PATH).reduce_flashes, "a missing file too")
+	assert_true(GameSettings.load_from(PATH).button_hints)
+
+
+func test_reduce_flashes_and_button_hints_save_and_load() -> void:
+	var settings := GameSettings.new()
+	settings.reduce_flashes = true
+	settings.button_hints = false
+	assert_eq(settings.save(PATH), OK)
+	var loaded := GameSettings.load_from(PATH)
+	assert_true(loaded.reduce_flashes)
+	assert_false(loaded.button_hints)
+	var cfg := ConfigFile.new()
+	cfg.load(PATH)
+	assert_eq(cfg.get_value(GameSettings.SECTION_DISPLAY, "reduce_flashes"), true, "in the file's [display] section")
+	assert_eq(cfg.get_value(GameSettings.SECTION_DISPLAY, "button_hints"), false)
+
+
+func test_unreadable_switches_fall_back_to_their_defaults() -> void:
+	var cfg := ConfigFile.new()
+	cfg.set_value(GameSettings.SECTION_DISPLAY, "reduce_flashes", "yes")
+	cfg.set_value(GameSettings.SECTION_DISPLAY, "button_hints", 0)
+	cfg.save(PATH)
+	var loaded := GameSettings.load_from(PATH)
+	assert_false(loaded.reduce_flashes, "not a bool: the default")
+	assert_true(loaded.button_hints, "not a bool: the default")

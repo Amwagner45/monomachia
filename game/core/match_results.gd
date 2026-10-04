@@ -24,6 +24,8 @@ var wins: Array[int] = [0, 0]
 var rounds: int = 0
 var names: Array[String] = ["", ""]
 var weapons: Array[String] = ["", ""]
+## [side 0, side 1] palette indices (MatchSide.palette): each side's colour.
+var palettes: Array[int] = [0, 1]
 ## [side 0, side 1]: { stat field: number }
 var stats: Array[Dictionary] = [{}, {}]
 ## The side a human played (the perspective of "Victory" / "Defeat"), or -1.
@@ -41,6 +43,8 @@ static func from_match(m: Match, cfg: MatchConfig, p_player_side: int) -> MatchR
 		var f: Fighter = m.world.fighters[i]
 		r.names[i] = f.name
 		r.weapons[i] = f.weapon.name
+		if i < cfg.sides.size() and cfg.sides[i] != null:
+			r.palettes[i] = cfg.sides[i].palette
 		var s: Dictionary = {}
 		for row: Array in STATS:
 			s[row[0]] = f.stats.get(String(row[0]))
@@ -55,6 +59,16 @@ func title() -> String:
 	if mode != MatchConfig.WATCH and mode != MatchConfig.VERSUS and player_side >= 0:
 		return "Victory" if winner == player_side else "Defeat"
 	return "%s wins" % names[winner]
+
+
+## The kanji over the headline (the demo's): 勝利 Victory, 敗北 Defeat, 決着
+## (settled) when someone else's win is named, 引分 for a draw.
+func kanji() -> String:
+	if winner < 0:
+		return "引分"
+	if mode != MatchConfig.WATCH and mode != MatchConfig.VERSUS and player_side >= 0:
+		return "勝利" if winner == player_side else "敗北"
+	return "決着"
 
 
 ## A stat as the results table shows it (damage rounded to a whole number).

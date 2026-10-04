@@ -1,8 +1,8 @@
 class_name GameSettings
 extends RefCounted
 ## The player's settings, saved to user://settings.cfg (a ConfigFile): the
-## graphics preset and the master, effects and music volumes; reduce flashes
-## and button hints join it with their tasks. GameServices owns the one the
+## graphics preset, the master, effects and music volumes, and the reduce
+## flashes and button hints switches. GameServices owns the one the
 ## game uses, and applies its preset and volumes at start.
 ##
 ## Nothing here saves or applies by itself: after a change, call save(), and
@@ -17,10 +17,12 @@ extends RefCounted
 ## File layout:
 ##   [graphics]  preset="high"
 ##   [audio]     master=80  effects=90  music=100
+##   [display]   reduce_flashes=false  button_hints=true
 
 const PATH: String = "user://settings.cfg"
 const SECTION_GRAPHICS: String = "graphics"
 const SECTION_AUDIO: String = "audio"
+const SECTION_DISPLAY: String = "display"
 ## The buses each volume drives.
 const VOLUME_BUSES: Dictionary = {
 	"master": [&"Master"],
@@ -50,6 +52,12 @@ var effects_volume: int = 90:
 var music_volume: int = 100:
 	set(value):
 		music_volume = snap_volume(value)
+
+## Reduce flashes and shaking: the effects (18.11) scale the shake to 0.15,
+## drop the field-of-view kicks and the push-in, and dim flashes to 0.45.
+var reduce_flashes: bool = false
+## Button hints on screen: off hides the HUD's prompts (24.4).
+var button_hints: bool = true
 
 
 ## A volume clamped to 0-100 and snapped to the nearest step of 5.
@@ -104,6 +112,8 @@ func save(path: String = PATH) -> Error:
 	cfg.set_value(SECTION_AUDIO, "master", master_volume)
 	cfg.set_value(SECTION_AUDIO, "effects", effects_volume)
 	cfg.set_value(SECTION_AUDIO, "music", music_volume)
+	cfg.set_value(SECTION_DISPLAY, "reduce_flashes", reduce_flashes)
+	cfg.set_value(SECTION_DISPLAY, "button_hints", button_hints)
 	return cfg.save(path)
 
 
@@ -123,6 +133,12 @@ static func load_from(path: String = PATH) -> GameSettings:
 		var volume: Variant = cfg.get_value(SECTION_AUDIO, key)
 		if volume is int or volume is float:
 			settings.set("%s_volume" % key, volume)
+	for key: String in ["reduce_flashes", "button_hints"]:
+		if not cfg.has_section_key(SECTION_DISPLAY, key):
+			continue
+		var on: Variant = cfg.get_value(SECTION_DISPLAY, key)
+		if on is bool:
+			settings.set(key, on)
 	return settings
 
 

@@ -17,8 +17,7 @@ signal body_changed(fighter_id: StringName)
 ## The body the gallery and editor play on.
 var fighter_id: StringName = &"hunter"
 ## The catalogue entry open in the editor, or null while the gallery shows.
-## (Typed as StudioCatalogue.Entry once that class exists, task 4.)
-var current_entry: RefCounted = null
+var current_entry: StudioCatalogue.Entry = null
 
 @onready var _gallery: Control = %Gallery
 @onready var _editor: Control = %Editor
@@ -46,7 +45,7 @@ func show_gallery() -> void:
 
 
 ## Show the editor in the central area for `entry` and hide the gallery.
-func open_editor(entry: RefCounted) -> void:
+func open_editor(entry: StudioCatalogue.Entry) -> void:
 	current_entry = entry
 	_gallery.visible = false
 	_editor.visible = true

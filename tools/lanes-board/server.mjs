@@ -14,7 +14,7 @@ import { readFile, readdir, stat, access, writeFile, open, mkdir } from 'node:fs
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import os from 'node:os';
 import path from 'node:path';
-import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor } from './plans.mjs';
+import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor, cancelStops } from './plans.mjs';
 
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -463,6 +463,9 @@ async function launch(body) {
     const record = { id: `${Date.now().toString(36)}-${key}`, time: Date.now(), plan: key, tasks: ids.map((id) => `${key}:${id}`), branch, goal };
     launches.push(record);
     done.push(record);
+    // Taking the lane back up: an earlier "End work" on it must not stop this one.
+    const stops = cancelStops(await readStops(), branch, Date.now());
+    if (stops.cancelled) await writeFile(STOPS, JSON.stringify({ entries: stops.entries }, null, 2));
   }
   launches = launches.filter((l) => Date.now() - l.time < 14 * 24 * 60 * 60 * 1000);
   await writeFile(LAUNCHES, JSON.stringify(launches, null, 2));

@@ -20,9 +20,11 @@ extends PanelContainer
 ## a gallery of a hundred tiles costs what it shows. A tile out of any scroll
 ## container counts as on screen while it's visible in the tree.
 ##
-## The fighter is built when the tile enters the tree (or on `setup()` if it
-## is already in it), so a gallery that wants to defer the cost can add its
-## tiles as they scroll near.
+## The fighter is built lazily: `setup()` only stores the entry and sets the
+## caption and chips, and the fighter (its libraries, weapon and poser) is built
+## when the tile first plays, which is when it first scrolls into view (or
+## `ensure_built()` is called), so opening a gallery of 100+ tiles builds only
+## the ones on screen.
 
 ## The tile was clicked: open `entry` in the editor.
 signal opened(entry: StudioCatalogue.Entry)
@@ -65,8 +67,9 @@ var playback_rate: float = 1.0
 @onready var _badges: HFlowContainer = %Badges
 
 var _poser: ClipPoser = null
-var _playing: bool = true
-var _on_screen: bool = true
+## Whether the tile plays: false until it is first on screen.
+var _playing: bool = false
+var _on_screen: bool = false
 var _scroll: ScrollContainer = null
 var _stage_built: bool = false
 ## Set by _chain() when it chose a move's fallback, which plays stretched over
@@ -77,21 +80,31 @@ var _stretched: bool = false
 func _ready() -> void:
 	viewport.size = Vector2i(VIEW_SIZE, VIEW_SIZE)
 	_build_stage()
-	if entry != null:
-		_build()
+	_show_caption()
+	_sync()
 
 
 func _exit_tree() -> void:
 	_scroll = null
 
 
-## Shows `p_entry` on fighter `p_fighter_id` (&"hunter" or &"rogue"), building
-## the fighter now, or when the tile enters the tree. Calling it again
-## replaces the fighter (the gallery's body switch).
+## Shows `p_entry` on fighter `p_fighter_id` (&"hunter" or &"rogue"). Cheap: the
+## fighter is built when the tile first plays (see the class comment). Calling
+## it again drops the fighter, and a tile that is playing builds the new one
+## at once (the gallery's body switch).
 func setup(p_entry: StudioCatalogue.Entry, p_fighter_id: StringName) -> void:
 	entry = p_entry
 	fighter_id = p_fighter_id
+	_drop_fighter()
 	if is_node_ready():
+		_show_caption()
+		_sync()
+
+
+## Builds the fighter now if it isn't built (the tile has an entry and is
+## ready), whether or not the tile is on screen.
+func ensure_built() -> void:
+	if entry != null and model == null and is_node_ready():
 		_build()
 
 
@@ -117,10 +130,12 @@ func is_playing() -> bool:
 
 
 ## Plays or pauses the loop; paused, the viewport stops rendering and keeps the
-## last frame.
+## last frame. Playing builds the fighter if it isn't yet. Before the tile is
+## ready it only stores the wish, which _ready() applies.
 func set_playing(on: bool) -> void:
 	_playing = on
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if on else SubViewport.UPDATE_DISABLED
+	if is_node_ready():
+		_sync()
 
 
 ## True for a tile showing the fighter held still: nothing for the entry to
@@ -155,6 +170,13 @@ func badge_texts() -> PackedStringArray:
 	for c: Node in _badges.get_children():
 		out.append((c.get_child(0) as Label).text)
 	return out
+
+
+## The viewport follows `_playing`, and a playing tile has its fighter.
+func _sync() -> void:
+	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _playing else SubViewport.UPDATE_DISABLED
+	if _playing:
+		ensure_built()
 
 
 func _process(delta: float) -> void:
@@ -222,9 +244,8 @@ func _build_stage() -> void:
 	camera.current = true
 
 
-## Builds the fighter, its libraries, weapon and poser for `entry`, and the
-## caption and chips, replacing any before.
-func _build() -> void:
+## Frees the fighter and the poser and rewinds the loop.
+func _drop_fighter() -> void:
 	if model != null:
 		viewport.remove_child(model)
 		model.queue_free()
@@ -233,10 +254,20 @@ func _build() -> void:
 	time = 0.0
 	duration = 0.0
 	playback_rate = 1.0
+
+
+func _show_caption() -> void:
+	if entry == null:
+		return
 	name_label.text = entry.name
 	name_label.tooltip_text = entry.name
 	id_label.text = String(entry.id)
 	_set_chips()
+
+
+## Builds the fighter, its libraries, weapon and poser for `entry`.
+func _build() -> void:
+	_drop_fighter()
 	model = FighterLook.instantiate_fighter(fighter_id)
 	model.autoplay_idle = false
 	viewport.add_child(model)
@@ -257,13 +288,13 @@ func _build() -> void:
 
 
 ## The shared libraries on the fighter's player: the Iglesias sets (with the
-## packs) and the hand-keyed clips; the CC0 library is the fighter's own.
+## packs; checked once here) and the hand-keyed clips; the CC0 library is the
+## fighter's own.
 func _add_libraries() -> void:
 	var player: AnimationPlayer = model.animation_player
-	for set_name: StringName in ClipLibraries.SETS:
-		var lib: AnimationLibrary = StudioLibraries.get_set(set_name)
-		if lib != null:
-			player.add_animation_library(set_name, lib)
+	var sets: Dictionary[StringName, AnimationLibrary] = StudioLibraries.sets()
+	for set_name: StringName in sets:
+		player.add_animation_library(set_name, sets[set_name])
 	var keyed: AnimationLibrary = StudioLibraries.keyed()
 	if keyed != null:
 		player.add_animation_library(KeyedClips.LIBRARY, keyed)
@@ -281,8 +312,6 @@ func _chain() -> Array[String]:
 		_stretched = entry.kind == StudioCatalogue.KIND_MOVE
 		return fallback
 	return [] as Array[String]
-
-
 
 
 func _rate() -> float:
@@ -327,7 +356,10 @@ func _plays(chain: Array[String]) -> bool:
 	for part: String in chain:
 		var slash: int = part.find("/")
 		var rest: String = part.substr(slash + 1)
-		var id: StringName = ClipChain.parse(rest, [] as Array[String]).id
+		var parsed: ClipChain.Part = ClipChain.parse(rest, [] as Array[String])
+		if parsed == null:
+			return false
+		var id: StringName = parsed.id
 		var anim: String = part.substr(0, slash + 1) + String(id)
 		if not player.has_animation(anim):
 			return false

@@ -45,3 +45,16 @@ func test_a_set_is_loaded_once() -> void:
 		assert_not_null(lib, "%s loads" % set_name)
 		assert_same(StudioLibraries.get_set(set_name), lib, "%s is shared" % set_name)
 	assert_null(StudioLibraries.get_set(&"NoSuchSet"), "an unknown set is null")
+
+
+func test_the_sets_come_together_or_not_at_all() -> void:
+	ClipLibraries.force_missing = true
+	assert_true(StudioLibraries.sets().is_empty(), "no packs, no sets")
+	ClipLibraries.force_missing = false
+	if not ClipLibraries.available():
+		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
+		return
+	var sets: Dictionary[StringName, AnimationLibrary] = StudioLibraries.sets()
+	assert_eq(sets.size(), ClipLibraries.SETS.size(), "every set")
+	for set_name: StringName in ClipLibraries.SETS:
+		assert_same(sets[set_name], StudioLibraries.get_set(set_name), "%s is the shared one" % set_name)

@@ -20,10 +20,12 @@ func after_each() -> void:
 	ClipLibraries.force_missing = false
 
 
+## A tile in the tree with its fighter built (tiles build lazily, on first play).
 func _tile(entry: StudioCatalogue.Entry, fighter_id: StringName = &"hunter") -> AnimTile:
 	var tile: AnimTile = TILE_SCENE.instantiate() as AnimTile
 	add_child_autofree(tile)
 	tile.setup(entry, fighter_id)
+	tile.ensure_built()
 	return tile
 
 
@@ -113,6 +115,7 @@ func test_pausing_stops_time_advancing() -> void:
 func test_pausing_switches_the_viewport_off() -> void:
 	ClipLibraries.force_missing = true
 	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
+	tile.set_playing(true)
 	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "playing renders")
 	tile.set_playing(false)
 	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "paused doesn't")
@@ -225,6 +228,9 @@ func test_setting_up_again_replaces_the_fighter() -> void:
 	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
 	var first: FighterModel = tile.model
 	tile.setup(_move_with_fallback(&"katana"), &"rogue")
+	assert_null(tile.model, "the old fighter is gone, the new one waits for the tile to play")
+	tile.set_playing(true)
+	assert_not_null(tile.model, "a playing tile builds the new fighter at once")
 	assert_ne(tile.model, first, "a new fighter")
 	assert_eq(tile.model.look.id, &"rogue")
 	assert_eq(tile.viewport.get_children().filter(func(n: Node) -> bool: return n is FighterModel).size(), 1, "and only one")
@@ -233,11 +239,63 @@ func test_setting_up_again_replaces_the_fighter() -> void:
 func test_setup_before_the_tile_is_in_the_tree_builds_once_it_is() -> void:
 	ClipLibraries.force_missing = true
 	var tile: AnimTile = TILE_SCENE.instantiate() as AnimTile
-	tile.setup(_move_with_fallback(&"katana"), &"hunter")
+	var entry: StudioCatalogue.Entry = _move_with_fallback(&"katana")
+	tile.setup(entry, &"hunter")
 	assert_null(tile.model, "not built yet")
 	add_child_autofree(tile)
-	assert_not_null(tile.model, "built on entering the tree")
+	assert_eq(tile.name_label.text, entry.name, "the caption is set on entering the tree")
+	assert_null(tile.model, "and the fighter waits for the tile to play")
+	tile.set_playing(true)
+	assert_not_null(tile.model, "built once it plays")
 	assert_false(tile.is_still())
+
+
+func test_a_tile_isnt_built_until_it_plays() -> void:
+	ClipLibraries.force_missing = true
+	var tile: AnimTile = TILE_SCENE.instantiate() as AnimTile
+	add_child_autofree(tile)
+	tile.setup(_move_with_fallback(&"katana"), &"hunter")
+	assert_null(tile.model, "setup is cheap")
+	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "and nothing renders yet")
+	tile.set_playing(false)
+	assert_null(tile.model, "pausing doesn't build it")
+	tile._process(0.1)
+	assert_not_null(tile.model, "the first on-screen frame does")
+
+
+func test_play_state_set_before_the_tile_is_ready_applies_on_ready() -> void:
+	ClipLibraries.force_missing = true
+	var tile: AnimTile = TILE_SCENE.instantiate() as AnimTile
+	tile.set_playing(true)
+	assert_true(tile.is_playing(), "stored")
+	tile.setup(_move_with_fallback(&"katana"), &"hunter")
+	add_child_autofree(tile)
+	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "applied once ready")
+	assert_not_null(tile.model, "and a playing tile has its fighter")
+	var other: AnimTile = TILE_SCENE.instantiate() as AnimTile
+	other.set_playing(false)
+	add_child_autofree(other)
+	assert_eq(other.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED)
+	assert_false(other.is_playing())
+
+
+func test_a_malformed_chain_part_falls_back_to_the_fallback() -> void:
+	ClipLibraries.force_missing = true
+	for bad: String in ["ual/Sword_Dash@3*x", "ual/Sword_Dash@9-3", "ual/Sword_Dash@x", "ual/@3-5", "ual/Sword_Dash@1*0"]:
+		var entry: StudioCatalogue.Entry = _entry(StudioCatalogue.KIND_STATE, StudioCatalogue.GROUP_STATES, &"half_typed", [bad] as Array[String])
+		entry.fallbacks = ["ual/Sword_Idle"] as Array[String]
+		var tile: AnimTile = _tile(entry)
+		assert_false(tile.is_still(), "%s plays the fallback" % bad)
+		assert_almost_eq(tile.duration, StudioLibraries.ual().get_animation(&"Sword_Idle").length, 0.001, "%s: the fallback's length" % bad)
+
+
+func test_a_malformed_chain_part_without_a_fallback_holds_still() -> void:
+	ClipLibraries.force_missing = true
+	for bad: String in ["ual/Sword_Dash@3*x", "ual/Sword_Dash@9-3", "ual/Sword_Dash@999"]:
+		var tile: AnimTile = _tile(_entry(StudioCatalogue.KIND_STATE, StudioCatalogue.GROUP_STATES, &"half_typed", [bad] as Array[String]))
+		assert_true(tile.is_still(), "%s holds still" % bad)
+		tile._process(0.1)
+		assert_not_null(tile.model)
 
 
 # --- the weapon -----------------------------------------------------------------
@@ -353,6 +411,8 @@ func test_tiles_scrolled_out_of_a_scroll_container_pause_and_resume() -> void:
 		t.setup(entry, &"hunter")
 		tiles.append(t)
 	await wait_process_frames(3)
+	assert_not_null(tiles[0].model, "a tile in view is built")
+	assert_null(tiles[3].model, "one set up out of view has no fighter yet")
 	assert_true(tiles[0].is_on_screen(), "the first is in view")
 	assert_false(tiles[3].is_on_screen(), "the last is below the fold")
 	assert_true(tiles[0].is_playing(), "the first plays")
@@ -362,4 +422,5 @@ func test_tiles_scrolled_out_of_a_scroll_container_pause_and_resume() -> void:
 	await wait_process_frames(3)
 	assert_false(tiles[0].is_playing(), "scrolled past, the first pauses")
 	assert_true(tiles[3].is_playing(), "the last plays once in view")
+	assert_not_null(tiles[3].model, "and is built when it scrolls into view")
 	assert_true(tiles[3].is_on_screen())

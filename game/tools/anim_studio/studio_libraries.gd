@@ -21,12 +21,30 @@ static func available() -> bool:
 static func get_set(set_name: StringName) -> AnimationLibrary:
 	if not available():
 		return null
+	return _load_set(set_name)
+
+
+static func _load_set(set_name: StringName) -> AnimationLibrary:
 	if not _sets.has(set_name):
 		var lib: AnimationLibrary = ClipLibraries.load_set(set_name)
 		if lib == null:
 			return null
 		_sets[set_name] = lib
 	return _sets[set_name]
+
+
+## Every Iglesias set by name, with one availability check: empty when the
+## packs are missing.
+static func sets() -> Dictionary[StringName, AnimationLibrary]:
+	var out: Dictionary[StringName, AnimationLibrary] = {}
+	if not available():
+		return out
+	for set_name: StringName in ClipLibraries.SETS:
+		var lib: AnimationLibrary = _load_set(set_name)
+		if lib == null:
+			return {}
+		out[set_name] = lib
+	return out
 
 
 ## The committed CC0 library (FighterModel.LIBRARY, "ual").

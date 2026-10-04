@@ -66,6 +66,14 @@ const DISARMED_STAGGER_RESET: float = 50.0 # posture after the daze
 # --- Counters --------------------------------------------------------------
 const STOMP_POSTURE: float = 30.0
 const STOMP_STUN: int = 70
+# Where a stomp lands, by the thruster's weapon: this far in front of the
+# thruster, so the stomping foot comes down on the blade's tip as the blade
+# is driven into the floor (the mikiri counter's pin). A thruster nearer than
+# that (the dodge carried the defender into it) is jolted back to it over
+# STOMP_PUSH_FRAMES while the stomp's hop lands.
+const STOMP_PIN_DIST: Dictionary[StringName, float] = {&"katana": 1.55, &"daggers": 1.1, &"greatsword": 2.15}
+const STOMP_PIN_DIST_DEFAULT: float = 1.55
+const STOMP_PUSH_FRAMES: int = 8
 const LEAP_POSTURE: float = 30.0
 const LEAP_STUN: int = 42
 const EVADE_POSTURE: float = 15.0

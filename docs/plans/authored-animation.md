@@ -379,7 +379,7 @@ Oct 3, 2026. Task 24 done: bare hands' punches play and hit from clips, all on t
 - [ ] **26. Hits, blocks and long stuns.**
   - Hitstun plays CombatDamage01 or 02, by the hit's side.
   - A held block holds the weapon class's Parry Loop, and blockstun plays its Parry Hit.
-  - The stomp, leap, redirect, disarm-stagger and impaled stuns play Stun01, fitted to their length.
+  - The leap, redirect, disarm-stagger and impaled stuns play Stun01, fitted to their length. (The stomp's stun was done early, Oct 3, 2026: the hand-keyed Mikiri_Pinned, with the weapon pinned under the stomper's foot.)
   - The procedural recoil and lean go.
   - Check: director tests for each state's clip and fit; sheets from the gameplay camera.
   - Blocked by: 25 (and the owner's OK) · Stories: 14, 15, 17

@@ -236,6 +236,49 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	_light_weapons(glow)
 
 
+## How much `f`'s weapon is pinned under its stomper's foot (0 to 1): a
+## thruster stunned by a stomp, over the stun's first frames
+## (KeyedClips.pin_weight()).
+static func _pin(f: Fighter, alpha: float) -> float:
+	if f.state != &"stunned" or f.stun_cause != &"stomp" or f.opp == null or not f.armed:
+		return 0.0
+	return KeyedClips.pin_weight(maxf(0.0, float(f.sf) - 1.0 + alpha))
+
+
+## Where the stomper's foot presses `f`'s blade, in `f`'s fighter space.
+static func pin_point(f: Fighter) -> Vector3:
+	var o: Fighter = f.opp
+	var foot: Vector3 = KeyedClips.STOMP_FOOT.rotated(Vector3.UP, o.yaw) + Vector3(o.pos.x, 0.0, o.pos.z)
+	return (foot - Vector3(f.pos.x, 0.0, f.pos.z)).rotated(Vector3.UP, -f.yaw)
+
+
+## The stomped thruster's weapon `pin` of the way from where the clip's
+## hand holds it to pinned: its tip under the stomper's foot, its grip back
+## along the line to the clip's hand, the hands reaching it on IK (the off
+## hand of a two-handed weapon on its OffHandGrip). A pair's other dagger
+## stays in its hand.
+func _pin_weapons(f: Fighter, pin: float) -> void:
+	var rig: FighterRig = model.rig
+	var sk: Skeleton3D = model.skeleton
+	var held: Dictionary[int, Transform3D] = {}
+	for i: int in model.weapons.size():
+		var side: String = "Right" if i == 0 else "Left"
+		held[i] = sk.get_bone_global_pose(sk.find_bone(side + "Hand")) * rig.fixed_grip(side)
+	var tip: Vector3 = pin_point(f)
+	# the blade's tip marker (off the grip's axis on a curved blade) onto the pin
+	var marker: Vector3 = WeaponLook.blade_segment(model.weapons[0])[1]
+	var back: Vector3 = held[0].origin - tip
+	if back.length() < 0.001:
+		back = Vector3.UP
+	var basis: Basis = FighterRig.weapon_frame(Vector3.ZERO, -back, edge_for(-back, Vector3.ZERO)).basis
+	basis = Basis(Quaternion((basis * marker).normalized(), -back.normalized())) * basis
+	var pinned: Transform3D = Transform3D(basis, tip - basis * marker)
+	var shown: Transform3D = held[0].interpolate_with(pinned, pin)
+	model.pose_weapon(0, shown)
+	for i: int in range(1, model.weapons.size()):
+		model.pose_weapon(i, held[i])
+
+
 ## The way a blade's edge faces: the way the strike sweeps the blade's tip
 ## (`sweep`), made square to the blade, or GUARD_EDGE when the strike
 ## doesn't sweep it sideways (a thrust, or no strike).
@@ -369,6 +412,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	# the blade in the saya through the Iai's sheathe and stance (task 11)
 	rig.sheathed = playing != null and playing.is_sheathed(float(f.atk.frame))
 	if model.weapons.is_empty():
+		return
+	if _fixed_on_clip(f) and _pin(f, alpha) > 0.0:
+		_pin_weapons(f, _pin(f, alpha))
 		return
 	if _fixed_on_clip(f):
 		# the weapon rides the clip's hand

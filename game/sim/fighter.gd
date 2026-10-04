@@ -130,6 +130,8 @@ var guard_lift_left: int = 0
 var knock_x: float = 0.0
 var knock_z: float = 0.0
 var knock_left: int = 0
+## What put the fighter in its stun (enter_stun()): &"stomp" for a stomped thrust, else &"".
+var stun_cause: StringName = &""
 var knock_total: int = 0
 var knock_meters: float = 0.0
 
@@ -392,6 +394,7 @@ func reset_for_round(x: float, z: float, p_yaw: float) -> void:
 	ult_used = false
 	ult_announced = false
 	impaled_by = null
+	stun_cause = &""
 	counter_lunge_until = -99999
 	backstab_until = -99999
 	blind_until = -99999
@@ -1264,8 +1267,9 @@ func enter_hitstun(frames: int) -> void:
 	vel.z = 0.0
 
 
-func enter_stun(frames: int, kind: StringName = &"stunned") -> void:
+func enter_stun(frames: int, kind: StringName = &"stunned", cause: StringName = &"") -> void:
 	set_state(kind, frames)
+	stun_cause = cause
 	vel.x = 0.0
 	vel.z = 0.0
 
@@ -1329,12 +1333,15 @@ func _update_pickup() -> void:
 		set_state(&"free")
 
 
-func begin_stomp(attacker: Fighter) -> void:
+## Hops onto the blade of `attacker`'s thrust: landing `pin` m in front of
+## where the attacker ends up once jolted back `push` m (World's stomp).
+func begin_stomp(attacker: Fighter, pin: float = SimConst.STOMP_PIN_DIST_DEFAULT, push: float = 0.0) -> void:
 	set_state(&"stomp", 26)
 	actionable_after = 16
 	script_from = V3.make(pos.x, 0.0, pos.z)
 	var d: V2 = SimMath.fwd(attacker.yaw)
-	script_to = V3.make(attacker.pos.x + d.x * 0.95, 0.0, attacker.pos.z + d.z * 0.95)
+	var reach: float = pin - push
+	script_to = V3.make(attacker.pos.x + d.x * reach, 0.0, attacker.pos.z + d.z * reach)
 	vel = V3.make()
 	pos.y = 0.0
 

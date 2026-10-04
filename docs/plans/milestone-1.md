@@ -1,6 +1,6 @@
 # Plan: Milestone 1
 
-Spec: `docs/specs/milestone-1.md` · branch `feature/milestone-1` · pull request: not opened yet
+Spec: `docs/specs/milestone-1.md` · branch `feature/milestone-1` · pull request #33
 
 ## Destination
 

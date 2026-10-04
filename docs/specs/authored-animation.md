@@ -381,7 +381,7 @@ Two-handed weapons on one-handed clips (the Katana) put the off hand on the grip
 
 ### Fallback without the packs
 
-When the Iglesias libraries are missing, the clip director plays every clip's fallback from the committed CC0 library: UAL1 and UAL2 Standard today, plus the UAL2 Source clips the table names. The match shows a small "animation packs missing" note, and the logs name the setting to fix. The rules and every rules test are unaffected, because the baked swings, the roll curve and the frame data are committed. The fallback isn't reviewed for looks.
+When the Iglesias libraries are missing, the clip director plays every clip's fallback from the committed CC0 library: UAL1 and UAL2 Standard today, plus the UAL2 Source clips the table names. The match shows a small "animation packs missing" note, and the logs name the setting to fix. The rules and every rules test are unaffected, because the baked swings, the roll curve and the frame data are committed. The fallback isn't reviewed for looks. Known fault, accepted until task 35 retires the stand-in posing (Oct 4): the weapon still follows the swing path baked on the Iglesias body while the arms play the fallback clip, so in every baked light and heavy for the Katana, Greatsword and Daggers it floats off the hands (up to about 1.1 m) and the elbows lock straight. The tests that check the weapon stays in the hands through an attack are local-only for this reason.
 
 ### If the retargeting prototype fails
 

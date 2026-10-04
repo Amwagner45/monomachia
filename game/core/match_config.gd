@@ -18,10 +18,8 @@ const WATCH: StringName = &"watch"
 const VERSUS: StringName = &"versus"
 const MODES: Array[StringName] = [DUEL, TRAINING, WATCH, VERSUS]
 
-## The arena every match is fought in until the arena select (task 22): the
-## Moonlit Shrine, which ArenaScenes draws as the stand-in until its scene
-## lands and the rules' radius reaches its own (the radius guard), so the
-## real arena shows up without another change here.
+## The arena a config gets unless it names one (the fighter select's arena
+## slot picks from ArenaScenes.SELECTABLE): the Moonlit Shrine.
 const DEFAULT_ARENA: StringName = &"moonlit_shrine"
 
 @export var mode: StringName = DUEL
@@ -54,6 +52,17 @@ static func default_duel(p_seed: int = 1) -> MatchConfig:
 		MatchSide.computer(&"hunter", &"greatsword", 1, &"normal"),
 		p_seed,
 	)
+
+
+## Training, the demo's default: the Rogue with the katana (you) against the
+## Hunter with the greatsword as the training dummy.
+static func default_training(p_seed: int = 1) -> MatchConfig:
+	var dummy: MatchSide = MatchSide.new()
+	dummy.fighter_id = &"hunter"
+	dummy.weapon_id = &"greatsword"
+	dummy.palette = 1
+	dummy.controller = MatchSide.DUMMY
+	return make(TRAINING, MatchSide.human(&"rogue", &"katana", 0), dummy, p_seed)
 
 
 ## Computer against computer from the side-on camera, the demo's default:

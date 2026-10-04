@@ -121,9 +121,9 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 53. [ ] As a player, I want Training against a dummy whose behaviour I choose (idle, block, lights, heavies, thrust, sweep, slam, random, spar), with optional health refill and early/late parry feedback, so that I can practise.
 54. [ ] As a player, I want Watch mode with a side-on cinematic camera, so that I can learn the moves by watching the computer duel.
 55. [ ] As two players on one PC, I want Versus in a vertical split screen, each with our own camera and device (keyboard and mouse, the arrow-key layout, or a controller), so that we can play head to head.
-56. [ ] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me.
+56. [x] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me. (22.10–22.12: the Controls screen's binding table, rebinding capture and profiles, played with in a match through the active profile; the pause menu and Versus pick profiles with 22.15 and 22.16.)
 57. [ ] As a player, I want graphics presets, a reduce-flashes-and-shaking option and a button-hints option, so that the game runs and reads well for me.
-58. [ ] As a player, I want a move list generated from the actual move data, so that it's always correct.
+58. [x] As a player, I want a move list generated from the actual move data, so that it's always correct. (22.13 and 22.14: `MoveList` walks the move data, and How to play shows it as a tab per weapon and bare hands; the pause menu opens it with 22.15.)
 
 ### Building and maintaining
 

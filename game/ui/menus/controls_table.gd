@@ -9,6 +9,8 @@ extends RefCounted
 const EMPTY: String = "—"
 ## The keyboard tab's note over the table.
 const KB_NOTE: String = "Choose a slot, then press the key or mouse button. Esc cancels, Backspace clears. Sprint also works by double-tapping a direction."
+## The controller tab's line under the status: how to bind, clear and back out.
+const PAD_NOTE: String = "Choose a slot, then press a button, pull a trigger or push a stick. Y clears a slot (△ on PlayStation), and a slot stops listening after 5 seconds."
 
 
 ## One action's row: its name, small print and the two slots' labels (EMPTY

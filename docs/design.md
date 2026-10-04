@@ -2,7 +2,7 @@ Third person arena fighter with melee and weapon based combat
 
 # Game Design Document: *Monomachia*
 
-This is the full vision for the finished game. It combines the original design document with the "Updates to game design doc and plan" notes of Sep 30, 2026 (rebuild in Godot, eight fighters, per-weapon movesets, floating arenas, character select, match intros, music). Where the update changed or added something, it is marked **(update)**. The direction set on Oct 4, 2026 (a realistic dark look, animation that leads the rules' timing, an RTX 3090 as the target, and quality before breadth) is marked **(Oct 4)**; where it replaces a Sep 30 update, the older text is gone. How the current build works, and every rule question the design leaves open, is recorded in `docs/mvp-spec.md` (the original web demo) and in the specs under `docs/specs/`.
+This is the full vision for the finished game. It combines the original design document with the "Updates to game design doc and plan" notes of Sep 30, 2026 (rebuild in Godot, eight fighters, per-weapon movesets, floating arenas, character select, match intros, music). Where the update changed or added something, it is marked **(update)**. The direction set on Oct 4, 2026 (a realistic dark look, animation that leads the rules' timing, an RTX 3090 as the target, and quality before breadth) is marked **(Oct 4)**; where it replaces a Sep 30 update, the older text is gone, and `docs/adr/0001-animation-leads-realistic-look.md` records why. How the current build works, and every rule question the design leaves open, is recorded in `docs/mvp-spec.md` (the original web demo) and in the specs under `docs/specs/`.
 
 ## 1. High Concept & Overview
 
@@ -18,8 +18,12 @@ Holding block while not being attacked lowers your posture meter. Holding block 
 
 * **Genre:** Arena fighter / Action combat / Local & Online Multiplayer
 * **Platform (update):** PC (Windows). Built in the Godot engine.
-* **Target hardware (Oct 4):** the top graphics preset runs at 4K and 60 fps on an NVIDIA RTX 3090. The Low preset stays playable on laptops with integrated graphics, such as the development laptop (Ryzen 7 4700U with Radeon graphics).
-* **Order of work (Oct 4):** the existing content (the Katana, Greatsword, Twin Daggers and bare hands; the Rogue and the Hunter; the Moonlit Shrine) is brought to the final quality first. The remaining weapons, fighters, arenas and progression come after, and online play last.
+* **Engine (Oct 4):** Godot 4.7. The first milestone checks whether Godot reaches the look and animation bar; the engine is reconsidered only if it clearly doesn't.
+* **Release (Oct 4):** a commercial release on Steam. Every asset, tool and licence must allow selling the game, and the age rating must cover blood.
+* **Target hardware (Oct 4):** the top graphics preset runs at 4K and 60 fps on an NVIDIA RTX 3090. The Low preset stays playable on laptops with integrated graphics, such as the Ryzen 7 4700U laptop the game was first built on. Development moves to the RTX 3090 desktop, where the look and performance are judged.
+* **Graphics presets (Oct 4):** four presets. **Ultra** is the RTX 3090 target and the **reference preset** every look is judged at; High and Medium scale down; Low is the integrated-graphics laptop, reaching 60 fps at 1080p by rendering at about 720p and upscaling. The first launch picks a preset from the detected graphics card.
+* **Rules rate (Oct 4):** the rules run at a fixed 60 steps a second, as fighting games do and as online rollback will need. Faster displays show frames blended between steps.
+* **Order of work (Oct 4):** the existing content (the Katana, Greatsword, Twin Daggers and bare hands; the Rogue and the Hunter; the Moonlit Shrine) is brought to the final quality first, in two **milestones**: the Hunter (both palettes) with the Katana and bare hands on the Moonlit Shrine, then the Greatsword, the Twin Daggers and the second fighter. Animation comes first, on today's bodies re-textured; a mood board and a look test settle the look alongside it, and new fighter models arrive by the second milestone. Everything inside a round reaches final quality in these milestones (weapon draws, victory poses, the ultimates' cinematic shots, the KO); match intros and gate walk-outs come with the breadth. A milestone ends when every move passes its checklist, Ultra holds 4K at 60 fps on the RTX 3090 and Low holds 60 fps on the laptop, a balance run comes out clean and every check is green, and then the owner plays the real build (with the asset repository) and signs off. The remaining weapons, fighters, arenas and progression come after, and online play last.
 * **Target Audience:** Fans of competitive, fast-paced fighting games and action RPGs (e.g., *For Honor*, *Tekken*, *Sekiro*, *Dark Souls*, *Soul Calibur*).
 * **Core Loop:** control your fighter and use their weapon's capabilities to disarm the opponent and reduce their HP to 0 → maintain your posture meter → parry, block, counter and dodge attacks → use your ultimate ability to deal a devastating blow → win 3 rounds to win the match.
 * **Tone (update):** dark fantasy, ancient oriental, gritty. Noble warriors who fight for honor and glory.
@@ -31,6 +35,7 @@ Holding block while not being attacked lowers your posture meter. Holding block 
 ### Camera Perspective
 
 * **(update)** Over-the-shoulder, like For Honor, but slightly more zoomed out. The camera stays locked on to the opponent: this is always a one-on-one duel.
+* **Cinematic shots (Oct 4):** the fighter intros, every ultimate and the final KO get authored cinematic camera shots. Everything else stays on the gameplay camera.
 
 ### Movement & Physics
 
@@ -65,9 +70,10 @@ Fighters have several defensive options: dodging, parrying, countering, blocking
 
 * **Dodge:** a roll with brief invincibility frames (like Dark Souls) that passes through attacks.
 * **Parry:** tap block at the precise moment an attack would land. Every attack can be parried, and each parry does a consistent amount of posture damage. Parrying doesn't open the parrier to damage; it lets them act first with a light or heavy attack, which the opponent can in turn parry. The parrier then decides which attack or movement option gives them the advantage.
-* **Parry presentation (update):** parries should be cinematic. The two weapons visibly bounce off each other, as in Sekiro, with a flashy "clang" effect and sound.
+* **Parry presentation (update):** parries should be cinematic. The two weapons visibly bounce off each other, as in Sekiro, with a flashy "clang" effect and sound. **(Oct 4)** Each attack direction has a matched **deflect pair**, the parrier's deflect and the attacker's recoil, and on the parry the two blades meet at the contact point, where the sparks and the clang start.
 * **Block:** shields HP from blockable attacks, and reduces, but doesn't remove, posture damage.
 * **Counters** answer the unblockable attacks, which are slow and telegraphed. Dodge invincibility doesn't work against them.
+  * **(Oct 4)** Counters, and the Greatsword's Impaler, play **paired clips**: when one lands, the two fighters are lined up over a few frames so their bodies truly meet.
   * **Thrusts** must be dodged *into* to stomp on the thrusting weapon (like Sekiro's mikiri counter). The attacker is stunned and open to a string of attacks.
   * **Sweeps** (horizontal attacks at the feet) must be jumped over; the fighter leaps off the opponent for good posture damage.
   * **Overhead slams** are countered by back-dashing. The counter looks like a quick back dash that can instantly be followed by a special light attack that dashes you to the opponent while they recover.
@@ -102,6 +108,12 @@ Before a match, each player chooses a **fighter** and a **loadout** (a weapon an
 
 **Character models:** clothing should carry the game's aesthetic (gritty, worn, flowing) while also emphasizing each fighter's type and style.
 
+**Roster look (Oct 4):** every fighter is reimagined through the ancient oriental world, with the fantasy pushed further, while keeping as much of their original vibe as possible. The Hunter, for example, stays a Bloodborne-inspired beast hunter in a Bloodborne hunter's clothes, given an oriental spin.
+
+**Models and cloth (Oct 4):** capes, coats and other loose clothing are cloth-simulated. For the first milestone the current bodies are re-textured in the realistic look; new stylised-real models (slightly heroic, readable silhouettes with realistic materials and grime, as in For Honor) arrive by the second, and the owner intends to rework the bodies after that. Where the final models come from is decided at the second milestone. They share a UE5-style game skeleton: today's bone names plus twist bones in the arms and legs, a prop bone in each hand, IK bones and face bones. Faces show a small set of expressions driven by events: effort on attacks, pain on hits, a roar for the ultimate, and death.
+
+**Bare hands (Oct 4):** per-fighter bare-hand movesets stay the goal but wait for the breadth phase; until then the fighters share one bare-hand moveset, re-animated at the new quality.
+
 ### Abilities
 
 Each fighter has three abilities in a match: the weapon's ultimate, and two block abilities chosen before the match from a pool specific to the weapon. When choosing a loadout, the player picks which ability goes on light and which on heavy; holding block and pressing that attack triggers it. For example, a polearm's light ability might be a thrust and its heavy ability an overhead attack.
@@ -121,6 +133,7 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 | **Scythe** | Colossal | Slow and powerful, high HP and posture damage, high knockback. Sweep and overhead slam abilities, and an auto-parry that spins the scythe around. |
 
 * **Colossal weapons:** odachi, giant hammer, scythe, greatsword. **(update)** Colossal weapons are significantly bigger two-handed weapons (as in Elden Ring). They are heavy and must look it: swinging one carries the fighter along with its momentum.
+* **Weapon models (Oct 4):** every weapon is modelled in Blender to fit the game's themes. The models set the blade lengths, and reach, spacing and balance are retuned to match.
 * **Medium weapons:** katana, longsword & buckler, staff.
 * **Small weapons:** twin daggers, bladed whip.
 
@@ -199,6 +212,10 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 ### Arenas
 
 * **(update)** Arenas are larger than the demo's and float above the land, suspended over a void or flying in the air. The backgrounds are dark fantasy, ancient oriental landscapes, with buildings and water features. Arena edges are walled; fighters can't fall off.
+* **(Oct 4)** The distant landscape is real 3D: sculpted mountains and cliffs, pagoda and temple models, and volumetric fog and clouds. Low gets a simpler version.
+* **(Oct 4)** The Moonlit Shrine is upgraded in place: its props, then its materials, and last its platform are replaced with modelled ones, keeping its layout.
+* **Weather (Oct 4):** each arena has weather variants picked per match: night, storm and dusk. The Moonlit Shrine's wind-swept blood-moon night comes first, with strong wind through grass, trees, banners and cloth, drifting mist and moon shafts; storm and dusk follow once the look is proven.
+* **Arena reactions (Oct 4):** arenas react to the fight in the picture only: cut marks and scorch on stone, sparks off pillars, banners and grass pushed by swings and falls. Nothing in the arena changes the rules.
 * **Arena themes:** Moonlit Shrine (from the demo), fantasy coliseum, hell and ice, each reimagined as a floating dark fantasy, oriental arena. The original list's Cyberpunk Grid, Deep Space Nebula, Synthwave Sunset and Retro Vector are dropped because they clash with the art direction.
 
 ### Progression & Customization
@@ -211,9 +228,14 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
 
 ### Art Style & Presentation
 
-* **Visual style:** gritty dark fantasy, ancient oriental. **(Oct 4)** Rendered realistically: physically based materials, dark lighting and volumetric fog under a painterly colour grade, in the spirit of Sekiro, Ghost of Tsushima and Elden Ring. This replaces the Sep 30 update's stylized toon look with outlines and ink-wash.
-* **Violence (Oct 4):** hits draw blood: a burst on each hit, blood on blades and clothes, and splatter on the floor that fades. No dismemberment or gore.
-* **UI layout:** a minimalist HUD with HP bars in classic fighting-game style and the posture bar underneath. Ultimate access is shown by a glowing aura around the fighter when they are at 25% HP or less.
+* **Visual style:** gritty dark fantasy, ancient oriental. **(Oct 4)** Rendered realistically: physically based materials, dark lighting and volumetric fog under a painterly colour grade. **Ghost of Tsushima** is the main visual reference for palette, atmosphere and material detail, taken from its darker side: the night, storm and supernatural moods of its Legends mode and Iki Island, with deep shadow, mist and the blood moon, and colour used as accents (red leaves, lanterns, blood). This replaces the Sep 30 update's stylized toon look with outlines and ink-wash.
+* **No ink rendering (Oct 4):** no toon shading, outlines or ink-wash screen effect during play. Ink survives only as calligraphy in the UI: brushed kanji and titles in the menus, the HUD and the round calls.
+* **Look test (Oct 4):** before anything converts, the owner approves a mood board, then a test scene (one fighter with the Katana in a corner of the Moonlit Shrine, at Ultra on the RTX 3090) that also settles the lighting and camera effects.
+* **Camera effects (Oct 4):** clean during play: temporal anti-aliasing, subtle bloom, ambient occlusion, fog, the colour grade and light film grain, but no depth of field, motion blur or colour fringing while fighting, so wind-ups stay readable. Those come in for the intros, ultimates, parry push-ins and the KO.
+* **Telling the sides apart (Oct 4):** muted but distinct dyed palettes (crimson against indigo, matching the HUD's red and blue) and key and rim lights that touch only the fighters. No outlines.
+* **Combat effects (Oct 4):** fully realistic: sparks, blood, dust, smoke and air smears. The ink-brush trails retire. The ultimates keep their supernatural energy (fire, lightning, shockwaves, spirit energy), lit and rendered realistically.
+* **Violence (Oct 4):** hits draw blood: a burst on each hit, blood on blades and clothes that lasts the whole match, and splatter on the floor that fades. No dismemberment or gore. A Blood setting offers On, Reduced or Off.
+* **UI layout:** a minimalist HUD with HP bars in classic fighting-game style and the posture bar underneath. Ultimate access is shown by a glowing aura around the fighter when they are at 25% HP or less. **(Oct 4)** The menus and HUD are redesigned for the new look, replacing the ink-wash theme; the layout above stays, and the style is picked from a UI page of the mood board. The ultimate aura is a smouldering glow of embers and heat haze in the side's colour.
 
 ### Animation (update)
 
@@ -223,11 +245,19 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
   * Dodges look evasive: a directional dodge is a roll.
   * Each fighter moves according to their weapon. Colossal weapons are heavy and look it, and swinging one pulls the fighter along with its momentum.
 * Strings flow naturally; a swing that ends on the right continues from the right.
-* Unblockable attacks have longer range and a visible effect showing their reach.
+* Unblockable attacks have longer range and a visible effect showing their reach. **(Oct 4)** As the wind-up starts, a red 危 flashes with a sound and the blade glints red; the attack type reads from the animation. Floating labels and floor markers appear only in Training.
 * Hitboxes should be as tight to the weapon as possible.
 * **(update)** Fighters animate from authored clips: attacks, reactions, movement, draws and victory poses. The path that decides hits is taken from the same clip.
-* **Animation leads (Oct 4):** each move's frame data (startup, active and recovery) and its footwork come from its clip; the rules follow the animation, not the other way round. Each move has a **timing band** set by design, and its clip is edited until it lands inside the band. A clip is never sped up, slowed down or stretched while the game runs to fit the rules, and a fighter never slides along the floor further than the clip's own steps carry them. Every weapon is rebalanced around its clips.
-* **Quality bar (Oct 4):** every move is judged against For Honor (weight and readability in a locked-on duel), Ghost of Tsushima (grounded, cinematic realism) and Tekken 8 / Mortal Kombat 1 (snap, and impacts that read instantly).
+* **Animation leads (Oct 4):** each attack's frame data (startup, active and recovery) and its footwork come from its clip; the rules follow the animation, not the other way round. Each attack has a **timing band** set by design, and its clip is edited until it lands inside the band. A clip is never sped up, slowed down or stretched while the game runs to fit the rules, and a fighter never slides along the floor further than the clip's own steps carry them. Only foot locking, the hands' grip on the weapon, mirroring and blending adjust a clip while the game runs; holds, such as the charged heavy's, are authored loops, not frozen frames. Every weapon is rebalanced around its clips.
+* **Protected timings (Oct 4):** a short list of defensive timings stays set by the rules, and the clips that show them are chosen or made to fit: the parry window, the input buffer, the dodge and backstep (their frames and invincibility), hitstun, blockstun, hit-stop and the knockdown phases.
+* **Pace (Oct 4):** the timing bands set a slower, weightier pace than the web demo's, close to For Honor's: a medium weapon's light attacks (the Katana's) land in roughly 400–500 ms, small weapons and bare hands faster, colossal weapons slower, so each class keeps its feel. Rounds last about 60–90 s. Every weapon is retuned around it.
+* **All movement from clips (Oct 4):** a fighter moves only as their clips carry them: attacks' steps, knockback and pushback in the reactions, the ultimates' dashes, and the Shadow Step's vanishing and reappearing. Jump arcs are the exception: they stay a rules number, so clearing a sweep always works the same way, and the jump clips are made to match them.
+* **Distance bands (Oct 4):** each weapon has a band of duelling distances its attacks must connect from, set by design. A clip that falls short is re-keyed with a longer step or reach, never slid.
+* **Hit reactions (Oct 4):** directional (front, left, right and back; high and low; light and heavy), with a physical layer on the spine, head and arms, pushed from where and how hard the hit lands, so every hit lands a little differently. The physical layer is only in the picture and never changes the rules.
+* **Strings and cancels (Oct 4):** follow-ups and dodge cancels open at markers on each clip, where the body can plausibly break off; a follow-up starts from its branch point rather than waiting for the move to end.
+* **Guard movement (Oct 4):** the directional walk and run blend, plus guarded strafe and shuffle cycles for each weapon class and short starts, stops and pivots. A tap step keeps its instant start.
+* **Hand-offs (Oct 4):** one motion hands over to the next by inertial blending: the new motion starts at once, and what is left of the old pose fades out over a few frames, hit reactions included. Authored transition clips add to it: returns to guard, bridges between the hits of a string, and run stops and pivots.
+* **Quality bar (Oct 4):** every move is judged against For Honor (weight and readability in a locked-on duel), Ghost of Tsushima (grounded, cinematic realism) and Tekken 8 / Mortal Kombat 1 (snap, and impacts that read instantly). A move is accepted against a written checklist (the attack type reads early in the wind-up, the weight visibly shifts, planted feet slide no more than 1 cm, the blade never passes through the body, the move hands off cleanly), with automated checks where possible, a side-by-side video against the reference games, and the owner playing it in a real match with the licensed clips loaded.
 * **(update)** Each weapon is drawn at the round intro and has its own victory pose. The Katana is sheathed with a bow, the Daggers toss and catch a blade, the Greatsword is planted in the ground, and bare hands cheer.
 
 ### Sound Design
@@ -237,18 +267,24 @@ Each fighter has three abilities in a match: the weapon's ultimate, and two bloc
   * Slicing-flesh sounds when blades connect.
   * Bone and rock crushing noises when colossal weapons land.
   * **(update)** Each fighter's movement has its own sound, such as the Skeleton Knight's rattling bones.
-* **Music (update):** dark fantasy and ancient oriental instruments, combined with electronic and metal.
+  * **(Oct 4)** Footsteps land where the clips' feet do and sound like the surface underfoot (stone, wood, water). Each fighter's cloth and armour has its own movement sounds, flesh and bone layers match the blood, and metal impacts depend on which weapons meet.
+  * **(Oct 4)** Each fighter has effort vocals: breaths, kiai shouts on heavies, pain on hits and death cries.
+* **Music (update):** dark fantasy and ancient oriental instruments, combined with electronic and metal. **(Oct 4)** In matches, traditional percussion and instruments (taiko, shakuhachi, biwa, low choir) lead, and the electronic and metal layers rise at match point; the menus keep the groovier fusion.
   * Match music: 130–150 BPM, fast-paced, high-energy, upbeat battle themes, themed around each stage.
   * Final-round ("match point") themes: 150–170+ BPM.
   * Character select, menus and loading screens: 100–120 BPM, slower and groovier, an electric and oriental-funk fusion.
 
 ### Assets (update)
 
-* **Spending (Oct 4):** up to about $300 on assets and tools (animation packs, animation tools, environment kits) for bringing the existing content to the final quality.
+* **Spending (Oct 4):** up to about $300 on assets and tools for bringing the existing content to the final quality. First Cascadeur Indie (physics-assisted hand animation) and Git LFS storage for the asset repository; the rest waits until the first milestone shows what's missing.
+* **Animation sources (Oct 4):** the owned Kevin Iglesias packs, plus clips hand-keyed in Blender. No animation packs are bought for the existing content.
+* **Where assets live (Oct 4):** paid and large source art lives in a private **asset repository** (with Git LFS for big files), which the import tools read. The public repository holds the code, free-licence and self-made art, and stand-ins. Blender source files live in the asset repository too, and a scripted export makes the files the game uses. Size budgets are set per place: a small public repository, a budget per asset in the asset repository, and a target size for the shipped game. Clones and CI builds without the asset repository use labelled stand-ins; real builds, playtests and releases always use it.
+* **Licence (Oct 4):** the repository's own code and art are source-visible with all rights reserved; third-party assets keep their own terms.
+* **Generative AI (Oct 4):** allowed for concept art and mood boards only, never for shipped or committed art.
 * Assets must be easy to swap as new files and downloaded packs become available.
 * Current sources:
   * Quaternius characters, outfits, animations and weapons (CC0).
-  * Kevin Iglesias's Human Melee and Human Basic Motions animation packs (Standard Asset Store EULA: commercial use allowed, no redistribution). They are used in builds but never committed: an import tool converts the clips locally, and CC0 clips stand in when the packs are missing.
+  * Kevin Iglesias's Human Melee and Human Basic Motions animation packs (Standard Asset Store EULA: commercial use allowed, no redistribution). They are used in builds but never committed: an import tool converts the clips locally, and CC0 clips stand in when the packs are missing. **(Oct 4)** Numbers measured from them (frame data, hit paths, travel) are committed, with each move's source clip recorded so it can be re-baked from another clip.
   * The Sonniss GDC 2026 game audio bundle (royalty-free).
 
 ### Controls

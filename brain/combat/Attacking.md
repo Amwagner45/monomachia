@@ -23,6 +23,8 @@ A fighter has two attack buttons.
 
 Attacks keep half of the running speed as they start (it was 30%), lunges ease in and out, colossal swings end with a short slide, and heavies can be dodge-cancelled in the second half of their recovery. [[Task 8]] and [[Stage 4 - Fluid rules]] built these.
 
+On Oct 4, 2026 animation took the lead (`docs/adr/0001-animation-leads-realistic-look.md`). A fighter now moves only as their clips carry them, so the rules stop adding lunges and slides, and dodge cancels open at markers on each clip. The pace becomes slower and weightier, close to For Honor's (the Katana's lights land in roughly 400–500 ms), and every weapon is rebalanced as its animation lands. Hitstun stays a rules number. See [[Fighter animation]].
+
 What decides a hit is the weapon's real path: see [[Weapon swings]].
 
 **Sources:** [[Design doc - 2. Core Mechanics & Controls]] · [[Rebuild spec - Implementation Decisions]] · [[MVP spec - Combat rules]]

@@ -13,6 +13,15 @@ tags: [architecture, presentation]
 
 Procedural animation is less expressive than hand-keyed clips, so the authored-animation plan ([[Plan - Authored animation and the dodge roll]]) is replacing moves, reactions, knockdowns and KOs with authored clips while keeping the rules unchanged. It retired the rebuild plan's task 15 (full fighter animation) and 14b (the swing editor). Clips play on the rules' clock and hold still in hit-stop.
 
+## Animation leads (Oct 4)
+
+On Oct 4, 2026 the owner reversed the premise that the rules stay in charge and the clips are fitted to them (`docs/adr/0001-animation-leads-realistic-look.md`). Each attack's frame data and footwork now come from its clip, edited until it lands inside the attack's [[Timing band]], and nothing speeds up, slows down, freezes or stretches a clip while the game runs. No fighter slides further than its clips step, and holds such as the charged heavy's are authored loops.
+
+- Only the protected timings stay set by the rules (the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases), and the clips that show them are made to fit. Jump arcs also stay rules numbers.
+- The authored-animation plan closes after its task 30b; its draws, victories and the retiring of the stand-ins move into the slice spec.
+- New parts of the bar: directional hit reactions with a physical layer, a matched deflect pair for each attack direction, paired clips for counters and the Impaler, cancels marked on each clip, and inertial blending with authored transitions.
+- Capes, coats and other loose clothing are cloth-simulated, and the final models share a UE5-style skeleton with twist bones.
+
 Plan: [[Task 13]], [[Task 14]] · [[Stage 8 - Fighter animation core]] · [[Stage 13 - Full animation]]
 
 **Sources:** [[Rebuild spec - Implementation Decisions]] · [[Rebuild plan notes 13-15-fighters-and-animation]] · [[Animation spike (Sep 30, 2026)]] · code in [[game.view.fighter]] · see [[Roster]]

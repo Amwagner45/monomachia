@@ -14,12 +14,20 @@ The [[Rebuild plan]] lives on `feature/godot-rebuild`, and every lane's work mer
 - **B. A playable skeleton:** a match you can play in Godot.
 - **C. The rule changes:** [[Weapon swings]] decide hits, the fluid rules, and the new strings.
 - **D. Fighters and animation:** the Rogue and the Hunter, retargeted clips, inverse kinematics and procedural steps ([[Fighter animation]]).
-- **E. Look, arena and effects:** the toon and ink-wash look, the [[Moonlit Shrine]], combat effects ([[Art direction]]).
+- **E. Look, arena and effects:** the toon and ink-wash look, the [[Moonlit Shrine]], combat effects ([[Art direction]]). On Oct 4, 2026 a realistic look replaced the toon and ink-wash look, and the effects become fully realistic.
 - **F. Sound and music:** see [[Sound and music]].
 - **G. Screens and modes:** menus, the fighter select, Training, Watch, Versus and the HUD ([[HUD and menus]], [[Game modes]]).
 - **H. Ship:** the Windows build and release.
 
 The build order runs these as 14 stages; each stage note shows how many of its tasks are done, live from the plan. Start at [[Stage 1 - Resume and safety nets]], or see the list in [[Rebuild plan]].
+
+## The Oct 4 direction
+
+On Oct 4, 2026 the owner changed course (`docs/adr/0001-animation-leads-realistic-look.md`). Animation now leads the rules' timing instead of clips being fitted to the rules, a realistic look replaces toon and ink-wash, and an RTX 3090 at 4K and 60 fps is the target, with Low holding 60 fps at 1080p (upscaled) on the Ryzen 7 4700U laptop.
+
+- The rebuild merges into `master` first, so new work branches from `master` again.
+- The plan's open tasks are triaged: look-independent ones are to be finished, tuning and effects move into the slice plan, and toon-only ones retire.
+- The existing content then reaches final quality in two milestones (the Hunter with the Katana and bare hands on the Moonlit Shrine; then the Greatsword, the Twin Daggers and the second fighter) before any new weapon, fighter or arena.
 
 The choices behind all this: [[Key decisions]]. How the work is organised: [[Workflow]] and [[Lanes and the board]].
 

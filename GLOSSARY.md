@@ -72,8 +72,15 @@ A move's startup, active and recovery, counted in the rules' frames (60 a second
 _Avoid_: Timing (on its own), speed
 
 **Timing band**:
-The range of frame data a move is allowed, set by design. A move's clip is edited until it lands inside its band.
+The range of frame data an attack is allowed, set by design. An attack's clip is edited until it lands inside its band.
 _Avoid_: Window (that's the parry's), target frames
+
+**Distance band**:
+The range of duelling distances a weapon's attacks must connect from, set by design. A clip that falls short is re-keyed, never slid.
+
+**Protected timing**:
+A defensive timing the rules set and every clip that shows it must fit: the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases.
+_Avoid_: Fixed frames, hard-coded timing
 
 **Hurt capsule**:
 The capsule around a fighter's body, from the feet up, that a swing must touch to hit them. It rises with the fighter in a jump.
@@ -102,6 +109,9 @@ _Avoid_: Deflect (as a separate mechanic), guard break
 Pressing dodge with a direction: a **roll** that way, invincible to normal attacks for its first frames. Pressing dodge with no direction is a **backstep**, a quick hop away from the opponent.
 _Avoid_: Dash (for the dodge), evade (that's a counter)
 
+**Deflect pair**:
+The matched motions of a parry: the parrier's deflect and the attacker's recoil, one pair per attack direction, with the two blades meeting at the contact point.
+
 **Knockdown**:
 Being knocked to the ground by an unblockable, a fully charged heavy or a colossal slam. The downed fighter can't be hit, and stands up on a fixed timer, able to block or parry as they rise.
 _Avoid_: Knockback (the push every hit gives), launch
@@ -111,6 +121,9 @@ A Greatsword resting on its fighter's shoulder, as it does at the round intro an
 
 **Counter**:
 The specific answer to an unblockable: **stomp** (dodge into a thrust), **leap** (jump over a sweep) or **evade** (back-dash from a slam, then lunge).
+
+**Paired clip**:
+A two-fighter clip played by both fighters at once, lined up so their bodies meet: the counters and the Impaler.
 
 **Redirect**:
 A disarmed fighter's timed hand counter, which replaces the parry.
@@ -149,3 +162,16 @@ _Avoid_: Portal (in docs)
 
 **Match intro**:
 The skippable sequence before the first round in which each fighter walks out of their gate and performs their intro.
+
+## Making the game
+
+**Milestone**:
+A sign-off point where the owner plays the work so far and judges it against the quality bar. Bringing the existing content to final quality has two.
+_Avoid_: Gate (that's the portal), checkpoint
+
+**Reference preset**:
+The graphics preset every look is judged at: Ultra, on an RTX 3090.
+
+**Asset repository**:
+The private repository of paid and large source art (and Blender files) that the game's import tools read. The public repository never holds paid art.
+_Avoid_: Asset store (that's Unity's shop), asset pack

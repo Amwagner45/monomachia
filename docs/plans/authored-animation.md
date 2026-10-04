@@ -56,6 +56,7 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 - **The Greatsword passed** (Oct 3, task 20's gate): task 21 starts. Its win rate (39.1% against its 46.1% baseline, the shoulder lift's and knockdown's cost) is taken as its own small tuning change after the Daggers, measured on 300-match runs (the owner's choice).
 - **The Daggers passed** (Oct 3, task 23's gate): task 24 starts. The new clip fits and composed clips stand; the lunges wait to be judged in play with the Katana's and Greatsword's; the Daggers' 55.8% (5.4 over their 50.4% baseline) goes into the Greatsword's tuning change after this weapon, measured on 300-match runs (the owner's choice of the review's recommendations).
 - **Bare hands passed** (Oct 3, task 25's gate): task 26 starts. All four of the review's recommendations stand: a fist measured by its depth, the new fits (Snap Kick and Axe Kick on the left leg), the knee strike, and Breaker Palm's 2.95 m lunge.
+- **Tasks 29–31 lane** (Oct 4): tasks 29, 30, the new 30b and 31 are built on `lane/aa-29-30-31` (a worktree of the main checkout), with a draft pull request into `feature/authored-animation`. The owner chose that it keeps this plan's Notes (Progress and the spec's status updated after each task) rather than the side lanes' rule of leaving them alone. The owner's answers to the tasks' open questions are in each task's block; the recall's answer added task 30b, the power-up burst.
 
 ## Progress
 
@@ -126,7 +127,7 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
 5. **The Greatsword** (after the Katana's OK): 18, 19, 20.
 6. **The Daggers** (after the Greatsword's OK): 21, 22, 23.
 7. **Bare hands** (after the Daggers' OK): 24, 25.
-8. **Reactions and movement** (after the bare hands' OK): 26, 27, 28, 29, 30, 31.
+8. **Reactions and movement** (after the bare hands' OK): 26, 27, 28, 29, 30, 30b, 31.
 9. **The round flow** (after 31's OK): 32, 33, 34.
 10. **Finish:** 35, 36.
 
@@ -408,6 +409,10 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
   - Foot locking keeps planted feet still.
   - The guard shuffle, the hip-turn, the reversed cycle and the lean go. Footsteps follow the clips' foot contacts.
   - Check: director tests for the blend weights by direction and speed; planted feet move under 1 cm; strips of running, strafing, backpedalling and sprinting; the footstep tests pass.
+  - **Owner's answers** (Oct 4, 2026, before the task):
+    - A tap step (0.55 m over 8 frames) is one walking step: half a cycle of the walk in the step's direction, one foot forward, played over the step's 8 frames.
+    - A sprint held backwards (or back-diagonally; the rules let a sprint go any way) turns the body to sprint away from the opponent on Sprint01, and turns back to face them when the sprint ends.
+    - Settled without asking: the diagonals are Walk01's and Run01's and the sideways clips StrafeWalk01's and StrafeRun01's, as the spec says; the guard shuffle, the Katana's guard stance, the hip-turn and the lean are retired here (StickPose and the rest stay for task 35).
   - Blocked by: 28 · Stories: 22, 23, 24
 - [ ] **30. The roll and the other states.**
   - **The roll** plays Roll01 with the body turned toward the roll's direction. The body turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames.
@@ -418,12 +423,23 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
     - director tests for the roll's turn and each state's clip;
     - a sound test that the roll and the backstep play different cues;
     - sheets.
+  - **Owner's answers** (Oct 4, 2026, before the task):
+    - The roll matches the ground: Roll01's tumble plays over the 16 travel frames on the timing the travel curve was read from (about 3×, past the 2.0 cap, which the roll alone is exempt from), and its getting-up over the 9 recovery frames.
+    - The roll's sound is cut from the Sonniss bundle by the existing picks (`scripts/audio/sonniss-picks.json`, `npm run audio:sonniss`): a cloth tumble and a body thump on stone, recorded in `SOURCES.md`. The backstep keeps today's swish and cloth.
+    - The recall no longer plays an unsheathe: every weapon's recall is the power-up burst of task 30b. This task gives the recall state no clip of its own.
+    - Settled without asking: the backstep (and the evade counter's back-dash, which is the backstep) plays Dodge01's back half (task 1's finding: the clip is a sway); the evade's lunge is each weapon's Counter Lunge, already played from its baked clip.
   - Blocked by: 17, 29 · Stories: 13, 25, 28, 29, 30
+- [ ] **30b. The recall's power-up burst.** Added by the owner on Oct 4, 2026 (their answer to the recall's clip). A rules change, beyond the spec's list, so the spec and `docs/design.md` are updated with it.
+  - **The look** (the owner's reference: a Super Saiyan power-up): every weapon's recall plays a hand-keyed power-up stance (KeyedClips, CC0, committed, like Mikiri_Stomp): feet planted wide, fists clenched low at the sides, chest out, head thrown back shouting. A golden flame aura surges up around the body with white wind streaks swirling round it (built in code), and on the burst it flares into an expanding shockwave as the weapon appears in the hands.
+  - **The rules:** on recall frame 16 (as the weapon returns), an opponent within the recalled weapon's duelling distance (Katana 2.5, Greatsword 3.0, Daggers 2.0 m) is hit by the burst: knocked back 2.0 m (twice a heavy's 1.0) and knocked down, blasted away. No damage or posture; it can't be blocked or parried, but a dodge's or a knockdown's invulnerability avoids it.
+  - Check: rules tests (in range hits and knocks down 2.0 m back, out of range misses, a block doesn't stop it, i-frames do, no damage); a director test of the recall's keyed clip; sheets of the burst and the victim blasted away; a 40-match soak is clean.
+  - Blocked by: 30 · Stories: none (new)
 - [ ] **31. The reactions and movement review.**
   - Contact sheets and strips of every state on both fighters.
   - A short playtest of the reactions, the roll and the knockdown.
   - **Owner:** OKs reactions and movement. This gates task 32.
-  - Blocked by: 30 · Stories: 47
+  - **Owner's answer** (Oct 4, 2026, before the task): the playtest is shared: the package records a computer-against-computer video of the reactions, the roll, the knockdown and the recall's burst beside the sheets and strips, and the owner plays a short match at the gate.
+  - Blocked by: 30b · Stories: 47
 
 ### Phase I: the round flow
 

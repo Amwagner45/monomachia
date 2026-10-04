@@ -8,7 +8,16 @@ extends MenuScreen
 ## controller tab, the fight-stick layout, each saved at once. Back returns to
 ## the page that opened it.
 ##
-## Choosing a slot emits slot_chosen; rebinding capture (22.11) listens to it.
+## Choosing a slot listens for its input (rebinding capture, 22.11, through a
+## RebindCapture): on the keyboard tab the next key or mouse button, on the
+## controller tab, once every button is let go, the next button, trigger or
+## stick direction. The result goes into the active profile, which is saved;
+## a token bound here leaves any other action on the tab. Esc cancels and
+## Backspace or Delete clears the slot, and 5 seconds with no press cancels,
+## so a controller alone can back out. While listening the screen takes every
+## event in _input(), ahead of the menu (so Back is ignored), handing each to
+## the InputDevices first, as the InputFeed would have. Outside a capture,
+## Delete, Backspace or Y/△ clears the focused slot.
 ## The profile row (pick, rename, new, delete) comes with 22.12: until then
 ## the table shows the active profile, named over it.
 ##
@@ -26,6 +35,13 @@ const TABS: Array[String] = [ControlProfile.KB, ControlProfile.PAD]
 const TAB_NAMES: Array[String] = ["Keyboard & mouse", "Controller"]
 ## A slot button's least height (px); the theme's padding makes it about 50.
 const SLOT_HEIGHT: float = 34.0
+## How long a capture waits for a press before it gives up (ms).
+const CAPTURE_TIMEOUT_MS: int = 5000
+## A listening slot's text: the keyboard tab's, the controller tab's once it
+## arms, and the controller tab's while a button is still held.
+const LISTEN_KEY: String = "Press a key…"
+const LISTEN_PAD: String = "Press a button…"
+const LISTEN_RELEASE: String = "Let go of the buttons…"
 
 var profiles: ControlProfiles
 var save_path: String
@@ -41,6 +57,14 @@ var scroll: ScrollContainer
 var slot_buttons: Dictionary = {}
 var reset_button: Button
 var fight_stick_button: Button
+## The capture listening for a slot's input, or null.
+var capture: RebindCapture = null
+var capture_action: String = ""
+var capture_slot: int = -1
+## Returns the time in milliseconds (tests drive a fake clock).
+var clock: Callable = Time.get_ticks_msec
+## When the capture started or last saw a press.
+var _capture_since: int = 0
 
 
 func _init(p_profiles: ControlProfiles = null, p_save_path: String = "", p_input: InputDevices = null) -> void:
@@ -62,6 +86,7 @@ func _init(p_profiles: ControlProfiles = null, p_save_path: String = "", p_input
 	reset_button = _action_button(row, "Reset to defaults", _on_reset)
 	fight_stick_button = _action_button(row, "Fight stick layout", _on_fight_stick)
 	input.state.joy_connection_changed.connect(_on_joy_connection_changed)
+	slot_chosen.connect(start_capture)
 	refresh()
 
 
@@ -125,20 +150,127 @@ func open() -> void:
 
 
 ## Shows the active profile's bindings on the current tab, named in the
-## button style of the connected controller, and the line over the table.
+## button style of the connected controller, and the lines over the table.
 func refresh() -> void:
 	tabs.set_index(TABS.find(tab))
 	var profile: ControlProfile = profiles.active_profile()
 	profile_label.text = "Profile · %s" % profile.name
 	var on_pad: bool = tab == ControlProfile.PAD
-	status.text = ControlsTable.status_line(input) if on_pad else ControlsTable.KB_NOTE
+	status.text = ControlsTable.status_line(input) + "\n" + ControlsTable.PAD_NOTE if on_pad else ControlsTable.KB_NOTE
 	var style: int = input.pad_style() if on_pad else PadStyle.GENERIC
 	for r: ControlsTable.Row in ControlsTable.rows(profile, tab, style):
 		var pair: Array[Button] = []
 		pair.assign(slot_buttons[r.action])
 		for slot: int in pair.size():
 			pair[slot].text = r.slots[slot]
+			pair[slot].remove_theme_color_override(&"font_color")
+			pair[slot].remove_theme_color_override(&"font_focus_color")
 	fight_stick_button.visible = on_pad
+	if is_listening():
+		_show_listening()
+
+
+## Leaving the screen ends a capture.
+func close() -> void:
+	if capture != null:
+		capture = null
+		refresh()
+	super()
+
+
+# ------------------------------------------------------------------ capture
+
+func is_listening() -> bool:
+	return capture != null and capture.is_listening()
+
+
+## Listens for the input to put in a slot (choosing a slot starts it).
+func start_capture(p_tab: String, action: String, slot: int) -> void:
+	if is_listening():
+		return
+	capture = RebindCapture.new(p_tab, input.state)
+	capture_action = action
+	capture_slot = slot
+	_capture_since = clock.call()
+	_show_listening()
+
+
+func _show_listening() -> void:
+	var text: String = LISTEN_KEY
+	if capture.tab == ControlProfile.PAD:
+		text = LISTEN_PAD if capture.is_armed() else LISTEN_RELEASE
+	# lit gold while it listens, as the demo's .listening slot
+	var b: Button = slot_buttons[capture_action][capture_slot]
+	b.text = text
+	b.add_theme_color_override(&"font_color", UiPalette.GOLD)
+	b.add_theme_color_override(&"font_focus_color", UiPalette.GOLD)
+
+
+## Runs before the menu and the GUI: a capture takes every event, and a
+## focused slot takes the presses that clear it.
+func _input(event: InputEvent) -> void:
+	if not is_visible_in_tree():
+		return
+	if capture != null:
+		# a handled event never reaches the InputFeed, so feed it here
+		input.note_event(event)
+		get_viewport().set_input_as_handled()
+		if _is_press(event):
+			_capture_since = clock.call()
+		capture.feed(event)
+		_capture_moved()
+		return
+	var at: Vector2i = _slot_of(focused_item())
+	if at.x >= 0 and _clears(event):
+		input.note_event(event)
+		get_viewport().set_input_as_handled()
+		profiles.active_profile().clear_slot(tab, Bindings.ACTIONS[at.x], at.y)
+		_save()
+
+
+func _process(delta: float) -> void:
+	super(delta)
+	if capture == null:
+		return
+	capture.poll()
+	if int(clock.call()) - _capture_since >= CAPTURE_TIMEOUT_MS:
+		capture.cancel()
+	_capture_moved()
+
+
+## Shows the capture's progress, or ends it once it has a result: the slot
+## keeps the focus, and a binding or a clear is saved.
+func _capture_moved() -> void:
+	if capture.is_listening():
+		_show_listening()
+		return
+	var done: RebindCapture = capture
+	capture = null
+	if done.apply_to(profiles.active_profile(), capture_action, capture_slot):
+		_save()
+	else:
+		refresh()
+
+
+## A key, mouse button or controller button going down.
+static func _is_press(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		return (event as InputEventKey).pressed and not (event as InputEventKey).echo
+	if event is InputEventMouseButton or event is InputEventJoypadButton:
+		return event.is_pressed()
+	return false
+
+
+## Delete, Backspace or Y/△: clears a focused slot outside a capture.
+static func _clears(event: InputEvent) -> bool:
+	if event is InputEventKey:
+		var k: InputEventKey = event
+		var key: Key = k.physical_keycode if k.physical_keycode != KEY_NONE else k.keycode
+		return k.pressed and not k.echo and (key == KEY_DELETE or key == KEY_BACKSPACE)
+	if event is InputEventJoypadButton:
+		var jb: InputEventJoypadButton = event
+		return jb.pressed and jb.button_index == JOY_BUTTON_Y
+	return false
 
 
 ## Up and down on the table keep to the slot's column, a row at a time (left

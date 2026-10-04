@@ -61,5 +61,13 @@
 		"d_sweep": {"clips": ["RunSlide01@0-6", "SerpentSweep01"], "speed": 1.55, "fallback": "Slide_Start", "marks": {"windup": 0, "contact": 15.5, "contact_end": 19.38, "settle": 36.42}},
 		"d_needle": {"clips": ["AttackPolearm01@0-8", "AttackPolearm01@8*4", "AttackPolearm01@8"], "speed": 1.55, "fallback": "Sword_Dash", "marks": {"windup": 0, "contact": 15.5, "contact_end": 17.83, "settle": 33.33}}
 	}},
-	"fists": {"guard": "CombatIdle01", "moves": {}}
+	"fists": {"guard": "CombatIdle01", "moves": {
+		"f_l1": {"clips": ["AttackPunch02_L"], "speed": 1.4, "fallback": "Punch_Jab", "marks": {"windup": 0, "contact": 3.5, "contact_end": 4.9, "settle": 11.9}},
+		"f_l2": {"clips": ["AttackPunch02_R"], "speed": 1.17, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 3.5, "contact_end": 4.67, "settle": 10.52}},
+		"f_l3": {"clips": ["AttackPunch01_L"], "speed": 1.88, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 7.5, "contact_end": 10.32, "settle": 23.48}},
+		"f_dl": {"clips": ["AttackPunch01_L@5"], "speed": 1, "fallback": "Punch_Jab", "marks": {"windup": 0, "contact": 2.5, "contact_end": 3.5, "settle": 8.5}},
+		"f_dh": {"clips": ["AttackPunch03_R"], "speed": 1.4, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 7, "contact_end": 9.1, "settle": 20.3}},
+		"f_bh": {"clips": ["AttackPunch01_R"], "speed": 1.25, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 7.5, "contact_end": 10, "settle": 20}},
+		"f_lunge": {"clips": ["AttackPunch01_R@4"], "speed": 1.4, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 3.5, "contact_end": 5.6, "settle": 15.4}}
+	}}
 }

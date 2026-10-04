@@ -29,3 +29,7 @@ game/assets/kevin_iglesias/staging/
 
 # Scratch for prototypes; may hold converted Iglesias clips, which must never be committed
 game/_scratch/
+
+# Animation Studio: the refinement log and the chat panel's context folder (may hold screenshots of Iglesias clips)
+.anim-refine/
+game/tools/anim_studio/.refinements.json

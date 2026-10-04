@@ -12,6 +12,7 @@
 //   shots <scene> [out.png] [frames] [scene args...]   render a scene in an off-screen window;
 //                          fails on a shader or script error
 //   run                    play the game
+//   studio                 open the Animation Studio (gallery, editor and chat panel; dev tool)
 //   dev                    open the editor
 //   build                  export the Windows build to build/windows/
 //   clips                  convert the clip manifest's Iglesias clips into the
@@ -139,7 +140,7 @@ async function importProject(godot) {
 async function main() {
   const [cmd = 'help', ...rest] = process.argv.slice(2);
   if (cmd === 'help' || cmd === '--help') {
-    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|dev|build|clips|bake');
+    console.log('usage: node scripts/godot.mjs import|test|typecheck|soak|script|shots|run|studio|dev|build|clips|bake');
     return;
   }
   const godot = findGodot();
@@ -246,6 +247,10 @@ async function main() {
     }
     case 'run':
       spawn(godot, ['--path', PROJECT, ...rest], { stdio: 'inherit', detached: true }).unref();
+      return;
+    case 'studio':
+      // The Animation Studio (tools/anim_studio), windowed at 1600x900.
+      spawn(godot, ['--path', PROJECT, '--resolution', '1600x900', 'res://tools/anim_studio/studio.tscn', ...rest], { stdio: 'inherit', detached: true }).unref();
       return;
     case 'dev':
       spawn(godot, ['--path', PROJECT, '-e', ...rest], { stdio: 'inherit', detached: true }).unref();

@@ -141,3 +141,16 @@ _Avoid_: Portal (in docs)
 
 **Match intro**:
 The skippable sequence before the first round in which each fighter walks out of their gate and performs their intro.
+
+## Tools
+
+**Animation Studio**:
+The dev tool for looking at and refining animations: a gallery of every animation, an editor and a chat panel.
+
+**Corrective**:
+Per-bone rotation offsets keyed on top of a clip, shared by both bodies or overridden for one, and baked into the swing.
+_Avoid_: Additive, fix layer
+
+**Refinement**:
+A change to one animation asked for in the Studio's chat panel, worked on in its own worktree and branch.
+_Avoid_: Request, job

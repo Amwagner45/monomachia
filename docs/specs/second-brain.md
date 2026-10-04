@@ -72,7 +72,7 @@ Left: folder tree and a search box (full text, case-insensitive, ranked by title
 
 ## Testing Decisions
 
-- Vitest tests in `tests/second-brain.test.ts` drive `vault.mjs` through fixture text and an in-memory source: glossary parsing, plan tasks with done marks, blockers and the reverse "Blocks", section splitting, script summaries, task ids in commit subjects (`(task 7.1)`, `(godot-rebuild 22.6, 22.8-22.10, first step)`), safe note names, and link resolution.
+- Vitest tests in `tests/second-brain.test.mjs` drive `vault.mjs` through fixture text and an in-memory source: glossary parsing, plan tasks with done marks, blockers and the reverse "Blocks", section splitting, script summaries, task ids in commit subjects (`(task 7.1)`, `(godot-rebuild 22.6, 22.8-22.10, first step)`), safe note names, and link resolution.
 - A test builds the vault from the real working tree and fails if any wikilink, generated or hand-written, resolves to no note, or two notes share a name.
 - The viewer and the board button are checked by hand in the Browser pane: the popup opens, links and back work, search finds a term, the graph draws.
 - `npm test` and `npm run typecheck` pass before every commit.

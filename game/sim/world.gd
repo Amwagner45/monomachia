@@ -503,7 +503,7 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 			})
 			b.release_if_impaling()
 			if b.hp <= 0.0:
-				b.to_ko()
+				b.to_ko(a, def.kind != &"light")
 				b.knock(a.pos.x, a.pos.z, maxf(1.5, def.knockback * 1.5), 20)
 			elif not b.armed and b.posture_full() and b.state != &"stagger":
 				b.enter_stun(SimConst.DISARMED_STAGGER, &"stagger")

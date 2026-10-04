@@ -56,7 +56,11 @@ extends Node3D
 ## striking the fighter standing or guarding with a light then a heavy, and
 ## stun_reaction, the fighter's light into the opponent's Flash; and parry,
 ## task 27: the fighter's light parried by the opponent's block, pressed 3
-## frames before it lands, at the fighter's duelling distance),
+## frames before it lands, at the fighter's duelling distance; knockdown,
+## task 28: the opponent's Greatsword slams the fighter down with Mountain
+## Slam; ko_light and ko_heavy: the fighter on 1 HP, knocked out by the
+## opponent's Right Cut or heavy. A drive may name the opponent's weapon,
+## "defender_weapon", and the fighter's HP, "hp"),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -295,6 +299,33 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"spacing": 0.0,
 		"every": 2,
 	},
+	&"knockdown": {
+		"input": [[150, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | HEAVY], [137, 0.0, 0.0, 0]],
+		"defender_weapon": &"greatsword",
+		"notes": "the opponent's Greatsword slams the fighter down with Mountain Slam after 12 frames: Knockdown01's fall, ground and stand-up",
+		"views": [&"defender", &"side"],
+		"spacing": 3.5,
+		"every": 4,
+	},
+	&"ko_light": {
+		"input": [[90, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [77, 0.0, 0.0, 0]],
+		"hp": 1.0,
+		"notes": "the fighter on 1 HP; the opponent's Right Cut knocks it out from the front after 12 frames (a light: CombatDeath01)",
+		"views": [&"defender", &"side"],
+		"spacing": 2.5,
+		"every": 3,
+	},
+	&"ko_heavy": {
+		"input": [[100, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [87, 0.0, 0.0, 0]],
+		"hp": 1.0,
+		"notes": "the fighter on 1 HP; the opponent's heavy knocks it out from the front after 12 frames (CombatDeath02)",
+		"views": [&"defender", &"side"],
+		"spacing": 2.5,
+		"every": 3,
+	},
 }
 ## How many frames before a parried light lands the parry drive presses the
 ## block (inside every weapon's window, 6 frames at the least).
@@ -356,6 +387,7 @@ var views: Array[StringName] = VIEWS
 ## Empty for the same fighter as the attacker.
 var defender_id: StringName = &""
 var defender_weapon_id: StringName = &"katana"
+var _defender_weapon_given: bool = false
 var spacing: float = PoseCheck.SPACING
 ## Where shot.gd saves the sheet (its --out=): the batch's sheets go beside it.
 var out_path: String = ""
@@ -455,6 +487,7 @@ func apply_args(args: PackedStringArray) -> void:
 			"defender-weapon":
 				if Moves.WEAPONS.has(StringName(value)):
 					defender_weapon_id = StringName(value)
+					_defender_weapon_given = true
 				else:
 					push_error("move_sheet.gd: no weapon '%s' for the defender" % value)
 			"spacing":
@@ -484,6 +517,8 @@ func apply_args(args: PackedStringArray) -> void:
 		views = own
 	if drive != &"" and not _every_given:
 		every = int(DRIVES[drive].get("every", every))
+	if drive != &"" and not _defender_weapon_given and DRIVES[drive].has("defender_weapon"):
+		defender_weapon_id = DRIVES[drive]["defender_weapon"]
 	for id: StringName in [fighter_id, defender_id]:
 		if id != &"" and not FighterLook.IDS.has(id):
 			push_error("move_sheet.gd: no fighter '%s' (%s)" % [id, ", ".join(PackedStringArray(FighterLook.IDS))])
@@ -875,6 +910,8 @@ func render_drive(drive_id: StringName) -> Image:
 			# the fighter's duelling distance
 			bench.spacing = bench.weapon.duel_distance
 	bench.stand()
+	if DRIVES[drive_id].has("hp"):
+		bench.attacker.hp = float(DRIVES[drive_id]["hp"])
 	_show_defender()
 	strip.clear()
 	var loco: Locomotion = bench.view.locomotion

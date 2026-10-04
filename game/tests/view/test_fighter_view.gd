@@ -180,46 +180,44 @@ func test_a_crouch_lowers_the_hips_over_planted_feet() -> void:
 			assert_gt(_bone(v, crouched, side + "LowerLeg").origin.z, _bone(v, standing, side + "LowerLeg").origin.z, "%s: %s knee bends forward" % [weapon.id, side])
 
 
-## A KO lets go of the pose and plays the fall from the KO on, dimmed.
-func test_a_ko_falls_with_the_death_clip() -> void:
+## A KO plays the director's death (task 28) from the KO on, dimmed: the
+## Rogue's own CombatDeath01 for a light from the front, or the CC0 Death01
+## without the packs.
+func test_a_ko_falls_with_its_death_clip() -> void:
 	var W: World = _world()
 	var b: Fighter = W.fighters[1]
 	var v: FighterView = _view(&"rogue", Moves.KATANA)
 	b.to_ko()
 	_step(W, 12)
 	_update(v, b, 0.5)
-	var ap: AnimationPlayer = v.model.animation_player
-	assert_eq(ap.current_animation, "ual/" + String(FighterView.DEATH_CLIP))
-	assert_almost_eq(ap.current_animation_position, (b.sf - 1 + 0.5) / 60.0, 1e-4, "timed from the KO")
-	assert_false(v.model.rig.drives("Right"), "the arms go with the fall")
+	var want: String = "HumanF/CombatDeath01" if v.director.libraries else "ual/Death01"
+	assert_eq([v.shot.drive, v.shot.phase, v.shot.clip.name], [ClipDirector.STATE, &"ko", want])
+	assert_almost_eq(v.shot.clip.time, float(b.sf) / 60.0, 1e-6, "timed from the KO")
+	assert_eq(v.model.rig.leg_weight, 0.0, "the legs go with the fall")
+	assert_false(v.foot_lock.enabled, "nothing holds the feet")
 	var head: MeshInstance3D = v.model.skeleton.get_node(^"Head")
 	assert_not_null(head.material_overlay, "a knocked-out fighter dims")
 
 
-## A knockdown (task 16) lets go of the pose and plays the fallback's
-## stand-in until task 28's clips: the fall clip over the fall, then the
-## rising clip, held at its start on the ground and played over the stand-up.
-func test_a_knockdown_falls_and_rises_with_the_stand_in_clips() -> void:
+## A knockdown plays the director's Knockdown01 phases (task 28; the CC0
+## stand-ins without the packs), the legs going with the fall.
+func test_a_knockdown_falls_lies_and_rises_with_its_clips() -> void:
 	var W: World = _world()
 	var b: Fighter = W.fighters[1]
 	var v: FighterView = _view(&"rogue", Moves.KATANA)
-	var ap: AnimationPlayer = v.model.animation_player
+	var packs: bool = v.director.libraries
 	b.enter_knockdown()
 	_step(W, 11)
 	_update(v, b, 0.5)
-	assert_eq(ap.current_animation, "ual/" + String(FighterView.KNOCKDOWN_FALL_CLIP))
-	var fall_len: float = ap.get_animation(ap.current_animation).length
-	assert_almost_eq(ap.current_animation_position, fall_len * 10.5 / SimConst.KNOCKDOWN_FALL_FRAMES, 1e-4, "fitted to the fall")
-	assert_false(v.model.rig.drives("Right"), "the arms go with the fall")
+	assert_eq([v.shot.drive, v.shot.phase, v.shot.clip.name], [ClipDirector.STATE, &"fall", "HumanF/Knockdown01_Fall" if packs else "ual/Hit_Knockback"])
+	assert_eq(v.model.rig.leg_weight, 0.0, "the legs go with the fall")
 	_step(W, 20)
 	_update(v, b, 0.5)
-	assert_eq(ap.current_animation, "ual/" + String(FighterView.KNOCKDOWN_RISE_CLIP))
-	assert_almost_eq(ap.current_animation_position, 0.0, 1e-4, "lying in the rise's first pose")
+	assert_eq([v.shot.phase, v.shot.clip.name], [&"ground", "HumanF/Knockdown01_Ground" if packs else "ual/LayToIdle"])
 	var rise_from: int = SimConst.KNOCKDOWN_FALL_FRAMES + SimConst.KNOCKDOWN_GROUND_FRAMES
 	_step(W, rise_from + 10 - b.sf)
 	_update(v, b, 1.0)
-	var rise_len: float = ap.get_animation(ap.current_animation).length
-	assert_almost_eq(ap.current_animation_position, rise_len * 10.0 / SimConst.KNOCKDOWN_STANDUP_FRAMES, 1e-4, "fitted to the stand-up")
+	assert_eq([v.shot.phase, v.shot.clip.name], [&"standUp", "HumanF/Knockdown01_StandUp" if packs else "ual/LayToIdle"])
 	var head: MeshInstance3D = v.model.skeleton.get_node(^"Head")
 	assert_null(head.material_overlay, "a knocked-down fighter doesn't dim")
 

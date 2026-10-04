@@ -384,3 +384,25 @@ func test_the_computer_waits_out_a_knockdown_until_the_guard_window() -> void:
 	var presses: Array[int] = _brain_presses(true, TOTAL + 10)
 	for sf: int in presses:
 		assert_gt(sf, INVULN_LAST, "no attack pressed before the guard window (state frame %d)" % sf)
+
+
+## The KO keeps its final blow's weight and side (authored-animation task
+## 28, for the death clip): a heavy from the front, a light from behind.
+func test_a_ko_keeps_the_final_blows_weight_and_side() -> void:
+	var W: World = H.make_world()
+	var a: Fighter = W.fighters[0]
+	var b: Fighter = W.fighters[1]
+	b.to_ko(a, true)
+	assert_eq([b.ko_heavy, b.ko_from_behind], [true, false], "a heavy from the front")
+	b.yaw = wrapf(b.yaw + PI, -PI, PI)
+	b.to_ko(a, false)
+	assert_eq([b.ko_heavy, b.ko_from_behind], [false, true], "a light from behind")
+	b.to_ko()
+	assert_eq([b.ko_heavy, b.ko_from_behind], [false, false], "no blow (the round's end)")
+	# a blow that knocks out records it
+	var W2: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.2)
+	W2.fighters[1].hp = 1.0
+	var rec: H.Rec = H.Rec.new()
+	H.run(W2, 40, H.tap_at(0, Btn.LIGHT), Callable(), rec)
+	assert_eq(W2.fighters[1].state, &"ko", "Right Cut knocks out")
+	assert_eq([W2.fighters[1].ko_heavy, W2.fighters[1].ko_from_behind], [false, false], "a light, from the front")

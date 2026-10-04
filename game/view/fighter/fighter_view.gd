@@ -34,10 +34,11 @@ extends Node3D
 ##   clip, unless it runs with its guard down: the feet planted on leg IK and
 ##   stepping in the guard shuffle (GuardShuffle) as it walks, the pelvis
 ##   lowered, swaying and bobbing, the weapon riding the pelvis;
-## - a knocked-out fighter lets go of the pose and falls with DEATH_CLIP,
-##   timed on the rules' frames from the KO; a knocked-down one (task 16)
-##   falls with KNOCKDOWN_FALL_CLIP and rises with KNOCKDOWN_RISE_CLIP, fitted
-##   to the knockdown's phases;
+## - a knocked-down or knocked-out fighter plays the director's clips
+##   (task 28: Knockdown01's phases, the KO's death), the legs off IK and
+##   unlocked so they go with the fall; only with no clip in the tree for it
+##   does it fall the old way, with DEATH_CLIP from the KO, or with
+##   KNOCKDOWN_FALL_CLIP and KNOCKDOWN_RISE_CLIP fitted to the phases;
 ## - a disarmed fighter holds nothing, its arms on the clip.
 ##
 ## The clip director (ClipDirector, authored-animation task 8) picks the
@@ -199,24 +200,29 @@ func update_from(f: Fighter, pos: Vector3, yaw: float, alpha: float, _delta: flo
 	last_pose = p
 	_hold(StickPose.weapon_key(f))
 	var frame: int = f.world.frame if f.world != null else _flash_frame
-	if f.state == &"ko" or f.state == &"knockdown":
+	var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
+	if f.world != _shot_world:
 		shot = null
+		foot_lock.clear()
+		_shot_world = f.world
+	shot = ClipDirector.step(shot, f, director)
+	var down: bool = f.state == &"ko" or f.state == &"knockdown"
+	if down and shot.drive != ClipDirector.STATE:
+		# no clip in the tree for it (task 28's come through the director):
+		# the stand-in fall
 		model.rig.foot_lock = null
 		foot_lock.clear()
-	if f.state == &"ko":
-		_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
-	elif f.state == &"knockdown":
-		_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
+		if f.state == &"ko":
+			_fall(maxf(0.0, float(f.sf) - 1.0 + alpha))
+		else:
+			_knocked_down(maxf(0.0, float(f.sf) - 1.0 + alpha))
 	else:
-		var seconds: float = (float(frame) + alpha) / float(SimConst.FPS)
-		if f.world != _shot_world:
-			shot = null
-			foot_lock.clear()
-			_shot_world = f.world
-		shot = ClipDirector.step(shot, f, director)
 		_show_authored(f, alpha)
 		locomotion.update(f, GuardStance.CLIP if _in_guard() else StringName(shot.idle), seconds, alpha, _in_guard())
 		_pose(f, p, seconds, alpha)
+		if down:
+			# the legs go with the fall: no footfalls carry over
+			locomotion.footfalls.clear()
 	# the floor marks stay on the floor while the fighter jumps
 	_floor.position = Vector3(0.0, -pos.y + 0.006, 0.0)
 	# Shadow Step's blink hides the fighter and its floor marks (task 22)
@@ -375,7 +381,9 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	var lean: float = 0.0 if swung else p.lean * own
 	var crouch: float = 0.0 if swung else p.crouch * own
 	var spin: float = 0.0 if swung else p.spin
-	rig.leg_weight = 1.0
+	# down (task 28), the legs go with the clip's fall, off IK
+	var down: bool = f.state == &"ko" or f.state == &"knockdown"
+	rig.leg_weight = 0.0 if down else 1.0
 	rig.clear_pole_tweaks()
 	rig.body.clear()
 	rig.body.spine_pitch = lean
@@ -403,7 +411,7 @@ func _pose(f: Fighter, p: StickPose.Pose, seconds: float, alpha: float) -> void:
 	rig.foot_lock = foot_lock
 	rig.rules_frame = f.world.frame if f.world != null else 0
 	# (not once the legs start passing to a stance: they let go over its ramp)
-	foot_lock.enabled = (whole_body > 0.0 and _legs_free(f) <= 0.0) or (stance <= 0.0 and locomotion.speed < 0.05)
+	foot_lock.enabled = not down and ((whole_body > 0.0 and _legs_free(f) <= 0.0) or (stance <= 0.0 and locomotion.speed < 0.05))
 	var playing: Swing = _playing_swing(f) if driving else null
 	if playing != null:
 		# the reach correction carries the body above the hips, and the arms

@@ -51,10 +51,16 @@ extends RefCounted
 ## - Shadow Step (task 22): Roll01 sped up as any baked move plays, the body
 ##   hidden through the blink, the active frames that carry it round the
 ##   opponent (blinks());
+## - the reactions (task 26; reaction_of(), reaction_clip()): hitstun's
+##   recoil (HIT_CLIPS, light or heavy by the hitstun's length), a held
+##   block's guard (the weapon class's Parry Loop, looped) and blockstun's
+##   Parry Hit on the upper body over the legs' blend, and the long stuns'
+##   Stun01 (STUN_STATES), each timed to its state (fitted_time()); without
+##   the packs their CC0 fallbacks;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
-##   of the dodge).
+##   of the dodge), 3 into a raised guard.
 
 ## The crossfades' lengths, in rules frames.
 ## The Daggers turn back into the reverse grip over an attack's last this
@@ -62,6 +68,7 @@ extends RefCounted
 const GRIP_BACK: int = 6
 const FADES: Dictionary[StringName, int] = {
 	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8, &"state": 2,
+	&"guard": 3,
 }
 ## The free state's idle per weapon (a WeaponDef id; bare hands and a
 ## disarmed fighter are fists): clip-manifest ids.
@@ -86,6 +93,31 @@ const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.ST
 ## A stun's own clip by what caused it (Fighter.stun_cause): the stomped
 ## thruster's pin and stagger.
 const STUN_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.PINNED}
+## Hitstun's recoil (task 26), light and heavy: CombatDamage01 snaps the head
+## back, CombatDamage02 reels back on bent knees. Both recoil straight back
+## (neither is a side-on reaction), so a hitstun longer than HEAVY_HITSTUN
+## frames (a heavy's 26, an ultimate's 40) plays the heavy one, a light's 14
+## the light one. Without the packs: the CC0 Hit_Chest and Hit_Head.
+const HIT_CLIPS: Array[StringName] = [&"CombatDamage01", &"CombatDamage02"]
+const HIT_FALLBACKS: Array[StringName] = [&"Hit_Chest", &"Hit_Head"]
+const HEAVY_HITSTUN: int = 20
+## The guard per weapon class (bare hands' the one-handed): its Parry Loop,
+## held while blocking, and its Parry Hit, played through blockstun; both on
+## the upper body over the legs' blend. Without the packs the CC0 Sword_Block.
+const GUARD_CLIPS: Dictionary[StringName, Array] = {
+	&"katana": [&"Parry1H01_R_Loop", &"Parry1H01_R_Hit"], &"greatsword": [&"Parry2H01_Loop", &"Parry2H01_Hit"],
+	&"daggers": [&"ParryDW01_Loop", &"ParryDW01_Hit"], &"fists": [&"Parry1H01_R_Loop", &"Parry1H01_R_Hit"],
+}
+const GUARD_FALLBACK: StringName = &"Sword_Block"
+## The long stuns (a leap's, a redirect's or a flash's stun, the disarmed
+## daze, a disarm's stagger, the impaled) play Stun01's stagger into a dazed
+## sway; without the packs the CC0 Hit_Knockback. (The stomped thruster plays
+## its keyed pin, STUN_CLIPS.)
+const STUN_STATES: Array[StringName] = [&"stunned", &"stagger", &"disarmStagger", &"impaled"]
+const STUN_CLIP: StringName = &"Stun01"
+const STUN_FALLBACK: StringName = &"Hit_Knockback"
+## The reactions that show on the upper body alone.
+const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun"]
 ## The Greatsword's shoulder carry: the right hand on the grip at the
 ## shoulder, the blade resting back over it (a masked pose of the Crafting
 ## pack; ObjectGripShoulder01_R throws the elbow out to the side).
@@ -183,9 +215,12 @@ class Shot:
 	## What it fades in from: an authored clip held at its last pose, or null
 	## for the legs' blend.
 	var from: Clip = null
-	## Whether `from` is the shoulder carry's pose (its legs are the legs'
-	## blend's).
-	var from_carry: bool = false
+	## Whether `from` showed on the upper body alone (the shoulder carry's
+	## pose, a guard's clip): its legs are the legs' blend's.
+	var from_upper: bool = false
+	## Whether a state's clip shows on the upper body alone (a guard's, task
+	## 26), the legs the legs' blend's.
+	var upper: bool = false
 	## The crossfade's length and how many rules frames in it is.
 	var fade: int = 0
 	var since: int = 0
@@ -196,7 +231,8 @@ class Shot:
 	## The move the attack's clip came from, and the state the fighter was in.
 	var move: StringName = &""
 	var state: StringName = &""
-	## The ultimate's phase it plays, or empty.
+	## The ultimate's phase it plays, or the reaction (reaction_of()), or
+	## empty.
 	var phase: StringName = &""
 	## How far a pair of daggers is turned into the reverse grip (0 forward,
 	## 1 reverse; FighterRig.set_reverse_turn()), and where it stood as the
@@ -219,12 +255,12 @@ class Shot:
 
 	## How much the legs are the legs' blend's under the authored clips,
 	## which then show on the upper body alone (0 to 1): all of them under the
-	## carry and while it fades out to the legs, handed over to an attack
-	## across the lift.
+	## carry or a guard and while either fades out to the legs, handed over to
+	## an attack across the lift.
 	func legs_free() -> float:
-		if drive == CARRY:
+		if drive == CARRY or (drive == STATE and upper):
 			return 1.0
-		if from == null or not from_carry:
+		if from == null or not from_upper:
 			return 0.0
 		return 1.0 if drive == LEGS else 1.0 - blend()
 
@@ -267,6 +303,11 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 				phase = StringName("spin%d" % f.ult.spins)
 	else:
 		playing = state_clip(f, ctx)
+		var reaction: StringName = reaction_of(f) if playing == null else &""
+		if reaction != &"":
+			var held: int = prev.since + 1 if prev != null and prev.drive == STATE and prev.phase == reaction else 0
+			playing = reaction_clip(f, ctx, reaction, held)
+			phase = reaction if playing != null else &""
 		if playing != null:
 			drive = STATE
 		else:
@@ -283,8 +324,9 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		out.fade = 0
 		out.since = 0
 		out.from = null
-		out.from_carry = false
+		out.from_upper = false
 		out.phase = phase
+		out.upper = drive == STATE and UPPER_REACTIONS.has(phase)
 		out.grip_from = 1.0
 		out.grip = _grip(out, f)
 		return out
@@ -292,7 +334,10 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	if changed:
 		# what it fades in from: the authored clip shown last, held where it was
 		out.from = _shown(prev)
-		out.from_carry = out.from != null and out.from.name == carry_name(ctx)
+		if out.from != null and out.from == prev.from:
+			out.from_upper = prev.from_upper
+		else:
+			out.from_upper = out.from != null and (prev.drive == CARRY or (prev.drive == STATE and prev.upper))
 		out.grip_from = prev.grip
 		out.fade = _fade(prev, f, drive)
 		out.since = 0
@@ -305,8 +350,9 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	if out.fade <= 0:
 		out.from = null
 	if out.from == null:
-		out.from_carry = false
+		out.from_upper = false
 	out.drive = drive
+	out.upper = drive == STATE and UPPER_REACTIONS.has(phase)
 	out.clip = playing
 	out.attack = f.atk if drive == ATTACK else null
 	out.move = move
@@ -331,6 +377,68 @@ static func state_clip(f: Fighter, ctx: Context) -> Clip:
 		return null
 	var share: float = clampf(float(f.sf) / float(maxi(1, f.state_dur)), 0.0, 1.0)
 	return Clip.make(anim_name, share * length)
+
+
+## The reaction `f`'s state plays (task 26): &"guard" (a held block, in a
+## guard state), &"blockstun", &"hitstun" or &"stun" (STUN_STATES), or
+## empty for none.
+static func reaction_of(f: Fighter) -> StringName:
+	if f.state == &"hitstun":
+		return &"hitstun"
+	if f.state == &"blockstun":
+		return &"blockstun"
+	if STUN_STATES.has(f.state):
+		return &"stun"
+	if f.blocking and (f.state == &"free" or f.state == &"step" or f.state == &"land"):
+		return &"guard"
+	return &""
+
+
+## The clip of `f`'s reaction (reaction_of()), as a name in the tree and a
+## time, or null when it isn't in the tree: the guard's Parry Loop looped
+## from when the guard went up (`held` rules frames ago) at 1.0; the others
+## timed to their state (fitted_time()). Without the packs, the fallbacks.
+static func reaction_clip(f: Fighter, ctx: Context, reaction: StringName, held: int) -> Clip:
+	var wid: StringName = f.weapon.id if f.armed and f.weapon != null else &"fists"
+	var guard: Array = GUARD_CLIPS.get(wid, GUARD_CLIPS[&"fists"])
+	var id: StringName = &""
+	var fallback: StringName = &""
+	match reaction:
+		&"guard":
+			id = guard[0]
+			fallback = GUARD_FALLBACK
+		&"blockstun":
+			id = guard[1]
+			fallback = GUARD_FALLBACK
+		&"hitstun":
+			var heavy: int = 1 if f.state_dur > HEAVY_HITSTUN else 0
+			id = HIT_CLIPS[heavy]
+			fallback = HIT_FALLBACKS[heavy]
+		&"stun":
+			id = STUN_CLIP
+			fallback = STUN_FALLBACK
+		_:
+			return null
+	var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, fallback]
+	if ctx.libraries:
+		anim_name = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), id)
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	if length <= 0.0:
+		return null
+	if reaction == &"guard":
+		return Clip.make(anim_name, fmod(float(held) / float(SimConst.FPS), length))
+	return Clip.make(anim_name, fitted_time(f.sf, f.state_dur, length))
+
+
+## The time (s) into a clip `length` s long, `frame` rules frames into a
+## state `frames` long: played from its start at the speed (1.0 to 2.0)
+## that ends it with the state, or as near as that range allows; a state
+## longer than the clip at 1.0 holds its last pose, and one shorter than it
+## at 2.0 hands back before its end (the fade out to the legs takes it from
+## where it stands).
+static func fitted_time(frame: int, frames: int, length: float) -> float:
+	var speed: float = clampf(length * float(SimConst.FPS) / float(maxi(1, frames)), ClipTiming.MIN_SPEED, ClipTiming.MAX_SPEED)
+	return minf(float(frame) * speed / float(SimConst.FPS), length)
 
 
 ## Whether `f` is in Shadow Step's blink (task 22): its active frames,
@@ -530,8 +638,11 @@ static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 		return FADES[&"hitstun"]
 	if drive == CARRY:
 		return FADES[&"stance"]
+	if prev.drive == CARRY and f.guard_lift_left > 0:
+		# a guard raised from the shoulder, over the lift off it
+		return SimConst.GS_SHOULDER_LIFT_FRAMES
 	if drive == STATE:
-		return FADES[&"state"]
+		return FADES[&"guard"] if f.blocking and f.state != &"blockstun" else FADES[&"state"]
 	if drive == ATTACK:
 		if prev.drive == ATTACK and f.atk == null and prev.attack == null:
 			# a change of the ultimate's phase

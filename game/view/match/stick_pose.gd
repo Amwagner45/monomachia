@@ -392,9 +392,8 @@ static func compute(f: Fighter, alpha: float, time: float = 0.0) -> Pose:
 			if f.state == &"land":
 				p.crouch = 0.18
 		&"blockstun":
+			# (the guard's Parry Hit clip gives the jolt, task 26)
 			_set_block(p, wid, 1.0)
-			p.lean = -0.12
-			p.crouch = 0.1
 			p.phase = &"block"
 		&"parryAnim":
 			_set_block(p, wid, 1.0)
@@ -404,8 +403,9 @@ static func compute(f: Fighter, alpha: float, time: float = 0.0) -> Pose:
 			p.left.pos.z += push
 			p.lean = 0.1
 			p.phase = &"parry"
-		&"hitstun", &"stunned", &"stagger":
-			_reel(p, 0.35, sf)
+		&"hitstun", &"stunned", &"stagger", &"disarmStagger":
+			# the reaction clips recoil and stagger (task 26): no lean of its own
+			_reel(p, 0.0, sf)
 		&"recoil":
 			# a parried attacker: the weapon thrown back and up
 			_reel(p, 0.25, sf)
@@ -413,8 +413,6 @@ static func compute(f: Fighter, alpha: float, time: float = 0.0) -> Pose:
 			p.left.dir = turn_dir(p.left.dir, Vector3(0.0, 0.7, -0.7), 0.8)
 			p.right.pos.y += 0.35
 			p.phase = &"recoil"
-		&"disarmStagger":
-			_reel(p, 0.45, sf)
 		&"dodge", &"backstep":
 			var back: bool = f.state == &"backstep" or (f.dodge != null and f.dodge.back)
 			p.crouch = 0.25
@@ -436,7 +434,7 @@ static func compute(f: Fighter, alpha: float, time: float = 0.0) -> Pose:
 			if f.ult != null and f.ult.kind == &"tempest" and f.ult.phase == &"spin":
 				p.spin = -TAU * fmod(float(f.ult.pf) / 10.0, 1.0)
 		&"impaled":
-			_reel(p, 0.5, sf)
+			_reel(p, 0.0, sf)
 			p.phase = &"impaled"
 		&"ko":
 			p.down = smooth(sf / 18.0)
@@ -454,10 +452,14 @@ static func _set_block(p: Pose, wid: StringName, t: float) -> void:
 	p.phase = &"block"
 
 
+## The guard dropped, and leaning back `amount` (easing to half of it
+## over 20 frames) with a slight crouch; with no amount (a reaction its clip
+## plays, task 26), the guard dropped alone.
 static func _reel(p: Pose, amount: float, sf: float) -> void:
-	var k: float = 1.0 - 0.5 * smooth(sf / 20.0)
-	p.lean = -amount * k
-	p.crouch = 0.06
+	if amount > 0.0:
+		var k: float = 1.0 - 0.5 * smooth(sf / 20.0)
+		p.lean = -amount * k
+		p.crouch = 0.06
 	# guard dropped: blades sag toward the floor
 	p.right.dir = turn_dir(p.right.dir, Vector3(0.0, -0.4, 0.9), 0.6)
 	p.left.dir = turn_dir(p.left.dir, Vector3(0.0, -0.4, 0.9), 0.6)

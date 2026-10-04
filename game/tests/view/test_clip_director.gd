@@ -429,7 +429,7 @@ func test_an_attack_from_the_shoulder_fades_in_over_the_lift() -> void:
 	assert_eq(shot.drive, ClipDirector.ATTACK)
 	assert_eq(shot.fade, SimConst.GS_SHOULDER_LIFT_FRAMES, "the lift is the crossfade")
 	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
-	assert_true(shot.from_carry)
+	assert_true(shot.from_upper)
 	var first: float = shot.clip.time
 	var legs: Array[float] = [shot.legs_free()]
 	for i: int in SimConst.GS_SHOULDER_LIFT_FRAMES:
@@ -575,7 +575,7 @@ func test_the_stomped_thruster_plays_its_pin_fitted_to_the_stun() -> void:
 	assert_eq(clip.name, pinned, "the stomp's stun plays Mikiri_Pinned")
 	assert_almost_eq(clip.time, 0.5 * ctx.lengths[pinned], 0.0001, "fitted to the stun")
 	f.enter_stun(SimConst.LEAP_STUN)
-	assert_null(ClipDirector.state_clip(f, ctx), "another stun keeps the stand-in")
+	assert_null(ClipDirector.state_clip(f, ctx), "another stun has no keyed clip (it plays Stun01, a reaction)")
 
 
 func test_shadow_step_plays_the_roll_and_blinks_through_its_active_frames() -> void:
@@ -599,3 +599,169 @@ func test_shadow_step_plays_the_roll_and_blinks_through_its_active_frames() -> v
 	assert_eq(blinked.size(), def.active, "hidden through the active frames")
 	assert_eq(blinked[0], def.startup + 1, "from the first")
 	assert_false(ClipDirector.blinks(f), "shown again after it")
+
+
+# ------------------------------------------------------------------ reactions (task 26)
+
+## Source frames of the reaction clips (their real lengths), as seconds.
+const REACTION_FRAMES: Dictionary[StringName, float] = {
+	&"CombatDamage01": 30.0, &"CombatDamage02": 32.0, &"Stun01": 80.0,
+	&"Parry1H01_R_Loop": 40.0, &"Parry1H01_R_Hit": 24.0, &"Parry2H01_Loop": 40.0, &"Parry2H01_Hit": 25.0,
+	&"ParryDW01_Loop": 40.0, &"ParryDW01_Hit": 23.0,
+}
+
+
+## A context with every reaction clip in both sets and the CC0 fallbacks.
+static func _reaction_ctx(libraries: bool = true) -> ClipDirector.Context:
+	var ctx: ClipDirector.Context = _ctx(&"hunter", libraries)
+	for set_name: StringName in ClipLibraries.SETS:
+		for id: StringName in REACTION_FRAMES:
+			ctx.lengths["%s/%s" % [set_name, id]] = REACTION_FRAMES[id] / 30.0
+	for fallback: StringName in [&"Hit_Chest", &"Hit_Head", &"Sword_Block", &"Hit_Knockback"]:
+		ctx.lengths["ual/%s" % fallback] = 1.0
+	return ctx
+
+
+func test_a_reaction_is_timed_to_its_state_at_one_to_two_times() -> void:
+	# a 1 s clip (30 source frames, 60 rules frames at 1.0)
+	assert_almost_eq(ClipDirector.fitted_time(30, 60, 1.0), 0.5, 1e-9, "a 60-frame state: 1.0, ending with it")
+	assert_almost_eq(ClipDirector.fitted_time(20, 40, 1.0), 0.5, 1e-9, "a 40-frame state: 1.5, ending with it")
+	assert_almost_eq(ClipDirector.fitted_time(7, 14, 1.0), 7.0 * 2.0 / 60.0, 1e-9, "a 14-frame state: 2.0 at most, handing back before the end")
+	assert_almost_eq(ClipDirector.fitted_time(90, 120, 1.0), 1.0, 1e-9, "a long state: 1.0, then its last pose held")
+
+
+func test_hitstun_plays_the_light_or_heavy_recoil() -> void:
+	for libraries: bool in [true, false]:
+		var ctx: ClipDirector.Context = _reaction_ctx(libraries)
+		var W: World = SimHelpers.make_world()
+		var f: Fighter = W.fighters[0]
+		var shot: ClipDirector.Shot = _next(W, null, ctx)
+		assert_eq(shot.drive, ClipDirector.LEGS)
+		# a light's 14 frames, a heavy's 26, an ultimate's 40
+		for case: Array in [[14, &"CombatDamage01", &"Hit_Chest"], [26, &"CombatDamage02", &"Hit_Head"], [40, &"CombatDamage02", &"Hit_Head"]]:
+			f.enter_hitstun(case[0])
+			W.frame += 1
+			shot = ClipDirector.step(shot, f, ctx)
+			var want: String = ("HumanM/%s" % case[1]) if libraries else ("ual/%s" % case[2])
+			assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"hitstun", want], "%d frames (packs: %s)" % [case[0], libraries])
+			assert_eq(shot.legs_free(), 0.0, "the whole body")
+			f.sf = case[0] / 2
+			var clip: ClipDirector.Clip = ClipDirector.reaction_clip(f, ctx, &"hitstun", 0)
+			assert_almost_eq(clip.time, ClipDirector.fitted_time(f.sf, case[0], ctx.lengths[want]), 1e-9, "timed to the hitstun")
+
+
+func test_a_hit_cuts_into_its_recoil() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx)
+	for i: int in 3:
+		shot = _next(W, shot, ctx)
+	f.enter_hitstun(14)
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.drive, shot.fade], [ClipDirector.STATE, 0], "hitstun cuts")
+
+
+func test_a_held_block_loops_the_guard_on_the_upper_body() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx)
+	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
+	assert_true(f.blocking)
+	assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"guard", "HumanM/Parry1H01_R_Loop"], "the Katana's guard")
+	assert_eq(shot.fade, ClipDirector.FADES[&"guard"], "raised over 3 frames")
+	assert_true(shot.upper)
+	assert_eq(shot.legs_free(), 1.0, "the legs walk under it")
+	var length: float = ctx.lengths["HumanM/Parry1H01_R_Loop"]
+	var held: int = 0
+	for i: int in 100:
+		shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
+		held += 1
+		assert_almost_eq(shot.clip.time, fmod(float(held) / 60.0, length), 1e-9, "looped at 1.0 (frame %d)" % held)
+	shot = _next(W, shot, ctx)
+	assert_false(f.blocking)
+	assert_eq([shot.drive, shot.fade], [ClipDirector.LEGS, ClipDirector.FADES[&"locomotion"]], "lowered back to the legs")
+	assert_true(shot.from_upper)
+	assert_eq(shot.legs_free(), 1.0, "the legs stay the legs' blend's as it fades")
+
+
+func test_each_weapon_class_guards_with_its_own_clips() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var want: Dictionary[StringName, Array] = {
+		&"katana": ["Parry1H01_R_Loop", "Parry1H01_R_Hit"], &"greatsword": ["Parry2H01_Loop", "Parry2H01_Hit"],
+		&"daggers": ["ParryDW01_Loop", "ParryDW01_Hit"],
+	}
+	for wid: StringName in want:
+		var W: World = SimHelpers.make_world(Moves.WEAPONS[wid])
+		var f: Fighter = W.fighters[0]
+		f.blocking = true
+		assert_eq(ClipDirector.reaction_of(f), &"guard")
+		assert_eq(ClipDirector.reaction_clip(f, ctx, &"guard", 0).name, "HumanM/" + want[wid][0], String(wid))
+		f.set_state(&"blockstun", 10)
+		assert_eq(ClipDirector.reaction_of(f), &"blockstun")
+		assert_eq(ClipDirector.reaction_clip(f, ctx, &"blockstun", 0).name, "HumanM/" + want[wid][1], String(wid))
+	var rogue: ClipDirector.Context = _reaction_ctx()
+	rogue.fighter_id = &"rogue"
+	var W2: World = SimHelpers.make_world()
+	W2.fighters[0].blocking = true
+	assert_eq(ClipDirector.reaction_clip(W2.fighters[0], rogue, &"guard", 0).name, "HumanF/Parry1H01_R_Loop", "the Rogue's own set")
+
+
+func test_blockstun_plays_the_guards_hit_timed_to_it() -> void:
+	for libraries: bool in [true, false]:
+		var ctx: ClipDirector.Context = _reaction_ctx(libraries)
+		var W: World = SimHelpers.make_world()
+		var f: Fighter = W.fighters[0]
+		var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
+		assert_eq(shot.phase, &"guard")
+		f.set_state(&"blockstun", 16)
+		W.frame += 1
+		shot = ClipDirector.step(shot, f, ctx)
+		var want: String = "HumanM/Parry1H01_R_Hit" if libraries else "ual/Sword_Block"
+		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"blockstun", want], "packs: %s" % libraries)
+		assert_eq(shot.fade, ClipDirector.FADES[&"state"], "from the guard over 2 frames")
+		assert_true(shot.upper, "on the upper body")
+		f.sf = 8
+		assert_almost_eq(ClipDirector.reaction_clip(f, ctx, &"blockstun", 0).time, ClipDirector.fitted_time(8, 16, ctx.lengths[want]), 1e-9)
+
+
+func test_the_long_stuns_play_stun01_timed_to_them() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var length: float = ctx.lengths["HumanM/Stun01"]
+	for case: Array in [[&"stunned", SimConst.LEAP_STUN], [&"stunned", SimConst.REDIRECT_STUN], [&"stagger", SimConst.DISARMED_STAGGER],
+			[&"disarmStagger", SimConst.DISARM_STAGGER], [&"impaled", 60]]:
+		f.enter_stun(case[1], case[0])
+		f.sf = case[1] / 2
+		assert_eq(ClipDirector.reaction_of(f), &"stun", String(case[0]))
+		var clip: ClipDirector.Clip = ClipDirector.reaction_clip(f, ctx, &"stun", 0)
+		assert_eq(clip.name, "HumanM/Stun01", "%s plays Stun01" % case[0])
+		assert_almost_eq(clip.time, ClipDirector.fitted_time(f.sf, case[1], length), 1e-9, "timed to the %d-frame stun" % case[1])
+	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+	assert_eq([shot.drive, shot.upper], [ClipDirector.STATE, false], "the whole body")
+	# the stomped thruster keeps its keyed pin
+	var pinned: String = KeyedClips.anim_name(KeyedClips.PINNED)
+	ctx.lengths[pinned] = 70.0 / 60.0
+	f.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.clip.name, pinned, "the stomp's stun: Mikiri_Pinned")
+
+
+func test_a_guard_raised_from_the_shoulder_fades_into_the_guard_over_the_lift() -> void:
+	var ctx: ClipDirector.Context = _gs_ctx()
+	for set_name: StringName in ClipLibraries.SETS:
+		ctx.lengths["%s/Parry2H01_Loop" % set_name] = 40.0 / 30.0
+	var got: Array = _walk_onto_the_shoulder(ctx)
+	var W: World = got[0]
+	var shot: ClipDirector.Shot = got[1]
+	for i: int in 10:
+		shot = _next(W, shot, ctx)
+	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
+	assert_false(W.fighters[0].shouldered, "off the shoulder")
+	assert_eq([shot.drive, shot.phase, shot.fade], [ClipDirector.STATE, &"guard", SimConst.GS_SHOULDER_LIFT_FRAMES], "into the guard over the lift")
+	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
+	assert_eq(shot.legs_free(), 1.0, "the legs the legs' blend's throughout")

@@ -49,7 +49,10 @@ extends Node3D
 ## light string stopped after one, two, three and four lights, each press
 ## made after the move before has passed its startup, so it follows it), with
 ## the opponent out of the way (but for stomp: the opponent thrusts its
-## unblockable and the fighter dodges into it, the stomp counter),
+## unblockable and the fighter dodges into it, the stomp counter; and the
+## reactions, task 26: hit_reactions and block_reactions, the opponent
+## striking the fighter standing or guarding with a light then a heavy, and
+## stun_reaction, the fighter's light into the opponent's Flash),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -255,6 +258,30 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"views": [&"side", &"three_quarter"],
 		"spacing": 2.2,
 		"every": 2,
+	},
+	&"hit_reactions": {
+		"input": [[128, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [44, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [70, 0.0, 0.0, 0]],
+		"notes": "the fighter stands; the opponent hits it with Right Cut after 12 frames (a light's hitstun), then 45 frames later with a heavy (a heavy's)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
+	},
+	&"block_reactions": {
+		"input": [[128, 0.0, 0.0, BLOCK]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [44, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [70, 0.0, 0.0, 0]],
+		"notes": "the fighter holds its guard; the opponent strikes it with Right Cut after 12 frames, then 45 frames later with a heavy (blockstun each time)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
+	},
+	&"stun_reaction": {
+		"input": [[14, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [95, 0.0, 0.0, 0]],
+		"defender": [[20, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | LIGHT], [89, 0.0, 0.0, 0]],
+		"notes": "the fighter cuts Right Cut after 14 frames into the opponent's Flash, which stuns it for 60 frames (Stun01)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
 	},
 }
 ## Cells per row of a drive's strip.

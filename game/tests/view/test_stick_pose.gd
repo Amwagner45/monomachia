@@ -126,7 +126,7 @@ func test_a_hit_fighter_reels_and_a_ko_falls() -> void:
 	b.enter_hitstun(20)
 	var p: StickPose.Pose = StickPose.compute(b, 1.0)
 	assert_eq(p.phase, &"reel")
-	assert_lt(p.lean, -0.1, "leaning back")
+	assert_eq([p.lean, p.crouch], [0.0, 0.0], "no lean of its own: the hitstun clip recoils (task 26)")
 	b.to_ko()
 	for i: int in 30:
 		W.step([SimHelpers.idle(), SimHelpers.idle()])

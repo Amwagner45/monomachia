@@ -386,6 +386,18 @@ func pad_style_for(device: String) -> int:
 	return PadStyle.detect(state.joy_name(pad), state.joy_info(pad))
 
 
+## The first controller's name (the Controls screen), or "".
+func first_pad_name() -> String:
+	var pad: int = first_pad()
+	return state.joy_name(pad) if pad >= 0 else ""
+
+
+## Whether Godot knows the first controller's button layout; true with none.
+func first_pad_known() -> bool:
+	var pad: int = first_pad()
+	return pad < 0 or state.joy_known(pad)
+
+
 ## PadStyle of the first controller (the Controls screen).
 func pad_style() -> int:
 	var pad: int = first_pad()

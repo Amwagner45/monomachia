@@ -58,3 +58,9 @@ func joy_name(_device: int) -> String:
 ## Input.get_joy_info(): raw_name, vendor_id, product_id and so on.
 func joy_info(_device: int) -> Dictionary:
 	return {}
+
+
+## Whether Godot knows the controller's button layout (Input.is_joy_known):
+## an unknown one may need its buttons set by hand on the Controls screen.
+func joy_known(_device: int) -> bool:
+	return true

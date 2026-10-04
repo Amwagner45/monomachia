@@ -2108,12 +2108,23 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: effects hold through hit-stop and pause, run at 0.3× in the KO slow motion, clear at round start and leave no stray nodes; particle counts follow the preset; exchange and parry shots are deterministic.
     - Note from 17.9: on the target laptop at 1080p, High takes 14.6 ms a frame from the gameplay camera (15.3 ms at the 95th percentile), which leaves about 2 ms, and 15.2 ms from the Watch camera (16.4 ms at the 95th percentile), which leaves about 1.5 ms on average and almost nothing in the slow frames. Since 17.10 (rules at 15 m, fights reaching the props' side of the courtyard) the gameplay camera takes 15.0 ms (16.3 ms at the 95th percentile): about 1.7 ms left, and 0.4 ms in the slow frames. `tools/shot_scenes/arena_bench.tscn` times a real fight on the shrine, hits included, so run it as effects land; `high:hide=<path>` entries time a part on its own.
     - Blocked by: 14.2, 16.5 · Stories: 19, 48, 49
+    - Decided with the owner (Oct 3, 2026): a contact flash is a soft glow sprite (a camera-facing quad with a round falloff that grows and fades, like the demo's glow), pooled, in place of today's additive sphere. Combat particle counts scale by max(preset ratio, 0.5), as the look decisions say.
   - [ ] **18.2 Trail rules.** `TrailState` per fighter and hand: on in the active frames plus about two frames of fade, off while charging or for Flash, red for unblockables, gold for ultimates, white otherwise, and both hands for the Daggers.
     - Check: tests drive a world through a Katana light, a Greatsword unblockable, a charged heavy and an ultimate.
     - Blocked by: 18.1 · Stories: 22, 48
+    - Decided with the owner (Oct 3, 2026):
+      - only the hands the move strikes with trail, by its `hand` (R, L or both): Quick Slice the right dagger, Flick the left, Twin Rip both (the demo trailed both daggers on every move);
+      - only Flash turns the trail off among the zero-damage moves: Shadow Step trails in its active frames;
+      - bare hands never trail, neither the fists weapon nor a disarmed fighter (Breaker Palm and the punches get their effects in 18.8 and 18.9);
+      - the ultimates' phases trail as the demo's did: the Moonsplitter's release for its first 6 frames, the Impaler's dash, the Tempest's spin and the second half of its finisher.
   - [ ] **18.3 Brush-stroke trails in white, red and gold.** A tapered, ink-edged ribbon over the blade's last half metre, taken from the fighter view's blade segments and sampled on the effect clock.
     - Check: the ribbon exists only while the trail is on, stays clear of the attacker's body and freezes in hit-stop; shots of a Katana light, a Katana unblockable and a Moonsplitter reviewed.
     - Blocked by: 18.2 · Stories: 16, 22, 48
+    - Decided with the owner (Oct 3, 2026):
+      - the ribbon covers each weapon's `WeaponLook.trail_width` from the tip (Katana 0.55 m, Greatsword 0.9 m, Daggers 0.2 m), not a fixed half metre;
+      - it is alpha-blended: a bright core in white, red or gold darkening to a thin ink edge on the tip side, tapering and breaking up like a dry brush toward the tail;
+      - a sample lasts 8 world frames on the effect clock (the demo's 0.14 s), so the ribbon freezes in hit-stop and stretches in slow motion;
+      - the blades come from the held weapon models' BladeBase and BladeTip markers in the view, so trails follow whatever poses the weapons (the stand-in poses today, swings or authored clips later).
   - [ ] **18.4 Sparks and ink splashes.** Hits give warm sparks and a dark-red ink splash (dust for fists, a ground ring for colossal hits, purple for backstabs); blocks give sparks and a flash; weapon bounces give sparks. Everything sits at the event's contact point.
     - Check: the table tests (counts by weight); splashes fall and settle; shots of light, heavy, blocked and colossal hits reviewed.
     - Blocked by: 18.1 · Stories: 19, 48

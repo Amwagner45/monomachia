@@ -969,3 +969,203 @@ func test_the_ko_picks_its_death_by_the_final_blows_side_and_weight() -> void:
 	var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
 	assert_eq([shot.drive, shot.phase], [ClipDirector.STATE, &"ko"])
 	assert_eq(ClipDirector.down_clip(f, _down_ctx(false)).name, "ual/Death01", "without the packs")
+
+
+# ------------------------------------------------------------------ the roll and the other states (task 30)
+
+## A context with the movement states' clips (their source lengths) and
+## their fallbacks.
+static func _move_ctx(libraries: bool = true) -> ClipDirector.Context:
+	var ctx: ClipDirector.Context = _ctx(&"hunter", libraries)
+	var frames: Dictionary[StringName, float] = {
+		&"Roll01": 39.0, &"Dodge01": 32.0, &"Jump01_Begin": 20.0, &"Jump01": 46.0, &"Jump01_Land": 20.0,
+		&"Fall01": 30.0, &"Loot01_Begin": 24.0, &"Loot01_Stop": 22.0,
+	}
+	for set_name: StringName in ClipLibraries.SETS:
+		for id: StringName in frames:
+			ctx.lengths["%s/%s" % [set_name, id]] = frames[id] / 30.0
+	for fallback: StringName in [&"Roll", &"Jump_Start", &"Jump", &"Jump_Land", &"NinjaJump_Start", &"PickUp_Table"]:
+		ctx.lengths["ual/%s" % fallback] = 1.2
+	return ctx
+
+
+func test_a_roll_tumbles_over_its_travel_and_gets_up_over_its_recovery() -> void:
+	var ctx: ClipDirector.Context = _move_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.move(1.0, 0.0, Btn.DODGE), SimHelpers.idle()])
+	assert_eq(f.state, &"dodge", "rolling right")
+	var travel: int = f.dodge.frames
+	var recovery: int = f.dodge.recovery
+	var length: float = ctx.lengths["HumanM/Roll01"] * 30.0
+	while f.state == &"dodge":
+		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"dodge", "HumanM/Roll01"], "frame %d" % f.sf)
+		var want: float = ClipDirector.ROLL_TRAVEL_END * f.sf / travel if f.sf <= travel \
+			else lerpf(ClipDirector.ROLL_TRAVEL_END, length, float(f.sf - travel) / recovery)
+		assert_almost_eq(shot.clip.time * 30.0, want, 1e-6, "frame %d: the tumble with the ground, the getting-up over the recovery" % f.sf)
+		shot = _next(W, shot, ctx)
+	assert_almost_eq(ClipDirector.ROLL_TRAVEL_END * 2.0 / travel, 2.75, 1e-6, "the tumble at 2.75 (past the 1.0-2.0 range)")
+
+
+func test_a_roll_turns_the_body_toward_the_roll_and_back_over_the_recovery() -> void:
+	var ctx: ClipDirector.Context = _move_ctx()
+	# far enough apart that the facing barely follows the opponent
+	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 8.0)
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.move(1.0, 0.0, Btn.DODGE), SimHelpers.idle()])
+	var travel: int = f.dodge.frames
+	var turns: Array[float] = []
+	while f.state == &"dodge":
+		turns.append(shot.turn)
+		var way: float = wrapf(atan2(f.dodge.dir_x, f.dodge.dir_z) - f.yaw, -PI, PI)
+		if f.sf >= ClipDirector.ROLL_TURN_FRAMES and f.sf <= travel:
+			assert_almost_eq(shot.turn, way, 1e-6, "frame %d: turned toward the roll" % f.sf)
+		var before: float = shot.turn
+		shot = _next(W, shot, ctx)
+		assert_eq(shot.turn_before, before, "the frame before, for showing between frames")
+	var full: float = turns[ClipDirector.ROLL_TURN_FRAMES] # (the first shot is the dodge's frame 0)
+	assert_almost_eq(rad_to_deg(full), -90.0, 5.0, "a roll to the right turns the body right as it sets off (%.0f°)" % rad_to_deg(full))
+	assert_lt(turns[travel - 1], full, "and further as the facing follows the opponent past it")
+	assert_eq(shot.turn, 0.0, "facing the opponent again once it is free")
+	assert_almost_eq(turns[-1], 0.0, 0.1, "turned back over the recovery, a frame before it is free")
+	# a roll straight back turns the body round, away from the opponent
+	var W2: World = SimHelpers.make_world()
+	var shot2: ClipDirector.Shot = _next(W2, null, ctx, [SimHelpers.move(0.0, -1.0, Btn.DODGE), SimHelpers.idle()])
+	for i: int in 6:
+		shot2 = _next(W2, shot2, ctx)
+	assert_almost_eq(absf(shot2.turn), PI, 0.15, "rolling back: turned round")
+	assert_eq(ClipDirector.roll_turn(SimHelpers.make_world().fighters[0]), 0.0, "standing: none")
+
+
+func test_a_dodge_attack_comes_up_facing_the_opponent_over_its_first_3_frames() -> void:
+	var k: WeaponDef = Moves.KATANA
+	_saved[&"k_dl"] = k.moves[&"k_dl"].swing
+	k.moves[&"k_dl"].swing = _baked(k.moves[&"k_dl"], [&"Clip_k_l1"])
+	var ctx: ClipDirector.Context = _move_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.move(1.0, 0.0, Btn.DODGE), SimHelpers.idle()])
+	var turned: float = 0.0
+	while f.state == &"dodge" and f.sf < f.dodge.iframes + 2:
+		shot = _next(W, shot, ctx)
+		turned = shot.turn
+	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	var frames: int = 0
+	while f.state != &"attack" and frames < 20:
+		shot = _next(W, shot, ctx)
+		frames += 1
+	assert_eq(f.state, &"attack", "the dodge attack")
+	assert_eq(f.atk.def.id, &"k_dl")
+	assert_eq(shot.drive, ClipDirector.ATTACK)
+	assert_lt(absf(turned), PI, "it rolled turned")
+	assert_ne(shot.turn_from, 0.0, "turning back from where the roll stood")
+	while f.atk.frame < ClipDirector.TURN_BACK_FRAMES:
+		assert_lte(absf(shot.turn), absf(shot.turn_from) + 1e-6)
+		shot = _next(W, shot, ctx)
+	assert_almost_eq(shot.turn, 0.0, 1e-6, "facing the opponent by its third frame")
+
+
+func test_the_backstep_leans_back_on_dodge01_without_turning() -> void:
+	var ctx: ClipDirector.Context = _move_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.DODGE), SimHelpers.idle()])
+	assert_eq(f.state, &"backstep")
+	var travel: int = f.dodge.frames
+	while f.state == &"backstep":
+		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"backstep", "HumanM/Dodge01"])
+		var want: float = ClipDirector.BACKSTEP_LEAN_END * minf(1.0, float(f.sf) / travel) + maxf(0.0, f.sf - travel) * 2.0 * 30.0 / 60.0
+		assert_almost_eq(shot.clip.time * 30.0, want, 1e-6, "frame %d: the lean back over the travel, on at 2.0 after" % f.sf)
+		assert_eq(shot.turn, 0.0, "facing the opponent")
+		shot = _next(W, shot, ctx)
+
+
+func test_a_jump_takes_off_flies_and_lands() -> void:
+	var ctx: ClipDirector.Context = _move_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.JUMP), SimHelpers.idle()])
+	assert_eq(f.state, &"jump")
+	var phases: Array[StringName] = []
+	while f.state == &"jump":
+		if phases.is_empty() or phases[-1] != shot.phase:
+			phases.append(shot.phase)
+		if shot.phase == &"jump_begin":
+			assert_eq(shot.clip.name, "HumanM/Jump01_Begin")
+			assert_almost_eq(shot.clip.time * 30.0, ClipDirector.JUMP_BEGIN_FROM + f.sf, 1e-6, "from its push-off at 2.0")
+		else:
+			assert_eq(shot.clip.name, "HumanM/Jump01")
+			assert_between(shot.clip.time * 30.0, ClipDirector.JUMP_AIR_FROM, ClipDirector.JUMP_AIR_TO, "in the air")
+		shot = _next(W, shot, ctx)
+	assert_eq(phases, [&"jump_begin", &"jump_air"] as Array[StringName], "the take-off, then in the air")
+	assert_eq(f.state, &"land")
+	assert_eq([shot.phase, shot.clip.name], [&"land", "HumanM/Jump01_Land"])
+	assert_almost_eq(shot.clip.time * 30.0, ClipDirector.JUMP_LAND_FROM + 2.0 * f.sf * 30.0 / 60.0, 1e-6, "from its touch-down at 2.0")
+	assert_eq(shot.fade, StateClips.shared().fades[&"state"], "faded in from the air")
+	while f.state == &"land":
+		shot = _next(W, shot, ctx)
+	assert_eq(shot.drive, ClipDirector.LEGS, "then the legs")
+
+
+func test_the_leap_springs_then_falls_and_the_pick_up_reaches_then_rises() -> void:
+	var ctx: ClipDirector.Context = _move_ctx()
+	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 2.0)
+	var f: Fighter = W.fighters[0]
+	f.begin_leap(W.fighters[1])
+	for sf: int in [1, 9, 10, 25]:
+		f.sf = sf
+		var got: Array = ClipDirector.move_clip(f, ctx)
+		var want: Array = ["HumanM/Jump01_Begin", &"leap_spring"] if sf < ClipDirector.LEAP_SPRING else ["HumanM/Fall01", &"leap_fall"]
+		assert_eq([(got[0] as ClipDirector.Clip).name, got[1]], want, "leap frame %d" % sf)
+	f.set_state(&"pickup", SimConst.PICKUP_FRAMES)
+	for sf: int in range(1, SimConst.PICKUP_FRAMES + 1):
+		f.sf = sf
+		var got: Array = ClipDirector.move_clip(f, ctx)
+		var clip: ClipDirector.Clip = got[0]
+		if sf <= SimConst.PICKUP_ATTACH_FRAME:
+			assert_eq([clip.name, got[1]], ["HumanM/Loot01_Begin", &"pickup"], "pick-up frame %d" % sf)
+			assert_almost_eq(clip.time * 30.0, ClipDirector.PICKUP_FROM + sf, 1e-6, "reaching down at 2.0")
+		else:
+			assert_eq([clip.name, got[1]], ["HumanM/Loot01_Stop", &"pickup_rise"], "pick-up frame %d" % sf)
+	assert_almost_eq(ClipDirector.PICKUP_FROM + SimConst.PICKUP_ATTACH_FRAME, 18.0, 1e-6, "at the ground (Loot01_Begin's frame 18) as the weapon comes to the hand")
+
+
+func test_without_the_packs_the_states_play_their_fallbacks() -> void:
+	var ctx: ClipDirector.Context = _move_ctx(false)
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var cases: Array = [
+		[&"dodge", "ual/Roll"], [&"backstep", "ual/Roll"], [&"land", "ual/Jump_Land"], [&"leap", "ual/NinjaJump_Start"],
+		[&"pickup", "ual/PickUp_Table"],
+	]
+	for c: Array in cases:
+		f.set_state(c[0], 20)
+		f.dodge = DodgeState.make(1.0, 0.0, 2.8, 16, 12, 9, c[0] == &"backstep", false)
+		f.sf = 5
+		var got: Array = ClipDirector.move_clip(f, ctx)
+		assert_eq((got[0] as ClipDirector.Clip).name, c[1], String(c[0]))
+	f.set_state(&"jump")
+	f.sf = 2
+	assert_eq((ClipDirector.move_clip(f, ctx)[0] as ClipDirector.Clip).name, "ual/Jump_Start")
+	f.sf = 12
+	assert_eq((ClipDirector.move_clip(f, ctx)[0] as ClipDirector.Clip).name, "ual/Jump")
+	f.set_state(&"free")
+	assert_eq(ClipDirector.move_clip(f, ctx), [], "the free state is the legs'")
+
+
+func test_the_recall_plays_the_keyed_power_up_fitted_to_it() -> void:
+	var lib: AnimationLibrary = KeyedClips.load_library()
+	var ctx: ClipDirector.Context = _ctx()
+	var name: String = KeyedClips.anim_name(KeyedClips.POWER_UP)
+	ctx.lengths[name] = lib.get_animation(KeyedClips.POWER_UP).length
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	f.armed = false
+	f.set_state(&"recall", SimConst.RECALL_FRAMES)
+	for sf: int in [1, SimConst.RECALL_BURST_FRAME, SimConst.RECALL_FRAMES]:
+		f.sf = sf
+		W.frame += 1
+		var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+		assert_eq([shot.drive, shot.clip.name], [ClipDirector.STATE, name], "frame %d: the power-up, whole body" % sf)
+		assert_almost_eq(shot.clip.time, float(sf) / 60.0, 1e-6, "frame %d: on the recall's frames" % sf)
+	assert_eq(ClipDirector.step(null, f, _ctx()).drive, ClipDirector.LEGS, "without the clip in the tree: none")

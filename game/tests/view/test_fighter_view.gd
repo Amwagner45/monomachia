@@ -275,3 +275,51 @@ func test_the_floor_ring_wears_the_side_colour() -> void:
 	var ring: MeshInstance3D = v.get_node(^"FloorMarks/SideRing")
 	assert_eq((ring.material_override as StandardMaterial3D).albedo_color, LookPalette.side_color(1).lightened(0.2))
 	assert_eq(v.side_color(), LookPalette.SIDE_COLORS[1])
+
+
+## A roll turns the whole model toward the way it rolls, shown between rules
+## frames by alpha, and back once it is free (authored-animation task 30).
+func test_a_roll_turns_the_model_toward_the_roll() -> void:
+	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 8.0)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"hunter", Moves.KATANA)
+	W.step([SimHelpers.move(-1.0, 0.0, Btn.DODGE), SimHelpers.idle()])
+	_update(v, f)
+	for i: int in 6:
+		_step(W)
+		_update(v, f)
+	assert_eq(f.state, &"dodge")
+	assert_almost_eq(v.model.rotation.y, v.shot.turn, 1e-6, "turned by the shot")
+	assert_gt(v.model.rotation.y, deg_to_rad(60.0), "toward the left, the way it rolls")
+	_update(v, f, 0.5)
+	assert_almost_eq(v.model.rotation.y, lerp_angle(v.shot.turn_before, v.shot.turn, 0.5), 1e-6, "between frames by alpha")
+	while f.state != &"free":
+		_step(W)
+		_update(v, f)
+	_step(W)
+	_update(v, f)
+	assert_almost_eq(v.model.rotation.y, 0.0, 1e-6, "facing the opponent again")
+
+
+## A disarmed fighter picking its weapon up reaches down on Loot01 (task 30)
+## with empty hands; the weapon comes back on the pick-up's attach frame, in
+## the clip's hand.
+func test_a_pick_up_brings_the_weapon_back_into_the_clips_hand() -> void:
+	var W: World = _world(Moves.KATANA)
+	var f: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"rogue", Moves.KATANA)
+	f.armed = false
+	f.set_state(&"pickup", SimConst.PICKUP_FRAMES)
+	var packs: bool = ClipLibraries.available()
+	for sf: int in range(1, SimConst.PICKUP_FRAMES + 1):
+		f.sf = sf
+		if sf == SimConst.PICKUP_ATTACH_FRAME:
+			f.armed = true
+		W.frame += 1
+		_update(v, f)
+		assert_eq(v.shot.drive, ClipDirector.STATE, "frame %d: the pick-up's clip" % sf)
+		assert_eq(v.model.weapons.size(), 0 if sf < SimConst.PICKUP_ATTACH_FRAME else 1, "frame %d" % sf)
+		if packs:
+			assert_eq(v.shot.clip.name.get_file(), "Loot01_Begin" if sf <= SimConst.PICKUP_ATTACH_FRAME else "Loot01_Stop")
+		if sf >= SimConst.PICKUP_ATTACH_FRAME:
+			assert_true(v.model.rig.is_fixed(), "frame %d: riding the clip's hand" % sf)

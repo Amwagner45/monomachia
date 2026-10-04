@@ -93,7 +93,7 @@ flowchart TD
 | `game/input` | Reading keyboards, mice and controllers into a `RawInput` per player; bindings, profiles, rebinding, button labels. |
 | `game/core` | `GameServices` (the only autoload), `GameSettings`, `MatchConfig`, `MatchSide`, `MatchResults`. |
 | `game/view/match` | `MatchHost` (the fixed-step loop), `MatchView`, `CameraRig`, `MatchAudio`, `StickPose`, the arena registry. |
-| `game/view/fighter` | Animating a rigged fighter from the rules' state: locomotion, lean, guard stance and shuffle, IK rig. |
+| `game/view/fighter` | Animating a rigged fighter from the rules' state: the clip director, locomotion, foot locking, IK rig. |
 | `game/view/look` | Toon materials, outline, ink-wash post pass, colour grade, graphics presets. **Superseded by ADR 0001 (Oct 4):** This is the code today; as the slice lands, a realistic look (physically based materials under a painterly colour grade) replaces the toon materials, outlines and ink-wash pass, and four presets with Ultra as the reference preset replace today's three. |
 | `game/view/mesh_kit*.gd` | Procedural mesh building for props and stand-ins. |
 | `game/fighters`, `game/weapons`, `game/arenas` | Content: fighter models and palettes, weapon models, the Moonlit Shrine. |
@@ -242,7 +242,7 @@ sequenceDiagram
 
 **Interpolation.** The host keeps each fighter's position and yaw from before and after the last step. `display_position(i)` and `display_yaw(i)` blend them by `alpha()`, the fraction of a step left in the accumulator. During hit-stop `alpha()` holds at 1 so poses don't jitter, and a `roundStart` event places fighters instead of blending them.
 
-**Pause.** The pause binding, Esc, Start or the window losing focus calls `host.pause()`; `pause_changed` opens the pause menu and holds the match's sounds. A rules button pressed in a menu is ignored by the match until it is let go, so pressing A to resume doesn't also jump.
+**Pause.** The pause binding, Esc, Start or the window losing focus calls `host.pause()`; `pause_changed` opens the pause menu (`PauseScreen`) and holds the match's sounds. The same press resumes, unless a screen is open over the pause menu (Move list, Controls, Settings): `main.gd` then turns `host.pause_press_resumes` off, so Esc is only that screen's Back. A rules button pressed in a menu is ignored by the match until it is let go, so pressing A to resume doesn't also jump, and a profile picked in the pause's Controls is taken up on resume.
 
 ## 6. The rules (`game/sim`)
 
@@ -277,6 +277,7 @@ Every file in `game/sim` says in its header which `src/sim/*.ts` file it was por
 | `moves/katana.gd`, `greatsword.gd`, `daggers.gd`, `fists.gd` | `KatanaMoves` and so on | Each weapon's `MOVES` table and `build()`. Fists is the bare-hands moveset. |
 | `ai/ai_brain.gd` | `AIBrain` | The computer opponent. |
 | `ai/training_brain.gd` | `TrainingBrain` | The training dummy's drills. |
+| `training_upkeep.gd` | `TrainingUpkeep` | Training's upkeep, stepped by the host after each rules step: getting up after a K.O., the refill (90 frames unhurt, then 2 HP a frame, the dummy's posture draining as fast), the dummy re-arming after 240 frames disarmed. `weapon_for()` and `swap_dummy_weapon()` give the dummy a weapon that can perform a behaviour. |
 
 ### 6.2 Data model
 
@@ -564,7 +565,9 @@ stateDiagram-v2
     matchEnd --> [*] : MatchHost shows results after 140 frames
     note right of fight
         Training sets endless:
-        a KO never ends the round.
+        a KO never ends the round,
+        and TrainingUpkeep stands
+        the fighter up the same step.
     end note
 ```
 
@@ -668,7 +671,7 @@ flowchart LR
 
 | File | Class | What it does |
 | --- | --- | --- |
-| `match_host.gd` | `MatchHost` | The fixed-step loop (section 5). Signals: `match_started`, `sim_event`, `stepped`, `match_finished`, `pause_changed`, `stopped`. |
+| `match_host.gd` | `MatchHost` | The fixed-step loop (section 5). Signals: `match_started`, `sim_event`, `stepped`, `match_finished`, `pause_changed`, `stopped`, `loadout_changed` (the training dummy swapped weapons; the view and the HUD's plate follow), `training_changed` (the dummy's behaviour or the refill changed). |
 | `match_view.gd` | `MatchView` | Loads the arena, builds the two `FighterView`s, draws dropped weapons and contact flashes, drives the camera. Reacts to events with shake, FOV kick and the KO orbit. |
 | `camera_rig.gd` | `CameraRig` | FOLLOW (over the shoulder), WATCH (side-on) and MENU (orbit) cameras with damping, arena clamp, shake and FOV kick. |
 | `match_audio.gd` | `MatchAudio` | Event sounds, footsteps, arena ambience; the listener follows the camera. |
@@ -695,8 +698,8 @@ flowchart TD
         POS["Place at host.display_position / display_yaw"] --> SP["StickPose.compute(f, alpha):<br/>switch on f.state → hands, blade, lean, crouch, glow"]
         SP --> KO{"f.state == ko?"}
         KO -- yes --> FALL["Play the Death01 clip by frame"]
-        KO -- no --> LU["Locomotion.update():<br/>blend idle/walk/jog/sprint by speed,<br/>Lean, GuardShuffle, footfalls"]
-        LU --> PB["Pose the body: BodyLayer fields,<br/>GuardStance for the Katana"]
+        KO -- no --> LU["Locomotion.update():<br/>blend the idle and the directional walks,<br/>runs and sprints by velocity, footfalls"]
+        LU --> PB["Pose the body: BodyLayer fields,<br/>foot locking under every clip"]
         PB --> PW["Pose weapons in the hands<br/>(kept within arm's reach)"]
         PW --> OV["Hit flash, KO dim, weapon glow"]
     end
@@ -719,11 +722,8 @@ flowchart TD
 | `fighter_view.gd` | `FighterView` | One side's fighter; runs the per-frame pipeline above. |
 | `fighter_rig.gd` | `FighterRig` | Builds the modifier stack; seats hands on weapons. |
 | `body_layer.gd` | `BodyLayer` | Procedural pelvis, spine and head over the clip. |
-| `locomotion.gd` | `Locomotion` | Gait blending on one shared step phase stepped per rules frame; backpedal, turn toward travel. |
-| `lean.gd` | `Lean` | Lean into starts and turns, brace on stops (a damped spring). |
-| `guard_stance.gd` | `GuardStance` | The Katana's grounded guard stance. |
-| `guard_shuffle.gd` | `GuardShuffle` | Guard footwork: lead foot steps, trailing foot closes, planted feet don't slide. |
-| `foot_phase.gd` | `FootPhase` | Measures each clip's stride and phase once. |
+| `locomotion.gd` | `Locomotion` | The packs' directional walk, run and sprint clips blended by the rules' velocity on one shared step phase stepped per rules frame; tap steps, a backwards sprint turned away, the turn on the spot, footfalls at the clips' foot contacts (authored-animation task 29). |
+| `foot_phase.gd` | `FootPhase` | Measures each locomotion clip's way, stride, mid-stances and foot contacts once. |
 | `pose_check.gd` | `PoseCheck` | Pose quality checks for tools and tests (wrist bend, knee over toes, blade clearance). |
 | `rig_callback.gd` | `RigCallback` | Lets the rig insert a function into the modifier stack. |
 
@@ -793,8 +793,8 @@ flowchart LR
     EV["sim_event(e)"] --> MA["MatchAudio"]
     MA --> SB["SoundBank.cues_for(e)<br/>event → cue names,<br/>refined by weapon, heavy, kind"]
     SB --> SP["SoundPlayer.play_cue<br/>pick variation, pitch, bus;<br/>3D voice at the event's position"]
-    ST["stepped"] --> FC["FootstepCadence<br/>one step per stride"] --> SP
-    SH["MatchView.footfall<br/>(guard shuffle)"] --> SP
+    ST["stepped (not drawn)"] --> FC["FootstepCadence<br/>one step per stride"] --> SP
+    SH["MatchView.footfall<br/>(the clips' foot contacts)"] --> SP
     MA --> AMB["FadedLoop: arena ambience"]
 
     MM["main.gd: menu or match"] --> GS["GameServices"]
@@ -833,10 +833,13 @@ stateDiagram-v2
     MENU --> TITLE : back
     MENU --> PLAYING : Duel (Rogue + Katana vs Hunter + Greatsword)
     MENU --> PLAYING : Watch (Katana vs Daggers)
+    MENU --> PLAYING : Training (through the select)
     MENU --> [*] : Quit
     PLAYING --> PAUSED : pause binding, Esc, Start, focus lost
     PAUSED --> PLAYING : Resume, Back
-    PAUSED --> MENU : Main menu
+    PAUSED --> PAUSED : Move list, Controls, Settings (Back returns)
+    PAUSED --> PLAYING : Restart (next seed)
+    PAUSED --> MENU : Quit to menu
     PLAYING --> RESULTS : match_finished
     RESULTS --> PLAYING : Rematch (next seed)
     RESULTS --> MENU : Main menu
@@ -848,8 +851,10 @@ stateDiagram-v2
 | `scenes/smoke_run.gd` | `SmokeRun` | `--smoke`: plays Watch to the results, exits 0 or 1. |
 | `ui/menus/menu_screen.gd` | `MenuScreen` | A generic menu panel with keyboard, mouse and controller navigation. |
 | `ui/menus/title_screen.gd` | `TitleScreen` | "Press any key". |
+| `ui/menus/pause_screen.gd` | `PauseScreen` | 休止 Paused: Resume, Move list, Controls, Settings, Restart, Quit to menu; in Training, Dummy and Refill health rows above them. |
 | `ui/menus/results_screen.gd` | `ResultsScreen` | Winner, rounds, seven stats, Rematch and Main menu. |
-| `ui/hud/match_hud.gd/.tscn` | `MatchHud` | HP and posture bars, round pips, ultimate badge, announcements timed on rules steps, button hints. Hidden in the attract duel. |
+| `ui/hud/match_hud.gd/.tscn` | `MatchHud` | HP and posture bars, round pips, ultimate badge, announcements timed on rules steps, button hints, and in Training the `TrainingPanel`. Hidden in the attract duel. |
+| `ui/hud/training_panel.gd` | `TrainingPanel` | Training's panel at the bottom left: "Dummy · <weapon>", the nine behaviour chips (keys 1–9) and refill (key 0), clicks too; a digit bound in the player's profile is left to its action. Follows `MatchHost.training_changed` and `loadout_changed`; hidden while paused. |
 | `ui/hud/hud_bar.gd` | `HudBar` | A meter with a lagging band. |
 
 ## 14. The web demo (`src/`)
@@ -909,7 +914,7 @@ flowchart LR
 | --- | --- | --- |
 | `game/tests/` (root) | 2 | Godot version; every scene loads |
 | `game/tests/sim` | 16 | Ports of the web rule tests, fixture parity (`rng`, `moves`, `math`, port regressions), fluid combat, each weapon's strings, string continuity, training brain, soak. **Superseded by ADR 0001 (Oct 4):** Tests that pin frame data to the web demo, such as the `moves` fixture parity, will be replaced as the slice lands, and a test will keep every attack inside its timing band. |
-| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, guard stance and shuffle, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes. **Superseded by ADR 0001 (Oct 4):** The toon and ink look tests will be replaced as the slice lands. |
+| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes. **Superseded by ADR 0001 (Oct 4):** The toon and ink look tests will be replaced as the slice lands. |
 | `game/tests/audio` | 10 | Bus layout and ducking, FadedLoop, footsteps, music director and player, sound bank, sound player, headless playback of a match |
 | `game/tests/input` | 7 | Device state, InputFeed, labels, profiles, rebinding, sampling, seats and pause |
 | `game/tests/content` | 5 | Animation library, asset size budgets, fighter scenes, palettes, weapon models. **Superseded by ADR 0001 (Oct 4):** Size budgets per place (public repository, asset repository, shipped game) replace the asset budget test's 110 MB art cap, and the test will be replaced as the slice lands. |

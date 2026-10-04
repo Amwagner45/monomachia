@@ -192,6 +192,11 @@
       "library": "InMotionAudio - Instrument Case",
       "entry": "InMotionAudio - Instrument Case/OBJLug_CaseDown_Concrete12_InMotionAudio_InstrumentCase.wav"
     },
+    "ima_cloth_24": {
+      "part": 3,
+      "library": "InMotionAudio - Foley T-Shirt",
+      "entry": "InMotionAudio - Foley T-Shirt/FOLYClth_ClothMovement24_InMotionAudio_FoleyT-Shirt.wav"
+    },
     "ima_cloth": {
       "part": 3,
       "library": "InMotionAudio - Foley T-Shirt",
@@ -824,6 +829,33 @@
       "use": "Dodge cloth flap",
       "layers": [{ "source": "ima_cloth", "peakIn": [0.9, 1.15], "from": -0.02, "length": 0.3, "pitch": 1, "fadeIn": 0.01, "fadeOut": 0.2 }],
       "process": { "highpass": 150, "normalize": { "peakDb": -3 } }
+    },
+    {
+      "file": "roll_01.wav",
+      "use": "Roll: a cloth tumble and a thump on the stone as the shoulder takes the ground (authored-animation task 30)",
+      "layers": [
+        { "source": "ima_cloth", "peakIn": [0.9, 1.15], "from": -0.12, "length": 0.45, "fadeIn": 0.03, "fadeOut": 0.2 },
+        { "source": "ima_case_down", "start": 0.02, "length": 0.3, "pitch": -2, "gainDb": -6, "offset": 0.1, "lowpass": 1500, "fadeOut": 0.15 }
+      ],
+      "process": { "highpass": 60 }
+    },
+    {
+      "file": "roll_02.wav",
+      "use": "Roll: cloth tumble and thump",
+      "layers": [
+        { "source": "ima_cloth_24", "peakIn": [0.0, 3.0], "from": -0.12, "length": 0.45, "fadeIn": 0.03, "fadeOut": 0.2 },
+        { "source": "ima_case_down", "start": 0.02, "length": 0.3, "pitch": 0, "gainDb": -7, "offset": 0.12, "lowpass": 1500, "fadeOut": 0.15 }
+      ],
+      "process": { "highpass": 60 }
+    },
+    {
+      "file": "roll_03.wav",
+      "use": "Roll: cloth tumble and thump",
+      "layers": [
+        { "source": "esm_cloth_flip", "peakIn": [0.1, 0.2], "from": -0.1, "length": 0.4, "pitch": -2, "fadeIn": 0.02, "fadeOut": 0.2 },
+        { "source": "ima_case_down", "start": 0.02, "length": 0.3, "pitch": -4, "gainDb": -6, "offset": 0.09, "lowpass": 1500, "fadeOut": 0.15 }
+      ],
+      "process": { "highpass": 60 }
     }
   ]
 }

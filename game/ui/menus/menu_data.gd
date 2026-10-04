@@ -2,8 +2,9 @@ class_name MenuData
 extends RefCounted
 ## What the menus say about each weapon and block ability, beyond the rules'
 ## own names and blurbs: the loadout panel's kanji, class, stat bars and
-## ultimate per weapon, and a description per ability. Port of WEAPON_INFO
-## and ABILITY_INFO in src/ui/data.ts. An ability's name is its move's name in
+## ultimate per weapon, a description per ability, and the training dummy's
+## behaviours as Training's panel and pause rows name them. Port of
+## WEAPON_INFO, ABILITY_INFO and TRAINING_BEHAVIOURS in src/ui/data.ts. An ability's name is its move's name in
 ## the rules (Moves), so the two can't drift apart.
 
 ## The stat bars on a weapon card, in order.
@@ -55,6 +56,29 @@ const ABILITY_DESCRIPTIONS: Dictionary[StringName, String] = {
 	&"d_shadow": "Blink behind them. Your next light attack backstabs.",
 	&"d_needle": "Quick unblockable thrust. Counter: dodge into it.",
 }
+
+
+## Each training dummy behaviour's name, in TrainingBrain.BEHAVIOURS order
+## (the panel's keys 1-9).
+const BEHAVIOUR_NAMES: Dictionary[StringName, String] = {
+	&"idle": "Stand still",
+	&"block": "Block",
+	&"lights": "Light chains",
+	&"heavies": "Heavies",
+	&"thrust": "Thrust",
+	&"sweep": "Sweep",
+	&"slam": "Slam",
+	&"random": "Mixed attacks",
+	&"fight": "Spar",
+}
+
+
+## The behaviours' names in TrainingBrain.BEHAVIOURS order.
+static func behaviour_names() -> Array[String]:
+	var names: Array[String] = []
+	for b: StringName in TrainingBrain.BEHAVIOURS:
+		names.append(BEHAVIOUR_NAMES.get(b, String(b)))
+	return names
 
 
 ## A playable weapon's card, or null (bare hands, an unknown id).

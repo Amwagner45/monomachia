@@ -38,7 +38,7 @@ const OLD: Dictionary = {
 	"FALLBACK_IDLE": {
 		&"katana": &"Sword_Idle", &"daggers": &"Sword_Idle", &"greatsword": &"Sword_Idle", &"fists": &"Idle",
 	},
-	"STATE_CLIPS": {&"stomp": &"Mikiri_Stomp"},
+	"STATE_CLIPS": {&"stomp": &"Mikiri_Stomp", &"recall": &"Power_Up"},
 	"STUN_CLIPS": {&"stomp": &"Mikiri_Pinned"},
 	"HIT_CLIPS": [&"CombatDamage01", &"CombatDamage02"],
 	"HIT_FALLBACKS": [&"Hit_Chest", &"Hit_Head"],

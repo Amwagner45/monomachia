@@ -8,10 +8,11 @@ extends CanvasLayer
 ## over the words and a subline (第一戦 Round 1, 始め Fight, 一本 K.O., 相打ち
 ## Double K.O., 勝 or 敗 for the round's result, 武器喪失 Disarmed), with the
 ## demo's entrance (AnnouncementEntrance). And a hint line (ultimate ready, pick up
-## your weapon), shown only while the round is being fought. Without the
-## Iglesias clip libraries a small note in the corner says the animation
-## packs are missing (authored-animation task 8), and the log says what to
-## fix (ClipLibraries.warn_if_missing()). It hides when the results open.
+## your weapon), shown only while the round is being fought. In Training,
+## the TrainingPanel at the bottom left (23.3). Without the Iglesias clip
+## libraries a small note in the corner says the animation packs are missing
+## (authored-animation task 8), and the log says what to fix
+## (ClipLibraries.warn_if_missing()). It hides when the results open.
 ##
 ## Announcements, their entrance included, are timed on the host's rules
 ## steps, not the wall clock, so they slow down with slow motion and freeze
@@ -74,6 +75,8 @@ var _packs_note: Label
 var _lags: Array[HudLag] = [HudLag.new(), HudLag.new()]
 var _states: Array[HudState] = [HudState.new(), HudState.new()]
 var _blink: float = 0.0
+## Training's behaviour and refill panel (shown only in Training).
+var training_panel: TrainingPanel
 
 
 func _ready() -> void:
@@ -92,11 +95,14 @@ func bind(p_host: MatchHost) -> void:
 		host.sim_event.disconnect(_on_sim_event)
 		host.stepped.disconnect(_on_stepped)
 		host.match_finished.disconnect(_on_match_finished)
+		host.loadout_changed.disconnect(_on_loadout_changed)
 	host = p_host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
 	host.stepped.connect(_on_stepped)
 	host.match_finished.connect(_on_match_finished)
+	host.loadout_changed.connect(_on_loadout_changed)
+	training_panel.bind(host)
 	if host.is_started():
 		_on_match_started(host.config)
 
@@ -170,6 +176,12 @@ func _on_match_started(cfg: MatchConfig) -> void:
 		_plates[i].text = s.display_name() + (" (You)" if i == me else "")
 		_weapons[i].text = Moves.WEAPONS[s.weapon_id].name
 	_refresh_announcement()
+
+
+## A side's weapon changed mid-match (the training dummy's): its plate names
+## the new one.
+func _on_loadout_changed(side: int) -> void:
+	_weapons[side].text = host.fighter(side).weapon.name
 
 
 ## The results take the screen: the HUD clears its centre text and hint and
@@ -354,6 +366,8 @@ func _build() -> void:
 	_root.set_anchors_preset(Control.PRESET_FULL_RECT)
 	_root.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_root)
+	training_panel = TrainingPanel.new()
+	_root.add_child(training_panel)
 
 	for i: int in 2:
 		var right: bool = i == 1

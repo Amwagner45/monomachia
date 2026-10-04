@@ -12,7 +12,7 @@ Players are encouraged to keep up the pressure, because each attack fills the de
 
 Disarmed fighters fight hand to hand, with more agility, extra movement options and longer dodges. They can no longer parry a weapon or block, but they can counter by redirecting attacks with their hands. Bare-hand hits deal extra posture damage and extra knockback. A disarmed fighter can pick their weapon back up, while the other fighter tries to stand in their way to keep the advantage.
 
-Once a player is at 25% HP or less, they gain a single-use-per-round **ultimate ability**. Armed, it is an attack unique to the weapon. Disarmed, it either re-arms the fighter or deals a hard blow to the opponent's posture meter.
+Once a player is at 25% HP or less, they gain a single-use-per-round **ultimate ability**. Armed, it is an attack unique to the weapon. Disarmed, it either re-arms the fighter or deals a hard blow to the opponent's posture meter. Re-arming is a power-up: the fighter roars in a burst of golden aura as the weapon returns to their hands, and the burst blasts a nearby opponent off their feet.
 
 Holding block while not being attacked lowers your posture meter. Holding block while standing still restores posture faster than blocking while moving.
 

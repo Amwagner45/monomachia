@@ -24,7 +24,7 @@
 		"tempest": {"spin": "ual/Sword_Aerial_Combo", "slashes": [2, 17], "flash": 8, "final": "AttackDW02", "final_from": 12, "final_frames": 14, "recover_frames": 24, "fallback": "Sword_Heavy_Combo"}
 	},
 	"keyed": {
-		"state": {"stomp": "Mikiri_Stomp"},
+		"state": {"stomp": "Mikiri_Stomp", "recall": "Power_Up"},
 		"stun": {"stomp": "Mikiri_Pinned"}
 	},
 	"knockdown": {

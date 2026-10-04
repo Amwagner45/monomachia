@@ -34,15 +34,22 @@ extends Node
 ## rule button pressed while the match stands still (or held when it starts),
 ## such as the menu's A, B or Space, is ignored until it is let go, so it
 ## doesn't jump or dodge on resume; a button held through the pause carries on.
+## While pause_press_resumes is off (a screen opened over the pause menu, where
+## Esc is that screen's Back), the presses are still read but don't resume.
 ##
 ## A match ends on the results data, 140 frames into the match-end phase (as
 ## the demo): match_finished carries a MatchResults. The duel behind the menus
 ## (attract) never finishes: it restarts with the next seed (from seed_source)
 ## 240 frames after its match ends.
 ##
-## Training runs the rules' endless match against the dummy. Its upkeep
-## (refill, the dummy re-arming, getting up after a KO) is task 23's: until
-## then a KO in Training leaves the fallen fighter down. Versus samples two
+## Training runs the rules' endless match against the dummy, with its upkeep
+## (TrainingUpkeep: getting up after a K.O., the refill, the dummy re-arming)
+## stepped after each rules step, inside the fixed step. set_refill() turns
+## the refill off and on; every match starts with it on.
+## set_training_behaviour() tells the dummy what to do, swapping its weapon
+## in the rules first when it can't (TrainingUpkeep.weapon_for), and
+## loadout_changed tells the view and the HUD; training_changed tells
+## Training's panel and pause rows of any change to the behaviour or refill. Versus samples two
 ## humans on two different devices.
 
 ## The match was (re)started from a config: views rebuild from it.
@@ -56,6 +63,12 @@ signal match_finished(results: MatchResults)
 signal pause_changed(paused: bool)
 ## stop() threw the match away (quit to menu).
 signal stopped
+## A side's weapon changed mid-match (the training dummy's, for a behaviour):
+## views re-read fighter(side).weapon.
+signal loadout_changed(side: int)
+## Training's dummy behaviour or refill changed (set_training_behaviour,
+## set_refill).
+signal training_changed
 
 const DT: float = SimConst.DT
 const MAX_STEPS_PER_FRAME: int = 6
@@ -90,9 +103,14 @@ var step_count: int = 0
 ## attract restarts never share a seed. Unset: MatchConfig.next_seed() of the
 ## current one.
 var seed_source: Callable = Callable()
+## Whether the pause binding, Esc or Start resumes a paused match. main.gd
+## turns it off while a screen is open over the pause menu.
+var pause_press_resumes: bool = true
 
 ## Per side: an AIBrain, a TrainingBrain, or null for a human.
 var _brains: Array[RefCounted] = [null, null]
+## Training's upkeep, or null outside Training.
+var _upkeep: TrainingUpkeep = null
 ## Per side: the InputDevices player index, or -1 for a computer side.
 var _player_of_side: Array[int] = [-1, -1]
 var _acc: float = 0.0
@@ -135,6 +153,7 @@ func start(cfg: MatchConfig, p_attract: bool = false) -> bool:
 	sim_match = Match.new(world)
 	if cfg.mode == MatchConfig.TRAINING:
 		sim_match.endless = true
+		_upkeep = TrainingUpkeep.new(world, cfg.dummy_side())
 	for i: int in 2:
 		var side: MatchSide = cfg.sides[i]
 		match side.controller:
@@ -227,8 +246,9 @@ func _process(delta: float) -> void:
 		return
 	if input != null:
 		if _paused:
-			# the pause binding, Esc or Start closes the pause, as Back does
-			if input.any_pause_pressed():
+			# the pause binding, Esc or Start closes the pause, as Back does;
+			# the presses are read either way, so their edges stay current
+			if input.any_pause_pressed() and pause_press_resumes:
 				resume()
 			return
 		if is_playing() and input.any_pause_pressed():
@@ -342,6 +362,48 @@ func label(action: String, side: int) -> String:
 	return input.label(action, p)
 
 
+## Whether Training refills health (always true outside Training).
+func refill() -> bool:
+	return _upkeep == null or _upkeep.refill
+
+
+## The training dummy's behaviour (TrainingBrain.BEHAVIOURS), or &"" outside
+## Training.
+func training_behaviour() -> StringName:
+	var b: TrainingBrain = _dummy_brain()
+	return b.behaviour if b != null else &""
+
+
+## Tells the training dummy what to do. When its weapon can't perform the
+## behaviour, it swaps to one that can (back to the select's pick whenever
+## that one can) and loadout_changed fires. Nothing happens outside Training.
+func set_training_behaviour(behaviour: StringName) -> void:
+	var b: TrainingBrain = _dummy_brain()
+	if b == null or not TrainingBrain.BEHAVIOURS.has(behaviour):
+		return
+	var w: WeaponDef = _upkeep.weapon_for(behaviour)
+	var swapped: bool = w != world.fighters[_upkeep.dummy].weapon
+	if swapped:
+		_upkeep.swap_dummy_weapon(w)
+	b.set_behaviour(behaviour)
+	if swapped:
+		loadout_changed.emit(_upkeep.dummy)
+	training_changed.emit()
+
+
+func _dummy_brain() -> TrainingBrain:
+	if _upkeep == null:
+		return null
+	return _brains[_upkeep.dummy] as TrainingBrain
+
+
+## Turns Training's refill off or on (key 0 on the Training panel).
+func set_refill(on: bool) -> void:
+	if _upkeep != null:
+		_upkeep.refill = on
+		training_changed.emit()
+
+
 func results() -> MatchResults:
 	return MatchResults.from_match(sim_match, config, config.first_human_side())
 
@@ -407,8 +469,8 @@ func _dispatch(events: Array[Dictionary]) -> void:
 
 
 func _after_step() -> void:
-	# Training upkeep (refill, the dummy re-arming, endless KO) lands with
-	# task 23; the rules already keep a training match endless.
+	if _upkeep != null:
+		_upkeep.step()
 	if sim_match.phase != &"matchEnd":
 		return
 	if attract:
@@ -447,6 +509,7 @@ func _teardown() -> void:
 		elif b is TrainingBrain:
 			(b as TrainingBrain).dispose()
 		_brains[i] = null
+	_upkeep = null
 	if world != null:
 		world.dispose()
 	_started = false

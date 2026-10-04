@@ -90,9 +90,9 @@ function die(msg) {
 }
 
 // Test and shot runs set this environment variable so the player's saved
-// settings (user://settings.cfg, such as a lower graphics preset) can't change
-// them. GameSettings.DEFAULTS_ENV reads it. (GUT refuses unknown arguments, so
-// it can't be a command-line flag.)
+// settings (user://settings.cfg, such as a lower graphics preset) and controls
+// profiles (user://controls.cfg) can't change them. GameSettings.DEFAULTS_ENV
+// reads it. (GUT refuses unknown arguments, so it can't be a command-line flag.)
 const DEFAULT_SETTINGS_ENV = { MONOMACHIA_DEFAULT_SETTINGS: '1' };
 const ERROR_PATTERNS = [/SCRIPT ERROR/, /Parse Error/, /Failed to load script/, /^ERROR: .*\.gd/m];
 const SHADER_ERROR_PATTERNS = [/SHADER ERROR/];

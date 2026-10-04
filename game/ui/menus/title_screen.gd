@@ -1,10 +1,11 @@
 class_name TitleScreen
-extends Control
+extends MenuPage
 ## The title over the live duel behind it: the name, a line, and "press any
 ## key or button". Any key, mouse button or controller button goes on.
 ## Keys and buttons are taken in _unhandled_input() (never in _input(), so the
 ## InputFeed sees them too); a click lands on the screen itself. Going on
-## plays ui_confirm.
+## plays ui_confirm. The title is the bottom of the menus' stack: Back goes on
+## like any other key.
 
 signal proceed
 
@@ -13,9 +14,9 @@ var _time: float = 0.0
 
 
 func _init() -> void:
-	set_anchors_preset(Control.PRESET_FULL_RECT)
+	super()
+	back_pops = false
 	mouse_filter = Control.MOUSE_FILTER_STOP
-	visible = false
 	var column: VBoxContainer = VBoxContainer.new()
 	column.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	column.grow_horizontal = Control.GROW_DIRECTION_BOTH
@@ -37,24 +38,18 @@ func _init() -> void:
 	column.add_child(_prompt)
 
 
-func open() -> void:
-	visible = true
+func reopen() -> void:
+	super()
 	_time = 0.0
 
 
-func close() -> void:
-	visible = false
-
-
 func _process(delta: float) -> void:
-	if not visible:
-		return
 	_time += delta
 	_prompt.modulate.a = 0.55 + 0.45 * cos(_time * 3.0)
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not is_visible_in_tree():
+	if not is_visible_in_tree():
 		return
 	if _goes_on(event):
 		get_viewport().set_input_as_handled()

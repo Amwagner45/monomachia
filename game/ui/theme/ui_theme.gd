@@ -16,6 +16,14 @@ const MUTED: StringName = &"MutedLabel"
 const TAG: StringName = &"HudTag"
 ## A main-menu button: no box until focused, then a lacquer wash and bar.
 const MENU_ENTRY: StringName = &"MenuEntry"
+## A menu row (an OptionRow or SliderRow): no box, and while focused the menu
+## entry's lacquer wash and bar (MENU_ROW_LIT).
+const MENU_ROW: StringName = &"MenuRow"
+const MENU_ROW_LIT: StringName = &"MenuRowLit"
+## An option in a row (the demo's .seg .opt): a small ink box in a line
+## border; the chosen one (OPTION_ON) in a gold border with warm text.
+const OPTION: StringName = &"OptionChip"
+const OPTION_ON: StringName = &"OptionChipOn"
 
 
 ## A centred label in one of the variations (or plain text for &""), at the

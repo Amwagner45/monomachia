@@ -252,6 +252,31 @@ func test_menus_are_a_themed_panel_of_menu_entries_under_a_display_heading() -> 
 	_assert_color(_flat(menu.panel, &"panel").border_color, LINE, "the panel's border")
 
 
+## The menus' option and slider rows (22.2): unboxed until focused, then the
+## menu entry's lacquer wash and bar; options as the demo's .seg .opt, the
+## chosen one in gold.
+func test_option_and_slider_rows_are_set_in_the_theme() -> void:
+	var menu: MenuScreen = MenuScreen.new()
+	add_child_autofree(menu)
+	var row: OptionRow = menu.add_options("Graphics", ["High", "Low"] as Array[String], 0, func(_i: int) -> void: pass)
+	var slider: SliderRow = menu.add_slider("Music", 50, func(_v: int) -> void: pass)
+	_assert_themed(menu)
+	assert_false(_flat(row, &"panel").draw_center and _flat(row, &"panel").bg_color.a > 0.0, "no box until focused")
+	row.grab_focus()
+	_assert_color(_flat(row, &"panel").border_color, LACQUER, "the focus bar")
+	assert_eq(_flat(row, &"panel").border_width_left, 3)
+	var on: StyleBoxFlat = _flat(row.chips[0], &"normal")
+	_assert_color(on.border_color, GOLD, "the chosen option")
+	_assert_color(on.bg_color, INK_3)
+	var off: StyleBoxFlat = _flat(row.chips[1], &"normal")
+	_assert_color(off.border_color, LINE, "the others")
+	_assert_color(off.bg_color, INK_2)
+	_assert_color(_flat(row.chips[1], &"hover").border_color, GOLD_DIM, "a hovered option")
+	assert_eq(_font_of(row.chips[0]), UI_FONT)
+	_assert_color(_flat(slider.slider, &"grabber_area").bg_color, GOLD, "the slider's fill")
+	_assert_color(_flat(slider.slider, &"slider").bg_color, LINE, "and its track")
+
+
 func test_results_are_set_in_the_theme() -> void:
 	var results: ResultsScreen = ResultsScreen.new()
 	add_child_autofree(results)

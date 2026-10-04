@@ -114,6 +114,52 @@ shadow_color = Color(0, 0, 0, 0.6)
 shadow_size = 30
 shadow_offset = Vector2(0, 20)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.10196078, 0.074509804, 0.070588235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.29019608, 0.20784314, 0.17254902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_lit"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.10196078, 0.074509804, 0.070588235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.54117647, 0.42745098, 0.23529412, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_chip_on"]
+content_margin_left = 12.0
+content_margin_top = 5.0
+content_margin_right = 12.0
+content_margin_bottom = 5.0
+bg_color = Color(0.16862745, 0.11764706, 0.10588235, 1)
+border_width_left = 1
+border_width_top = 1
+border_width_right = 1
+border_width_bottom = 1
+border_color = Color(0.78823529, 0.63137255, 0.35294118, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider"]
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.29019608, 0.20784314, 0.17254902, 1)
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_slider_fill"]
+content_margin_top = 2.0
+content_margin_bottom = 2.0
+bg_color = Color(0.78823529, 0.63137255, 0.35294118, 1)
+
 [resource]
 default_font = ExtResource("1_ui")
 default_font_size = 22
@@ -143,6 +189,9 @@ HudTag/colors/font_color = Color(1, 0.23137255, 0.14509804, 1)
 HudTag/font_sizes/font_size = 14
 HudTag/fonts/font = SubResource("FontVariation_eyebrow")
 HudTag/styles/normal = SubResource("StyleBoxFlat_tag")
+HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
+HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill")
+HSlider/styles/slider = SubResource("StyleBoxFlat_slider")
 KanjiLabel/base_type = &"Label"
 KanjiLabel/colors/font_color = Color(0.70196078, 0.14901961, 0.11764706, 1)
 KanjiLabel/font_sizes/font_size = 64
@@ -162,7 +211,35 @@ MenuEntry/styles/hover = SubResource("StyleBoxFlat_menu_lit")
 MenuEntry/styles/hover_pressed = SubResource("StyleBoxFlat_menu_lit")
 MenuEntry/styles/normal = SubResource("StyleBoxFlat_menu")
 MenuEntry/styles/pressed = SubResource("StyleBoxFlat_menu_lit")
+MenuRow/base_type = &"PanelContainer"
+MenuRow/styles/panel = SubResource("StyleBoxFlat_menu")
+MenuRowLit/base_type = &"PanelContainer"
+MenuRowLit/styles/panel = SubResource("StyleBoxFlat_menu_lit")
 MutedLabel/base_type = &"Label"
 MutedLabel/colors/font_color = Color(0.69019608, 0.63137255, 0.5372549, 1)
+OptionChip/base_type = &"Button"
+OptionChip/colors/font_color = Color(0.91764706, 0.8745098, 0.79215686, 1)
+OptionChip/colors/font_focus_color = Color(0.91764706, 0.8745098, 0.79215686, 1)
+OptionChip/colors/font_hover_color = Color(0.91764706, 0.8745098, 0.79215686, 1)
+OptionChip/colors/font_hover_pressed_color = Color(0.91764706, 0.8745098, 0.79215686, 1)
+OptionChip/colors/font_pressed_color = Color(0.91764706, 0.8745098, 0.79215686, 1)
+OptionChip/font_sizes/font_size = 18
+OptionChip/fonts/font = ExtResource("1_ui")
+OptionChip/styles/focus = SubResource("StyleBoxFlat_chip_lit")
+OptionChip/styles/hover = SubResource("StyleBoxFlat_chip_lit")
+OptionChip/styles/hover_pressed = SubResource("StyleBoxFlat_chip_lit")
+OptionChip/styles/normal = SubResource("StyleBoxFlat_chip")
+OptionChip/styles/pressed = SubResource("StyleBoxFlat_chip_lit")
+OptionChipOn/base_type = &"OptionChip"
+OptionChipOn/colors/font_color = Color(1, 0.87843137, 0.62745098, 1)
+OptionChipOn/colors/font_focus_color = Color(1, 0.87843137, 0.62745098, 1)
+OptionChipOn/colors/font_hover_color = Color(1, 0.87843137, 0.62745098, 1)
+OptionChipOn/colors/font_hover_pressed_color = Color(1, 0.87843137, 0.62745098, 1)
+OptionChipOn/colors/font_pressed_color = Color(1, 0.87843137, 0.62745098, 1)
+OptionChipOn/styles/focus = SubResource("StyleBoxFlat_chip_on")
+OptionChipOn/styles/hover = SubResource("StyleBoxFlat_chip_on")
+OptionChipOn/styles/hover_pressed = SubResource("StyleBoxFlat_chip_on")
+OptionChipOn/styles/normal = SubResource("StyleBoxFlat_chip_on")
+OptionChipOn/styles/pressed = SubResource("StyleBoxFlat_chip_on")
 Panel/styles/panel = SubResource("StyleBoxFlat_panel")
 PanelContainer/styles/panel = SubResource("StyleBoxFlat_panel")

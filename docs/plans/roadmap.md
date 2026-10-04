@@ -38,11 +38,12 @@ The finished game of `docs/design.md`: nine weapons, eight fighters and several 
   - Check: a CI run on the branch is green end to end (tests, typecheck, the 4-match soak, the export job); locally, with the libraries, the full suite still passes.
   - Blocked by: none
   - Done Oct 4 (PR #32, bddf6c8): both tests skip as local-only through `ClipLibraries.available()`, the way the other clip tests do, and CI ran green end to end (tests, typecheck, soak and the Windows export). The no-packs fault the first test caught is recorded in godot-rebuild step 3 and accepted until milestone 1 retires the stand-ins.
-- [ ] **R2. The milestone-1 spec and plan reach `feature/godot-rebuild`.** The docs pull request merges, so the spec, the plan and this roadmap reach `master` with the consolidation.
+- [x] **R2. The milestone-1 spec and plan reach `feature/godot-rebuild`.** The docs pull request merges, so the spec, the plan and this roadmap reach `master` with the consolidation.
   - Delivers: `docs/milestone-1-spec`'s draft pull request into `feature/godot-rebuild` (the spec, `docs/plans/milestone-1.md`, this roadmap and the design-doc updates of milestone-1 task 1) marked ready and merged.
   - Check: the merged branch's tests pass; the lanes board follows the roadmap and milestone-1 plans from `feature/godot-rebuild`.
   - Blocked by: `docs/plans/milestone-1.md` task 1
   - **Owner:** approves the docs pull request.
+  - Done Oct 4 (PR #33): the owner approved the spec and plan (milestone-1 task 1) and the pull request, which merged into `feature/godot-rebuild`.
 - [ ] **R3. The first release from `master`.** The rebuild's first Windows release is published.
   - Delivers: a release zip, `Monomachia-<tag>-windows.zip`, exported on the PC with the asset repository (or the packs' folder until milestone-1 task 2 lands), passing `--smoke`, attached to a GitHub release with `gh release upload` (godot-rebuild 25.5's flow).
   - Check: the downloaded zip's exe passes `--smoke` and plays a match.

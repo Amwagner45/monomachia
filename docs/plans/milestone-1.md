@@ -54,6 +54,7 @@ The Hunter (crimson against indigo) with the Katana, and bare hands when disarme
 ## Progress
 
 - Oct 4, 2026: drafted with the spec; awaiting the owner's review.
+- Oct 4, 2026: the owner confirmed all 56 defaults and approved the spec and this plan (task 1). Milestone-1 work starts once the consolidation merges into `master` (`docs/plans/godot-rebuild.md` task 26.4) and `feature/milestone-1` is cut (roadmap R4).
 
 ## Build order
 
@@ -79,11 +80,12 @@ The Hunter (crimson against indigo) with the Katana, and bare hands when disarme
 
 ### Phase A: before the merge
 
-- [ ] **1. The owner's approval, and the design docs brought in line with the spec.** The owner reviews the spec and this plan once; then the docs the spec changes are updated on `docs/milestone-1-spec`, before its pull request merges.
+- [x] **1. The owner's approval, and the design docs brought in line with the spec.** The owner reviews the spec and this plan once; then the docs the spec changes are updated on `docs/milestone-1-spec`, before its pull request merges.
   - Delivers: the owner's answers to the proposed defaults written into the spec (and into this plan where a task changes); the five differences listed under "Where this differs from `docs/design.md`" (the unblockable's reach, the cinematic shots, the protected timings, movement, the blade length) written into `docs/design.md`; the spec's notes on `docs/specs/godot-rebuild.md` and `docs/specs/authored-animation.md` added there as "Superseded by milestone 1" lines; the spec's status line set to approved.
   - Check: every "Where this differs" item has its line in the doc it names; the second brain's tests pass (no unresolved link); the docs pull request is ready for the owner.
   - Blocked by: none · Stories: 218
   - **Owner:** reviews the spec and this plan, answers or confirms the proposed defaults, approves the timing band and distance band tables (story 33), and approves both. Nothing below starts until then.
+  - Done Oct 4: the owner confirmed P1–P56 as written (the timing and distance band tables among them) and approved the spec and this plan. The spec's five differences from design.md are written there, and docs/specs/godot-rebuild.md and docs/specs/authored-animation.md carry "Superseded by milestone 1" notes.
 - [ ] **2. The private asset repository.** A private GitHub repository with Git LFS holds the packs, the Quaternius sources, the Blender sources and the exports; the import tools read it through today's asset-source setting.
   - Delivers: the repository (the owner creates it on GitHub; Claude lays it out and pushes): `.gitattributes` tracking FBX, glTF, blend and texture files through LFS, folders for the Kevin Iglesias packs, the Quaternius sources the game uses, Blender sources (fighters, weapons, the Shrine, clips) and exports, and a README with each folder's licence terms. The raw Sonniss zips stay outside it. `.assets-src-path` on the owner's PC points at its checkout in place of `Desktop/Monomachia-assets`.
   - Check: a fresh clone with LFS, named in `.assets-src-path`, stages and builds the clip libraries byte for byte as the old folder did (`godot.mjs clips`), and its size is inside the asset repository's budget in the spec's size budget table.

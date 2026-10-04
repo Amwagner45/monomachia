@@ -1,6 +1,6 @@
 # Spec: Milestone 1, the Hunter with the Katana and bare hands at final quality
 
-Oct 4, 2026 · status: draft, awaiting the owner's approval together with its plan (the owner chose to review the spec and the plan once, back to back, for this round only; nothing is built from either until the owner approves). The owner confirmed all 56 proposed defaults (P1–P56) as written on Oct 4 · the code's branch: `feature/milestone-1`, cut from `master` after `docs/plans/godot-rebuild.md` task 26.4 · this spec and its plan: branch `docs/milestone-1-spec`, through a draft pull request into `feature/godot-rebuild`, so they reach `master` with the consolidation, before the code's branch exists (an exception, for this round only, to CLAUDE.md's rule that the spec, the plan and the code arrive in one pull request)
+Oct 4, 2026 · status: approved by the owner on Oct 4, 2026, together with its plan (reviewed once, back to back, for this round only), after the owner confirmed all 56 proposed defaults (P1–P56) as written · the code's branch: `feature/milestone-1`, cut from `master` after `docs/plans/godot-rebuild.md` task 26.4 · this spec and its plan: branch `docs/milestone-1-spec`, through a draft pull request into `feature/godot-rebuild`, so they reach `master` with the consolidation, before the code's branch exists (an exception, for this round only, to CLAUDE.md's rule that the spec, the plan and the code arrive in one pull request)
 
 Read with: `docs/design.md` (section 1, Order of work, and every "(Oct 4)" line), [ADR 0001](../adr/0001-animation-leads-realistic-look.md), the plan `docs/plans/milestone-1.md`, and the roadmap `docs/plans/roadmap.md`.
 
@@ -799,7 +799,7 @@ The Oct 4 triage moved these tasks to milestone 1. Each now lives in milestone 1
 - **Low's upscaler** is named (P30); design.md only says "upscaling".
 - **Spending.** design.md budgets Git LFS storage; the asset repository fits GitHub Free, so none is bought unless the size budget is exceeded.
 
-The first five (the unblockable's reach, the cinematic shots, the protected timings, movement and the blade length) are written into design.md on `docs/milestone-1-spec` once the owner approves this spec, before its pull request merges; the rest are details below design.md's level. The one wind moving only the scarf and the banners as cloth (P46) and stone-only footsteps (P21) are milestone-1 scope, listed under "What final quality leaves out", not changes to the design.
+The first five (the unblockable's reach, the cinematic shots, the protected timings, movement and the blade length) were written into design.md on `docs/milestone-1-spec` on Oct 4, when the owner approved this spec, before its pull request merged; the rest are details below design.md's level. The one wind moving only the scarf and the banners as cloth (P46) and stone-only footsteps (P21) are milestone-1 scope, listed under "What final quality leaves out", not changes to the design.
 
 ### Where this differs from ADR 0001
 

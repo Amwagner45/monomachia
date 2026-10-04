@@ -1,10 +1,10 @@
 # Spec: Milestone 1, the Hunter with the Katana and bare hands at final quality
 
-Oct 4, 2026 · status: draft, awaiting the owner's review together with its plan (the owner chose to review the spec and the plan once, back to back, for this round only; nothing is built from either until the owner approves) · the code's branch: `feature/milestone-1`, cut from `master` after `docs/plans/godot-rebuild.md` task 26.4 · this spec and its plan: branch `docs/milestone-1-spec`, through a draft pull request into `feature/godot-rebuild`, so they reach `master` with the consolidation, before the code's branch exists (an exception, for this round only, to CLAUDE.md's rule that the spec, the plan and the code arrive in one pull request)
+Oct 4, 2026 · status: draft, awaiting the owner's approval together with its plan (the owner chose to review the spec and the plan once, back to back, for this round only; nothing is built from either until the owner approves). The owner confirmed all 56 proposed defaults (P1–P56) as written on Oct 4 · the code's branch: `feature/milestone-1`, cut from `master` after `docs/plans/godot-rebuild.md` task 26.4 · this spec and its plan: branch `docs/milestone-1-spec`, through a draft pull request into `feature/godot-rebuild`, so they reach `master` with the consolidation, before the code's branch exists (an exception, for this round only, to CLAUDE.md's rule that the spec, the plan and the code arrive in one pull request)
 
 Read with: `docs/design.md` (section 1, Order of work, and every "(Oct 4)" line), [ADR 0001](../adr/0001-animation-leads-realistic-look.md), the plan `docs/plans/milestone-1.md`, and the roadmap `docs/plans/roadmap.md`.
 
-Milestone 1 brings the Hunter (both palettes) with the Katana and bare hands on the Moonlit Shrine to final quality, including everything inside a round. It is the first of the two milestones that bring the existing content to final quality before any new weapon, fighter or arena. This spec turns the owner's 27 answers from the milestone-1 grilling (Oct 4; the grilling's record, its defaults and the facts found are folded into this spec) and the "(Oct 4)" lines of `docs/design.md` into one buildable description. Where the owner hasn't decided something, this spec proposes an answer, marks it **(proposed)**, and lists it under "Proposed defaults for the owner to confirm". Nothing waits on those confirmations: the plan builds on the proposals, and a changed answer becomes a change to the plan.
+Milestone 1 brings the Hunter (both palettes) with the Katana and bare hands on the Moonlit Shrine to final quality, including everything inside a round. It is the first of the two milestones that bring the existing content to final quality before any new weapon, fighter or arena. This spec turns the owner's 27 answers from the milestone-1 grilling (Oct 4; the grilling's record, its defaults and the facts found are folded into this spec) and the "(Oct 4)" lines of `docs/design.md` into one buildable description. Where the grilling left something undecided, this spec proposed an answer (P1–P56). The owner went through them on Oct 4 and confirmed every one as written; each is marked **(Pn, confirmed Oct 4)** where it applies and listed under "Defaults the owner confirmed (Oct 4)". A later change to one becomes a change to the plan.
 
 ## Problem Statement
 
@@ -45,7 +45,7 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 5. As a player, I want every default match (Duel, Training, Watch and the title's attract duel) to be the Hunter in crimson against the Hunter in indigo, both with the Katana and today's default block abilities (Flash and Piercing Thrust), so that no default reaches a hidden fighter or weapon.
 6. As a Training player, I want no drill to swap the dummy to a hidden weapon (today the slam drill brings in the Greatsword), so that Training stays inside the milestone's content.
 7. As a player reading How to play or the move list, I want only the Katana's and bare hands' tabs while the roster is hidden, so that nothing describes content I can't pick.
-8. As the owner, I want bare hands to stay the disarmed state, not a loadout, so that there is no bare-hands draw to make and the cheer plays only when a disarmed fighter wins the match. **(proposed, P1)**
+8. As the owner, I want bare hands to stay the disarmed state, not a loadout, so that there is no bare-hands draw to make and the cheer plays only when a disarmed fighter wins the match. **(P1, confirmed Oct 4)**
 
 ### The pipeline
 
@@ -55,20 +55,20 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 12. As a developer, I want clones and CI builds without the asset repository to run on labelled stand-ins (CC0 clips and code-built or committed models), with every test that needs the clips skipping itself, so that CI stays green for anyone.
 13. As a developer, I want a scripted export from the Blender sources to the files the game uses, for clips and for models, so that an edit in Blender reaches the game with one command and no hand steps.
 14. As a developer, I want clips edited in Blender or Cascadeur imported like the pack clips (retargeted, mirrored where the manifest says, markers kept), so that a re-keyed move replaces its pack clip in the game.
-15. As the owner, I want every new model and every clip keyed from scratch to be the project's own art (all rights reserved), with its Blender source in the asset repository; clips re-keyed from a pack clip to stay under the pack's licence, exported only into the asset repository; and the exports of self-made and CC0 models and materials also committed to the public repository inside its size budget **(proposed, P23)**, so that everything shipped can be sold and plain clones and CI see the art they may.
+15. As the owner, I want every new model and every clip keyed from scratch to be the project's own art (all rights reserved), with its Blender source in the asset repository; clips re-keyed from a pack clip to stay under the pack's licence, exported only into the asset repository; and the exports of self-made and CC0 models and materials also committed to the public repository inside its size budget **(P23, confirmed Oct 4)**, so that everything shipped can be sold and plain clones and CI see the art they may.
 16. As a developer, I want every move's source clip recorded beside its numbers, so that any move can be re-baked from another clip.
 17. As a developer, I want a frame-data generator that reads each attack's clip at its own speed and writes the startup, active and recovery frames, the cancel windows, the branch points and the per-frame travel into a committed frame-data table, and the hit path into the committed swing files, in the same run, so that the clip decides the frame data with no hand overrides.
 18. As a developer, I want the rules, the computer opponent, the move list, the sheets and every other reader of frame data to read that table, so that there is one source of truth.
-19. As a developer, I want each attack's travel baked per frame from the hips and foot plants, and its swing sampled relative to the moving body, so that travel isn't counted twice. **(proposed, P13)**
+19. As a developer, I want each attack's travel baked per frame from the hips and foot plants, and its swing sampled relative to the moving body, so that travel isn't counted twice. **(P13, confirmed Oct 4)**
 20. As a developer, I want CI to check that the committed table is complete and that every Katana and bare-hands attack sits inside its timing band and connects from its distance band, so that a clip out of band can't be merged.
-21. As a developer, I want a local-only test that re-bakes every move from the clips and fails on any drift from the committed table, so that the table never falls behind the clips. **(proposed, P12)**
-22. As a developer, I want the Greatsword's and the Daggers' frame data generated from their current clips through the same generator, with no band test until milestone 2, so that one generator serves every weapon. **(proposed, P10)**
-23. As a developer, I want a replay test in the pipeline phase, in this form: a seeded match run twice gives matching state hashes on every step **(proposed, P18)**, so that the rules stay deterministic for rollback netcode.
-24. As a developer, I want a save-and-restore test in the pipeline phase, in this form: save mid-match, restore, step again and compare **(proposed, P18)**, so that the rules can be rolled back later without a retrofit.
-25. As a developer, I want both tests to cover a finisher and a stuck weapon, so that the new rules are as deterministic as the old. **(proposed, P18)**
+21. As a developer, I want a local-only test that re-bakes every move from the clips and fails on any drift from the committed table, so that the table never falls behind the clips. **(P12, confirmed Oct 4)**
+22. As a developer, I want the Greatsword's and the Daggers' frame data generated from their current clips through the same generator, with no band test until milestone 2, so that one generator serves every weapon. **(P10, confirmed Oct 4)**
+23. As a developer, I want a replay test in the pipeline phase, in this form: a seeded match run twice gives matching state hashes on every step **(P18, confirmed Oct 4)**, so that the rules stay deterministic for rollback netcode.
+24. As a developer, I want a save-and-restore test in the pipeline phase, in this form: save mid-match, restore, step again and compare **(P18, confirmed Oct 4)**, so that the rules can be rolled back later without a retrofit.
+25. As a developer, I want both tests to cover a finisher and a stuck weapon, so that the new rules are as deterministic as the old. **(P18, confirmed Oct 4)**
 26. As a developer, I want matches recordable as input logs that replay to the same result, so that the performance gate, the balance run and bug reports can replay a match exactly.
 27. As the owner, I want the Animation Studio slimmed to its gallery, a timeline, markers and chains, so that it does what animation-leads needs and nothing it no longer needs.
-28. As the owner, I want markers set on the Studio's timeline to give each clip's active frames, cancel windows and branch points, and saving to regenerate the frame-data table and report any move outside its band, so that a marker edit is the only way frame data change. **(proposed, P12)**
+28. As the owner, I want markers set on the Studio's timeline to give each clip's active frames, cancel windows and branch points, and saving to regenerate the frame-data table and report any move outside its band, so that a marker edit is the only way frame data change. **(P12, confirmed Oct 4)**
 29. As the owner, I want the Studio's timeline to show each move's generated frame data against its timing band, and whether it connects from its distance band, so that I see at once whether a clip fits.
 30. As the owner, I want the Studio's chains kept without their speed field or held frames, so that nothing in the Studio can speed up, slow down or freeze a clip.
 31. As a developer, I want bone posing, correctives, IK handles, keyed-clip editing, the refinement launcher and the chat panel dropped from the Studio in favour of Blender, so that the tool stays small.
@@ -76,14 +76,14 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 
 ### Timing, distance and pace
 
-33. As the owner, I want one timing band per move kind for the Katana and bare hands, in a table I approve in this spec, so that the slower, For Honor-like pace is set by design before any clip is keyed. The values are in the timing band table **(proposed, P26)**.
+33. As the owner, I want one timing band per move kind for the Katana and bare hands, in a table I approve in this spec, so that the slower, For Honor-like pace is set by design before any clip is keyed. The values are in the timing band table **(P26, confirmed Oct 4)**.
 34. As a player, I want the Katana's lights to land in 400–500 ms (24–30 frames), bare hands faster and every heavy slower, so that the pace is weightier and each weapon class keeps its feel.
 35. As a player, I want every Katana and bare-hands clip played at its own speed, never sped up, slowed down, frozen or stretched on its own while the game runs, apart from the whole-world time effects (hit-stop, the KO's and the finisher's slow motion, the disarmed ultimate's choice), which slow every clip alike, so that the motion I see is the motion that was keyed.
 36. As a player, I want holds, such as the Iai stance, played as authored loops, so that a held charge looks alive rather than frozen.
 37. As a player, I want no fighter to slide further than their clips step, so that feet and ground agree.
-38. As the owner, I want each weapon's distance band, starting from today's duelling distances (the Katana duels at 2.5 m and its computer prefers 2.1 m; bare hands 1.6 m and 1.2 m), and every attack to connect from its band, so that spacing is set by design and met by re-keying, never by sliding. The values are in the distance band table **(proposed, P27)**.
-39. As a player, I want the protected timings (the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases, joined by the counters' stuns, the disarm's stagger and daze, and the parry recoil **(proposed, P50)**) to stay rules numbers that every clip showing them must fit, so that defence is consistent whatever the clip.
-40. As the owner, I want hitstun, blockstun, hit-stop and the knockdown phases retuned once, at the start, for the slower pace, and then frozen, so that later clip work never shifts them. The new values, and the pilot's play session ending the one retune, are proposed in the protected-timing table **(proposed, P28)**; the Greatsword's and the Daggers' wait for milestone 2 **(proposed, P48)**.
+38. As the owner, I want each weapon's distance band, starting from today's duelling distances (the Katana duels at 2.5 m and its computer prefers 2.1 m; bare hands 1.6 m and 1.2 m), and every attack to connect from its band, so that spacing is set by design and met by re-keying, never by sliding. The values are in the distance band table **(P27, confirmed Oct 4)**.
+39. As a player, I want the protected timings (the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases, joined by the counters' stuns, the disarm's stagger and daze, and the parry recoil **(P50, confirmed Oct 4)**) to stay rules numbers that every clip showing them must fit, so that defence is consistent whatever the clip.
+40. As the owner, I want hitstun, blockstun, hit-stop and the knockdown phases retuned once, at the start, for the slower pace, and then frozen, so that later clip work never shifts them. The new values, and the pilot's play session ending the one retune, are in the protected-timing table **(P28, confirmed Oct 4)**; the Greatsword's and the Daggers' wait for milestone 2 **(P48, confirmed Oct 4)**.
 41. As a player facing a light string, I want to be free a frame or two before each next hit, enough to block or parry but not to strike back, so that one mistake doesn't cost me the whole string.
 42. As a player, I want the parry window (9 frames for the Katana, 8 for the redirect) and the input buffer (8 frames) unchanged, so that what I learned about parrying still applies.
 43. As a player, I want the roll to keep 16 frames (12 invincible) plus 9 of recovery over 2.8 m, and the backstep 14 (10) plus 9 over 2.1 m, so that dodging still works as before.
@@ -97,10 +97,10 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 
 ### The Katana
 
-51. As the owner, I want the Katana's light string (Right Cut, Return Cut, Kesa Cut, Crown Cut) brought all the way to final quality first, as the pilot family, with its deflect pairs, hit reactions, sound and effects, and reviewed before any other family starts, so that the pipeline and the bar are proven on one family. The order of the other families is proposed (P33), and so is building the look test alongside the pilot so that its effects can take the approved look before the review (P51).
+51. As the owner, I want the Katana's light string (Right Cut, Return Cut, Kesa Cut, Crown Cut) brought all the way to final quality first, as the pilot family, with its deflect pairs, hit reactions, sound and effects, and reviewed before any other family starts, so that the pipeline and the bar are proven on one family. The order of the other families (P33, confirmed Oct 4) and building the look test alongside the pilot so that its effects can take the approved look before the review (P51).
 52. As a Katana player, I want the four lights re-keyed as two-handed cuts with longer wind-ups and real steps, each landing inside the light band, so that the Katana's core reads weighty and real.
-53. As a Katana player, I want every cut two-handed, with the off hand leaving the grip only in the listed one-handed moments (the Iai draws and the sheathe before them, the finisher's draw and re-sheathe, the round intro's draw, the round-end and victory sheathes, Moonsplitter's sheathe and draw, the pull-out, the recall's catch, Piercing Thrust's full extension and Running Draw's follow-through) **(proposed, P54)**, so that the Katana looks like a katana.
-54. As a Katana player, I want the Iai Slash re-keyed: pressing heavy sheathes the blade into the saya, I can strafe in the stance, and letting go draws a vertical cut, or a horizontal one if I hold the stick left or right, so that the quick-draw is the signature it should be. In the stance the fighter moves at the stance-strafe clip's measured speed, and the draw's drift comes from the draw clip's travel, which closes the open question about halving the stance's walking speed as the draw starts **(proposed, P29)**.
+53. As a Katana player, I want every cut two-handed, with the off hand leaving the grip only in the listed one-handed moments (the Iai draws and the sheathe before them, the finisher's draw and re-sheathe, the round intro's draw, the round-end and victory sheathes, Moonsplitter's sheathe and draw, the pull-out, the recall's catch, Piercing Thrust's full extension and Running Draw's follow-through) **(P54, confirmed Oct 4)**, so that the Katana looks like a katana.
+54. As a Katana player, I want the Iai Slash re-keyed: pressing heavy sheathes the blade into the saya, I can strafe in the stance, and letting go draws a vertical cut, or a horizontal one if I hold the stick left or right, so that the quick-draw is the signature it should be. In the stance the fighter moves at the stance-strafe clip's measured speed, and the draw's drift comes from the draw clip's travel, which closes the open question about halving the stance's walking speed as the draw starts **(P29, confirmed Oct 4)**.
 55. As a Katana player, I want the vertical Iai's rising follow-up (Rising Heaven) and the horizontal Iai's left-to-right follow-up (Returning Draw) re-keyed and optional, so that the Iai extends naturally into its next cut.
 56. As a Katana player, I want a fully held Iai to release by itself at 2.5 s as a power attack, out of an authored stance loop, so that the charge rules stay consistent.
 57. As a Katana player, I want the Iai's long reach to come from its clip's step and draw, re-keyed to its distance band in place of today's 2.1 m slide, so that the long draw is a real lunge.
@@ -111,63 +111,63 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 62. As a Katana player, I want Piercing Thrust and Swallow Sweep re-keyed in the unblockable band with long, readable wind-ups, so that they're feared but answerable.
 63. As a Katana player, I want Moonsplitter re-keyed: the fighter sheathes, the stick picks vertical or horizontal, and a wave crosses the stage, so that the ultimate looks like a finale.
 64. As a player facing Moonsplitter, I want the horizontal wave still jumpable and the vertical one still avoidable by stepping aside, so that the ultimate stays answerable.
-65. As the owner, I want the Katana's Counter Lunge left on today's clip until milestone 2, since no milestone-1 move triggers the evade counter, so that no work goes into a move no milestone-1 match reaches. Its clip plays at 1.0× like every other, with its frame data generated like the Greatsword's and no band test **(proposed, P48)**.
+65. As the owner, I want the Katana's Counter Lunge left on today's clip until milestone 2, since no milestone-1 move triggers the evade counter, so that no work goes into a move no milestone-1 match reaches. Its clip plays at 1.0× like every other, with its frame data generated like the Greatsword's and no band test **(P48, confirmed Oct 4)**.
 
 ### The disarm and bare hands
 
 66. As a player, I want a disarm to send the weapon flying the way the blow knocked it (on a parry, the way the deflect sends it) and stick blade-first in the ground at an angle, always inside the walls, so that a disarm reads as a real moment.
-67. As a developer, I want the weapon's flight deterministic, along the knock or deflect direction and inside the walls, with its landing angle as rules state, so that a replay or a rollback lands it in the same place. **(proposed, P16)**
-68. As a disarmed player, I want to pick my weapon up by pulling it out of the ground, taking as long as its clip, so that the pick-up looks and plays as it should. **(proposed, P16)**
+67. As a developer, I want the weapon's flight deterministic, along the knock or deflect direction and inside the walls, with its landing angle as rules state, so that a replay or a rollback lands it in the same place. **(P16, confirmed Oct 4)**
+68. As a disarmed player, I want to pick my weapon up by pulling it out of the ground, taking as long as its clip, so that the pick-up looks and plays as it should. **(P16, confirmed Oct 4)**
 69. As a player whose opponent is disarmed, I want to stand in their way to keep the advantage, so that the disarm game stays live.
 70. As a disarmed player, I want to move faster, dodge farther and jump higher than when armed, so that bare hands keep their agility.
-71. As a disarmed player, I want a longer roll clip covering the disarmed dodge's 1.5× distance inside the same protected frames, so that the longer dodge doesn't slide. **(proposed, P15)**
+71. As a disarmed player, I want a longer roll clip covering the disarmed dodge's 1.5× distance inside the same protected frames, so that the longer dodge doesn't slide. **(P15, confirmed Oct 4)**
 72. As a disarmed player, I want the light string (Jab, Cross, Hook) and the heavies (Roundhouse, Spinning Heel) re-keyed in the bare-hands bands, so that disarmed fighting looks like fighting.
 73. As a disarmed player, I want the eight bare-hands movement attacks re-keyed (Flying Knee and Dragon Kick out of a sprint, Slip Jab and Spinning Backfist out of a dodge, Snap Kick and Lunging Palm out of a backstep, Air Kick and Axe Kick out of a jump), so that every way in has a real motion.
 74. As a disarmed player, I want the redirect to play its own deflect pair, turning the attack aside by hand, so that it reads apart from a parry.
-75. As a player whose fist or foot is parried by a blade, I want my fighter to recoil without being cut, so that the moment reads right. **(proposed, P9)**
+75. As a player whose fist or foot is parried by a blade, I want my fighter to recoil without being cut, so that the moment reads right. **(P9, confirmed Oct 4)**
 76. As a disarmed player at 25% HP or less, I want the ultimate to open its choice of the recall or Breaker Palm, so that I can re-arm or hit back hard.
-77. As a disarmed player, I want the recall's power-up (the roar, the golden burst, the weapon flying back into my hands, a nearby opponent blasted off their feet) at final quality, the burst still reaching an opponent within the weapon's duelling distance and knocking them back about 2.0 m as today, now through the reaction clip's travel **(proposed, P43)**, so that re-arming feels like a power-up.
+77. As a disarmed player, I want the recall's power-up (the roar, the golden burst, the weapon flying back into my hands, a nearby opponent blasted off their feet) at final quality, the burst still reaching an opponent within the weapon's duelling distance and knocking them back about 2.0 m as today, now through the reaction clip's travel **(P43, confirmed Oct 4)**, so that re-arming feels like a power-up.
 78. As a disarmed player, I want Breaker Palm re-keyed with its crouch into the uppercut as its own travel, so that the ultimate's lunge is real.
 79. As the owner, I want all fighters to share one bare-hands moveset, re-animated at the new quality, until the breadth phase brings per-fighter styles, so that milestone 1 stays in scope.
-80. As the owner, I want bare hands' Counter Lunge left on today's clip until milestone 2, played at 1.0× with generated frame data and no band test **(proposed, P48)**, so that no work goes into an unreachable move.
+80. As the owner, I want bare hands' Counter Lunge left on today's clip until milestone 2, played at 1.0× with generated frame data and no band test **(P48, confirmed Oct 4)**, so that no work goes into an unreachable move.
 
 ### Movement and the body
 
 81. As a player, I want the walk, run, strafe and sprint speeds to be each clip's own measured speed, committed with the frame data, so that the feet never skate.
 82. As a player, I want a blend between gaits or directions kept in step and moving at the blended pace, so that circling the opponent looks natural.
 83. As a player, I want guarded strafe and shuffle cycles for the Katana and for bare hands, so that guarded movement looks like a duel.
-84. As a player, I want to keep walking a little faster while blocking than in the demo, at about 55–65% of the run speed **(proposed, P29)**, so that I can reposition while guarding.
+84. As a player, I want to keep walking a little faster while blocking than in the demo, at about 55–65% of the run speed **(P29, confirmed Oct 4)**, so that I can reposition while guarding.
 85. As a player, I want guarded steps to start and stop within about 0.1 s, so that guarded footwork stays responsive.
 86. As a player, I want run stops and plant-and-reverse pivots to take about 0.2–0.25 s and up to about 0.5 m, and a sprint stop about a third of a second and 1 m, so that every movement carries momentum and the weight visibly shifts.
 87. As a player, I want the rules to move me exactly as the start, stop and pivot clips do, so that what I see is where I am.
 88. As a player, I want a tap step to keep its instant start, so that spacing stays precise.
 89. As a player, I want attacks, dodges, backsteps, parries and blocks to start at once out of any movement, with the leftover momentum shown only in the hand-off, so that defence and offence stay responsive.
-90. As the owner, I want an attack started out of a run to keep none of the run's speed in the rules, so that the attack's travel comes only from its clip. **(proposed, P14)**
+90. As the owner, I want an attack started out of a run to keep none of the run's speed in the rules, so that the attack's travel comes only from its clip. **(P14, confirmed Oct 4)**
 91. As a player, I want running fighters to lean forward, so that movement looks real.
 92. As a player, I want the roll and the backstep re-keyed to fit their protected frames at the clip's own speed, so that dodges look evasive and real.
-93. As a player, I want the jump, the landing and the jump attacks keyed to the rules' jump arcs, with a jump attack starting only while its startup and active frames fit the airtime left and a landing never skipping an air attack's frames **(proposed, P53)**, so that a jump looks like the arc that decides it.
+93. As a player, I want the jump, the landing and the jump attacks keyed to the rules' jump arcs, with a jump attack starting only while its startup and active frames fit the airtime left and a landing never skipping an air attack's frames **(P53, confirmed Oct 4)**, so that a jump looks like the arc that decides it.
 94. As a player, I want every hand-off between motions to use inertial blending, the new motion starting at once and the old pose fading over a few frames, hit reactions included, so that nothing pops.
 95. As a player, I want authored transition clips (returns to guard, bridges between the hits of a string, run stops and pivots) on top of the blending, so that hand-offs look keyed, not computed.
-96. As a developer, I want inertial blending and the physical reaction layer built as custom skeleton modifiers that change only the picture, so that the rules never depend on them. **(proposed, P11)**
+96. As a developer, I want inertial blending and the physical reaction layer built as custom skeleton modifiers that change only the picture, so that the rules never depend on them. **(P11, confirmed Oct 4)**
 97. As a player hit by an attack, I want a directional reaction (front, left, right or back; high or low; light or heavy), so that I can see where the hit landed.
 98. As a player, I want a physical layer on the spine, head and arms, pushed from where and how hard the hit landed, so that every hit lands a little differently.
 99. As a player, I want the knockdown (fall, down, rise), the stuns and the staggers re-keyed to fit their retuned frames at their own speed, so that the biggest hits feel big without a sped-up clip.
 100. As a player, I want knockback and pushback to come from the reaction clips' travel, the recall burst's knock-back included, so that a fighter moves only as clips carry them.
 101. As a player, I want planted feet to slide no more than 1 cm under every clip, so that the fighter looks connected to the floor.
-102. As a player, I want the weapon to ride the clip's hands in every state, guard and free movement included, so that it never leaves the hands. **(proposed, P34)**
+102. As a player, I want the weapon to ride the clip's hands in every state, guard and free movement included, so that it never leaves the hands. **(P34, confirmed Oct 4)**
 103. As a player, I want the blade never to pass through the body, so that the illusion holds.
 104. As a player, I want hits decided by a path taken from the same clip I see, kept as tight to the weapon as possible, so that I trust what I see.
 
 ### Defence on screen
 
-105. As a player, I want each attack direction to have its deflect pair, the parrier's deflect and the attacker's recoil, so that a parry looks like Sekiro's rather than a clip played backwards. **(proposed, P9)**
+105. As a player, I want each attack direction to have its deflect pair, the parrier's deflect and the attacker's recoil, so that a parry looks like Sekiro's rather than a clip played backwards. **(P9, confirmed Oct 4)**
 106. As a player, I want the two blades to meet at the contact point on a parry, where sparks fly and the clang starts, so that the parry lands where I see it.
 107. As a player, I want a block to show my guard taking the impact, light or heavy, so that blocking feels solid.
 108. As a player, I want a plain parry, a Flash and a redirect to read apart through their own deflect pairs, sounds and sparks, so that I know which one happened.
-109. As a player, I want every parry, Flash and redirect to give a short camera push-in, frozen in hit-stop and turned off by Reduce flashes, so that the moment lands. **(proposed, P8)**
+109. As a player, I want every parry, Flash and redirect to give a short camera push-in, frozen in hit-stop and turned off by Reduce flashes, so that the moment lands. **(P8, confirmed Oct 4)**
 110. As a player, I want the stomp against Piercing Thrust and the leap over Swallow Sweep played as paired clips, the two fighters lined up over a few frames so their bodies meet, so that counters look real.
 111. As a player facing an unblockable, I want a red 危 to flash with a sound and the blade to glint red as the wind-up starts, with the attack type reading from the animation, so that I know which counter to use.
-112. As a player in a match, I want an unblockable's reach shown only through the red 危, its sound and the blade's glint, with labels and floor markers only in Training, so that the screen stays clean. **(proposed, P6)**
+112. As a player in a match, I want an unblockable's reach shown only through the red 危, its sound and the blade's glint, with labels and floor markers only in Training, so that the screen stays clean. **(P6, confirmed Oct 4)**
 113. As a player knocked down, I want to be invulnerable while down, stand up on a fixed timer and be able to block or parry while rising, as today, so that knockdowns can't be looped.
 
 ### Finishers
@@ -178,68 +178,68 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 117. As a player who misses the prompt, I want the disarm to play out as normal, so that the round goes on.
 118. As a player being finished, I want no escape once the finisher starts, so that defence happens before the disarm, as with strings.
 119. As a Katana player, I want the Katana's finisher: I sheathe, then draw in a lightning-fast iai slash that carries me through to stand behind the opponent; I re-sheathe, and as the guard clicks home blood sprays along the cut and the opponent falls in two halves, cut diagonally from one shoulder to the opposite hip, so that the finisher is the game's signature moment.
-120. As a disarmed player who redirects an armed opponent at 5% HP or less into a disarm, I want the bare-hands finisher: I turn their last attack aside, then drop them with a crushing palm to the chest or a blow to the throat, cutting nothing, so that bare hands can finish too. When a disarmed fighter disarms by a blocked Breaker Palm or a fully charged Roundhouse instead, the same finisher opens and plays from its strike, skipping the turn-aside **(proposed, P52)**.
+120. As a disarmed player who redirects an armed opponent at 5% HP or less into a disarm, I want the bare-hands finisher: I turn their last attack aside, then drop them with a crushing palm to the chest or a blow to the throat, cutting nothing, so that bare hands can finish too. When a disarmed fighter disarms by a blocked Breaker Palm or a fully charged Roundhouse instead, the same finisher opens and plays from its strike, skipping the turn-aside **(P52, confirmed Oct 4)**.
 121. As a player, I want each finisher played as a paired clip with its own cinematic shot, so that it reads as a killing move.
 122. As a player with Blood set to Reduced, I want the Katana's finisher to show the cut with less blood and the body staying whole, and with Blood Off no blood at all, so that I choose how graphic it is.
-123. As a player against the computer, I want it to use finishers too, landing them more often on higher difficulties **(proposed, P3)**, at the rates in the computer's finisher rates table **(proposed, P55)**, so that it plays by the same rules.
-124. As a Training player, I want a finisher to play in full and the HP then to refill, so that I can practise finishing. **(proposed, P3)**
+123. As a player against the computer, I want it to use finishers too, landing them more often on higher difficulties **(P3, confirmed Oct 4)**, at the rates in the computer's finisher rates table **(P55, confirmed Oct 4)**, so that it plays by the same rules.
+124. As a Training player, I want a finisher to play in full and the HP then to refill, so that I can practise finishing. **(P3, confirmed Oct 4)**
 125. As the owner, I want a finisher to end the round as a KO, called Warrior Slain, so that rounds end one way.
 
 ### Round flow, cinematics and the camera
 
 126. As a player, I want the Hunter to draw the Katana from its saya at the left hip at the round intro, at final quality and at the clip's own speed, so that each round opens with a moment.
-127. As a player, I want "Fight!" called when both draws reach their ready pose, so that the intro lasts as long as its motion and no longer. **(proposed, P41)**
-128. As a player, I want a KO that ends a round, other than a finisher, to play on the gameplay camera, with the slow motion, the sound drain and the Warrior Slain call, so that the fight's flow isn't broken mid-match. A finisher plays its own shot **(proposed, P38)**.
+127. As a player, I want "Fight!" called when both draws reach their ready pose, so that the intro lasts as long as its motion and no longer. **(P41, confirmed Oct 4)**
+128. As a player, I want a KO that ends a round, other than a finisher, to play on the gameplay camera, with the slow motion, the sound drain and the Warrior Slain call, so that the fight's flow isn't broken mid-match. A finisher plays its own shot **(P38, confirmed Oct 4)**.
 129. As a player, I want the round's winner to sheathe, or shake out their hands if disarmed, as a short beat after a round KO, so that the round closes cleanly.
 130. As a player, I want the authored KO shot and the full victory pose (the Katana's sheathe and bow, or bare hands' cheer) to play only for the KO that wins the match, so that the match end feels bigger than a round end.
-131. As a player, I want neither the round-end beat nor the victory pose to play its own sheathe after a Katana finisher, which already re-sheathes; the winner holds the finisher's end pose through Warrior Slain, and the victory pose starts from it, so that the blade isn't sheathed twice. **(proposed, P4)**
+131. As a player, I want neither the round-end beat nor the victory pose to play its own sheathe after a Katana finisher, which already re-sheathes; the winner holds the finisher's end pose through Warrior Slain, and the victory pose starts from it, so that the blade isn't sheathed twice. **(P4, confirmed Oct 4)**
 132. As a player, I want every KO that ends a round, finishers included, called Warrior Slain with the brushed kanji 討死 in place of 一本 K.O., and a double KO to keep its own call, so that the call fits the game.
 133. As a player, I want an ultimate's wind-up to stay on the gameplay camera, with the roar and a push-in, and its cinematic shot to play only once it connects, so that I can read and answer it.
-134. As a player, I want the camera over the shoulder, slightly more zoomed out than For Honor and locked on to the opponent, with its framing settled in the look test scene **(proposed, P20)**, so that I see both fighters and the space between.
+134. As a player, I want the camera over the shoulder, slightly more zoomed out than For Honor and locked on to the opponent, with its framing settled in the look test scene **(P20, confirmed Oct 4)**, so that I see both fighters and the space between.
 135. As a player, I want the camera clean during play (temporal anti-aliasing, subtle bloom, ambient occlusion, fog, the colour grade and light film grain, with no depth of field, motion blur or colour fringing), with those effects coming in only for the ultimates' and finishers' shots, the push-ins and the KO, so that wind-ups stay readable.
 136. As a player, I want hit-stop, camera shake on heavy blows and slow motion on the final blow at the new pace, so that big moments land.
 
 ### The look
 
-137. As the owner, I want to approve a mood board, with a UI page on it, before anything converts, with the ultimates' energy (element and colour) and the gameplay camera's framing settled on it too **(proposed, P20)**, so that the look is agreed before work is spent on it.
+137. As the owner, I want to approve a mood board, with a UI page on it, before anything converts, with the ultimates' energy (element and colour) and the gameplay camera's framing settled on it too **(P20, confirmed Oct 4)**, so that the look is agreed before work is spent on it.
 138. As the owner, I want a look test scene (one fighter with the Katana in a corner of the Moonlit Shrine at Ultra on the RTX 3090) approved before the art converts, settling the lighting and the camera effects, so that the realistic look is proven in Godot first.
-139. As the owner, I want clip work to start at once and only the art conversion (materials, models, the arena, how effects look and the UI style) to wait for the mood board and the look test, so that animation isn't blocked by the look. **(proposed, P2)**
+139. As the owner, I want clip work to start at once and only the art conversion (materials, models, the arena, how effects look and the UI style) to wait for the mood board and the look test, so that animation isn't blocked by the look. **(P2, confirmed Oct 4)**
 140. As a player, I want the realistic look (physically based materials, dark lighting and volumetric fog under a painterly grade, after Ghost of Tsushima's darker side), with no toon shading, outlines or ink-wash, so that the game looks like the dark fantasy it means to be.
 141. As a player, I want the Hunter's two palettes re-dyed crimson and indigo in realistic materials with wear and oriental patterns, so that the sides read apart and match the HUD's red and blue.
 142. As a player, I want key and rim lights that touch only the fighters, so that the fighters stand out of the dark without outlines.
 143. As the owner, I want a test that the crimson and indigo palettes read apart in grey, so that the black-and-white mode can come after this milestone without re-dyeing.
 144. As a player, I want the Hunter's tricorn and scarf remodelled in Blender with oriental touches, the scarf's ends swinging on spring bones, so that the silhouette reads and moves.
 145. As the owner, I want the Hunter's body re-textured, not remodelled, with a neutral face and no cloth simulation in milestone 1, so that new models, cloth and faces wait for milestone 2.
-146. As a player, I want the Katana and its saya modelled in Blender to fit the look, keeping today's 0.72 m blade within 2 cm **(proposed, P44)**, so that the weapon I watch most is real.
+146. As a player, I want the Katana and its saya modelled in Blender to fit the look, keeping today's 0.72 m blade within 2 cm **(P44, confirmed Oct 4)**, so that the weapon I watch most is real.
 147. As the owner, I want the art made from CC0 scanned materials and models (Poly Haven, ambientCG) and models built in Blender, partly by script, with generative AI used only for the mood board, so that every asset can be sold.
 148. As a player, I want the Moonlit Shrine upgraded in place, keeping its layout: its props first, then its materials, and last its platform, so that the arena I know becomes the arena of the design.
 149. As a player, I want huge, ancient wisteria with dark bark around the arena, their blossoms glowing purple and lighting the fight, a canopy that never hides the moon or the fighters, and glowing petals falling, so that the Shrine looks like the design's.
 150. As a player, I want worn, weathered, uneven and broken paving, mist drifting through the moon shafts, a blood moon and a starry sky, so that the arena feels ancient.
 151. As a player, I want the distant landscape in real 3D (sculpted mountains and cliffs, pagodas and temples, volumetric fog and clouds), simpler on Low, so that the arena floats in a real world.
-152. As a player, I want banners, and grass in the broken paving, so that the wind and the fight have something to move. **(proposed, P21)**
-153. As a player, I want one wind moving the clouds, the branches, the petals, the grass, the banners and the cloth, so that the night feels alive and consistent. In milestone 1 the cloth is the scarf's spring bones and the banners **(proposed, P46)**.
+152. As a player, I want banners, and grass in the broken paving, so that the wind and the fight have something to move. **(P21, confirmed Oct 4)**
+153. As a player, I want one wind moving the clouds, the branches, the petals, the grass, the banners and the cloth, so that the night feels alive and consistent. In milestone 1 the cloth is the scarf's spring bones and the banners **(P46, confirmed Oct 4)**.
 154. As the owner, I want only the clear night in milestone 1, with both performance gates measured on it, so that the weather system and its other four states come after sign-off.
-155. As a player, I want the arena to react in the picture only, with the marks lasting the whole match, so that the fight leaves its trace without changing the rules. The reactions milestone 1 shows are cut marks and scorch on stone, sparks off pillars, dust and cracks where blows hit the ground, and banners and grass pushed by swings and falls **(proposed, P42)**.
+155. As a player, I want the arena to react in the picture only, with the marks lasting the whole match, so that the fight leaves its trace without changing the rules. The reactions milestone 1 shows are cut marks and scorch on stone, sparks off pillars, dust and cracks where blows hit the ground, and banners and grass pushed by swings and falls **(P42, confirmed Oct 4)**.
 
 ### Effects and blood
 
 156. As a player, I want realistic sparks at the contact point on blocks and blade clashes, so that contact reads.
 157. As a player, I want hits to draw blood (a burst on each blade hit, blood on blades and clothes for the whole match, and splatter on the floor that fades), so that the duel has weight.
-158. As a player, I want a bare-hand hit to show its own impact rather than a blade's blood burst, so that fists read apart from blades. **(proposed, P36)**
+158. As a player, I want a bare-hand hit to show its own impact rather than a blade's blood burst, so that fists read apart from blades. **(P36, confirmed Oct 4)**
 159. As a player, I want air smears on fast swings in place of the brush trails, so that swings read without ink.
 160. As a player, I want dust and smoke where feet, falls and rolls meet the ground, where the clips' feet land, so that movement has weight.
-161. As a player, I want a Blood setting of On, Reduced or Off, shipped in milestone 1 and On by default **(proposed, P5)**, so that I choose.
-162. As the owner, I want the age rating to cover blood and the Katana finisher's cut, with the Blood setting as the player's control: the sign-off build, answered through the IARC questionnaire Steam offers, rates no higher than PEGI 18 and ESRB Mature 17+, with the finisher's two halves as its strongest content, and the owner answers it at sign-off **(proposed, P56)**, so that the game can be rated and sold.
+161. As a player, I want a Blood setting of On, Reduced or Off, shipped in milestone 1 and On by default **(P5, confirmed Oct 4)**, so that I choose.
+162. As the owner, I want the age rating to cover blood and the Katana finisher's cut, with the Blood setting as the player's control: the sign-off build, answered through the IARC questionnaire Steam offers, rates no higher than PEGI 18 and ESRB Mature 17+, with the finisher's two halves as its strongest content, and the owner answers it at sign-off **(P56, confirmed Oct 4)**, so that the game can be rated and sold.
 163. As a player, I want the ultimate-ready aura as a smouldering glow of embers and heat haze in my side's colour, shown only while my ultimate is ready and I'm not knocked out, so that readiness reads.
 164. As a player, I want Moonsplitter's wave rendered with supernatural energy, lit realistically and standing where the rules put it on each frame, so that the ultimate is both spectacular and honest.
 165. As a player, I want the disarmed ultimate's choice moment, Breaker Palm's blow and the recall's burst rendered realistically, so that bare hands' ultimate matches the Katana's.
-166. As a player, I want the dropped-weapon beam retired and the stuck weapon to show a faint glint, so that the weapon reads without a toon marker. **(proposed, P7)**
+166. As a player, I want the dropped-weapon beam retired and the stuck weapon to show a faint glint, so that the weapon reads without a toon marker. **(P7, confirmed Oct 4)**
 167. As a player, I want the disarm's effect to follow the weapon's flight into the ground, the counters' effects to land on their paired clips, and the KO's effect to lead into Warrior Slain, so that effects match motion.
 168. As a developer, I want a parity check that every rules event has an effect or sits on an explicit no-visual list, with shake and kick amounts included and every effect following Reduce flashes, so that no event goes unseen.
 
 ### Sound and music
 
-169. As a player, I want footsteps where the clips' feet land, sounding like stone, so that movement sounds grounded. **(proposed, P21)**
+169. As a player, I want footsteps where the clips' feet land, sounding like stone, so that movement sounds grounded. **(P21, confirmed Oct 4)**
 170. As a player, I want metal impacts that depend on which weapons meet, a distinct ring on parries and Flash, flesh and bone layers that match the blood, and the Hunter's own cloth and gear movement sounds, so that combat sounds physical.
 171. As a player, I want the deflect pairs, the stuck weapon, the pull-out, the finisher prompt and both finishers to have their own sounds, so that every new event is heard.
 172. As a player, I want the final hit to ring out as the slow motion drains the arena's sound and the music, then a deep drum under Warrior Slain, so that a round's end is felt.
@@ -253,18 +253,18 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 177. As a player, I want the HUD fully redesigned for the realistic look (HP bars, the posture bar underneath, round pips and the ultimate badge), keeping its layout, in the style of the mood board's UI page, so that it fits the game.
 178. As a player, I want the round calls redesigned in brushed calligraphy, with Warrior Slain among them, so that ink survives where it belongs.
 179. As a player, I want the finisher prompt designed as the heavy button's glyph, from the device I last used, over the disarmed fighter, so that I can read it in the slow motion.
-180. As a player, I want the HUD's off-screen marker for my dropped weapon restyled and lifted to clear the stuck weapon's hilt, so that I can always find my weapon. **(proposed, P7)**
+180. As a player, I want the HUD's off-screen marker for my dropped weapon restyled and lifted to clear the stuck weapon's hilt, so that I can always find my weapon. **(P7, confirmed Oct 4)**
 181. As a player, I want the menus to take the new theme (colours, fonts and panels) so nothing looks ink-wash, with their layouts redone later, so that the game looks consistent.
 182. As a player, I want four graphics presets (Ultra, High, Medium and Low), with Ultra as the reference preset, so that the game runs on my machine.
 183. As a player, I want the first launch to pick a preset from my graphics card, so that the game starts well without fiddling.
 184. As a player, I want Ultra to render at about 1440p–1800p and upscale to 4K with FSR 2.2, and Low to drop only atmosphere (volumetric fog becomes height fog, petals stop casting light, no ambient occlusion, fewer decals) while keeping the palettes, the rim lights, blood, the 危 and the cinematic shots, so that every preset reads the fight.
-185. As a player, I want Settings to hold the Blood setting, and Reduce flashes to cover every new effect, shake and push-in, so that comfort options stay complete. **(proposed, P7)**
+185. As a player, I want Settings to hold the Blood setting, and Reduce flashes to cover every new effect, shake and push-in, so that comfort options stay complete. **(P7, confirmed Oct 4)**
 186. As a player reading How to play, I want it to describe finishers, Warrior Slain and the slower pace, so that it matches the game.
 220. As a developer, I want the whole-flow walks (keys only, controller only) and every screen's shot scene run again after the UI redesign, so that the new theme breaks no screen.
 
 ### The computer opponent, Training, Watch and Versus
 
-187. As a player, I want the computer to read the generated frame-data table, so that its defence follows the clips as they're re-animated. **(proposed, P17)**
+187. As a player, I want the computer to read the generated frame-data table, so that its defence follows the clips as they're re-animated. **(P17, confirmed Oct 4)**
 188. As a player, I want the computer to time its defence from each swing's first touch and ignore moves that can't reach, so that it defends fairly at the new pace.
 189. As a Training player, I want the dummy to perform every milestone-1 unblockable (Piercing Thrust and Swallow Sweep) through one shared routes table, and the Katana dummy's heavies to alternate both Iai variants, so that I can drill every counter the milestone has.
 190. As a developer, I want counterlab to show the stomp and the leap reached, with the evade waiting for milestone 2, so that every reachable counter is proven.
@@ -272,36 +272,36 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 192. As a player, I want the computer to deal with a stuck weapon (standing in my way when I'm disarmed, running for its own when it is), so that the disarm game stays live against it.
 193. As a player, I want the computer to use its ultimates by today's rules at the new pace (Moonsplitter when the opponent is 2.5–14 m away and neither knocked out nor invulnerable; when disarmed, the recall when the opponent is farther than 2.5 m and Breaker Palm when closer), with those distances rechecked against the distance bands, so that ultimates appear in its play.
 194. As a player, I want Watch's two computer fighters to play the mirror match at the new pace, so that I can learn the moves by watching.
-195. As a Versus player, I want split screen to hold its own target (60 fps at High on the RTX 3090), so that two players get a smooth game. **(proposed, P19)**
+195. As a Versus player, I want split screen to hold its own target (60 fps at High on the RTX 3090), so that two players get a smooth game. **(P19, confirmed Oct 4)**
 196. As a Training player, I want the unblockables' labels and the floor reach marker shown in Training only, so that I can study reach without cluttering matches.
 
 ### Checks, balance and performance
 
-197. As the owner, I want a balance run of mirror matches to come out clean (no failures, rounds of 60–90 s, 0.3–0.6 disarms per round, finishers in some rounds, and the stomp, the leap, Flash, both ultimates and a pick-up all appearing), so that the pace and the rules work together. Each fighter's two block abilities are picked at random, so that all three of the Katana's, and so the stomp and the leap, can appear **(proposed, P49)**.
+197. As the owner, I want a balance run of mirror matches to come out clean (no failures, rounds of 60–90 s, 0.3–0.6 disarms per round, finishers in some rounds, and the stomp, the leap, Flash, both ultimates and a pick-up all appearing), so that the pace and the rules work together. Each fighter's two block abilities are picked at random, so that all three of the Katana's, and so the stomp and the leap, can appear **(P49, confirmed Oct 4)**.
 198. As the owner, I want the finisher share set after the first balance run, so that the target rests on data.
-199. As a developer, I want the soak to play mirror matches, report finishers and the appear-list, and turn per-weapon win rates off until milestone 2, with its round-length target changed to 60–90 s **(proposed, P24)** and each fighter's two Katana block abilities picked at random (seeded) from Flash, Piercing Thrust and Swallow Sweep **(proposed, P49)**, so that the soak checks what milestone 1 promises.
+199. As a developer, I want the soak to play mirror matches, report finishers and the appear-list, and turn per-weapon win rates off until milestone 2, with its round-length target changed to 60–90 s **(P24, confirmed Oct 4)** and each fighter's two Katana block abilities picked at random (seeded) from Flash, Piercing Thrust and Swallow Sweep **(P49, confirmed Oct 4)**, so that the soak checks what milestone 1 promises.
 200. As a developer, I want milestone 1's tuning to change only damage, posture, parry and computer numbers, one change per commit, asking the owner after five changes in a row with a target still out, so that frame data and footwork stay the clips'.
-201. As the owner, I want "holds 60 fps" to mean 99% of frames at 16.7 ms or less in a scripted worst-case replay with shaders warmed up first, for Ultra at 4K on the RTX 3090 and for Low at 1080p on the laptop, so that the gate means one thing. **(proposed, P19)**
-202. As a developer, I want the worst-case replay (both ultimates, a finisher, blood and petals, at the wall) to run from a recorded input log, so that every bench measures the same match. **(proposed, P19)**
-203. As the owner, I want Training and Watch to meet the Duel's gate, so that no mode is slower. **(proposed, P19)**
-204. As the owner, I want the laptop kept available for benchmarking the Low preset, so that the Low gate is measured on real hardware. **(proposed, P25)**
-205. As a developer, I want size budgets per place (the public repository, each asset in the asset repository, the shipped game) checked in place of the 110 MB art cap, with the numbers in the size budget table **(proposed, P23)**, so that size stays under control.
+201. As the owner, I want "holds 60 fps" to mean 99% of frames at 16.7 ms or less in a scripted worst-case replay with shaders warmed up first, for Ultra at 4K on the RTX 3090 and for Low at 1080p on the laptop, so that the gate means one thing. **(P19, confirmed Oct 4)**
+202. As a developer, I want the worst-case replay (both ultimates, a finisher, blood and petals, at the wall) to run from a recorded input log, so that every bench measures the same match. **(P19, confirmed Oct 4)**
+203. As the owner, I want Training and Watch to meet the Duel's gate, so that no mode is slower. **(P19, confirmed Oct 4)**
+204. As the owner, I want the laptop kept available for benchmarking the Low preset, so that the Low gate is measured on real hardware. **(P25, confirmed Oct 4)**
+205. As a developer, I want size budgets per place (the public repository, each asset in the asset repository, the shipped game) checked in place of the 110 MB art cap, with the numbers in the size budget table **(P23, confirmed Oct 4)**, so that size stays under control.
 206. As a developer, I want the tests that pin the demo's frame data, assert toon materials or outlines, or cap art at 110 MB replaced as milestone 1 lands, so that the suite tests the game being built.
 207. As the owner, I want every check green at sign-off (the tests and the typecheck, the frame-data and band checks, the replay and save-and-restore tests, the grey-palette test, the size budgets, the smoke run, the whole-flow walks with keys only and with a controller only, and the local-only re-bake on the owner's PC), so that the milestone ends on a clean build.
 
 ### Review, sign-off and the Godot check
 
-208. As the owner, I want every move to pass a written checklist before the milestone ends, the items in the per-move checklist table **(proposed, P32)**, so that "final quality" is concrete.
-209. As the owner, I want moves to come to me family by family, each with contact sheets, a side-by-side video against the reference games and a play session with the licensed clips loaded, so that I judge each as a player would. **(proposed, P22)**
-210. As the owner, I want the reference-game footage to stay on my machine, so that nothing licensed is committed. **(proposed, P22)**
+208. As the owner, I want every move to pass a written checklist before the milestone ends, the items in the per-move checklist table **(P32, confirmed Oct 4)**, so that "final quality" is concrete.
+209. As the owner, I want moves to come to me family by family, each with contact sheets, a side-by-side video against the reference games and a play session with the licensed clips loaded, so that I judge each as a player would. **(P22, confirmed Oct 4)**
+210. As the owner, I want the reference-game footage to stay on my machine, so that nothing licensed is committed. **(P22, confirmed Oct 4)**
 211. As the owner, I want Claude to make the first passes by script in Blender (longer wind-ups, re-gripped hands, travel, block-outs of new clips) and to polish the signature moves (the Iai, the deflect pairs, the finishers) myself in Cascadeur, bought when the first polish starts, so that each of us does what we do best.
-212. As the owner, I want the Godot check judged at the pilot family and at the look test scene against written criteria, and confirmed at sign-off, so that the engine question is settled on evidence. The criteria are in the Godot check table **(proposed, P31)**.
+212. As the owner, I want the Godot check judged at the pilot family and at the look test scene against written criteria, and confirmed at sign-off, so that the engine question is settled on evidence. The criteria are in the Godot check table **(P31, confirmed Oct 4)**.
 213. As the owner, I want to sign off milestone 1 by playing the real build with the asset repository, once every move passes its checklist, both performance gates hold, the balance run is clean and every check is green, so that the milestone ends on the game, not on a report.
 214. As the owner, I want a spending review at the end of milestone 1 (inside the roughly $300 for both milestones, Cascadeur Indie and any Git LFS storage first), so that the next purchases, a vocals pack among them, are made knowing what's missing. No animation packs are bought for the existing content: the owned Kevin Iglesias packs and clips keyed in Blender are the animation sources.
 
 ### Upkeep
 
-215. As a developer, I want the procedural poses (the stick poses, the swing player, the weapon-hold idles, the demo swings and the posing of weapons in space) retired once the clips' hands hold the weapons, so that no second animation system remains. The labelled stand-ins that clones and CI play stay. **(proposed, P34)**
+215. As a developer, I want the procedural poses (the stick poses, the swing player, the weapon-hold idles, the demo swings and the posing of weapons in space) retired once the clips' hands hold the weapons, so that no second animation system remains. The labelled stand-ins that clones and CI play stay. **(P34, confirmed Oct 4)**
 216. As a developer, I want a director test that every move of every weapon resolves to a clip, so that nothing falls back silently.
 217. As a developer, I want the rules-tuned lunges, the recovery slide, the dodge-cancel formula, the reach push and the clip retime (1.0–2.0×) retired for the Katana and bare hands, and the locomotion's stride-matched playback rate (PR #21) retired with them (gait clips play at 1.0× and the rules move at their measured speeds), so that only clips move fighters.
 218. As a developer, I want every place this spec changes `docs/design.md` or the older specs updated on `docs/milestone-1-spec` once the owner approves this spec, before its pull request merges (the new `GLOSSARY.md` terms are already there), so that the docs agree before any code is built.
@@ -309,7 +309,7 @@ One global numbering; the plan cites these as "Stories: N". Stories 220 and late
 
 ## Implementation Decisions
 
-Module names are the code's; the plan names the files. The tables at the end of this section hold the values these decisions refer to. Every number in them is proposed for the owner's approval with this spec unless it is marked as today's or as the owner's. Times are at 60 rules frames a second (one frame is 16.7 ms).
+Module names are the code's; the plan names the files. The tables at the end of this section hold the values these decisions refer to. Every number in them was proposed with this spec and confirmed by the owner on Oct 4 (P1–P56) unless it is marked as today's or as the owner's. Times are at 60 rules frames a second (one frame is 16.7 ms).
 
 ### Decisions in plain English
 
@@ -328,7 +328,7 @@ Module names are the code's; the plan names the files. The tables at the end of 
 ### Order of work and branches
 
 - Milestone 1 waits on the consolidation: `docs/plans/godot-rebuild.md` stage 14, ending with task 26.4 merging `feature/godot-rebuild` into `master`. Its code's branch, `feature/milestone-1`, is cut from `master` then, and its pull request targets `master`. This spec and its plan go earlier, on `docs/milestone-1-spec` through a draft pull request into `feature/godot-rebuild`, and reach `master` with the consolidation.
-- The work runs in this order: (1) the pipeline (asset repository, Blender export and clip import, frame-data generator with the band tests, replay and save-and-restore tests, the Studio's slimming, the protected-timing retune); (2) the mood board, started at once and in parallel with the pipeline; (3) the pilot family keyed, with its sound and rules, and alongside it the look test scene, built as soon as the mood board is approved and showing the pilot's moves; (4) the pilot's effects made in the approved look, the pilot's final review by the owner (its play session ending the protected-timing retune), and the first Godot check, then the art conversion; (5) the other move families one at a time; (6) the closing checks: effects parity, the performance gates, the balance run, then the owner's sign-off. Clip work never waits for the look **(proposed, P2)**: the pipeline and the pilot's keying start at once, and only the pilot's effects wait for the look test, so the pilot reaches final quality whole before any other family starts, as the owner decided. If the look test runs late, the owner decides at a review of the pilot's motion whether family 2 starts before the pilot's effects are final **(proposed, P51)**.
+- The work runs in this order: (1) the pipeline (asset repository, Blender export and clip import, frame-data generator with the band tests, replay and save-and-restore tests, the Studio's slimming, the protected-timing retune); (2) the mood board, started at once and in parallel with the pipeline; (3) the pilot family keyed, with its sound and rules, and alongside it the look test scene, built as soon as the mood board is approved and showing the pilot's moves; (4) the pilot's effects made in the approved look, the pilot's final review by the owner (its play session ending the protected-timing retune), and the first Godot check, then the art conversion; (5) the other move families one at a time; (6) the closing checks: effects parity, the performance gates, the balance run, then the owner's sign-off. Clip work never waits for the look **(P2, confirmed Oct 4)**: the pipeline and the pilot's keying start at once, and only the pilot's effects wait for the look test, so the pilot reaches final quality whole before any other family starts, as the owner decided. If the look test runs late, the owner decides at a review of the pilot's motion whether family 2 starts before the pilot's effects are final **(P51, confirmed Oct 4)**.
 - The godot-rebuild master follow-ups run on `master` at the same time. Milestone 1 restyles what they build (the toasts, prompts and dropped-weapon marker, the Versus HUD, the fighter-select preview, the Reduce flashes wiring) and does not wait for them, except where a milestone-1 story needs the function: the finisher prompt builds on 24.4's prompts, the off-screen marker restyle on 24.5, and Reduce flashes covering the new effects on 18.11.
 
 ### The roster during milestone 1
@@ -336,12 +336,12 @@ Module names are the code's; the plan names the files. The tables at the end of 
 - A roster filter decides what the menus offer: by default the Hunter and the Katana; with the dev flag (a command-line flag, also settable for tests) the Rogue, the Greatsword and the Twin Daggers too. Every place that lists fighters or weapons reads the filter: the fighter grid, the weapon cards, a random weapon at lock in, the How to play tabs, Training's weapon-for-drill fallback and the soak.
 - The match defaults (Duel, Training, Watch, the attract duel and the select draft) become the Hunter against the Hunter with the Katana, crimson against indigo.
 - Training's slam drill is unavailable while the Greatsword is hidden; the Katana has no slam.
-- Bare hands stay the disarmed state, not a loadout **(proposed, P1)**.
+- Bare hands stay the disarmed state, not a loadout **(P1, confirmed Oct 4)**.
 
 ### The asset repository, the export and the import
 
 - A private GitHub repository with Git LFS holds the Kevin Iglesias packs, the Quaternius sources the game uses, the Blender sources (fighters, the Katana and saya, the Shrine's models, re-keyed and new clips) and every scripted export. Today's asset-source setting points the import tools at its checkout. The raw Sonniss zips stay outside it; processed sounds stay in the public repository as today.
-- Which exports the public repository also holds: the exports of self-made and CC0 art (the Katana and saya, the Hunter's tricorn, scarf and re-dyed materials, and the Shrine's models and materials) are committed there too, inside its 150 MB art budget; what doesn't fit, such as full-resolution textures, stays in the asset repository only, and plain clones play a reduced copy or a labelled stand-in **(proposed, P23)**. Clip exports stay in the asset repository only, since most derive from the Kevin Iglesias packs (every retargeted or re-keyed pack clip), whose licence forbids redistribution; plain clones and CI play the CC0 stand-in clips and the committed frame-data table instead.
+- Which exports the public repository also holds: the exports of self-made and CC0 art (the Katana and saya, the Hunter's tricorn, scarf and re-dyed materials, and the Shrine's models and materials) are committed there too, inside its 150 MB art budget; what doesn't fit, such as full-resolution textures, stays in the asset repository only, and plain clones play a reduced copy or a labelled stand-in **(P23, confirmed Oct 4)**. Clip exports stay in the asset repository only, since most derive from the Kevin Iglesias packs (every retargeted or re-keyed pack clip), whose licence forbids redistribution; plain clones and CI play the CC0 stand-in clips and the committed frame-data table instead.
 - A Blender export script, run headless, turns each Blender source into the file the game imports (glTF for models and clips), and records each export's source file. It is the only way art reaches the game.
 - The clip import grows a second source beside the pack FBX paths: exported clips from the asset repository, named in the clip manifest by asset-repository path instead of pack, set and source. Both go through the same retarget, mirroring and library build. A manifest entry may name an exported clip that replaces a pack clip; the pack clip stays recorded as its origin.
 - The prop bones of the Iglesias rig are kept on import where a clip needs the weapon's own motion (the Iai's draw, the finisher's re-sheathe, the recall's catch), instead of being dropped as today.
@@ -349,27 +349,27 @@ Module names are the code's; the plan names the files. The tables at the end of 
 ### The frame-data table and the generator
 
 - The generator is today's bake turned round: it reads each move's clip (or chain of clips) at 1.0×, reads its markers, and writes, instead of checking against hand-typed numbers. It is deterministic, and runs headless in CI on the committed CC0 stand-ins (for its own tests) and locally on the real clips.
-- The committed table holds, per move: the weapon, the move, its kind (the timing band's row), the source clip or chain with each part's source frames, startup, active and recovery in rules frames, the dodge-cancel window, each follow-up's branch point and window, per-frame travel (forward, sideways and turn, from the hips and foot plants), and two checksums: the source clip's, which only the local re-bake test can check, and a digest of the move's generated row together with its swing file, which CI recomputes from the committed files so that a hand edit to either fails. The hit paths stay in the swing files, regenerated in the same run; swings are sampled relative to the moving body **(proposed, P13)**. Per gait it holds the measured speed, stride and foot contacts; per start, stop and pivot clip its length and travel.
+- The committed table holds, per move: the weapon, the move, its kind (the timing band's row), the source clip or chain with each part's source frames, startup, active and recovery in rules frames, the dodge-cancel window, each follow-up's branch point and window, per-frame travel (forward, sideways and turn, from the hips and foot plants), and two checksums: the source clip's, which only the local re-bake test can check, and a digest of the move's generated row together with its swing file, which CI recomputes from the committed files so that a hand edit to either fails. The hit paths stay in the swing files, regenerated in the same run; swings are sampled relative to the moving body **(P13, confirmed Oct 4)**. Per gait it holds the measured speed, stride and foot contacts; per start, stop and pivot clip its length and travel.
 - The table also holds every non-attack clip that sets a rules length, since neither the rules nor CI can read clips: the draw's ready frame (when "Fight!" is called, P41), the pull-out's length and the frame the weapon is in hand (P16), each finisher's length, kill frame and paired placement, the stomp's and the leap's paired lengths and placement, the round-end beats' and the victory poses' lengths, and each state clip's length. Each is recorded in rules frames with its markers, its source clip and the same two checksums.
 - Move data keep only what design sets: damage, posture, knockback, kind, type, unblockable and counter flags, the follow-up graph and the protected-timing overrides. `AttackDef`'s startup, active, recovery, dodge-cancel and travel fields are filled from the table when the moves load, so every reader keeps reading `AttackDef` fields.
-- The rules-set lunges (their start, end and eased share), the recovery slide, the reach push and the run-speed carry into attacks retire for the Katana and bare hands **(proposed, P14)**. The Greatsword and Daggers get their startup, active and recovery from their current clips at 1.0× through the same generator, with no band test **(proposed, P10)**, and keep their rules lunges, the colossal slide and the shoulder carry until milestone 2 re-keys them **(proposed, P45)**. Both Counter Lunges do the same on today's clips **(proposed, P48)**.
-- The timing bands and the distance bands are committed data tables, one row per move kind per weapon, read by the band tests and shown by the Studio. A move has one kind, and so one band, wherever it is played from; the moves reached from more than one slot are listed under the timing band table **(proposed, P26)**.
-- CI checks that the committed table is complete (every move and every rules-length clip has an entry), generated (the digests match), and that every Katana and bare-hands move is in band. A local-only test re-bakes every move from the real clips and fails on any drift **(proposed, P12)**.
+- The rules-set lunges (their start, end and eased share), the recovery slide, the reach push and the run-speed carry into attacks retire for the Katana and bare hands **(P14, confirmed Oct 4)**. The Greatsword and Daggers get their startup, active and recovery from their current clips at 1.0× through the same generator, with no band test **(P10, confirmed Oct 4)**, and keep their rules lunges, the colossal slide and the shoulder carry until milestone 2 re-keys them **(P45, confirmed Oct 4)**. Both Counter Lunges do the same on today's clips **(P48, confirmed Oct 4)**.
+- The timing bands and the distance bands are committed data tables, one row per move kind per weapon, read by the band tests and shown by the Studio. A move has one kind, and so one band, wherever it is played from; the moves reached from more than one slot are listed under the timing band table **(P26, confirmed Oct 4)**.
+- CI checks that the committed table is complete (every move and every rules-length clip has an entry), generated (the digests match), and that every Katana and bare-hands move is in band. A local-only test re-bakes every move from the real clips and fails on any drift **(P12, confirmed Oct 4)**.
 
 ### Protected timings
 
-- The protected timings stay rules constants. Beside design's list, the stuns the counters buy (the stomp, Flash and the redirect), the disarm's stagger and the disarmed fighter's daze, and the parry recoil with the parrier's recovery join them, since they decide how many hits a counter or a parry buys **(proposed, P50)**. The finisher prompt is a new rules number frozen with them (P35).
-- They are retuned once, in the pipeline phase, from the band floors by the rules in the protected-timing table. The pilot family's play session ends that one retune: it may adjust the values, and then they are frozen **(proposed, P28)**. No later family's play session changes a protected timing; the clips are keyed to fit them. A test pins the frozen values; changing one needs the owner's OK and an entry in this spec.
-- The retune covers the Katana and bare hands. The Greatsword and the Daggers keep today's protected timings, the Daggers' 10 frames of string hitstun included, until milestone 2 re-keys them and retunes them once against their own bands. Both Counter Lunges, unreachable in milestone 1, take their weapon's retuned light hitstun (23 and 17), which closes the old question of 18 or 14 frames; whether the evade's reward needs more is asked when milestone 2 re-keys the evade **(proposed, P48)**.
-- The free-frame rule is set by the retune and then checked over the table, not by hand. The retune sizes each hitstun so that, at the band floors, the defender is free 1–2 frames before the next hit of a light string can land. The check then holds every follow-up pair in the table to at least 1 frame (no follow-up is guaranteed), counting from a hit on the move's last active frame and the follow-up taken at its branch point **(proposed, P28)**. The earliest branch points under the timing band table keep that true at the band floors. A clip whose branch point breaks the rule is re-keyed; a slower clip only gives the defender more time.
+- The protected timings stay rules constants. Beside design's list, the stuns the counters buy (the stomp, Flash and the redirect), the disarm's stagger and the disarmed fighter's daze, and the parry recoil with the parrier's recovery join them, since they decide how many hits a counter or a parry buys **(P50, confirmed Oct 4)**. The finisher prompt is a new rules number frozen with them (P35).
+- They are retuned once, in the pipeline phase, from the band floors by the rules in the protected-timing table. The pilot family's play session ends that one retune: it may adjust the values, and then they are frozen **(P28, confirmed Oct 4)**. No later family's play session changes a protected timing; the clips are keyed to fit them. A test pins the frozen values; changing one needs the owner's OK and an entry in this spec.
+- The retune covers the Katana and bare hands. The Greatsword and the Daggers keep today's protected timings, the Daggers' 10 frames of string hitstun included, until milestone 2 re-keys them and retunes them once against their own bands. Both Counter Lunges, unreachable in milestone 1, take their weapon's retuned light hitstun (23 and 17), which closes the old question of 18 or 14 frames; whether the evade's reward needs more is asked when milestone 2 re-keys the evade **(P48, confirmed Oct 4)**.
+- The free-frame rule is set by the retune and then checked over the table, not by hand. The retune sizes each hitstun so that, at the band floors, the defender is free 1–2 frames before the next hit of a light string can land. The check then holds every follow-up pair in the table to at least 1 frame (no follow-up is guaranteed), counting from a hit on the move's last active frame and the follow-up taken at its branch point **(P28, confirmed Oct 4)**. The earliest branch points under the timing band table keep that true at the band floors. A clip whose branch point breaks the rule is re-keyed; a slower clip only gives the defender more time.
 - The clips that show protected timings (the roll, the backstep, the knockdown phases, hitstun and blockstun reactions, the stuns, staggers and daze) are made to fit them: a test compares each state clip's length at 1.0× with its frames. The dodge's travel curve is regenerated from the re-keyed roll clip.
 
 ### Movement, gaits and momentum
 
 - The rules' gait speeds (walk, run in each of the eight directions, sprint, the guarded strafe and shuffle, the disarmed gaits) come from the table's measured clip speeds. The rules gain a walk speed. The stick's tilt picks a blend of gait clips, and the rules move the fighter at the blended speed, kept in step.
 - Starts, stops and pivots become short rules states driven by their clips' travel: a guarded start or stop (6 frames or fewer), a run stop and a plant-and-reverse pivot (12–15 frames, up to 0.5 m), a sprint stop (about 20 frames, about 1 m). Any attack, dodge, backstep, parry or block cuts in at once; the leftover momentum shows only in the blend. The tap step keeps its instant start.
-- The blocking walk and the disarmed speed stop being multipliers on the run: they are the guarded and the disarmed gait clips' own speeds, chosen or keyed to about 55–65% and about 1.2× of the run **(proposed, P29)**. The Iai stance's strafe is a gait too, at its clip's measured speed; the draw's drift comes from the draw clip's travel **(proposed, P29)**. The disarmed dodge stays 1.5× the distance through a longer roll clip **(proposed, P15)**; the disarmed jump stays a rules number.
-- A jump attack can start only while its startup and active frames fit the airtime left on the rules' arc; a later press is ignored. Landing no longer skips an air attack's frames forward to its active part: the attack's landing recovery plays from its clip **(proposed, P53)**.
+- The blocking walk and the disarmed speed stop being multipliers on the run: they are the guarded and the disarmed gait clips' own speeds, chosen or keyed to about 55–65% and about 1.2× of the run **(P29, confirmed Oct 4)**. The Iai stance's strafe is a gait too, at its clip's measured speed; the draw's drift comes from the draw clip's travel **(P29, confirmed Oct 4)**. The disarmed dodge stays 1.5× the distance through a longer roll clip **(P15, confirmed Oct 4)**; the disarmed jump stays a rules number.
+- A jump attack can start only while its startup and active frames fit the airtime left on the rules' arc; a later press is ignored. Landing no longer skips an air attack's frames forward to its active part: the attack's landing recovery plays from its clip **(P53, confirmed Oct 4)**.
 
 ### Strings, cancels and markers
 
@@ -378,44 +378,44 @@ Module names are the code's; the plan names the files. The tables at the end of 
 
 ### The finisher
 
-- New rules: a disarm of a fighter at 5% HP or less (5 HP at today's 100 maximum; the disarming blow still deals no damage) opens the finisher prompt for the fighter who disarmed them. The rules count the prompt in rules frames while the world runs in slow motion: the match host steps the rules at the slow-motion rate, so 18 rules frames at 0.3× last about a second **(proposed, P35)**. A fresh heavy press inside the window starts the finisher; a press or hold from before the window doesn't count, and the input buffer doesn't carry one into it.
+- New rules: a disarm of a fighter at 5% HP or less (5 HP at today's 100 maximum; the disarming blow still deals no damage) opens the finisher prompt for the fighter who disarmed them. The rules count the prompt in rules frames while the world runs in slow motion: the match host steps the rules at the slow-motion rate, so 18 rules frames at 0.3× last about a second **(P35, confirmed Oct 4)**. A fresh heavy press inside the window starts the finisher; a press or hold from before the window doesn't count, and the input buffer doesn't carry one into it.
 - The finisher is a paired state for both fighters: the rules line them up over a few frames to the clip's relative placement, the victim's inputs are ignored, and the round ends as a KO when the clip reaches its kill marker. Its length is its clip's, read from the table. New events: the prompt opening and closing, the finisher starting, and the kill.
-- The weapon decides the finisher: the Katana's iai finisher when the armed fighter disarmed, bare hands' turn-aside-and-strike when the disarmed fighter redirected. When a disarmed fighter disarms by a blocked Breaker Palm or a fully charged Roundhouse instead (an armed fighter at full posture blocking a power attack or an ultimate is disarmed), bare hands' finisher opens too and plays from its strike marker, skipping the turn-aside, with the line-up made to that marker's placement **(proposed, P52)**. Under Blood Reduced and Off the Katana's finisher plays without the two halves, as a picture-only choice; the rules are the same.
-- The computer opponent presses the prompt at its difficulty's rate in the computer's finisher rates table **(proposed, P3, P55)**. Training plays the finisher, then refills HP **(proposed, P3)**.
+- The weapon decides the finisher: the Katana's iai finisher when the armed fighter disarmed, bare hands' turn-aside-and-strike when the disarmed fighter redirected. When a disarmed fighter disarms by a blocked Breaker Palm or a fully charged Roundhouse instead (an armed fighter at full posture blocking a power attack or an ultimate is disarmed), bare hands' finisher opens too and plays from its strike marker, skipping the turn-aside, with the line-up made to that marker's placement **(P52, confirmed Oct 4)**. Under Blood Reduced and Off the Katana's finisher plays without the two halves, as a picture-only choice; the rules are the same.
+- The computer opponent presses the prompt at its difficulty's rate in the computer's finisher rates table **(P3 and P55, confirmed Oct 4)**. Training plays the finisher, then refills HP **(P3, confirmed Oct 4)**.
 
 ### The disarm and the stuck weapon
 
-- The dropped weapon stops drawing from the world's random number generator: its flight is a fixed arc along the knock or deflect direction, shortened to land inside the walls, and it lands stuck at an angle that is rules state **(proposed, P16)**. Nothing else in the rules uses that generator, so the other rules don't shift. The bounce, its event and the weapon-bounce sparks retire.
-- The pick-up becomes pulling the weapon out of the ground; its length and the frame the weapon is in hand come from its clip **(proposed, P16)**. The recall still returns it.
+- The dropped weapon stops drawing from the world's random number generator: its flight is a fixed arc along the knock or deflect direction, shortened to land inside the walls, and it lands stuck at an angle that is rules state **(P16, confirmed Oct 4)**. Nothing else in the rules uses that generator, so the other rules don't shift. The bounce, its event and the weapon-bounce sparks retire.
+- The pick-up becomes pulling the weapon out of the ground; its length and the frame the weapon is in hand come from its clip **(P16, confirmed Oct 4)**. The recall still returns it.
 
 ### Determinism: snapshot, hash and input log
 
-- `World`, `Fighter`, `Match`, `DroppedWeapon`, the world's random number generator (`Rng`, while anything still draws from it) and each `AIBrain` (with its own generator) gain a snapshot and a restore, and the world gains a state hash over everything the rules own. An input log records each step's inputs per side and replays them through the match host. These are the seams of the replay test, the save-and-restore test, the worst-case performance replay and the balance run's reproductions **(proposed, P18)**.
+- `World`, `Fighter`, `Match`, `DroppedWeapon`, the world's random number generator (`Rng`, while anything still draws from it) and each `AIBrain` (with its own generator) gain a snapshot and a restore, and the world gains a state hash over everything the rules own. An input log records each step's inputs per side and replays them through the match host. These are the seams of the replay test, the save-and-restore test, the worst-case performance replay and the balance run's reproductions **(P18, confirmed Oct 4)**.
 
 ### Clip playback and the body
 
 - The clip director plays every clip of the Katana and bare hands at 1.0× of the world's time (hit-stop and slow motion slow every clip alike): the fitted retime of state clips and the attack retime go, and the locomotion's stride-matched playback rate (PR #21) retires with them, so gait clips play at 1.0× and the rules move at their measured speeds. Hand-offs request an inertial blend instead of a crossfade, the hitstun cut included.
-- Inertial blending and the physical reaction layer are skeleton modifiers in the fighter's rig, after the clip and before foot locking and the hands' grip; they change only the picture **(proposed, P11)**.
+- Inertial blending and the physical reaction layer are skeleton modifiers in the fighter's rig, after the clip and before foot locking and the hands' grip; they change only the picture **(P11, confirmed Oct 4)**.
 - Hit reactions pick a clip by direction (front, left, right, back), height (high, low) and weight (light, heavy) from the hit's contact point and the move. Blocks pick a block reaction by weight.
-- Deflect pairs: each attack direction has a pair (the parrier's deflect, the attacker's recoil); a parry event carries the contact point and the direction, and both fighters play their half from the contact frame **(proposed, P9)**. A blade parrying a fist or foot plays a recoil with no cut.
+- Deflect pairs: each attack direction has a pair (the parrier's deflect, the attacker's recoil); a parry event carries the contact point and the direction, and both fighters play their half from the contact frame **(P9, confirmed Oct 4)**. A blade parrying a fist or foot plays a recoil with no cut.
 - Paired clips (the stomp, the leap, both finishers) line the two fighters up over a few rules frames so their bodies meet; the alignment is rules movement, recorded in the table like any travel.
-- The weapon is fixed to the clip's hands in every state, free movement included, using the clip's prop bone where the clip has one **(proposed, P34)**. The procedural poses (the stick poses, the swing player, the weapon-hold idles and the demo swings) retire for every weapon in milestone 1, the hidden ones included, which ride their current clips' hands **(proposed, P45)**. The labelled stand-ins that clones and CI play stay.
-- The rules-authored knock-backs and lunges that remain (the recall burst's 2.0 m knock-back, Breaker Palm's lunge) become clip travel; Moonsplitter's wave stays a scripted rules hit, since it isn't body movement **(proposed, P43)**.
+- The weapon is fixed to the clip's hands in every state, free movement included, using the clip's prop bone where the clip has one **(P34, confirmed Oct 4)**. The procedural poses (the stick poses, the swing player, the weapon-hold idles and the demo swings) retire for every weapon in milestone 1, the hidden ones included, which ride their current clips' hands **(P45, confirmed Oct 4)**. The labelled stand-ins that clones and CI play stay.
+- The rules-authored knock-backs and lunges that remain (the recall burst's 2.0 m knock-back, Breaker Palm's lunge) become clip travel; Moonsplitter's wave stays a scripted rules hit, since it isn't body movement **(P43, confirmed Oct 4)**.
 
 ### Cinematic shots and the camera
 
-- A shot director plays authored camera shots from data (a camera path, a lens, and the camera effects allowed) on the presentation side, never in the rules. Shots: Moonsplitter and Breaker Palm once they connect, both finishers, and the match-winning KO. The recall gets a push-in, not a shot **(proposed, P37)**. A finisher that ends a round plays its own shot through Warrior Slain, and a match-winning finisher's shot replaces the authored KO shot **(proposed, P38)**. After a Katana finisher, which already re-sheathes, neither the round-end beat nor the victory pose plays its own sheathe: the winner holds the finisher's end pose through Warrior Slain, and a victory pose starts from it **(proposed, P4)**.
-- The camera rig gains a push-in for every parry, Flash and redirect, frozen in hit-stop and off under Reduce flashes **(proposed, P8)**. The gameplay camera's framing comes from the look test **(proposed, P20)**.
+- A shot director plays authored camera shots from data (a camera path, a lens, and the camera effects allowed) on the presentation side, never in the rules. Shots: Moonsplitter and Breaker Palm once they connect, both finishers, and the match-winning KO. The recall gets a push-in, not a shot **(P37, confirmed Oct 4)**. A finisher that ends a round plays its own shot through Warrior Slain, and a match-winning finisher's shot replaces the authored KO shot **(P38, confirmed Oct 4)**. After a Katana finisher, which already re-sheathes, neither the round-end beat nor the victory pose plays its own sheathe: the winner holds the finisher's end pose through Warrior Slain, and a victory pose starts from it **(P4, confirmed Oct 4)**.
+- The camera rig gains a push-in for every parry, Flash and redirect, frozen in hit-stop and off under Reduce flashes **(P8, confirmed Oct 4)**. The gameplay camera's framing comes from the look test **(P20, confirmed Oct 4)**.
 
 ### Effects and blood
 
-- The effect table grows from contact flashes to: sparks (block, parry, Flash, blade clash; by weapon pair), blood (hit burst, blade and cloth stains for the match, floor splatter that fades; scaled or removed by the Blood setting), bare-hand impacts **(proposed, P36)**, dust and smoke (feet, rolls, falls, knockdowns), air smears, the 危 and the blade glint, the ultimate aura, the ultimates' energy, the stuck weapon's glint **(proposed, P7)**, and the arena reactions' decals.
-- How a Flash and a redirect read apart from a plain parry: their deflect pairs and sounds first, then their effects **(proposed, P39)**. The gold 奥義 ULTIMATE mark retires in matches **(proposed, P40)**, and the status flashes (evade, stagger, counter-ready, pick-up) retire in favour of the clips, the push-ins and Training's toasts **(proposed, P40)**.
+- The effect table grows from contact flashes to: sparks (block, parry, Flash, blade clash; by weapon pair), blood (hit burst, blade and cloth stains for the match, floor splatter that fades; scaled or removed by the Blood setting), bare-hand impacts **(P36, confirmed Oct 4)**, dust and smoke (feet, rolls, falls, knockdowns), air smears, the 危 and the blade glint, the ultimate aura, the ultimates' energy, the stuck weapon's glint **(P7, confirmed Oct 4)**, and the arena reactions' decals.
+- How a Flash and a redirect read apart from a plain parry: their deflect pairs and sounds first, then their effects **(P39, confirmed Oct 4)**. The gold 奥義 ULTIMATE mark retires in matches **(P40, confirmed Oct 4)**, and the status flashes (evade, stagger, counter-ready, pick-up) retire in favour of the clips, the push-ins and Training's toasts **(P40, confirmed Oct 4)**.
 - The brush-stroke trails, the ink splash, the stylised parry ring and the dropped-weapon beam and ring retire.
 
 ### Look, presets and the performance harness
 
-- Physically based materials under one colour grade replace the toon materials, outlines and ink-wash pass. The graphics presets become four data files (Ultra, High, Medium, Low), with Ultra the reference, FSR 2.2 upscaling on Ultra, and a first-launch pick from the detected graphics card. Low's upscaler is chosen at its first bench **(proposed, P30)**.
+- Physically based materials under one colour grade replace the toon materials, outlines and ink-wash pass. The graphics presets become four data files (Ultra, High, Medium, Low), with Ultra the reference, FSR 2.2 upscaling on Ultra, and a first-launch pick from the detected graphics card. Low's upscaler is chosen at its first bench **(P30, confirmed Oct 4)**.
 - A performance harness plays the worst-case input log in a window after a shader warm-up pass and writes every frame's time; the gate reads the 99th percentile. CI has no GPU, so the gates are owner-run measurements recorded in the plan, not CI checks.
 
 ### The Shrine and the wind
@@ -425,26 +425,26 @@ Module names are the code's; the plan names the files. The tables at the end of 
 
 ### Sound and music
 
-- The sound bank gains entries for every new event (deflect pairs, the stuck weapon, the pull-out, the finisher prompt and kill, Warrior Slain's drum, the 危), metal impacts chosen by the pair of weapons that meet, flesh and bone layers keyed to the hit, and stone footsteps at the clips' foot contacts **(proposed, P21)**. The KO drains the arena and music buses during the slow motion.
+- The sound bank gains entries for every new event (deflect pairs, the stuck weapon, the pull-out, the finisher prompt and kill, Warrior Slain's drum, the 危), metal impacts chosen by the pair of weapons that meet, flesh and bone layers keyed to the hit, and stone footsteps at the clips' foot contacts **(P21, confirmed Oct 4)**. The KO drains the arena and music buses during the slow motion.
 - The music generator gains the shakuhachi, the biwa and a low choir, and match-point electronic and metal layers; tempos stay inside the design's ranges.
 - Effort vocals are placeholders from the Sonniss bundle and generated sounds until a pack is bought after the spending review.
 
 ### HUD, menus and settings
 
 - A new UI theme replaces the ink-wash theme and its palette across every screen. The HUD, the round calls (Warrior Slain 討死 replaces 一本 K.O. in every mode at once; the double KO keeps 相打ち), the finisher prompt and the off-screen weapon marker are redesigned. Menu layouts are not redone.
-- Settings gain the Blood setting (On, Reduced, Off; default On) **(proposed, P5)** and the four presets.
+- Settings gain the Blood setting (On, Reduced, Off; default On) **(P5, confirmed Oct 4)** and the four presets.
 
 ### The computer opponent, Training, the soak and counterlab
 
-- The brain reads frame data from `AttackDef`, which the table fills, so it follows the clips **(proposed, P17)**; godot-rebuild tasks 12.2–12.5 run after the frame-data change. It learns the finisher prompt, the stuck weapon and the pull-out.
+- The brain reads frame data from `AttackDef`, which the table fills, so it follows the clips **(P17, confirmed Oct 4)**; godot-rebuild tasks 12.2–12.5 run after the frame-data change. It learns the finisher prompt, the stuck weapon and the pull-out.
 - Training's unblockable drills come from one routes table; Training plays a finisher, then refills.
-- The soak plays mirror matches, targets rounds of 60–90 s **(proposed, P24)** and 0.3–0.6 disarms, reports the finisher share and the appear-list, and turns win rates off. It builds each fighter with two Katana block abilities picked at random (seeded) from Flash, Piercing Thrust and Swallow Sweep, instead of today's default of Flash and Piercing Thrust, so that every ability, and so the stomp and the leap, can appear **(proposed, P49)**. The menus' default loadout stays Flash and Piercing Thrust. Counterlab's Greatsword cases wait for milestone 2.
+- The soak plays mirror matches, targets rounds of 60–90 s **(P24, confirmed Oct 4)** and 0.3–0.6 disarms, reports the finisher share and the appear-list, and turns win rates off. It builds each fighter with two Katana block abilities picked at random (seeded) from Flash, Piercing Thrust and Swallow Sweep, instead of today's default of Flash and Piercing Thrust, so that every ability, and so the stomp and the leap, can appear **(P49, confirmed Oct 4)**. The menus' default loadout stays Flash and Piercing Thrust. Counterlab's Greatsword cases wait for milestone 2.
 
 ### The Animation Studio
 
 - Kept: the gallery (done), the timeline over source frames, a frames-and-bands view (the generated frame data against the move kind's timing band, with the distance band's hit-or-miss check), the edit session, marker editing (extended to the new markers), the chain panel without speeds or holds, and save (markers and chains written, the table regenerated, out-of-band moves reported). Dropped: the frame-data editor, the state-timings panel, the refinement launcher, the chat panel, correctives, bone posing, IK handles and keyed-clip editing. The owner tries the slimmed Studio on the pilot family.
 
-### The timing band table (proposed, P26; the owner approves it)
+### The timing band table (P26, confirmed by the owner Oct 4)
 
 "Lands in" is the startup: the frames from the move's first frame (its press, or its branch point for a follow-up) to its first active frame. The anchor is the owner's: the Katana's lights land in 400–500 ms (24–30 frames). The For Honor column is what its moves are commonly known to take, from public frame-data knowledge, to be checked against the owner's footage of the game; For Honor has no jumps and no stance-release like the Iai.
 
@@ -470,11 +470,11 @@ Module names are the code's; the plan names the files. The tables at the end of 
 | Ultimate | Moonsplitter (vertical, horizontal) | 54–66 to the wave | 900–1100 | the wave, as the rules run it | 36–48 | — |
 | Counter Lunge | Counter Lunge | milestone 2 | | | | |
 
-The jump bands must also land before touchdown: today's jump (0.95 m at 30 m/s²) is in the air about 30 frames, and 35 disarmed. Each jump attack's startup and active frames, at their band ceilings, fit inside the airtime from a press in the jump's first few airborne frames (Falling Crown 28 of 30, Axe Kick 33 of 35); a press later than that is refused once the move no longer fits the airtime left **(proposed, P53)**. A charged heavy's hold is an authored loop and doesn't count toward its band; its release counts from the release.
+The jump bands must also land before touchdown: today's jump (0.95 m at 30 m/s²) is in the air about 30 frames, and 35 disarmed. Each jump attack's startup and active frames, at their band ceilings, fit inside the airtime from a press in the jump's first few airborne frames (Falling Crown 28 of 30, Axe Kick 33 of 35); a press later than that is refused once the move no longer fits the airtime left **(P53, confirmed Oct 4)**. A charged heavy's hold is an authored loop and doesn't count toward its band; its release counts from the release.
 
 **Moves reached from more than one slot.** A move has one clip and so one band, wherever it is played from. Return Cut is the string's second light and the horizontal Iai's light follow-up (light band). Rising Heaven is the vertical Iai's heavy follow-up and Return Cut's heavy follow-up, so it is also the string's heavy as the third hit; it sits in the Iai follow-up band wherever it is played from. Heaven Splitter is the heavy follow-up of Right Cut, Kesa Cut and Rising Heaven (string-heavy band). Bare hands' Roundhouse is the neutral heavy and the heavy follow-up of Jab, Cross and Hook (string-heavy band).
 
-**Earliest branch points** (frames after the move's last active frame), which keep the free-frame rule at the band floors and which the data-seam test checks: a light's follow-ups 1; a heavy's follow-ups (the Iai draws, the Iai follow-ups, the string heavies, Roundhouse) 18, so a light follow-up after a heavy lands no sooner than 42 frames after the hit, against 40 frames of heavy hitstun **(proposed, P28)**. Only the string lights, the Iai draws and the heavies they lead to have follow-ups.
+**Earliest branch points** (frames after the move's last active frame), which keep the free-frame rule at the band floors and which the data-seam test checks: a light's follow-ups 1; a heavy's follow-ups (the Iai draws, the Iai follow-ups, the string heavies, Roundhouse) 18, so a light follow-up after a heavy lands no sooner than 42 frames after the hit, against 40 frames of heavy hitstun **(P28, confirmed Oct 4)**. Only the string lights, the Iai draws and the heavies they lead to have follow-ups.
 
 **Bare hands (faster than the Katana)**
 
@@ -496,7 +496,7 @@ The jump bands must also land before touchdown: today's jump (0.95 m at 30 m/s²
 | Ultimate | The recall (weapon back and the burst, from the choice) | 16–24 | 267–400 | the burst's frame | to 26–36 in all | |
 | Counter Lunge | Counter Lunge | milestone 2 | | | | |
 
-### The distance band table (proposed, P27)
+### The distance band table (P27, confirmed Oct 4)
 
 They start from today's duelling distances (confirmed in the code on Oct 4: the Katana duels at 2.5 m and its computer prefers to fight from 2.1 m, the weapon's `reach`; bare hands at 1.6 m and 1.2 m) and today's table of test distances by kind. All distances are centre to centre, with each move played from standing. "Touches from" is the longest distance a move must still touch the defender from; a move is also checked at its weapon's duelling distance and at the computer's preferred distance where those are closer, and closer distances still aren't checked, as today. The string's lights must put 15–20 cm of blade (or of fist, past the surface) into the defender at their weapon's duelling distance, and still touch from the computer's preferred distance. "Misses from" is new: a move must touch nothing from there or farther, so that reach doesn't creep as clips get longer steps.
 
@@ -517,11 +517,11 @@ They start from today's duelling distances (confirmed in the code on Oct 4: the 
 
 Every bare-hands move also keeps today's check that it misses from 6 m.
 
-### The protected-timing table (proposed retune, P28, then frozen)
+### The protected-timing table (the retune, P28, confirmed Oct 4, then frozen)
 
 Today's values are the build's (Oct 4). The retune happens once, in the pipeline phase, from the band floors; the pilot's play session ends it and may adjust it; then every value below is frozen, and no later family's session changes one without the owner's OK. The rows after design's list (the stuns, the stagger and daze, the parry recoil, the finisher prompt, the disarmed choice and the parry-spam shrink) are protected timings by P50, or rules numbers frozen with them. These are the Katana's and bare hands' values; the Greatsword and the Daggers keep today's until milestone 2 (P48). The rule for every hitstun: at the band floors, the defender in a light string is free 1–2 frames before the next hit can land at the earliest (the next light at its band floor, taken at a branch point 1 frame after the last active frame); every other follow-up pair leaves the defender free at least 1 frame before, and the table check holds every pair to that. Blockstun keeps today's ratio to recovery (recovery band floors are about 1.5× today's). Stuns keep the punish they buy today.
 
-| Timing | Today | Proposed | Rule |
+| Timing | Today | Retuned (P28) | Rule |
 |---|---|---|---|
 | Parry window, Katana | 9 | 9 (kept) | design keeps it |
 | Flash's window | 18 | 18 (kept) | a parry-type window |
@@ -534,7 +534,7 @@ Today's values are the build's (Oct 4). The retune happens once, in the pipeline
 | Hitstun, heavy | 26 | 40 | a heavy's branch points sit at least 18 frames after its active frames end, so a light follow-up lands no sooner than 42 |
 | Hitstun, ability | 24 | 36 | × 1.5 (no milestone-1 ability uses it: the unblockables knock down, Flash strikes nothing) |
 | Hitstun, ultimate | 40 (Moonsplitter 50, Breaker Palm 36) | 60 (Moonsplitter 75, Breaker Palm 54) | × 1.5 |
-| Hitstun, Counter Lunges | 14 | 23 (Katana), 17 (bare hands) | the weapon's light hitstun; the moves wait for milestone 2 **(proposed, P48)** |
+| Hitstun, Counter Lunges | 14 | 23 (Katana), 17 (bare hands) | the weapon's light hitstun; the moves wait for milestone 2 **(P48, confirmed Oct 4)** |
 | Full-charge bonus | +12 hitstun, +8 blockstun, +4 hit-stop | +18, +12, +4 | × 1.5; hit-stop kept |
 | Blockstun light / heavy / ability | 10 / 16 / 14 | 15 / 24 / 21 | × 1.5, the recovery floors' ratio |
 | Hit-stop light / heavy / ability | 4 / 7 / 6 | 5 / 9 / 8 | heavier impacts at the slower pace |
@@ -548,7 +548,7 @@ Today's values are the build's (Oct 4). The retune happens once, in the pipeline
 | Disarm stagger / disarmed daze | 26 / 60 | 36 / 66 | × 1.4 and × 1.1, set in the retune and frozen with the rest; the disarm family re-keys its clips to fit |
 | Parry-spam shrink | a press within 30 frames of the last shrinks the window by 3, down to 2 frames | kept | design keeps the parry window |
 | Knockdown fall / down / rise (guard window) | 20 / 30 / 25 (15) | 30 / 30 / 40 (20) | the fall × 1.5 and a slower, weightier rise; the knockdown family re-keys the clips to fit (Knockdown01 at 1.0× falls in about 56 frames and rises in about 58); still invulnerable to rise frame 10 |
-| Finisher prompt | none | 18 rules frames at 0.3× (about 1 s) | design's "about a second of slow motion" **(proposed, P35)** |
+| Finisher prompt | none | 18 rules frames at 0.3× (about 1 s) | design's "about a second of slow motion" **(P35, confirmed Oct 4)** |
 | Disarmed ultimate's choice | 40 frames at 0.35× | kept | a rules number frozen with the rest |
 
 ### The momentum and gait table
@@ -563,27 +563,27 @@ Today's values are the build's (Oct 4). The retune happens once, in the pipeline
 | Walk | no walk speed in the rules (a partial tilt of the run) | the walk clip's measured speed (the packs measure about 2.2 m/s) |
 | Run forward / sideways / back | 3.9 / 3.5 / 3.0 m/s | each clip's measured speed (the packs' runs measure 4.1–4.6 forward) |
 | Sprint | 7.2 m/s | the sprint clip's measured speed (the packs: 5.3–6.3) |
-| Blocking | 0.6 × the run | the guarded strafe and shuffle clips' own speeds, chosen or keyed to about 55–65% of the run **(proposed, P29)** |
-| Disarmed speed | × 1.2 | the disarmed gait clips' own speeds, chosen or keyed to about 1.2 × the armed run **(proposed, P29)** |
-| Disarmed dodge | × 1.5 distance | a longer disarmed roll clip in the same protected frames **(proposed, P15)** |
+| Blocking | 0.6 × the run | the guarded strafe and shuffle clips' own speeds, chosen or keyed to about 55–65% of the run **(P29, confirmed Oct 4)** |
+| Disarmed speed | × 1.2 | the disarmed gait clips' own speeds, chosen or keyed to about 1.2 × the armed run **(P29, confirmed Oct 4)** |
+| Disarmed dodge | × 1.5 distance | a longer disarmed roll clip in the same protected frames **(P15, confirmed Oct 4)** |
 | Disarmed jump | × 1.35 | unchanged: jump arcs stay rules numbers |
-| Speed kept into an attack | 0.5 | none; the leftover shows only in the blend **(proposed, P14)** |
-| Turning to face the opponent | 14 rad/s | unchanged; the turn shows through the blend and the pivot clips **(proposed, P29)** |
+| Speed kept into an attack | 0.5 | none; the leftover shows only in the blend **(P14, confirmed Oct 4)** |
+| Turning to face the opponent | 14 rad/s | unchanged; the turn shows through the blend and the pivot clips **(P29, confirmed Oct 4)** |
 
 ### The balance-run targets
 
 | Measure | Target | Notes |
 |---|---|---|
-| Matches | mirror matches, the Hunter with the Katana on both sides, random difficulties, random block abilities | the owner's; the random abilities are **proposed, P49** |
+| Matches | mirror matches, the Hunter with the Katana on both sides, random difficulties, random block abilities | the owner's; the random abilities are **P49, confirmed Oct 4** |
 | Failures | none (no errors, stalls, NaN, a fighter outside the arena, posture out of range) | the owner's |
-| Round length | 60–90 s | the owner's; the soak's target changes from 35–60 s **(proposed, P24)** |
+| Round length | 60–90 s | the owner's; the soak's target changes from 35–60 s **(P24, confirmed Oct 4)** |
 | Disarms per round | 0.3–0.6 | the owner's; every recorded run since 11.1 is above 1.0 |
 | Finishers | in some rounds; the share is set after the first run | the owner's |
-| Must appear at least once | the stomp, the leap, Flash, both ultimates (Moonsplitter and Breaker Palm; the recall is reported too) and a pick-up | the owner's list; which "both ultimates" are is **proposed, P37**; the random block abilities let the stomp (against Piercing Thrust) and the leap (against Swallow Sweep) both appear |
+| Must appear at least once | the stomp, the leap, Flash, both ultimates (Moonsplitter and Breaker Palm; the recall is reported too) and a pick-up | the owner's list; which "both ultimates" are is **P37, confirmed Oct 4**; the random block abilities let the stomp (against Piercing Thrust) and the leap (against Swallow Sweep) both appear |
 | Per-weapon win rates | off until milestone 2 | the owner's |
 | Run size | 300 matches to tune, 40 to check clean | as today |
 
-### The computer's finisher rates table (proposed, P55)
+### The computer's finisher rates table (P55, confirmed Oct 4)
 
 When a finisher prompt opens for the computer, it presses heavy on a share of prompts set by its difficulty, at a frame drawn from its own seeded generator inside the window; otherwise it lets the prompt pass and the disarm plays out. Tuning may change these numbers like any other computer number.
 
@@ -597,14 +597,14 @@ When a finisher prompt opens for the computer, it presses heavy on a share of pr
 
 | Gate | Target | Measured how |
 |---|---|---|
-| Definition of "holds 60 fps" | 99% of frames take 16.7 ms or less | a scripted worst-case replay from a recorded input log, about 90 s: both ultimates, a finisher, blood and petals, the fighters at the wall; shaders warmed up first **(proposed, P19)** |
+| Definition of "holds 60 fps" | 99% of frames take 16.7 ms or less | a scripted worst-case replay from a recorded input log, about 90 s: both ultimates, a finisher, blood and petals, the fighters at the wall; shaders warmed up first **(P19, confirmed Oct 4)** |
 | Ultra | 4K output, rendered at about 1440p–1800p and upscaled with FSR 2.2, on the RTX 3090 | on the clear night (the owner's) |
-| Low | 1080p output, rendered at about 720p and upscaled, on the Ryzen 7 4700U laptop | on the clear night; FSR 2.2 if it fits the frame budget at its first bench, otherwise FSR 1 **(proposed, P30)** |
-| Training and Watch | the Duel's gate | **(proposed, P19)** |
-| Versus split screen | 60 fps at High on the RTX 3090, same definition | **(proposed, P19)**; no laptop target in milestone 1 |
+| Low | 1080p output, rendered at about 720p and upscaled, on the Ryzen 7 4700U laptop | on the clear night; FSR 2.2 if it fits the frame budget at its first bench, otherwise FSR 1 **(P30, confirmed Oct 4)** |
+| Training and Watch | the Duel's gate | **(P19, confirmed Oct 4)** |
+| Versus split screen | 60 fps at High on the RTX 3090, same definition | **(P19, confirmed Oct 4)**; no laptop target in milestone 1 |
 | The look test scene | Ultra's gate with headroom: 99% of frames at 14 ms or less (Godot check 5) | measured when the owner approves the scene |
 
-### The size budget table (proposed, P23)
+### The size budget table (P23, confirmed Oct 4)
 
 | Place | Budget |
 |---|---|
@@ -612,7 +612,7 @@ When a finisher prompt opens for the computer, it presses heavy on a share of pr
 | Asset repository (Git LFS) | under 8 GiB in all, inside GitHub Free's 10 GiB; per fighter under 400 MB of sources and 120 MB exported; per weapon under 60 MB of sources and 20 MB exported; per exported clip under 5 MB; the arena under 1.5 GB of sources and 600 MB exported; textures at 4K only for fighters, weapons and hero props, 2K elsewhere |
 | Shipped game | milestone 1's build under 2 GB zipped and 3 GB installed |
 
-### The Godot check table (proposed written criteria, P31)
+### The Godot check table (written criteria, P31, confirmed Oct 4)
 
 Judged at the pilot family (the animation criteria) and at the look test scene (the look and performance criteria), and confirmed at sign-off. Godot stays unless a criterion clearly fails and no fix inside Godot is in sight; then the owner decides.
 
@@ -627,7 +627,7 @@ Judged at the pilot family (the animation criteria) and at the look test scene (
 | 7 | No shader stutter after the warm-up pass, and no crash over a 40-match soak with the look loaded | sign-off |
 | 8 | All of the above still hold on the finished build | sign-off |
 
-### The per-move checklist (proposed, P32)
+### The per-move checklist (P32, confirmed Oct 4)
 
 A move must pass every item that applies before the milestone ends. Built from `docs/design.md`'s quality bar and the grilling's work order.
 
@@ -642,7 +642,7 @@ A move must pass every item that applies before the milestone ends. Built from `
 | 7 | The weight visibly shifts | every clip | the owner |
 | 8 | Planted feet slide no more than 1 cm | every clip | a foot-slide measure added to PoseCheck, run on every rules frame of the clip, skipping none (the sheets show only the chosen frames) |
 | 9 | The blade never passes through the body | every clip with a weapon | PoseCheck's blade clearance, run on every rules frame of the clip, skipping none |
-| 10 | The hands stay on the grips; Katana cuts two-handed except the one-handed moments listed in story 53 **(proposed, P54)** | every clip with a weapon | the weapon-in-hand test (local) and the sheets |
+| 10 | The hands stay on the grips; Katana cuts two-handed except the one-handed moments listed in story 53 **(P54, confirmed Oct 4)** | every clip with a weapon | the weapon-in-hand test (local) and the sheets |
 | 11 | Hands off cleanly: branch points and cancel markers set, inertial blending in and out, follow-ups starting on the side the last swing ended | every clip | the string-continuity test and the owner |
 | 12 | Its deflect pair (attacks), its block reaction, and the defender's directional hit reactions | attacks | the director test and the sheets |
 | 13 | Its sound: swing, impact by weapon pair, flesh and bone layers, the parry ring, placeholder effort vocals | every clip with an event | the sound-bank test and the listening pass |
@@ -651,7 +651,7 @@ A move must pass every item that applies before the milestone ends. Built from `
 | 16 | Re-bakes from its clip with no drift | attacks | the local re-bake test |
 | 17 | The owner's review: sheets, a side-by-side video against For Honor, Ghost of Tsushima and Tekken 8 or Mortal Kombat 1, and a play session with the licensed clips | its family | the owner |
 
-### Move families and their order (proposed, P33)
+### Move families and their order (P33, confirmed Oct 4)
 
 Each family goes to final quality, with every checklist item, before the next starts; the owner reviews each. "Reached in a milestone-1 match" assumes the Hunter-against-Hunter Katana mirror, with bare hands when disarmed; a block ability is reached when the loadout picks it.
 
@@ -707,11 +707,11 @@ Not in CI, owner-run or by eye: contact sheets and side-by-side videos per famil
 
 - **What "final quality" leaves out in milestone 1**, so sign-off isn't judged on them: placeholder effort vocals, the code-generated score, neutral faces and no cloth simulation (the wind's cloth is only the scarf's spring bones and the banners), the shared bare-hands moveset, only the clear night, stone-only footsteps, and both Counter Lunges and the evade's paired clip on today's clips.
 - **Risks.**
-  - *Finishers may be rare*: 100 HP, a 5% HP threshold (5 HP) and a full posture meter, with a disarm doing no damage. The balance run sets the share after its first pass; if finishers are near zero, tuning raises posture pressure, not the threshold **(proposed, P47)**.
+  - *Finishers may be rare*: 100 HP, a 5% HP threshold (5 HP) and a full posture meter, with a disarm doing no damage. The balance run sets the share after its first pass; if finishers are near zero, tuning raises posture pressure, not the threshold **(P47, confirmed Oct 4)**.
   - *Keying about 100 clips takes long.* The pilot family measures the cost per family before the rest are committed to.
   - *The skeleton changes in milestone 2.* Milestone 1's clips are keyed on today's 65-bone skeleton; the UE5-style skeleton keeps today's bone names, so the clips should carry over by name, but twist and prop bones will need a pass.
   - *Cascadeur Indie* allows commercial use only under $100,000 a year of revenue or funding; above that the licence must be upgraded before release.
-  - *The Katana's Blender model* sets the blade length. It keeps today's 0.72 m blade within 2 cm so the distance bands hold; a different length shifts the band table once, with the owner's OK **(proposed, P44)**.
+  - *The Katana's Blender model* sets the blade length. It keeps today's 0.72 m blade within 2 cm so the distance bands hold; a different length shifts the band table once, with the owner's OK **(P44, confirmed Oct 4)**.
   - *Godot may not reach the bar.* The check's criteria are in the Godot check table, and the engine is reconsidered only if they clearly fail.
 - **Git LFS spending.** The asset repository's 2 GB fits GitHub Free's 10 GiB of storage, so no LFS storage is bought unless the size budget is exceeded; the 10 GiB a month of downloads allows a few full clones a month.
 - **The grilling's record.** The owner's 27 answers are in the stories and decisions above, the defaults it proposed are P1–P25, and the facts it found are under "Facts found while preparing this spec" below; the separate inputs file was folded in here on Oct 4 and deleted. Two options the owner passed over are recorded here: free-licence music tracks (the code-generated score is extended instead) and recording their own voice for the effort vocals (placeholders until a pack is bought). In the owner's words on consolidating first: "I want to consolidate before starting on the new design and development path. The html can be retired and the rebuild should be the master branch."
@@ -832,9 +832,9 @@ Nothing changes there: it is the record of the web demo, and task 25.6 marks it 
 
 Added to `GLOSSARY.md` on `docs/milestone-1-spec`, with this spec: **Move family** (with the pilot family), **Move kind**, **Mood board**, **Look test**, **Marker**, **Branch point**, **Inertial blending**, **Transition clip**, **Physical reaction layer**, **Cinematic shot** (with the push-in), **Blood setting**, **Balance run**, **Stand-in**, **Procedural pose** and **Warrior Slain**. The **Animation Studio** entry is rewritten for the slimmed tool; the **Protected timing** entry gains the stuns, the stagger and daze, and the parry recoil (P50); the **Recall** entry's _Avoid_ now describes the pick-up as pulling the weapon out of the ground. **Corrective** and **Refinement** describe parts of the Studio that milestone 1 drops; they are removed from the glossary when the slimming lands.
 
-## Proposed defaults for the owner to confirm
+## Defaults the owner confirmed (Oct 4)
 
-P1–P25 are the grilling's "Defaults to propose", adopted as written, except that P4 is widened to the round-end beat. P26–P56 are this spec's own proposals for the questions the grilling left open (P48–P56 came out of the spec's review). Each lists the stories that depend on it.
+P1–P25 are the grilling's "Defaults to propose", adopted as written, except that P4 is widened to the round-end beat. P26–P56 are this spec's own proposals for the questions the grilling left open (P48–P56 came out of the spec's review). The owner went through all of them on Oct 4 (in four rounds of questions, the player-facing ones one by one and the technical ones as a batch) and confirmed every one as written. Each lists the stories that depend on it.
 
 | # | Proposal | Stories |
 |---|---|---|

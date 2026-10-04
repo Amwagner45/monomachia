@@ -46,7 +46,7 @@ The Hunter (crimson against indigo) with the Katana, and bare hands when disarme
 
 ## Decisions so far
 
-- [Spec](../specs/milestone-1.md), drafted on Oct 4, 2026, with this plan; the owner reviews both once. Its "Proposed defaults for the owner to confirm" (P1–P56) are built on as written; a changed answer becomes a change to this plan.
+- [Spec](../specs/milestone-1.md), drafted on Oct 4, 2026, with this plan; the owner reviews both once. Its "Defaults the owner confirmed (Oct 4)" (P1–P56, confirmed as written) are built on as written; a changed answer becomes a change to this plan.
 - The order follows the spec's Implementation Decisions (Order of work and branches): the pipeline, the mood board at once, the pilot family with the look test alongside, the pilot's effects and review and the first Godot check, the art conversion, the other families one at a time in the spec's order (P33), then the closing checks and the sign-off.
 - The moved tasks of the older plans live here; the task that finishes each one names it in its `Replaces:` line, and tasks that carry part of one say so in their Delivers. `docs/plans/godot-rebuild.md` 12.6, 12.7 and the Greatsword and Daggers half of 12.9, and `docs/plans/authored-animation.md` 34, are milestone 2's (`docs/plans/roadmap.md`).
 - Values the tasks use (timing and distance bands, protected timings, momentum and gaits, the balance-run targets, the computer's finisher rates, the performance gates, the size budgets, the Godot check, the per-move checklist) are the spec's tables; the tasks don't repeat them.

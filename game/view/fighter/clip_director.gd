@@ -57,6 +57,12 @@ extends RefCounted
 ##   Parry Hit on the upper body over the legs' blend, and the long stuns'
 ##   Stun01 (STUN_STATES), each timed to its state (fitted_time()); without
 ##   the packs their CC0 fallbacks;
+## - the parry (task 27): the parrier plays its guard's Parry Hit through
+##   its recovery (any parry: a block's, a Flash's or a Redirect); the
+##   parried attacker (recoiling, or stunned by a Flash or a Redirect) plays
+##   its own attack's clip backwards from where the parry met it over the
+##   rebound (REBOUND_FRAMES at REBOUND_SPEED; Shot.rebound), then Stun01 for
+##   the rest of the recoil or stun, faded over FADES' rebound;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
@@ -68,7 +74,7 @@ extends RefCounted
 const GRIP_BACK: int = 6
 const FADES: Dictionary[StringName, int] = {
 	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8, &"state": 2,
-	&"guard": 3,
+	&"guard": 3, &"rebound": 4,
 }
 ## The free state's idle per weapon (a WeaponDef id; bare hands and a
 ## disarmed fighter are fists): clip-manifest ids.
@@ -117,7 +123,15 @@ const STUN_STATES: Array[StringName] = [&"stunned", &"stagger", &"disarmStagger"
 const STUN_CLIP: StringName = &"Stun01"
 const STUN_FALLBACK: StringName = &"Hit_Knockback"
 ## The reactions that show on the upper body alone.
-const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun"]
+const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun", &"parry"]
+## The parried attacker's rebound (task 27): its attack's clip runs backwards
+## from where the parry met it for this many rules frames (the parry's
+## knock back, World: 8 frames) at this speed, then hands over to Stun01.
+const REBOUND_FRAMES: int = 8
+const REBOUND_SPEED: float = 2.0
+## The states a parried attacker rebounds in: a block's parry recoils it, a
+## Flash's or a Redirect's stuns it.
+const REBOUND_STATES: Array[StringName] = [&"recoil", &"stunned"]
 ## The Greatsword's shoulder carry: the right hand on the grip at the
 ## shoulder, the blade resting back over it (a masked pose of the Crafting
 ## pack; ObjectGripShoulder01_R throws the elbow out to the side).
@@ -234,6 +248,9 @@ class Shot:
 	## The ultimate's phase it plays, or the reaction (reaction_of()), or
 	## empty.
 	var phase: StringName = &""
+	## The parried attacker's attack clip, held where the parry met it, that
+	## its rebound runs backwards from (task 27); null for none.
+	var rebound: Clip = null
 	## How far a pair of daggers is turned into the reverse grip (0 forward,
 	## 1 reverse; FighterRig.set_reverse_turn()), and where it stood as the
 	## attack began (task 21).
@@ -289,6 +306,7 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.frame = frame
 	out.idle = idle_clip(f, ctx)
 	var playing: Clip = attack_clip(f, ctx, float(f.atk.frame) if f.atk != null else 0.0)
+	out.rebound = null
 	if playing == null:
 		playing = ult_clip(f, ctx)
 	var drive: StringName = ATTACK if playing != null else LEGS
@@ -304,9 +322,17 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	else:
 		playing = state_clip(f, ctx)
 		var reaction: StringName = reaction_of(f) if playing == null else &""
-		if reaction != &"":
+		out.rebound = _rebound_from(prev, f, reaction)
+		if out.rebound != null and f.sf < REBOUND_FRAMES:
+			reaction = &"rebound"
+			playing = Clip.make(out.rebound.name, maxf(0.0, out.rebound.time - float(f.sf) * REBOUND_SPEED / float(SimConst.FPS)))
+			phase = reaction
+		elif reaction != &"":
 			var held: int = prev.since + 1 if prev != null and prev.drive == STATE and prev.phase == reaction else 0
 			playing = reaction_clip(f, ctx, reaction, held)
+			if playing != null and out.rebound != null and reaction != &"guard":
+				# after the rebound: the stun's clip over the rest of the state
+				playing.time = fitted_time(f.sf - REBOUND_FRAMES, f.state_dur - REBOUND_FRAMES, ctx.lengths.get(playing.name, 0.0))
 			phase = reaction if playing != null else &""
 		if playing != null:
 			drive = STATE
@@ -381,10 +407,16 @@ static func state_clip(f: Fighter, ctx: Context) -> Clip:
 
 ## The reaction `f`'s state plays (task 26): &"guard" (a held block, in a
 ## guard state), &"blockstun", &"hitstun" or &"stun" (STUN_STATES), or
-## empty for none.
+## (task 27) &"parry" (the parrier's recovery) and the parried attacker's
+## recoil (&"stun", or &"guard" once it blocks again); empty for none.
 static func reaction_of(f: Fighter) -> StringName:
 	if f.state == &"hitstun":
 		return &"hitstun"
+	if f.state == &"parryAnim":
+		return &"parry"
+	if f.state == &"recoil":
+		# the guard back up once the recoil allows it
+		return &"guard" if f.blocking else &"stun"
 	if f.state == &"blockstun":
 		return &"blockstun"
 	if STUN_STATES.has(f.state):
@@ -407,7 +439,7 @@ static func reaction_clip(f: Fighter, ctx: Context, reaction: StringName, held: 
 		&"guard":
 			id = guard[0]
 			fallback = GUARD_FALLBACK
-		&"blockstun":
+		&"blockstun", &"parry":
 			id = guard[1]
 			fallback = GUARD_FALLBACK
 		&"hitstun":
@@ -439,6 +471,20 @@ static func reaction_clip(f: Fighter, ctx: Context, reaction: StringName, held: 
 static func fitted_time(frame: int, frames: int, length: float) -> float:
 	var speed: float = clampf(length * float(SimConst.FPS) / float(maxi(1, frames)), ClipTiming.MIN_SPEED, ClipTiming.MAX_SPEED)
 	return minf(float(frame) * speed / float(SimConst.FPS), length)
+
+
+## The clip a parried attacker's rebound runs back from (task 27): on the
+## frame its attack is parried (a recoil or a stun straight from an
+## attack's clip), the clip it showed, held where the parry met it; the same
+## through the rest of that state; else null.
+static func _rebound_from(prev: Shot, f: Fighter, reaction: StringName) -> Clip:
+	if prev == null or not REBOUND_STATES.has(f.state) or reaction == &"" or f.stun_cause != &"":
+		return null
+	if prev.drive == ATTACK and prev.clip != null and prev.state == &"attack":
+		return Clip.make(prev.clip.name, prev.clip.time)
+	if prev.drive == STATE and prev.state == f.state:
+		return prev.rebound
+	return null
 
 
 ## Whether `f` is in Shadow Step's blink (task 22): its active frames,
@@ -642,7 +688,11 @@ static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
 		# a guard raised from the shoulder, over the lift off it
 		return SimConst.GS_SHOULDER_LIFT_FRAMES
 	if drive == STATE:
-		return FADES[&"guard"] if f.blocking and f.state != &"blockstun" else FADES[&"state"]
+		if prev.phase == &"rebound":
+			return FADES[&"rebound"]
+		if f.blocking and f.state != &"blockstun" and f.state != &"parryAnim":
+			return FADES[&"guard"]
+		return FADES[&"state"]
 	if drive == ATTACK:
 		if prev.drive == ATTACK and f.atk == null and prev.attack == null:
 			# a change of the ultimate's phase

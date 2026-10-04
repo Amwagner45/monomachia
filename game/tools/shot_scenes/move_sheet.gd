@@ -26,6 +26,8 @@ extends Node3D
 ##   VIEWS for a move, the drive's own for a drive);
 ## - --defender=rogue|hunter: the defender, in palette B (default: the same
 ##   fighter as the attacker);
+## - --defender-weapon=<weapon id>: the defender's weapon (default the Katana;
+##   task 27's parry sheets pair every weapon);
 ## - --spacing=: metres between the fighters (default PoseCheck.SPACING, or
 ##   the drive's own for a drive);
 ## - --swings=<res:// path>: a swing file (SwingFile) put on a fresh copy of
@@ -52,7 +54,9 @@ extends Node3D
 ## unblockable and the fighter dodges into it, the stomp counter; and the
 ## reactions, task 26: hit_reactions and block_reactions, the opponent
 ## striking the fighter standing or guarding with a light then a heavy, and
-## stun_reaction, the fighter's light into the opponent's Flash),
+## stun_reaction, the fighter's light into the opponent's Flash; and parry,
+## task 27: the fighter's light parried by the opponent's block, pressed 3
+## frames before it lands, at the fighter's duelling distance),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -283,7 +287,18 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"spacing": 2.5,
 		"every": 4,
 	},
+	&"parry": {
+		"input": [[14, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [55, 0.0, 0.0, 0]],
+		"parry": 14,
+		"notes": "the fighter's first light after 14 frames, parried by the opponent's block pressed 3 frames before it lands: the parrier's Parry Hit, the attacker's clip run back, then Stun01",
+		"views": [&"three_quarter", &"side"],
+		"spacing": 0.0,
+		"every": 2,
+	},
 }
+## How many frames before a parried light lands the parry drive presses the
+## block (inside every weapon's window, 6 frames at the least).
+const PARRY_LEAD: int = 3
 ## Cells per row of a drive's strip.
 const STRIP_COLUMNS: int = 8
 ## A view's crop of the screen, its width over its height: the gameplay views
@@ -340,6 +355,7 @@ var at: String = "keys"
 var views: Array[StringName] = VIEWS
 ## Empty for the same fighter as the attacker.
 var defender_id: StringName = &""
+var defender_weapon_id: StringName = &"katana"
 var spacing: float = PoseCheck.SPACING
 ## Where shot.gd saves the sheet (its --out=): the batch's sheets go beside it.
 var out_path: String = ""
@@ -381,11 +397,11 @@ func _ready() -> void:
 	_overlay.visible = false
 	add_child(_overlay)
 	var weapon: WeaponDef = Moves.WEAPONS[weapon_id] if swings_path == "" else with_swings(weapon_id, swings_path)
-	bench = MoveBench.new(self, fighter_id, weapon, spacing)
+	bench = MoveBench.new(self, fighter_id, weapon, spacing, Moves.WEAPONS[defender_weapon_id])
 	defender_view = FighterView.new()
 	defender_view.name = &"Defender"
 	add_child(defender_view)
-	defender_view.setup(defender_id if defender_id != &"" else fighter_id, 1, Moves.KATANA.id, 1)
+	defender_view.setup(defender_id if defender_id != &"" else fighter_id, 1, defender_weapon_id, 1)
 	defender_view.model.skeleton.modifier_callback_mode_process = Skeleton3D.MODIFIER_CALLBACK_MODE_PROCESS_MANUAL
 	_show_defender()
 	if auto_run:
@@ -413,7 +429,7 @@ func shot_image() -> Image:
 	return _sheet
 
 
-## Reads --fighter=, --weapon=, --move=, --at=, --views=, --defender=,
+## Reads --fighter=, --weapon=, --move=, --at=, --views=, --defender=, --defender-weapon=,
 ## --spacing=, --swings= and shot.gd's --out=. An unknown fighter, weapon or view, or a
 ## spacing that isn't a positive number, is an error, so the shot run fails.
 func apply_args(args: PackedStringArray) -> void:
@@ -436,6 +452,11 @@ func apply_args(args: PackedStringArray) -> void:
 				_views_given = true
 			"defender":
 				defender_id = StringName(value)
+			"defender-weapon":
+				if Moves.WEAPONS.has(StringName(value)):
+					defender_weapon_id = StringName(value)
+				else:
+					push_error("move_sheet.gd: no weapon '%s' for the defender" % value)
 			"spacing":
 				if value.is_valid_float() and float(value) > 0.0:
 					spacing = float(value)
@@ -819,6 +840,17 @@ static func drive_inputs(drive_id: StringName, field: String = "input") -> Array
 	return out
 
 
+## The opponent's input for the parry drive: still, then the block pressed
+## PARRY_LEAD frames before a light pressed on frame `light_at` with
+## `startup` frames lands, and held; `total` frames in all.
+static func parry_inputs(light_at: int, startup: int, total: int) -> Array[RawInput]:
+	var out: Array[RawInput] = []
+	var press: int = light_at + startup - PARRY_LEAD
+	for i: int in total:
+		out.append(RawInput.make(0.0, 0.0, BLOCK if i >= press else 0))
+	return out
+
+
 ## The frames a strip of `total` frames shows: the first, every `p_every`th
 ## and the last.
 static func drive_frames(total: int, p_every: int) -> Array[int]:
@@ -839,12 +871,18 @@ static func drive_frames(total: int, p_every: int) -> Array[int]:
 func render_drive(drive_id: StringName) -> Image:
 	if not _spacing_given:
 		bench.spacing = float(DRIVES[drive_id]["spacing"])
+		if bench.spacing <= 0.0:
+			# the fighter's duelling distance
+			bench.spacing = bench.weapon.duel_distance
 	bench.stand()
 	_show_defender()
 	strip.clear()
 	var loco: Locomotion = bench.view.locomotion
 	var inputs: Array[RawInput] = drive_inputs(drive_id)
 	var opponent: Array[RawInput] = drive_inputs(drive_id, "defender")
+	if DRIVES[drive_id].has("parry"):
+		var light: AttackDef = bench.weapon.moves[bench.weapon.light_start]
+		opponent = parry_inputs(int(DRIVES[drive_id]["parry"]), light.startup, inputs.size())
 	var chosen: Array[int] = drive_frames(inputs.size(), every)
 	var cells: Dictionary[StringName, Array] = {}
 	for view: StringName in views:

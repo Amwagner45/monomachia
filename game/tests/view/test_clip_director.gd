@@ -765,3 +765,115 @@ func test_a_guard_raised_from_the_shoulder_fades_into_the_guard_over_the_lift() 
 	assert_eq([shot.drive, shot.phase, shot.fade], [ClipDirector.STATE, &"guard", SimConst.GS_SHOULDER_LIFT_FRAMES], "into the guard over the lift")
 	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
 	assert_eq(shot.legs_free(), 1.0, "the legs the legs' blend's throughout")
+
+
+# ------------------------------------------------------------------ the parry (task 27)
+
+func test_the_parrier_plays_its_guards_parry_hit() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	for wid: StringName in [&"katana", &"greatsword", &"daggers"]:
+		var W: World = SimHelpers.make_world(Moves.WEAPONS[wid])
+		var f: Fighter = W.fighters[0]
+		f.set_state(&"parryAnim", SimConst.PARRIER_RECOVERY)
+		f.sf = 3
+		var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
+		var want: String = "HumanM/" + String(ClipDirector.GUARD_CLIPS[wid][1])
+		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"parry", want], String(wid))
+		assert_true(shot.upper, "on the upper body")
+		assert_almost_eq(shot.clip.time, ClipDirector.fitted_time(3, SimConst.PARRIER_RECOVERY, ctx.lengths[want]), 1e-9, "timed to the recovery")
+
+
+## Fighter 0 of a fresh world `frames` frames into Right Cut (its made-up
+## baked clip), the director stepped along: [world, shot].
+func _attacking(ctx: ClipDirector.Context, frames: int) -> Array:
+	var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 6.0)
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx, [SimHelpers.btn(Btn.LIGHT), SimHelpers.idle()])
+	for i: int in frames - 1:
+		shot = _next(W, shot, ctx)
+	assert_eq([f.state, shot.drive], [&"attack", ClipDirector.ATTACK])
+	return [W, shot]
+
+
+func test_a_parried_attack_runs_back_then_staggers() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var got: Array = _attacking(ctx, 12)
+	var W: World = got[0]
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = got[1]
+	var met: ClipDirector.Clip = shot.clip
+	# a block's parry: the attacker recoils
+	f.enter_recoil(SimConst.PARRY_RECOIL, SimConst.PARRY_RECOIL_GUARD_AFTER)
+	f.atk = null
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"rebound", met.name], "its own clip")
+	assert_almost_eq(shot.clip.time, met.time, 1e-9, "from where the parry met it")
+	assert_eq(shot.upper, false, "the whole body")
+	var times: Array[float] = [shot.clip.time]
+	while f.sf < ClipDirector.REBOUND_FRAMES:
+		f.sf += 1
+		W.frame += 1
+		shot = ClipDirector.step(shot, f, ctx)
+		if f.sf < ClipDirector.REBOUND_FRAMES:
+			assert_eq(shot.phase, &"rebound")
+			assert_almost_eq(shot.clip.time, maxf(0.0, met.time - float(f.sf) * ClipDirector.REBOUND_SPEED / 60.0), 1e-9, "backwards at 2.0 (frame %d)" % f.sf)
+			times.append(shot.clip.time)
+	for i: int in times.size() - 1:
+		assert_lte(times[i + 1], times[i], "running backwards, holding at its start: %s" % [times])
+	assert_lt(times[-1], times[0], "it runs back")
+	# handed over to the stagger
+	assert_eq([shot.phase, shot.clip.name, shot.fade], [&"stun", "HumanM/Stun01", ClipDirector.FADES[&"rebound"]], "then Stun01, faded over 4 frames")
+	assert_eq(shot.from.name, met.name, "from the rebound's last pose")
+	var rest: int = SimConst.PARRY_RECOIL - ClipDirector.REBOUND_FRAMES
+	f.sf = ClipDirector.REBOUND_FRAMES + 6
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_almost_eq(shot.clip.time, ClipDirector.fitted_time(6, rest, ctx.lengths["HumanM/Stun01"]), 1e-9, "over the rest of the recoil")
+	# the guard back up once the recoil allows it
+	f.sf = SimConst.PARRY_RECOIL_GUARD_AFTER + 1
+	f.blocking = true
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq(shot.phase, &"guard", "blocking again")
+
+
+func test_a_flash_or_redirect_stun_rebounds_too_but_not_a_stomp() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	for stun: int in [SimConst.FLASH_STUN, SimConst.REDIRECT_STUN]:
+		var got: Array = _attacking(ctx, 12)
+		var W: World = got[0]
+		var f: Fighter = W.fighters[0]
+		var shot: ClipDirector.Shot = got[1]
+		var met: ClipDirector.Clip = shot.clip
+		f.enter_stun(stun)
+		f.atk = null
+		W.frame += 1
+		shot = ClipDirector.step(shot, f, ctx)
+		assert_eq([shot.phase, shot.clip.name], [&"rebound", met.name], "a %d-frame stun rebounds" % stun)
+		f.sf = ClipDirector.REBOUND_FRAMES
+		W.frame += 1
+		shot = ClipDirector.step(shot, f, ctx)
+		assert_eq([shot.phase, shot.clip.name], [&"stun", "HumanM/Stun01"])
+	var got2: Array = _attacking(ctx, 12)
+	var f2: Fighter = (got2[0] as World).fighters[0]
+	var pinned: String = KeyedClips.anim_name(KeyedClips.PINNED)
+	ctx.lengths[pinned] = 70.0 / 60.0
+	f2.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
+	f2.atk = null
+	(got2[0] as World).frame += 1
+	var shot2: ClipDirector.Shot = ClipDirector.step(got2[1], f2, ctx)
+	assert_eq(shot2.clip.name, pinned, "the stomp's own keyed clip, no rebound")
+	assert_null(shot2.rebound)
+
+
+func test_a_stun_not_from_an_attack_plays_stun01_from_its_start() -> void:
+	var ctx: ClipDirector.Context = _reaction_ctx()
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var shot: ClipDirector.Shot = _next(W, null, ctx)
+	f.enter_recoil(SimConst.PARRY_RECOIL, SimConst.PARRY_RECOIL_GUARD_AFTER)
+	W.frame += 1
+	shot = ClipDirector.step(shot, f, ctx)
+	assert_eq([shot.phase, shot.clip.name], [&"stun", "HumanM/Stun01"], "no attack to run back")
+	assert_null(shot.rebound)

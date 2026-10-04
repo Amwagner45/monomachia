@@ -42,9 +42,10 @@ extends Node
 ## (attract) never finishes: it restarts with the next seed (from seed_source)
 ## 240 frames after its match ends.
 ##
-## Training runs the rules' endless match against the dummy. Its upkeep
-## (refill, the dummy re-arming, getting up after a KO) is task 23's: until
-## then a KO in Training leaves the fallen fighter down. Versus samples two
+## Training runs the rules' endless match against the dummy, with its upkeep
+## (TrainingUpkeep: getting up after a K.O., the refill, the dummy re-arming)
+## stepped after each rules step, inside the fixed step. set_refill() turns
+## the refill off and on; every match starts with it on. Versus samples two
 ## humans on two different devices.
 
 ## The match was (re)started from a config: views rebuild from it.
@@ -98,6 +99,8 @@ var pause_press_resumes: bool = true
 
 ## Per side: an AIBrain, a TrainingBrain, or null for a human.
 var _brains: Array[RefCounted] = [null, null]
+## Training's upkeep, or null outside Training.
+var _upkeep: TrainingUpkeep = null
 ## Per side: the InputDevices player index, or -1 for a computer side.
 var _player_of_side: Array[int] = [-1, -1]
 var _acc: float = 0.0
@@ -140,6 +143,7 @@ func start(cfg: MatchConfig, p_attract: bool = false) -> bool:
 	sim_match = Match.new(world)
 	if cfg.mode == MatchConfig.TRAINING:
 		sim_match.endless = true
+		_upkeep = TrainingUpkeep.new(world, cfg.dummy_side())
 	for i: int in 2:
 		var side: MatchSide = cfg.sides[i]
 		match side.controller:
@@ -348,6 +352,17 @@ func label(action: String, side: int) -> String:
 	return input.label(action, p)
 
 
+## Whether Training refills health (always true outside Training).
+func refill() -> bool:
+	return _upkeep == null or _upkeep.refill
+
+
+## Turns Training's refill off or on (key 0 on the Training panel).
+func set_refill(on: bool) -> void:
+	if _upkeep != null:
+		_upkeep.refill = on
+
+
 func results() -> MatchResults:
 	return MatchResults.from_match(sim_match, config, config.first_human_side())
 
@@ -413,8 +428,8 @@ func _dispatch(events: Array[Dictionary]) -> void:
 
 
 func _after_step() -> void:
-	# Training upkeep (refill, the dummy re-arming, endless KO) lands with
-	# task 23; the rules already keep a training match endless.
+	if _upkeep != null:
+		_upkeep.step()
 	if sim_match.phase != &"matchEnd":
 		return
 	if attract:
@@ -453,6 +468,7 @@ func _teardown() -> void:
 		elif b is TrainingBrain:
 			(b as TrainingBrain).dispose()
 		_brains[i] = null
+	_upkeep = null
 	if world != null:
 		world.dispose()
 	_started = false

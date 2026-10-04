@@ -184,6 +184,17 @@ func test_restart_replays_the_match_with_the_next_seed() -> void:
 	assert_ne(host.config.world_seed, before.world_seed, "the next seed")
 
 
+func test_restart_in_training_keeps_the_refill_setting() -> void:
+	var cfg: MatchConfig = MatchConfig.default_training(3)
+	cfg.arena_id = ArenaScenes.STANDIN
+	main.call("start_match", cfg)
+	host.set_refill(false)
+	host.pause()
+	_pause_menu().restart_button.pressed.emit()
+	assert_eq(host.config.mode, MatchConfig.TRAINING)
+	assert_false(host.refill(), "still off after Restart")
+
+
 func test_quit_to_menu_returns_to_the_main_menu_over_the_duel() -> void:
 	await _paused_duel()
 	_pause_menu().quit_button.pressed.emit()

@@ -260,8 +260,11 @@ func rematch() -> void:
 
 
 ## The pause's Restart: the same match again with the next seed, at once.
+## Training keeps its refill setting.
 func restart() -> void:
+	var refill: bool = host.refill()
 	rematch()
+	host.set_refill(refill)
 
 
 ## From the results: the select for the mode just played, on its last picks,

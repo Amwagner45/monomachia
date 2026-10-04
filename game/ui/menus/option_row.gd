@@ -14,6 +14,10 @@ signal changed(index: int)
 var title: Label
 var chips: Array[Button] = []
 var index: int = 0
+## The theme variations of an option and of the chosen one (use_cards()
+## turns them into cards).
+var chip_style: StringName = UiTheme.OPTION
+var chip_on_style: StringName = UiTheme.OPTION_ON
 
 
 func _init(p_title: String, options: Array[String], p_index: int = 0) -> void:
@@ -45,7 +49,17 @@ func _init(p_title: String, options: Array[String], p_index: int = 0) -> void:
 func set_index(i: int) -> void:
 	index = clampi(i, 0, chips.size() - 1)
 	for c: int in chips.size():
-		chips[c].theme_type_variation = UiTheme.OPTION_ON if c == index else UiTheme.OPTION
+		chips[c].theme_type_variation = chip_on_style if c == index else chip_style
+
+
+## Shows the options as cards (UiTheme.CARD, the chosen one CARD_ON) of
+## at least `min_size`, as the fighter select's grid does.
+func use_cards(min_size: Vector2) -> void:
+	chip_style = UiTheme.CARD
+	chip_on_style = UiTheme.CARD_ON
+	for chip: Button in chips:
+		chip.custom_minimum_size = min_size
+	set_index(index)
 
 
 ## Left (-1) or right (+1), wrapping round. Returns whether the choice moved.

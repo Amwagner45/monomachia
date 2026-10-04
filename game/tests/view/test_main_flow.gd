@@ -107,13 +107,38 @@ func test_back_on_the_main_menu_returns_to_the_title() -> void:
 	assert_false((main.get("main_menu") as Control).visible)
 
 
+## Presses `step` until the select's `item` has the focus.
+func _walk_to(item: Control, step: Callable) -> void:
+	var select: FighterSelect = main.get("select")
+	for _i: int in 8:
+		if select.focused_item() == item:
+			return
+		step.call()
+	assert_eq(select.focused_item(), item, "reached %s" % item.name)
+
+
 func test_a_keyboard_alone_walks_from_the_title_to_a_duel() -> void:
 	_press_key(KEY_A)
 	assert_eq(_screen(), MainScript.Screen.MENU, "any key goes on")
 	await get_tree().process_frame
 	_press_key(KEY_ENTER)
+	assert_eq(_screen(), MainScript.Screen.SELECT, "Duel opens the fighter select")
+	await get_tree().process_frame
+	var select: FighterSelect = main.get("select")
+	_press_key(KEY_RIGHT)
+	_walk_to(select.confirm, _press_key.bind(KEY_DOWN))
+	_press_key(KEY_ENTER)
+	await get_tree().process_frame
+	_press_key(KEY_DOWN)
+	_press_key(KEY_LEFT)
+	_walk_to(select.confirm, _press_key.bind(KEY_DOWN))
+	_press_key(KEY_ENTER)
 	assert_eq(_screen(), MainScript.Screen.PLAYING)
 	assert_eq(host.config.mode, MatchConfig.DUEL)
+	assert_eq([host.config.sides[0].fighter_id, host.config.sides[1].fighter_id], [&"hunter", &"hunter"])
+	assert_eq(host.config.sides[1].difficulty, &"easy")
+	assert_eq([host.config.sides[0].palette, host.config.sides[1].palette], [0, 1], "the mirror's second palette")
+	assert_eq(host.config.arena_id, ArenaScenes.STANDIN, "the test's arena")
 
 
 func test_a_controller_alone_walks_from_the_title_to_a_duel() -> void:
@@ -123,8 +148,79 @@ func test_a_controller_alone_walks_from_the_title_to_a_duel() -> void:
 	_press_pad(JOY_BUTTON_DPAD_DOWN)
 	_press_pad(JOY_BUTTON_DPAD_UP)
 	_press_pad(JOY_BUTTON_A)
+	assert_eq(_screen(), MainScript.Screen.SELECT)
+	await get_tree().process_frame
+	var select: FighterSelect = main.get("select")
+	_walk_to(select.confirm, _press_pad.bind(JOY_BUTTON_DPAD_DOWN))
+	_press_pad(JOY_BUTTON_A)
+	await get_tree().process_frame
+	_walk_to(select.confirm, _press_pad.bind(JOY_BUTTON_DPAD_DOWN))
+	_press_pad(JOY_BUTTON_A)
 	assert_eq(_screen(), MainScript.Screen.PLAYING)
 	assert_eq(host.config.mode, MatchConfig.DUEL)
+	assert_eq([host.config.sides[0].weapon_id, host.config.sides[1].weapon_id], [&"katana", &"greatsword"], "the defaults")
+
+
+func test_watch_opens_the_select_for_watch() -> void:
+	main.call("show_main_menu")
+	await get_tree().process_frame
+	_press_key(KEY_DOWN)
+	_press_key(KEY_ENTER)
+	assert_eq(_screen(), MainScript.Screen.SELECT)
+	var select: FighterSelect = main.get("select")
+	assert_eq(select.draft.mode, MatchConfig.WATCH)
+	assert_eq(select.side_title.text, "Red fighter")
+	select.show_side(1)
+	select.confirm.pressed.emit()
+	assert_eq(_screen(), MainScript.Screen.PLAYING)
+	assert_eq(host.config.mode, MatchConfig.WATCH)
+	assert_eq(host.config.human_count(), 0)
+
+
+func test_back_steps_through_the_select_to_the_main_menu_on_duel() -> void:
+	main.call("show_main_menu")
+	await get_tree().process_frame
+	_press_key(KEY_ENTER)
+	var select: FighterSelect = main.get("select")
+	select.show_side(1)
+	_press_key(KEY_ESCAPE)
+	assert_eq(_screen(), MainScript.Screen.SELECT, "the first Back steps to your side")
+	assert_eq(select.side, 0)
+	_press_key(KEY_ESCAPE)
+	assert_eq(_screen(), MainScript.Screen.MENU, "the next leaves the select")
+	await get_tree().process_frame
+	var menu: MenuScreen = main.get("main_menu")
+	assert_eq(menu.focused_button(), menu.buttons[0], "back on Duel")
+
+
+func test_the_last_picks_return() -> void:
+	main.call("open_select", MatchConfig.DUEL)
+	var select: FighterSelect = main.get("select")
+	MatchSelection.set_fighter(select.draft, 0, &"hunter")
+	MatchSelection.set_difficulty(select.draft, 1, &"hard")
+	select.show_side(1)
+	select.confirm.pressed.emit()
+	assert_eq(_screen(), MainScript.Screen.PLAYING)
+	main.call("quit_to_menu")
+	main.call("open_select", MatchConfig.DUEL)
+	assert_eq(select.draft.sides[0].fighter_id, &"hunter", "the fighter")
+	assert_eq(select.draft.sides[1].difficulty, &"hard", "the skill")
+	main.call("open_select", MatchConfig.WATCH)
+	assert_eq(select.draft.sides[0].fighter_id, &"rogue", "each mode keeps its own")
+
+
+func test_leaving_the_select_keeps_nothing() -> void:
+	main.call("open_select", MatchConfig.DUEL)
+	var select: FighterSelect = main.get("select")
+	MatchSelection.set_fighter(select.draft, 0, &"hunter")
+	select.step_back()
+	main.call("open_select", MatchConfig.DUEL)
+	assert_eq(select.draft.sides[0].fighter_id, &"rogue")
+
+
+func test_test_runs_neither_read_nor_write_the_saved_picks() -> void:
+	var selection: MatchSelection = main.get("selection")
+	assert_false(selection.persist, "MONOMACHIA_DEFAULT_SETTINGS is set for test runs")
 
 
 func test_a_duel_runs_from_the_menu_to_the_results_and_back() -> void:
@@ -287,7 +383,8 @@ func test_opening_a_menu_is_silent_and_moving_its_focus_plays_ui_move() -> void:
 func test_pressing_a_button_plays_ui_select() -> void:
 	await _main_menu_open()
 	_press_key(KEY_ENTER)
-	assert_eq(_screen(), MainScript.Screen.PLAYING, "Enter chose Duel")
+	assert_eq(_screen(), MainScript.Screen.SELECT, "Enter chose Duel")
+	main.call("start_duel")
 	host.pause()
 	_focus_first("pause_menu")
 	_press_pad(JOY_BUTTON_A)
@@ -396,7 +493,9 @@ func test_a_controller_drives_the_menus() -> void:
 	assert_eq(_screen(), MainScript.Screen.MENU, "any button on the title goes on")
 	_focus_first("main_menu")
 	_press_pad(JOY_BUTTON_A)
-	assert_eq(_screen(), MainScript.Screen.PLAYING, "A chooses Duel")
+	assert_eq(_screen(), MainScript.Screen.SELECT, "A chooses Duel")
+	(main.get("select") as FighterSelect).locked_in.emit(MatchSelection.default_draft(MatchConfig.DUEL))
+	assert_eq(_screen(), MainScript.Screen.PLAYING, "locked in")
 	assert_eq(host.config.mode, MatchConfig.DUEL)
 	host.pause()
 	_focus_first("pause_menu")

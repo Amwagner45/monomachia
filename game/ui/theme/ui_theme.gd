@@ -27,6 +27,11 @@ const MENU_ROW_LIT: StringName = &"MenuRowLit"
 ## border; the chosen one (OPTION_ON) in a gold border with warm text.
 const OPTION: StringName = &"OptionChip"
 const OPTION_ON: StringName = &"OptionChipOn"
+## A card in a row of cards (the fighter select's grid, the demo's .card):
+## a large name on ink in a line border; the chosen one (CARD_ON) in a gold
+## border over a lacquer wash.
+const CARD: StringName = &"Card"
+const CARD_ON: StringName = &"CardOn"
 
 
 ## A centred label in one of the variations (or plain text for &""), at the

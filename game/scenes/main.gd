@@ -1,7 +1,7 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, Quit) -> a match -> results (Rematch, Main
-## menu), with a pause menu (Resume, Main menu) during play, which Back, Start
+## title -> main menu (Duel, Watch, Quit) -> the fighter select (Duel and
+## Watch) -> a match -> results (Rematch, Main menu), with a pause menu (Resume, Main menu) during play, which Back, Start
 ## or the pause binding also closes. The pages sit on a ScreenStack: Back on
 ## a page goes to the page that opened it (the main menu's to the title).
 ## A computer duel plays behind the title
@@ -14,17 +14,21 @@ extends Node
 ## switches to match point. The duel behind the menus never changes the track.
 ## The music stops when these screens go.
 ##
-## Duel is the Rogue with the katana (you) against the Hunter with the
-## greatsword (Normal); Watch is katana against daggers, both Normal.
+## The fighter select starts from the mode's last picks (MatchSelection,
+## saved at lock in to user://last_select.cfg; test and shot runs, which set
+## GameSettings.DEFAULTS_ENV, neither read nor write it). start_duel() and
+## start_watch() skip the select with the demo's defaults: the Rogue with the
+## katana (you) against the Hunter with the greatsword (Normal), and katana
+## against daggers, both Normal.
 ##
 ## With --smoke on the command line the game plays a Watch match to the
 ## results at once and quits with its outcome (see SmokeRun).
 
-enum Screen { TITLE, MENU, PLAYING, PAUSED, RESULTS }
+enum Screen { TITLE, MENU, PLAYING, PAUSED, RESULTS, SELECT }
 
-## The arena the duel behind the menus and every match are fought in, until
-## the arena select (task 22). Tests set the stand-in before the scene enters
-## the tree.
+## The arena the duel behind the menus and the matches started without the
+## select are fought in. Tests set the stand-in before the scene enters the
+## tree, and any arena but the default then replaces the select's pick too.
 @export var arena_id: StringName = MatchConfig.DEFAULT_ARENA
 
 @onready var host: MatchHost = $MatchHost
@@ -35,6 +39,9 @@ var title: TitleScreen
 var main_menu: MenuScreen
 var pause_menu: MenuScreen
 var results_screen: ResultsScreen
+var select: FighterSelect
+## The fighter select's drafts and last picks.
+var selection: MatchSelection
 ## The menus' pages, the open one on top.
 var stack: ScreenStack = ScreenStack.new()
 ## The last match played, for Rematch.
@@ -53,8 +60,8 @@ func _ready() -> void:
 
 	main_menu = MainMenu.new()
 	main_menu.name = "MainMenu"
-	main_menu.add_button("Duel", "vs computer", start_duel)
-	main_menu.add_button("Watch", "computer vs computer", start_watch)
+	main_menu.add_button("Duel", "vs computer", open_select.bind(MatchConfig.DUEL))
+	main_menu.add_button("Watch", "computer vs computer", open_select.bind(MatchConfig.WATCH))
 	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
@@ -72,6 +79,13 @@ func _ready() -> void:
 	results_screen.rematch.connect(rematch)
 	results_screen.main_menu.connect(quit_to_menu)
 	ui.add_child(results_screen)
+
+	selection = MatchSelection.new(MatchSelection.PATH, not OS.has_environment(GameSettings.DEFAULTS_ENV))
+	selection.load_saved()
+	select = FighterSelect.new()
+	select.name = "Select"
+	select.locked_in.connect(_on_locked_in)
+	ui.add_child(select)
 	stack.changed.connect(_on_stack_changed)
 
 	host.match_finished.connect(_on_match_finished)
@@ -117,6 +131,8 @@ func _on_stack_changed(top: MenuPage) -> void:
 		screen = Screen.PAUSED
 	elif top == results_screen:
 		screen = Screen.RESULTS
+	elif top == select:
+		screen = Screen.SELECT
 
 
 # ------------------------------------------------------------------ screens
@@ -136,10 +152,31 @@ func show_main_menu() -> void:
 	GameServices.play_menu_music()
 
 
+## Opens the fighter select for a mode over the page on top, on the mode's
+## last picks; Back from its first side returns to that page.
+func open_select(mode: StringName) -> void:
+	select.start(selection.draft(mode))
+	stack.push(select)
+	GameServices.play_menu_music()
+
+
+## Lock in: the picks are kept (and saved) for next time, and the match starts
+## with the next seed.
+func _on_locked_in(draft: MatchSelection.Draft) -> void:
+	selection.drafts[draft.mode] = draft
+	selection.save()
+	var cfg: MatchConfig = MatchSelection.lock_in(draft, _next_seed())
+	if arena_id != MatchConfig.DEFAULT_ARENA:
+		cfg.arena_id = arena_id
+	start_match(cfg)
+
+
+## A Duel with the demo's defaults, without the select.
 func start_duel() -> void:
 	start_match(_in_arena(MatchConfig.default_duel(_next_seed())))
 
 
+## A Watch match with the demo's defaults, without the select.
 func start_watch() -> void:
 	start_match(_in_arena(MatchConfig.default_watch(_next_seed())))
 

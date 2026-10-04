@@ -10,7 +10,8 @@ extends Node3D
 ##
 ## Options:
 ## - --fighter=rogue|hunter: the attacker, in palette A (default rogue);
-## - --weapon=katana|greatsword|daggers: its weapon (default katana);
+## - --weapon=katana|greatsword|daggers|fists: its weapon (default katana;
+##   fists for bare hands' moves, task 24);
 ## - --move=<move id>, guard (the default: the fighter standing in its guard,
 ##   one row) or all: the batch, a sheet for the guard and for every move of
 ##   the weapon, each saved beside <out.png> as <out>_<move>.png, and
@@ -25,6 +26,8 @@ extends Node3D
 ##   VIEWS for a move, the drive's own for a drive);
 ## - --defender=rogue|hunter: the defender, in palette B (default: the same
 ##   fighter as the attacker);
+## - --defender-weapon=<weapon id>: the defender's weapon (default the Katana;
+##   task 27's parry sheets pair every weapon);
 ## - --spacing=: metres between the fighters (default PoseCheck.SPACING, or
 ##   the drive's own for a drive);
 ## - --swings=<res:// path>: a swing file (SwingFile) put on a fresh copy of
@@ -41,10 +44,23 @@ extends Node3D
 ## letting go; strafe_left and strafe_right round the opponent, backpedal and
 ## back_left away from it, each then stopping; the guard_ drives the same
 ## while blocking, in the guard shuffle; tap_steps: a tap step each way;
-## iai_walk: walking in the Iai stance; string_l to string_llll: the Katana's
+## iai_walk: walking in the Iai stance; carry_walk, carry_lift and
+## carry_guard: the Greatsword going onto the shoulder as it walks, then
+## standing and strafing, attacking from it, or raising the guard off it
+## (task 18); string_l to string_llll: the Katana's
 ## light string stopped after one, two, three and four lights, each press
 ## made after the move before has passed its startup, so it follows it), with
-## the opponent out of the way,
+## the opponent out of the way (but for stomp: the opponent thrusts its
+## unblockable and the fighter dodges into it, the stomp counter; and the
+## reactions, task 26: hit_reactions and block_reactions, the opponent
+## striking the fighter standing or guarding with a light then a heavy, and
+## stun_reaction, the fighter's light into the opponent's Flash; and parry,
+## task 27: the fighter's light parried by the opponent's block, pressed 3
+## frames before it lands, at the fighter's duelling distance; knockdown,
+## task 28: the opponent's Greatsword slams the fighter down with Mountain
+## Slam; ko_light and ko_heavy: the fighter on 1 HP, knocked out by the
+## opponent's Right Cut or heavy. A drive may name the opponent's weapon,
+## "defender_weapon", and the fighter's HP, "hp"),
 ## and lays out a strip of the chosen frames: the first, every --every=th
 ## (default the drive's own, else 4) and the last, each captioned with the
 ## speed, the legs' turn, Locomotion's blend and the step phase or the
@@ -90,7 +106,9 @@ const LIGHT: int = 1 << Btn.LIGHT
 ##   strafe near enough (under 9 m) that the rules keep the distance, so the
 ##   fighter circles it;
 ## - every (optional): every how many frames the strip shows one, when
-##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames.
+##   --every= doesn't say: the guard shuffle's steps take 5 to 12 frames;
+## - defender (optional): the opponent's input, segments as for input
+##   (otherwise it takes none).
 const DRIVES: Dictionary[StringName, Dictionary] = {
 	&"rest_to_sprint": {
 		"input": [[12, 0.0, 0.0, 0], [60, 0.0, 1.0, 0], [60, 0.0, 1.0, 1 << Btn.SPRINT]],
@@ -190,6 +208,27 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"spacing": 8.0,
 		"every": 3,
 	},
+	&"carry_walk": {
+		"input": [[12, 0.0, 0.0, 0], [48, 0.0, 1.0, 0], [24, 0.0, 0.0, 0], [36, 1.0, 0.0, 0]],
+		"notes": "still for 12 frames, walking at the opponent for 48 (onto the shoulder after 20), standing for 24, then strafing right for 36",
+		"views": [&"side", &"three_quarter"],
+		"spacing": 8.0,
+		"every": 4,
+	},
+	&"carry_lift": {
+		"input": [[12, 0.0, 0.0, 0], [36, 0.0, 1.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, walking at the opponent for 36 (onto the shoulder), then Heavy Swing from the shoulder, its 6-frame lift first",
+		"views": [&"side", &"three_quarter"],
+		"spacing": 4.0,
+		"every": 2,
+	},
+	&"carry_guard": {
+		"input": [[12, 0.0, 0.0, 0], [36, 0.0, 1.0, 0], [30, 0.0, 0.0, BLOCK], [24, 0.0, 0.0, 0]],
+		"notes": "still for 12 frames, walking at the opponent for 36 (onto the shoulder), then blocking for 30 (the guard lifted off the shoulder), then letting go",
+		"views": [&"side", &"three_quarter"],
+		"spacing": 8.0,
+		"every": 2,
+	},
 	&"string_l": {
 		"input": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [60, 0.0, 0.0, 0]],
 		"notes": "still for 12 frames, then Right Cut alone, recovering to the guard",
@@ -220,7 +259,77 @@ const DRIVES: Dictionary[StringName, Dictionary] = {
 		"spacing": 4.0,
 		"every": 2,
 	},
+	&"stomp": {
+		"input": [[32, 0.0, 0.0, 0], [1, 0.0, 1.0, 1 << Btn.DODGE], [52, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | HEAVY], [72, 0.0, 0.0, 0]],
+		"notes": "the opponent thrusts its unblockable after 12 frames; 20 frames later the fighter dodges into it and stomps it (the keyed Mikiri_Stomp)",
+		"views": [&"side", &"three_quarter"],
+		"spacing": 2.2,
+		"every": 2,
+	},
+	&"hit_reactions": {
+		"input": [[128, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [44, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [70, 0.0, 0.0, 0]],
+		"notes": "the fighter stands; the opponent hits it with Right Cut after 12 frames (a light's hitstun), then 45 frames later with a heavy (a heavy's)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
+	},
+	&"block_reactions": {
+		"input": [[128, 0.0, 0.0, BLOCK]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [44, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [70, 0.0, 0.0, 0]],
+		"notes": "the fighter holds its guard; the opponent strikes it with Right Cut after 12 frames, then 45 frames later with a heavy (blockstun each time)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
+	},
+	&"stun_reaction": {
+		"input": [[14, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [95, 0.0, 0.0, 0]],
+		"defender": [[20, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | LIGHT], [89, 0.0, 0.0, 0]],
+		"notes": "the fighter cuts Right Cut after 14 frames into the opponent's Flash, which stuns it for 60 frames (Stun01)",
+		"views": [&"defender", &"three_quarter"],
+		"spacing": 2.5,
+		"every": 4,
+	},
+	&"parry": {
+		"input": [[14, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [55, 0.0, 0.0, 0]],
+		"parry": 14,
+		"notes": "the fighter's first light after 14 frames, parried by the opponent's block pressed 3 frames before it lands: the parrier's Parry Hit, the attacker's clip run back, then Stun01",
+		"views": [&"three_quarter", &"side"],
+		"spacing": 0.0,
+		"every": 2,
+	},
+	&"knockdown": {
+		"input": [[150, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, BLOCK | HEAVY], [137, 0.0, 0.0, 0]],
+		"defender_weapon": &"greatsword",
+		"notes": "the opponent's Greatsword slams the fighter down with Mountain Slam after 12 frames: Knockdown01's fall, ground and stand-up",
+		"views": [&"defender", &"side"],
+		"spacing": 3.5,
+		"every": 4,
+	},
+	&"ko_light": {
+		"input": [[90, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, LIGHT], [77, 0.0, 0.0, 0]],
+		"hp": 1.0,
+		"notes": "the fighter on 1 HP; the opponent's Right Cut knocks it out from the front after 12 frames (a light: CombatDeath01)",
+		"views": [&"defender", &"side"],
+		"spacing": 2.5,
+		"every": 3,
+	},
+	&"ko_heavy": {
+		"input": [[100, 0.0, 0.0, 0]],
+		"defender": [[12, 0.0, 0.0, 0], [1, 0.0, 0.0, HEAVY], [87, 0.0, 0.0, 0]],
+		"hp": 1.0,
+		"notes": "the fighter on 1 HP; the opponent's heavy knocks it out from the front after 12 frames (CombatDeath02)",
+		"views": [&"defender", &"side"],
+		"spacing": 2.5,
+		"every": 3,
+	},
 }
+## How many frames before a parried light lands the parry drive presses the
+## block (inside every weapon's window, 6 frames at the least).
+const PARRY_LEAD: int = 3
 ## Cells per row of a drive's strip.
 const STRIP_COLUMNS: int = 8
 ## A view's crop of the screen, its width over its height: the gameplay views
@@ -277,6 +386,8 @@ var at: String = "keys"
 var views: Array[StringName] = VIEWS
 ## Empty for the same fighter as the attacker.
 var defender_id: StringName = &""
+var defender_weapon_id: StringName = &"katana"
+var _defender_weapon_given: bool = false
 var spacing: float = PoseCheck.SPACING
 ## Where shot.gd saves the sheet (its --out=): the batch's sheets go beside it.
 var out_path: String = ""
@@ -318,11 +429,11 @@ func _ready() -> void:
 	_overlay.visible = false
 	add_child(_overlay)
 	var weapon: WeaponDef = Moves.WEAPONS[weapon_id] if swings_path == "" else with_swings(weapon_id, swings_path)
-	bench = MoveBench.new(self, fighter_id, weapon, spacing)
+	bench = MoveBench.new(self, fighter_id, weapon, spacing, Moves.WEAPONS[defender_weapon_id])
 	defender_view = FighterView.new()
 	defender_view.name = &"Defender"
 	add_child(defender_view)
-	defender_view.setup(defender_id if defender_id != &"" else fighter_id, 1, Moves.KATANA.id, 1)
+	defender_view.setup(defender_id if defender_id != &"" else fighter_id, 1, defender_weapon_id, 1)
 	defender_view.model.skeleton.modifier_callback_mode_process = Skeleton3D.MODIFIER_CALLBACK_MODE_PROCESS_MANUAL
 	_show_defender()
 	if auto_run:
@@ -350,7 +461,7 @@ func shot_image() -> Image:
 	return _sheet
 
 
-## Reads --fighter=, --weapon=, --move=, --at=, --views=, --defender=,
+## Reads --fighter=, --weapon=, --move=, --at=, --views=, --defender=, --defender-weapon=,
 ## --spacing=, --swings= and shot.gd's --out=. An unknown fighter, weapon or view, or a
 ## spacing that isn't a positive number, is an error, so the shot run fails.
 func apply_args(args: PackedStringArray) -> void:
@@ -373,6 +484,12 @@ func apply_args(args: PackedStringArray) -> void:
 				_views_given = true
 			"defender":
 				defender_id = StringName(value)
+			"defender-weapon":
+				if Moves.WEAPONS.has(StringName(value)):
+					defender_weapon_id = StringName(value)
+					_defender_weapon_given = true
+				else:
+					push_error("move_sheet.gd: no weapon '%s' for the defender" % value)
 			"spacing":
 				if value.is_valid_float() and float(value) > 0.0:
 					spacing = float(value)
@@ -400,6 +517,8 @@ func apply_args(args: PackedStringArray) -> void:
 		views = own
 	if drive != &"" and not _every_given:
 		every = int(DRIVES[drive].get("every", every))
+	if drive != &"" and not _defender_weapon_given and DRIVES[drive].has("defender_weapon"):
+		defender_weapon_id = DRIVES[drive]["defender_weapon"]
 	for id: StringName in [fighter_id, defender_id]:
 		if id != &"" and not FighterLook.IDS.has(id):
 			push_error("move_sheet.gd: no fighter '%s' (%s)" % [id, ", ".join(PackedStringArray(FighterLook.IDS))])
@@ -407,8 +526,8 @@ func apply_args(args: PackedStringArray) -> void:
 		fighter_id = FighterLook.IDS[0]
 	if defender_id != &"" and not FighterLook.IDS.has(defender_id):
 		defender_id = &""
-	if not Moves.PLAYABLE_WEAPONS.has(weapon_id):
-		push_error("move_sheet.gd: no weapon '%s' (%s)" % [weapon_id, ", ".join(PackedStringArray(Moves.PLAYABLE_WEAPONS))])
+	if not Moves.WEAPONS.has(weapon_id):
+		push_error("move_sheet.gd: no weapon '%s' (%s)" % [weapon_id, ", ".join(PackedStringArray(Moves.WEAPONS.keys()))])
 		weapon_id = Moves.PLAYABLE_WEAPONS[0]
 
 
@@ -746,12 +865,24 @@ func batch() -> Image:
 	return compose(header, index)
 
 
-## Drive `drive_id`'s input, a RawInput per frame.
-static func drive_inputs(drive_id: StringName) -> Array[RawInput]:
+## Drive `drive_id`'s input, a RawInput per frame: the fighter's, or with
+## `field` "defender" the opponent's (empty when it takes none).
+static func drive_inputs(drive_id: StringName, field: String = "input") -> Array[RawInput]:
 	var out: Array[RawInput] = []
-	for segment: Array in DRIVES[drive_id]["input"]:
+	for segment: Array in DRIVES[drive_id].get(field, []):
 		for i: int in int(segment[0]):
 			out.append(RawInput.make(segment[1], segment[2], segment[3]))
+	return out
+
+
+## The opponent's input for the parry drive: still, then the block pressed
+## PARRY_LEAD frames before a light pressed on frame `light_at` with
+## `startup` frames lands, and held; `total` frames in all.
+static func parry_inputs(light_at: int, startup: int, total: int) -> Array[RawInput]:
+	var out: Array[RawInput] = []
+	var press: int = light_at + startup - PARRY_LEAD
+	for i: int in total:
+		out.append(RawInput.make(0.0, 0.0, BLOCK if i >= press else 0))
 	return out
 
 
@@ -775,17 +906,26 @@ static func drive_frames(total: int, p_every: int) -> Array[int]:
 func render_drive(drive_id: StringName) -> Image:
 	if not _spacing_given:
 		bench.spacing = float(DRIVES[drive_id]["spacing"])
+		if bench.spacing <= 0.0:
+			# the fighter's duelling distance
+			bench.spacing = bench.weapon.duel_distance
 	bench.stand()
+	if DRIVES[drive_id].has("hp"):
+		bench.attacker.hp = float(DRIVES[drive_id]["hp"])
 	_show_defender()
 	strip.clear()
 	var loco: Locomotion = bench.view.locomotion
 	var inputs: Array[RawInput] = drive_inputs(drive_id)
+	var opponent: Array[RawInput] = drive_inputs(drive_id, "defender")
+	if DRIVES[drive_id].has("parry"):
+		var light: AttackDef = bench.weapon.moves[bench.weapon.light_start]
+		opponent = parry_inputs(int(DRIVES[drive_id]["parry"]), light.startup, inputs.size())
 	var chosen: Array[int] = drive_frames(inputs.size(), every)
 	var cells: Dictionary[StringName, Array] = {}
 	for view: StringName in views:
 		cells[view] = []
 	for i: int in inputs.size():
-		bench.drive(inputs[i])
+		bench.drive(inputs[i], opponent[i] if i < opponent.size() else null)
 		_show_defender()
 		if not chosen.has(i + 1):
 			continue
@@ -793,6 +933,8 @@ func render_drive(drive_id: StringName) -> Image:
 		var lines: PackedStringArray = drive_caption(i + 1, loco, bench.view.sway)
 		if bench.attacker.state == &"attack":
 			lines[0] += " · %s frame %d" % [bench.attacker.atk.def.id, bench.attacker.atk.frame]
+		elif bench.attacker.state != &"free":
+			lines[0] += " · %s %d" % [bench.attacker.state, bench.attacker.sf]
 		strip.append(lines)
 		for view: StringName in views:
 			var label: Image = await _text_image(lines, [TEXT_COLOR, TEXT_COLOR, TEXT_COLOR],

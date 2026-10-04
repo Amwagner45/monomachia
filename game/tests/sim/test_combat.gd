@@ -356,3 +356,68 @@ func test_disarmed_fighters_move_faster_and_dodge_farther() -> void:
 	H.run(W2, 30, func(i: int) -> RawInput: return H.move(1.0, 0.0, Btn.DODGE) if i == 0 else H.idle())
 	var dis_dist: float = absf(a2.pos.x - s2)
 	assert_gt(dis_dist, armed_dist * 1.3)
+
+
+## Fighter 0 thrusts `move` (its weapon `w`); fighter 1 dodges into it after
+## `lead` frames. Returns [world, gap when the stomp began, frames run].
+func _stomped(w: WeaponDef, move: StringName, lead: int, gap: float = 2.2) -> Array:
+	var abilities: Array = [&"k_flash", &"k_thrust"] if w == Moves.KATANA else ([&"d_needle"] if w == Moves.DAGGERS else [])
+	var W: World = H.make_world(w, Moves.KATANA, gap, {"a": abilities})
+	var a: Fighter = W.fighters[0]
+	var b: Fighter = W.fighters[1]
+	W.step([H.idle(), H.idle()])
+	assert_true(a.start_attack(move), "%s starts" % move)
+	var began: float = -1.0
+	for i: int in 90:
+		W.step([H.idle(), H.move(0.0, 1.0, Btn.DODGE) if i == lead else H.idle()])
+		if b.state == &"stomp" and began < 0.0:
+			began = SimMath.dist2(a.pos, b.pos)
+		if began >= 0.0 and b.state == &"stomp" and b.sf >= 12:
+			break
+	return [W, began]
+
+
+func test_a_stomp_lands_on_the_blades_tip_at_the_thrusters_pin_distance() -> void:
+	var cases: Array = [[Moves.KATANA, &"k_thrust", 20], [Moves.DAGGERS, &"d_needle", 12], [Moves.GREATSWORD, &"g_dh", 14]]
+	for c: Array in cases:
+		var w: WeaponDef = c[0]
+		var r: Array = _stomped(w, c[1], c[2])
+		var W: World = r[0]
+		var a: Fighter = W.fighters[0]
+		var b: Fighter = W.fighters[1]
+		assert_gt(float(r[1]), 0.0, "%s: the dodge into the thrust stomps it" % c[1])
+		assert_eq(a.state, &"stunned")
+		assert_eq(a.stun_cause, &"stomp", "the thruster's stun is the stomp's")
+		var pin: float = SimConst.STOMP_PIN_DIST[w.id]
+		assert_almost_eq(SimMath.dist2(a.pos, b.pos), pin, 0.05, "%s: the fighters %.2f m apart, the foot on the blade's tip" % [w.id, pin])
+
+
+func test_a_thruster_stomped_up_close_is_jolted_back() -> void:
+	# dodging in early: the defender runs into the thruster before the thrust lands
+	var W: World = H.make_world(Moves.KATANA, Moves.KATANA, 2.2, {"a": [&"k_flash", &"k_thrust"]})
+	var a: Fighter = W.fighters[0]
+	var b: Fighter = W.fighters[1]
+	W.step([H.idle(), H.idle()])
+	a.start_attack(&"k_thrust")
+	var at: Vector2 = Vector2.ZERO
+	var b_at: Vector2 = Vector2.ZERO
+	for i: int in 90:
+		W.step([H.idle(), H.move(0.0, 1.0, Btn.DODGE) if i == 12 else H.idle()])
+		if b.state == &"stomp" and b.sf <= 1 and at == Vector2.ZERO:
+			at = Vector2(a.pos.x, a.pos.z)
+			b_at = Vector2(b.pos.x, b.pos.z)
+		if b.state == &"stomp" and b.sf >= 12:
+			break
+	assert_ne(at, Vector2.ZERO, "stomped")
+	assert_lt(at.distance_to(b_at), SimConst.STOMP_PIN_DIST[&"katana"] - 0.3, "it began up close")
+	var away: Vector2 = (at - b_at).normalized()
+	assert_gt((Vector2(a.pos.x, a.pos.z) - at).dot(away), 0.3, "the thruster was jolted back, away from the stomp")
+	assert_lt(Vector2(b.pos.x, b.pos.z).distance_to(b_at), 0.3, "the stomper hopped about in place")
+
+
+func test_other_stuns_have_no_stomp_cause() -> void:
+	var W: World = H.make_world()
+	var a: Fighter = W.fighters[0]
+	a.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
+	a.enter_stun(SimConst.LEAP_STUN)
+	assert_eq(a.stun_cause, &"", "a later stun clears the cause")

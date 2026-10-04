@@ -5,9 +5,11 @@ extends GutTest
 ## Greatsword 3.0, Daggers 2.0, bare hands 1.6), puts the last 15-20 cm of its
 ## blade into them: the most blade inside the defender's capsule at any
 ## moment of the active ticks (SwingReach.touches(), BladeSweep's length
-## inside). Its lunge ends on the frame it first touches, so the front foot
-## lands on contact, and from 6 m it whiffs. Empty until the lights have
-## swings; the check itself is tested on synthetic lights.
+## inside); bare hands' fist, shorter than that across its knuckles, goes
+## 15-20 cm deep (SwingReach.inside(), authored-animation task 24). Its
+## lunge ends on the frame it first touches, so the front foot lands on
+## contact, and from 6 m it whiffs. The check itself is tested on synthetic
+## lights.
 
 const RT := preload("res://tests/sim/reach_table.gd")
 const SF := preload("res://tests/sim/swing_fixtures.gd")
@@ -15,6 +17,10 @@ const CUT: StringName = &"k_l1"
 const MIN_INSIDE: float = 0.15
 const MAX_INSIDE: float = 0.20
 const WHIFF_FROM: float = 6.0
+## The synthetic lights below are worked out for Right Cut's lunge ending on
+## frame 12, the demo's; its baked swing ends it on 13 (authored-animation
+## task 9).
+const DEMO_LUNGE_END: int = 12
 
 
 ## What light `id` of `w` gets wrong against the rule, or nothing.
@@ -29,7 +35,7 @@ static func _problems(w: WeaponDef, id: StringName) -> Array[String]:
 	else:
 		var inside: float = 0.0
 		for c: SwingReach.Contact in touches:
-			inside = maxf(inside, c.length_inside)
+			inside = maxf(inside, SwingReach.inside(c, w))
 		if inside < MIN_INSIDE or inside > MAX_INSIDE:
 			out.append("%s: %.1f cm of blade inside from %.1f m, not 15-20 cm" % [at, inside * 100.0, w.duel_distance])
 		var lunge_end: int = m.lunge_end if m.lunge_end != AttackDef.UNSET else m.startup + m.active
@@ -56,6 +62,17 @@ func test_each_weapon_has_its_duelling_distance() -> void:
 		assert_eq(Moves.WEAPONS[id].duel_distance, want[id], String(id))
 
 
+func test_a_fist_is_measured_by_its_depth_and_a_blade_by_its_length_inside() -> void:
+	assert_true(SwingReach.measures_depth(Moves.FISTS), "the knuckles are shorter than the rule")
+	for w: WeaponDef in [Moves.KATANA, Moves.GREATSWORD, Moves.DAGGERS]:
+		assert_false(SwingReach.measures_depth(w), "%s: its blade" % w.id)
+	var c: SwingReach.Contact = SwingReach.Contact.new()
+	c.depth = 0.18
+	c.length_inside = 0.07
+	assert_eq(SwingReach.inside(c, Moves.FISTS), 0.18)
+	assert_eq(SwingReach.inside(c, Moves.DAGGERS), 0.07)
+
+
 func test_every_light_with_a_swing_puts_15_to_20_cm_into_a_defender_at_the_duelling_distance() -> void:
 	var problems: Array[String] = []
 	for id: StringName in Moves.WEAPONS:
@@ -74,6 +91,7 @@ static func _point(out: float, blade_tip: float = 0.777) -> WeaponDef:
 	var key: Swing.KeyPose = SF.key(0, [0.0, 1.2, out], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0])
 	var w: WeaponDef = SF.weapon(&"katana", {CUT: SF.held(Moves.KATANA.moves[CUT], {SF.RIGHT: key} as Dictionary[StringName, Swing.KeyPose])})
 	w.blade = StrikeSegment.make(V3.make(0.0, 0.09, 0.0), V3.make(0.0, blade_tip, 0.0), 0.015)
+	(w.moves[CUT] as AttackDef).lunge_end = DEMO_LUNGE_END
 	w.derive_reach()
 	return w
 
@@ -86,12 +104,12 @@ static func _has(problems: Array[String], words: String) -> bool:
 
 
 func test_the_check_passes_a_light_that_puts_17_cm_in_and_fails_a_graze_and_30_cm() -> void:
-	assert_eq(_weapon_problems(_point(1.1905)), [] as Array[String], "17.5 cm in, the lunge ending on the touch")
-	var graze: Array[String] = _weapon_problems(_point(1.0355))
+	assert_eq(_problems(_point(1.1905), CUT), [] as Array[String], "17.5 cm in, the lunge ending on the touch")
+	var graze: Array[String] = _problems(_point(1.0355), CUT)
 	assert_true(_has(graze, "2.0 cm of blade inside"), "2 cm in only grazes: %s" % [graze])
-	var deep: Array[String] = _weapon_problems(_point(1.3155))
+	var deep: Array[String] = _problems(_point(1.3155), CUT)
 	assert_true(_has(deep, "30.0 cm of blade inside"), "30 cm is too deep: %s" % [deep])
-	var short: Array[String] = _weapon_problems(_point(0.9))
+	var short: Array[String] = _problems(_point(0.9), CUT)
 	assert_true(_has(short, "no touch from 2.5 m"), "one that falls short: %s" % [short])
 
 
@@ -105,7 +123,7 @@ func test_the_check_counts_the_blade_inside_not_how_deep_it_goes() -> void:
 	var cut: AttackDef = w.moves[CUT]
 	cut.swing = SF.held(cut, {SF.RIGHT: across} as Dictionary[StringName, Swing.KeyPose])
 	w.derive_reach()
-	assert_eq(_weapon_problems(w), [] as Array[String], "17.5 cm of blade inside")
+	assert_eq(_problems(w, CUT), [] as Array[String], "17.5 cm of blade inside")
 
 
 func test_the_check_measures_the_deepest_tick_not_the_first_touch() -> void:
@@ -120,7 +138,7 @@ func test_the_check_measures_the_deepest_tick_not_the_first_touch() -> void:
 	swing.add_track(SF.RIGHT, keys)
 	cut.swing = swing
 	w.derive_reach()
-	assert_eq(_weapon_problems(w), [] as Array[String], "17.45 cm at its deepest")
+	assert_eq(_problems(w, CUT), [] as Array[String], "17.45 cm at its deepest")
 
 
 func test_the_check_fails_a_lunge_that_ends_before_the_touch_and_a_light_that_reaches_6_m() -> void:
@@ -128,8 +146,9 @@ func test_the_check_fails_a_lunge_that_ends_before_the_touch_and_a_light_that_re
 	# 12) passes wide of the defender 2.15 m away, and the one across the
 	# front (frame 13) reaches them
 	var w: WeaponDef = SF.weapon(&"katana", {CUT: SF.level_slash(Moves.KATANA.moves[CUT], 1.2, 60.0, -60.0, 1.2)})
-	var late: Array[String] = _weapon_problems(w)
+	(w.moves[CUT] as AttackDef).lunge_end = DEMO_LUNGE_END
+	var late: Array[String] = _problems(w, CUT)
 	assert_true(_has(late, "the lunge ends on frame 12, the first touch is on 13"), "%s" % [late])
 	# a blade 6 m long reaches a defender 6 m away
-	var long: Array[String] = _weapon_problems(_point(0.45, 6.0))
+	var long: Array[String] = _problems(_point(0.45, 6.0), CUT)
 	assert_true(_has(long, "touches from 6 m"), "%s" % [long])

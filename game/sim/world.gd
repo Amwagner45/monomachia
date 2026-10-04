@@ -26,6 +26,8 @@ extends RefCounted
 ##   it in hit, block and parry events in place of the midpoint (task 7.11).
 ## - checks_frame() is the rebuild's (task 7.13): _resolve_combat()'s test of
 ##   which frames check for hits, shared with SwingReach.first_contact().
+## - knocks_down(), the knockdown in apply() and evaluate()'s miss on a
+##   downed fighter are authored animation's (task 16).
 
 
 ## { chargeF, backstab }: the context an attack carries into apply().
@@ -265,6 +267,9 @@ static func checks_frame(def: AttackDef, f: int) -> bool:
 func evaluate(a: Fighter, b: Fighter, def: AttackDef, scripted: bool, touch: BladeSweep = null) -> StringName:
 	if b.state == &"ko" or b.state == &"intro" or b.state == &"victory":
 		return &"miss"
+	# a downed fighter can't be hit, by anything (task 16)
+	if b.is_downed():
+		return &"miss"
 	if b.state == &"impaled" and not scripted:
 		return &"miss"
 	var d: float = SimMath.dist2(a.pos, b.pos)
@@ -386,9 +391,17 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 
 		&"stomp":
 			a.release_if_impaling()
-			a.enter_stun(SimConst.STOMP_STUN)
+			a.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
 			a.add_posture(SimConst.STOMP_POSTURE)
-			b.begin_stomp(a)
+			# the stomp lands on the blade's tip: the thruster is jolted back if
+			# the defender is already nearer than that
+			var pin: float = SimConst.STOMP_PIN_DIST.get(a.weapon.id if a.weapon != null else &"", SimConst.STOMP_PIN_DIST_DEFAULT)
+			var fwd: V2 = SimMath.fwd(a.yaw)
+			var gap: float = (b.pos.x - a.pos.x) * fwd.x + (b.pos.z - a.pos.z) * fwd.z
+			var push: float = maxf(0.0, pin - gap)
+			if push > 0.0:
+				a.knock(a.pos.x + fwd.x, a.pos.z + fwd.z, push, SimConst.STOMP_PUSH_FRAMES)
+			b.begin_stomp(a, pin, push)
 			b.stats.counters += 1
 			emit({
 				"t": &"counter",
@@ -490,7 +503,7 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 			})
 			b.release_if_impaling()
 			if b.hp <= 0.0:
-				b.to_ko()
+				b.to_ko(a, def.kind != &"light")
 				b.knock(a.pos.x, a.pos.z, maxf(1.5, def.knockback * 1.5), 20)
 			elif not b.armed and b.posture_full() and b.state != &"stagger":
 				b.enter_stun(SimConst.DISARMED_STAGGER, &"stagger")
@@ -498,10 +511,24 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 				b.knock(a.pos.x, a.pos.z, def.knockback, 12)
 				emit({"t": &"stagger", "f": b.id})
 			elif b.state != &"impaled":
-				b.enter_hitstun((def.hitstun if def.hitstun != AttackDef.UNSET else 20) + SimMath.js_round(12.0 * charge_f))
+				if knocks_down(def, charge_f):
+					b.enter_knockdown()
+					emit({"t": &"knockdown", "f": b.id, "attacker": a.id})
+				else:
+					b.enter_hitstun((def.hitstun if def.hitstun != AttackDef.UNSET else 20) + SimMath.js_round(12.0 * charge_f))
 				b.knock(a.pos.x, a.pos.z, def.knockback * (1.0 + 1.2 * charge_f), 12)
 			hitstop = (def.hitstop if def.hitstop != AttackDef.UNSET else 4) + SimMath.js_round(4.0 * charge_f)
 			return
+
+
+## Whether a hit from `def` at charge `charge_f` knocks the defender down in
+## place of hitstun (task 16): an unblockable, a heavy released at full charge
+## (a power attack) or one of the Greatsword's slams (SimConst.KNOCKDOWN_MOVES).
+## An ultimate's hits never do, though they count as unblockable.
+static func knocks_down(def: AttackDef, charge_f: float) -> bool:
+	if def.kind == &"ultimate":
+		return false
+	return def.unblockable or charge_f >= 1.0 or SimConst.KNOCKDOWN_MOVES.has(def.id)
 
 
 func resolve_scripted_hit(a: Fighter, b: Fighter, def: AttackDef) -> StringName:

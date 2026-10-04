@@ -21,7 +21,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
-import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor, cancelStops } from './plans.mjs';
+import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor, cancelStops, linkMoved, planOfBranch, roadmapView } from './plans.mjs';
 import { fromTailnetOrLocal, knownHost, pageFor, sameOrigin, tailnetIPv4s, tailscaleSelf, wantsGzip } from './access.mjs';
 import { PENDING_ID, SESSION_ID, parseTranscript, relayAnswer } from './sessions.mjs';
 
@@ -210,7 +210,10 @@ function refreshPrs() {
 
 // ---------- the board ----------
 
-const SUBJECT_TASK = { gr: /\(task (\d+b?\.\d+)\)/, aa: /\((?:authored animation )?task (\d+)\)/ };
+const SUBJECT_TASK = {
+  gr: /\(task (\d+b?\.\d+)\)/, aa: /\((?:authored animation )?task (\d+[a-z]?)\)/,
+  m1: /\((?:milestone[- ]1 )?task (\d+)\)/, rm: /\((?:roadmap )?task (R\d+)\)/,
+};
 
 async function collect() {
   refreshPrs();
@@ -243,27 +246,27 @@ async function collect() {
     const list = copies[plan.key];
     if (!list.length) continue;
     const parsed = await Promise.all(list.map(async (c) => ({ time: c.at.time, p: parse(plan, await blobText(c.at.blob), c.at.blob) })));
-    const { tasks, stages, done, retired } = mergeCopies(parsed);
-    const base = { tasks, stages };
+    const { tasks, stages, phases, branch, done, retired, moved } = mergeCopies(parsed);
+    const base = { tasks, stages, phases };
     const working = new Set();
     for (const files of treeFiles) {
       if (!files[plan.key]) continue;
       for (const t of parse(plan, files[plan.key]).tasks.values()) {
-        if (t.mark === 'x' && !done.has(t.id)) working.add(t.id);
-        if (plan.kind === 'steps' && t.ticked > 0 && t.mark !== 'x') {
-          const committed = base.tasks.get(t.id);
-          if (!committed || t.ticked > committed.ticked) working.add(t.id);
-        }
+        if (t.mark === 'x' && !done.has(t.id) && !moved.has(t.id)) working.add(t.id);
       }
     }
-    plans.push({ plan, base, done, retired, working });
+    // The branch the plan's header names, if any, is where its work goes now.
+    plans.push({ plan, branch: branch ?? plan.branch, base, done, retired, moved, working });
   }
+  const branchOf = Object.fromEntries(PLANS.map((p) => [p.key, plans.find((x) => x.plan === p)?.branch ?? p.branch]));
 
+  // A moved task has left its plan, so it no longer blocks anything there.
   const isDone = (ref) => {
     const [k, id] = ref.split(':');
     const p = plans.find((x) => x.plan.key === k);
-    return !!p && (p.done.has(id) || p.retired.has(id));
+    return !!p && (p.done.has(id) || p.retired.has(id) || p.moved.has(id));
   };
+  const movedTo = linkMoved(plans.map((p) => ({ key: p.plan.key, tasks: p.base.tasks })));
 
   // Lanes: every worktree.
   const now = Date.now();
@@ -291,16 +294,12 @@ async function collect() {
 
     // Which plan the worktree works on: its branch name, else the newest own
     // commit that touched a plan or named a task.
-    let planKey = null;
-    let claims = true; // only worktrees on a plan's own branches take its tasks
-    const b = w.branch ?? '';
-    // A launched lane names its plan and tasks in its branch: lane/gr-22.2-22.3.
-    const launched = b.match(/^lane\/(gr|aa|st)-(.+)$/);
-    let scope = null;
-    if (launched) { planKey = launched[1]; scope = launched[2].split('-').filter(Boolean); }
-    else if (b === 'tools/session-tracker') planKey = 'st';
-    else if (/authored-animation/.test(b)) planKey = 'aa';
-    else if (b === 'feature/godot-rebuild' || /^godot\//.test(b)) planKey = 'gr';
+    // A launched lane names its plan and tasks in its branch (lane/gr-22.2-22.3,
+    // lane/rm-R3); only worktrees on a plan's own branches take its tasks.
+    const claimed = planOfBranch(w.branch, branchOf);
+    let planKey = claimed?.key ?? null;
+    const scope = claimed?.scope ?? null;
+    let claims = true;
     if (!planKey) {
       claims = false;
       for (const c of log) {
@@ -314,7 +313,7 @@ async function collect() {
     }
 
     // Commits not yet on the plan's branch on GitHub (or master for other work).
-    const target = planKey ? `origin/${PLAN_BY_KEY[planKey].branch}` : 'origin/master';
+    const target = planKey ? `origin/${branchOf[planKey]}` : 'origin/master';
     const [ahead, behind] = await aheadBehind(w.head, target);
     const session = await sessionActivity(w.path);
     const pr = prs.find((p) => p.headRefName === w.branch) ?? null;
@@ -353,7 +352,7 @@ async function collect() {
     if (!p) continue;
     lane.uncommittedTicks = lane.uncommittedTicks.filter((id) => !p.done.has(id));
     const order = p.base.stages.flatMap((s) => s.ids).filter((id) => !lane.scope || lane.scope.includes(id));
-    const open = (id) => !p.done.has(id) && !p.retired.has(id);
+    const open = (id) => !p.done.has(id) && !p.retired.has(id) && !p.moved.has(id);
     const ready = (id) => (p.base.tasks.get(id)?.blockers ?? []).every(isDone);
     const from = lane.lastTask ? order.indexOf(lane.lastTask) : -1;
     const pick = (from >= 0 ? order.slice(from + 1) : order).find((id) => open(id) && ready(id))
@@ -392,7 +391,8 @@ async function collect() {
     for (const t of p.base.tasks.values()) {
       const ref = `${p.plan.key}:${t.id}`;
       let s;
-      if (p.retired.has(t.id)) s = 'retired';
+      if (p.moved.has(t.id)) s = 'moved';
+      else if (p.retired.has(t.id)) s = 'retired';
       else if (p.done.has(t.id)) s = 'done';
       else if (p.working.has(t.id)) s = 'working';
       else if (launchOf(ref)) s = 'launched';
@@ -405,19 +405,26 @@ async function collect() {
         blockers: t.blockers.map((x) => ({ ref: x, label: x.startsWith(`${p.plan.key}:`) ? x.split(':')[1] : `${PLAN_BY_KEY[x.split(':')[0]]?.name ?? x.split(':')[0]} ${x.split(':')[1]}`, done: isDone(x) })),
         ownerOk: (t.gatedBy ?? []).map((g) => g.split(':')[1]),
         launchedAt: s === 'launched' ? launchOf(ref).time : null,
+        // Moved by the Oct 4 triage to milestone 1 or 2, and the task that took it over.
+        moved: t.moved ?? null, movedTo: movedTo.get(ref) ?? null, replaces: t.replaces ?? [],
       };
     }
     const inStages = new Set(p.base.stages.flatMap((s) => s.ids));
     const stages = p.base.stages.map((s) => ({ n: s.n, name: s.name, ids: s.ids }));
     const extra = [...p.base.tasks.keys()].filter((id) => !inStages.has(id));
-    if (extra.length && p.plan.kind !== 'steps') stages.push({ n: null, name: 'Not in the build order', ids: extra });
-    const counts = { done: 0, working: 0, launched: 0, ready: 0, owner: 0, blocked: 0, retired: 0 };
+    if (extra.length) stages.push({ n: null, name: 'Not in the build order', ids: extra });
+    const counts = { done: 0, working: 0, launched: 0, ready: 0, owner: 0, blocked: 0, retired: 0, moved: 0 };
     for (const t of Object.values(tasks)) counts[t.status]++;
-    out.push({ key: p.plan.key, name: p.plan.name, branch: p.plan.branch, file: p.plan.file, stages, tasks, counts,
-      total: Object.keys(tasks).length - counts.retired });
+    out.push({ key: p.plan.key, short: p.plan.short, name: p.plan.name, kind: p.plan.kind, closed: !!p.plan.closed,
+      branch: p.branch, file: p.plan.file, stages, tasks, counts,
+      total: Object.keys(tasks).length - counts.retired - counts.moved });
   }
 
-  return { updated: Date.now(), repo: REPO, plans: out, lanes, prs, launches: launches.map(launchView) };
+  // The roadmap's phases, once the roadmap has a copy on some branch.
+  const rm = plans.find((p) => p.plan.key === 'rm');
+  const roadmap = rm?.base.phases ? { key: 'rm', phases: roadmapView(rm.base.phases, out, lanes) } : null;
+
+  return { updated: Date.now(), repo: REPO, plans: out, roadmap, lanes, prs, launches: launches.map(launchView) };
 }
 
 // Collect in a loop, so a page's request is answered at once from the last pass.
@@ -466,7 +473,8 @@ async function launch(body) {
     const order = plan.stages.flatMap((s) => s.ids);
     ids.sort((a, b) => order.indexOf(a) - order.indexOf(b));
     const branch = `lane/${key}-${ids.join('-')}`.slice(0, 120);
-    const goal = goalFor({ plan: PLAN_BY_KEY[key], ids, tasks: plan.tasks, branch, repo: REPO });
+    const goal = goalFor({ plan: { ...PLAN_BY_KEY[key], branch: plan.branch }, ids, tasks: plan.tasks, branch, repo: REPO,
+      baseExists: refTips.has(`origin/${plan.branch}`) });
     const url = `claude://code/new?folder=${encodeURIComponent(REPO)}&q=${encodeURIComponent(`/goal ${goal}`)}`;
     await openInApp(url);
     const record = { id: `${Date.now().toString(36)}-${key}`, time: Date.now(), plan: key, tasks: ids.map((id) => `${key}:${id}`), branch, goal };
@@ -501,7 +509,7 @@ async function endLaunch(body) {
   if (l.session?.cli) ids.add(l.session.cli);
   if (tree) for (const s of sessions) if (s.dir === path.normalize(tree.path).toLowerCase() && s.cli) ids.add(s.cli);
   const [k] = l.plan ? [l.plan] : l.tasks[0].split(':');
-  const label = `${{ gr: 'GR', aa: 'AA', st: 'ST' }[k] ?? k} ${l.tasks.map((t) => t.split(':')[1]).join(', ')}`;
+  const label = `${PLAN_BY_KEY[k]?.short ?? k} ${l.tasks.map((t) => t.split(':')[1]).join(', ')}`;
   const entries = (await readStops()).filter((e) => Date.now() - e.requestedAt < 14 * 24 * 60 * 60 * 1000);
   entries.push({ id: l.id, label, branch: l.branch, worktree: tree?.path ?? null, sessions: [...ids], requestedAt: Date.now(), firedAt: null });
   await writeFile(STOPS, JSON.stringify({ entries }, null, 2));

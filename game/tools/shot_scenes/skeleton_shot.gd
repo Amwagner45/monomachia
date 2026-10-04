@@ -26,17 +26,28 @@ extends Node
 ## --no-packs plays any shot as a fresh clone without the Iglesias clip
 ## libraries does: the CC0 fallback clips and the HUD's "animation packs
 ## missing" note (authored-animation task 8).
+##
+## "trail_light", "trail_unblockable" and "trail_moonsplitter" show the
+## brush-stroke trails (18.3) on the same Rogue against the idle dummy: Right
+## Cut and Swallow Sweep on their last active frame, and Moonsplitter on the
+## fifth frame of its release (--frame= sets the attack's frame, or the
+## release's). Every step is drawn, as in play, so the ribbon is laid frame
+## by frame, and the camera stands off her front left, raised to see the
+## stroke's arc.
 
 const SEED: int = 7
 
 @export_enum(
 	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
 	"iai_stance", "iai_vertical", "iai_horizontal", "select_duel", "select_watch",
+	"trail_light", "trail_unblockable", "trail_moonsplitter",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
 ## The Iai draw shots' attack frame.
 @export var iai_frame: int = 16
+## The trail shots' attack (or release) frame; -1 for the default.
+@export var trail_frame: int = -1
 ## The "call" shot's announcement (24.2), from the player's side: final_round,
 ## fight, double_ko, round_won (Perfect) or disarmed (--call= sets it too).
 @export var call: String = "final_round"
@@ -74,6 +85,7 @@ func _ready() -> void:
 			spacing = float(a.trim_prefix("--spacing="))
 		elif a.begins_with("--frame="):
 			iai_frame = int(a.trim_prefix("--frame="))
+			trail_frame = iai_frame
 			steps_after = iai_frame
 		elif a.begins_with("--call="):
 			call = a.trim_prefix("--call=")
@@ -154,12 +166,16 @@ func _ready() -> void:
 			_set_hud_states()
 		"iai_stance", "iai_vertical", "iai_horizontal":
 			_iai(shot)
+		"trail_light", "trail_unblockable", "trail_moonsplitter":
+			_trail(shot)
 	var view: MatchView = host.get_node("View")
 	view.snap_camera()
 	if shot == "dropped":
 		_frame_dropped(view.camera)
 	elif shot.begins_with("iai_"):
 		_frame_front(view.camera, 0, shot == "iai_horizontal")
+	elif shot.begins_with("trail_"):
+		_frame_raised(view.camera, 0)
 	var hud: MatchHud = host.get_node("Hud")
 	hud.snap_bars()
 	if shot == "hud_states":
@@ -282,6 +298,36 @@ func _iai(which: String) -> void:
 	_step_until(func() -> bool: return a.state == &"attack" and a.atk.frame >= iai_frame, 60, 0)
 
 
+## The player's Rogue 2.6 m from an idle training dummy strikes: Right Cut
+## (trail_light), Swallow Sweep (trail_unblockable) or Moonsplitter, every
+## step drawn so the trails are laid as in play, up to trail_frame.
+func _trail(which: String) -> void:
+	var dummy: MatchSide = MatchSide.computer(&"hunter", &"greatsword", 1)
+	dummy.controller = MatchSide.DUMMY
+	var cfg: MatchConfig = MatchConfig.make(MatchConfig.TRAINING, MatchSide.human(&"rogue", &"katana"), dummy, SEED)
+	_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(FakeDeviceState.new()))
+	host.step(Match.INTRO_FRAMES + 20)
+	_place_apart(2.6)
+	var view: MatchView = host.get_node("View")
+	var a: Fighter = host.fighter(0)
+	var done: Callable
+	if which == "trail_moonsplitter":
+		a.hp = 20.0
+		a.start_ult()
+		var at: int = trail_frame if trail_frame >= 0 else 5
+		done = func() -> bool: return a.ult == null or (a.ult.phase == &"release" and a.ult.pf >= at)
+	else:
+		a.start_attack(&"k_l1" if which == "trail_light" else &"k_sweep")
+		var def: AttackDef = a.atk.def
+		var at: int = trail_frame if trail_frame >= 0 else def.startup + def.active
+		done = func() -> bool: return a.atk == null or a.atk.frame >= at
+	for k: int in 200:
+		if done.call():
+			break
+		host.step(1)
+		view.render(1.0 / 60.0)
+
+
 func _main() -> void:
 	main = (load("res://scenes/main.tscn") as PackedScene).instantiate()
 	add_child(main)
@@ -337,6 +383,18 @@ func _frame_front(camera: Camera3D, i: int, right: bool) -> void:
 	var side: Vector3 = Vector3.UP.cross(forward) * (-1.0 if right else 1.0)
 	camera.global_position = at + (side * 0.8 + forward * 0.6).normalized() * 2.6 + Vector3(0.0, 1.4, 0.0)
 	camera.look_at(at + Vector3(0.0, 1.05, 0.0))
+
+
+## Puts the camera 3.4 m off fighter i's left, a little ahead, and 2.3 m up,
+## looking down at the space in front of her, so a cut's arc reads clear of
+## the opponent.
+func _frame_raised(camera: Camera3D, i: int) -> void:
+	var at: Vector3 = host.display_position(i)
+	var yaw: float = host.display_yaw(i)
+	var forward := Vector3(sin(yaw), 0.0, cos(yaw))
+	var side: Vector3 = Vector3.UP.cross(forward)
+	camera.global_position = at + (side * 0.95 + forward * 0.3).normalized() * 3.4 + Vector3(0.0, 2.3, 0.0)
+	camera.look_at(at + forward * 0.7 + Vector3(0.0, 1.0, 0.0))
 
 
 func _weapon_down() -> bool:

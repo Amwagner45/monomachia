@@ -113,6 +113,9 @@ For a map of the whole codebase with diagrams, including the Godot build in
 | `tests` | Rule tests. |
 | `scripts` | Soak runner, counter lab, headless browser checks, post-build step. |
 | `scripts/audio` | The Godot build's audio: `npm run audio:sonniss` cuts sounds from the Sonniss bundle zips, `npm run audio:synth` generates the rest, `npm run audio:music` the placeholder music. Output and sources list in `game/assets/audio`. |
+| `brain` | The second brain: an Obsidian vault of the project's knowledge. Hand-written concept notes live here; `npm run brain` generates the rest (a note per glossary term, plan task, doc section and `game/` folder) into `brain/generated/`, which isn't committed. `npm run brain:serve` opens it in a web viewer at http://localhost:5196. |
+| `tools/second-brain` | Builds the vault and serves its viewer. See `docs/specs/second-brain.md`. |
+| `tools/lanes-board` | The lanes board (`npm run board`, http://localhost:5197): a live page of every plan's progress and every worktree's session, where tasks are queued and launched into their own Claude sessions, launched work is ended, and the second brain opens. Its stop hook, `stop-hook.mjs`, is installed in user settings (see the file). |
 
 ## Publishing on GitHub
 

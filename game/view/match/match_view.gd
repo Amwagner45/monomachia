@@ -10,9 +10,10 @@ extends Node3D
 ## takes its camera_max_radius and camera_far (read by name, so any resource
 ## with those two numbers will do); the fighters are placed and posed in
 ## update_fighters(), and swings (task 14.10) take over their posing from
-## StickPose inside FighterView; the combat effects (task 18) join
-## _on_sim_event(), where the camera's shake and field-of-view kicks are
-## already wired.
+## StickPose inside FighterView; the combat effects (task 18) are a
+## CombatEffects child, spawned from _on_sim_event() by the event table
+## (EffectTable) beside the camera's shake and field-of-view kicks, drawn on
+## the effect clock every frame and cleared at round start.
 ##
 ## A walking or running fighter puts its feet down where its clips land them
 ## (Locomotion, authored-animation task 29): the view reports each as a
@@ -66,14 +67,11 @@ var arena_id: StringName = &""
 var fighters: Array[FighterView] = []
 ## The swing debug view while swing_debug is on, else null.
 var swing_debug_view: SwingDebugView
+## The combat effects (flashes, rings, particles) on the effect clock.
+var effects: CombatEffects
 
 ## owner side -> Node3D: the dropped weapon stand-ins.
 var _dropped: Dictionary[int, Node3D] = {}
-## Contact flashes: { "node", "mat", "born" (a world frame), "life" (frames),
-## "size", "color" }. A stand-in for task 18's sparks; timed on the world's
-## frame, which stands still during hit-stop and pause, so they hold through
-## both.
-var _flashes: Array[Dictionary] = []
 var _time: float = 0.0
 var _side_palette: Array[int] = [0, 1]
 
@@ -84,6 +82,10 @@ func _ready() -> void:
 		camera = CameraRig.new()
 		camera.name = "CameraRig"
 		add_child(camera)
+	if effects == null:
+		effects = CombatEffects.new()
+		add_child(effects)
+		effects.host = host
 	if host == null and has_node(host_path):
 		var h: Node = get_node(host_path)
 		if h is MatchHost:
@@ -97,6 +99,8 @@ func bind(p_host: MatchHost) -> void:
 		host.match_started.disconnect(_on_match_started)
 		host.sim_event.disconnect(_on_sim_event)
 	host = p_host
+	if effects != null:
+		effects.host = host
 	host.match_started.connect(_on_match_started)
 	host.sim_event.connect(_on_sim_event)
 	if swing_debug_view != null:
@@ -116,7 +120,8 @@ func _process(delta: float) -> void:
 func render(delta: float) -> void:
 	update_fighters(delta)
 	_update_dropped()
-	_update_flashes()
+	_feed_trails()
+	effects.update(effects.clock())
 	var me: int = host.view_side()
 	camera.update_rig(delta, host.display_position(me), host.display_position(1 - me))
 
@@ -127,7 +132,8 @@ func snap_camera() -> void:
 		return
 	update_fighters(0.0)
 	_update_dropped()
-	_update_flashes()
+	_feed_trails()
+	effects.update(effects.clock())
 	var me: int = host.view_side()
 	camera.snap(host.display_position(me), host.display_position(1 - me))
 
@@ -138,6 +144,20 @@ func update_fighters(delta: float) -> void:
 		fighters[i].update_from(host.fighter(i), host.display_position(i), host.display_yaw(i), a, delta, _time)
 		for at: Vector3 in fighters[i].locomotion.footfalls:
 			footfall.emit(i, at)
+
+
+## Lays each held blade, as posed this frame, into its trail, with the
+## trail rules' strength and colour (TrailState) on the frame shown.
+func _feed_trails() -> void:
+	var t: float = effects.clock()
+	var a: float = host.alpha()
+	for i: int in fighters.size():
+		var rules: TrailState = TrailState.of(host.fighter(i), a)
+		var blades: Array[PackedVector3Array] = fighters[i].blade_segments()
+		var width: float = fighters[i].trail_width()
+		for hand: int in mini(2, blades.size()):
+			var span: PackedVector3Array = WeaponTrail.span(blades[hand][0], blades[hand][1], width)
+			effects.feed_trail(i, hand, t, span[0], span[1], rules.intensity(hand), rules.kind)
 
 
 ## True when side `side`'s footsteps fall where its clips land its feet
@@ -168,7 +188,8 @@ func _on_match_started(cfg: MatchConfig) -> void:
 		fighters[i].setup(s.fighter_id, s.palette, s.weapon_id, i)
 		_side_palette[i] = s.palette
 	_clear_dropped()
-	_clear_flashes()
+	effects.clear()
+	effects.set_preset(GameServices.graphics_preset())
 	if host.attract:
 		camera.mode = CameraRig.Mode.MENU
 	elif cfg.mode == MatchConfig.WATCH:
@@ -261,6 +282,8 @@ func _kick_on_contact(e: Dictionary) -> void:
 
 
 func _on_sim_event(e: Dictionary) -> void:
+	if EffectTable.has(e["t"]):
+		effects.on_event(e, host.world.frame)
 	match e["t"]:
 		&"hit":
 			var heavy: bool = e["heavy"]
@@ -268,29 +291,19 @@ func _on_sim_event(e: Dictionary) -> void:
 			_kick_on_contact(e)
 			var color: Color = Color(1.0, 0.94, 0.88) if e["sound"] == &"fist" else Color(1.0, 0.38, 0.25)
 			fighters[int(e["target"])].flash(color, 0.55 if heavy else 0.4, host.world.frame)
-			_spawn_flash(e["pos"], Color(1.0, 0.55, 0.3), 0.7 if heavy else 0.45, 10)
 		&"block":
 			camera.add_shake(heavy_block_shake if e["heavy"] else light_block_shake)
 			_kick_on_contact(e)
-			_spawn_flash(e["pos"], Color(1.0, 0.88, 0.6), 0.6 if e["heavy"] else 0.45, 10)
 		&"parry":
 			camera.add_shake(parry_shake)
 			camera.kick_fov(3.0 if e["kind"] == &"parry" else 5.0)
-			var parry_color: Color = Color(1.0, 0.95, 0.75)
-			if e["kind"] == &"flash":
-				parry_color = Color(0.6, 0.85, 1.0)
-			elif e["kind"] == &"redirect":
-				parry_color = Color(0.48, 1.0, 0.84)
-			_spawn_flash(e["pos"], parry_color, 1.0, 18)
 		&"counter":
 			camera.add_shake(counter_shake)
 			camera.kick_fov(6.0)
-			_spawn_flash(e["pos"], Color(0.6, 0.85, 1.0), 0.9, 16)
 		&"disarm":
 			camera.add_shake(disarm_shake)
 			camera.kick_fov(7.0)
 			fighters[int(e["victim"])].flash(Color.WHITE, 0.6, host.world.frame)
-			_spawn_flash(e["pos"], Color.WHITE, 1.3, 20)
 		&"ultStart":
 			camera.kick_fov(8.0)
 		&"ultWave":
@@ -312,56 +325,7 @@ func _on_sim_event(e: Dictionary) -> void:
 		&"roundStart":
 			camera.reset_round()
 			_clear_dropped()
-			_clear_flashes()
-
-
-# ------------------------------------------------------------------ contact flashes
-
-## A glow at a contact point (an event's "pos") that grows and fades over
-## life world frames (frozen through hit-stop).
-func _spawn_flash(at: Dictionary, color: Color, size: float, life: int) -> void:
-	var mat: StandardMaterial3D = StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-	mat.blend_mode = BaseMaterial3D.BLEND_MODE_ADD
-	mat.albedo_color = color
-	var mesh: SphereMesh = SphereMesh.new()
-	mesh.radius = 0.5
-	mesh.height = 1.0
-	mesh.radial_segments = 16
-	mesh.rings = 8
-	var mi: MeshInstance3D = MeshInstance3D.new()
-	mi.name = "Flash"
-	mi.mesh = mesh
-	mi.material_override = mat
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-	mi.position = Vector3(float(at["x"]), float(at["y"]), float(at["z"]))
-	add_child(mi)
-	_flashes.append({"node": mi, "mat": mat, "born": host.world.frame, "life": life, "size": size, "color": color})
-	_update_flashes()
-
-
-func _update_flashes() -> void:
-	var keep: Array[Dictionary] = []
-	for fl: Dictionary in _flashes:
-		var t: float = float(host.world.frame - int(fl["born"])) / float(fl["life"])
-		var node: MeshInstance3D = fl["node"]
-		if t >= 1.0:
-			node.queue_free()
-			continue
-		var s: float = float(fl["size"]) * (0.55 + 0.75 * t)
-		node.scale = Vector3(s, s, s)
-		var c: Color = fl["color"]
-		c.a = 0.9 * (1.0 - t)
-		(fl["mat"] as StandardMaterial3D).albedo_color = c
-		keep.append(fl)
-	_flashes = keep
-
-
-func _clear_flashes() -> void:
-	for fl: Dictionary in _flashes:
-		(fl["node"] as Node).queue_free()
-	_flashes.clear()
+			effects.clear()
 
 
 # ------------------------------------------------------------------ dropped weapons

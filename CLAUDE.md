@@ -68,9 +68,12 @@ Rules:
 - `npm run typecheck`: TypeScript check
 - `npm run build`: type-check, then build the single-file game
 - `npm run soak -- 40`: 40 computer-vs-computer matches, prints balance numbers
+- `npm run brain`: write the second brain's generated notes to `brain/generated/` (not committed); `npm run brain:serve` shows the vault at http://localhost:5196
+- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work
 
 ## Code notes
 
 - `src/sim` holds the rules with no graphics, stepped at a fixed 60 per second. Keep rendering, input and audio code out of it.
 - Weapon frame data lives in `src/sim/moves`. Global tuning lives in `src/sim/constants.ts`.
 - When you change combat rules or tuning, add or update a test in `tests/`.
+- `brain/` is an Obsidian vault (the second brain). Hand-written notes link with `[[Note name]]`, must not reuse a generated name (glossary terms, `Task 7.1`, `Stage N - …`, `game.sim`, `<Doc> - <Section>`), and must keep every link resolving: `tests/second-brain.test.mjs` fails otherwise. When a concept a note explains changes, update the note in the same branch. Never edit or commit `brain/generated/`.

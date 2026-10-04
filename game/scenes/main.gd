@@ -1,7 +1,7 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, Quit) -> the fighter select (Duel and
-## Watch) -> a match -> results (Rematch, Main menu), with a pause menu (Resume, Main menu) during play, which Back, Start
+## title -> main menu (Duel, Watch, How to play, Quit) -> the fighter select
+## (Duel and Watch) -> a match -> results (Rematch, Main menu), with a pause menu (Resume, Main menu) during play, which Back, Start
 ## or the pause binding also closes. The pages sit on a ScreenStack: Back on
 ## a page goes to the page that opened it (the main menu's to the title).
 ## A computer duel plays behind the title
@@ -42,6 +42,7 @@ var results_screen: ResultsScreen
 var select: FighterSelect
 ## The fighter select's drafts and last picks.
 var selection: MatchSelection
+var how_to_play: HowToPlayScreen
 ## The menus' pages, the open one on top.
 var stack: ScreenStack = ScreenStack.new()
 ## The last match played, for Rematch.
@@ -62,6 +63,7 @@ func _ready() -> void:
 	main_menu.name = "MainMenu"
 	main_menu.add_button("Duel", "vs computer", open_select.bind(MatchConfig.DUEL))
 	main_menu.add_button("Watch", "computer vs computer", open_select.bind(MatchConfig.WATCH))
+	main_menu.add_button("How to play", "rules and move lists", show_how_to_play)
 	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
@@ -86,6 +88,10 @@ func _ready() -> void:
 	select.name = "Select"
 	select.locked_in.connect(_on_locked_in)
 	ui.add_child(select)
+
+	how_to_play = HowToPlayScreen.new()
+	how_to_play.name = "HowToPlay"
+	ui.add_child(how_to_play)
 	stack.changed.connect(_on_stack_changed)
 
 	host.match_finished.connect(_on_match_finished)
@@ -150,6 +156,11 @@ func show_title() -> void:
 func show_main_menu() -> void:
 	stack.reset([title, main_menu] as Array[MenuPage])
 	GameServices.play_menu_music()
+
+
+## How to play opens over the page that chose it; Back returns there.
+func show_how_to_play() -> void:
+	stack.push(how_to_play)
 
 
 ## Opens the fighter select for a mode over the page on top, on the mode's

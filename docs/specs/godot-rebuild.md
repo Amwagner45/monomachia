@@ -123,7 +123,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 55. [ ] As two players on one PC, I want Versus in a vertical split screen, each with our own camera and device (keyboard and mouse, the arrow-key layout, or a controller), so that we can play head to head.
 56. [ ] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me.
 57. [ ] As a player, I want graphics presets, a reduce-flashes-and-shaking option and a button-hints option, so that the game runs and reads well for me.
-58. [ ] As a player, I want a move list generated from the actual move data, so that it's always correct.
+58. [x] As a player, I want a move list generated from the actual move data, so that it's always correct. (22.13 and 22.14: `MoveList` walks the move data, and How to play shows it as a tab per weapon and bare hands; the pause menu opens it with 22.15.)
 
 ### Building and maintaining
 

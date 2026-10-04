@@ -84,6 +84,47 @@ func test_the_title_leads_to_the_main_menu() -> void:
 	for b: Button in menu.buttons:
 		labels.append(b.text.get_slice("\n", 0))
 	assert_eq(labels, ["Duel", "Watch", "Quit"] as Array[String])
+	var subs: Array[String] = []
+	for b: Button in menu.buttons:
+		subs.append((b.get_node("Sub") as Label).text)
+	assert_eq(subs, ["vs computer", "computer vs computer", "to the desktop"] as Array[String], "each entry's sublabel")
+
+
+func test_the_main_menu_hides_the_title_and_stays_open_while_the_duel_plays() -> void:
+	main.call("show_main_menu")
+	host.step(420)
+	await get_tree().process_frame
+	assert_eq(_screen(), MainScript.Screen.MENU)
+	assert_false((main.get("title") as Control).visible, "the title is closed")
+	assert_true((main.get("main_menu") as Control).visible)
+
+
+func test_back_on_the_main_menu_returns_to_the_title() -> void:
+	main.call("show_main_menu")
+	_press_key(KEY_ESCAPE)
+	assert_eq(_screen(), MainScript.Screen.TITLE)
+	assert_true((main.get("title") as Control).visible)
+	assert_false((main.get("main_menu") as Control).visible)
+
+
+func test_a_keyboard_alone_walks_from_the_title_to_a_duel() -> void:
+	_press_key(KEY_A)
+	assert_eq(_screen(), MainScript.Screen.MENU, "any key goes on")
+	await get_tree().process_frame
+	_press_key(KEY_ENTER)
+	assert_eq(_screen(), MainScript.Screen.PLAYING)
+	assert_eq(host.config.mode, MatchConfig.DUEL)
+
+
+func test_a_controller_alone_walks_from_the_title_to_a_duel() -> void:
+	_press_pad(JOY_BUTTON_Y)
+	assert_eq(_screen(), MainScript.Screen.MENU, "any button goes on")
+	await get_tree().process_frame
+	_press_pad(JOY_BUTTON_DPAD_DOWN)
+	_press_pad(JOY_BUTTON_DPAD_UP)
+	_press_pad(JOY_BUTTON_A)
+	assert_eq(_screen(), MainScript.Screen.PLAYING)
+	assert_eq(host.config.mode, MatchConfig.DUEL)
 
 
 func test_a_duel_runs_from_the_menu_to_the_results_and_back() -> void:

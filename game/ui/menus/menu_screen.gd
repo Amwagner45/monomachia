@@ -37,13 +37,24 @@ func add_heading(text: String, font_size: int = 52) -> Label:
 	return add_label(text, UiTheme.DISPLAY, font_size)
 
 
-## An entry with an optional smaller line under its label.
+## An entry, with an optional sublabel on its right (the demo's .mbtn small:
+## small spaced capitals in the dimmed paper), named "Sub".
 func add_button(text: String, sub: String, on_pressed: Callable) -> Button:
 	var b: Button = Button.new()
-	b.text = text if sub == "" else "%s\n%s" % [text, sub]
+	b.text = text
 	b.theme_type_variation = UiTheme.MENU_ENTRY
 	b.alignment = HORIZONTAL_ALIGNMENT_LEFT
-	b.custom_minimum_size = Vector2(380.0, 72.0 if sub != "" else 52.0)
+	b.custom_minimum_size = Vector2(380.0, 56.0)
+	if sub != "":
+		var small: Label = UiTheme.label(sub, UiTheme.EYEBROW, 14)
+		small.name = "Sub"
+		small.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+		small.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		small.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		small.set_anchors_and_offsets_preset(Control.PRESET_RIGHT_WIDE)
+		small.offset_left = -260.0
+		small.offset_right = -18.0
+		b.add_child(small)
 	b.pressed.connect(on_pressed)
 	box.add_child(b)
 	buttons.append(b)

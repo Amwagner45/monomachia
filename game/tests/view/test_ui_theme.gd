@@ -236,6 +236,28 @@ func test_the_title_is_set_in_the_theme() -> void:
 	assert_eq(_font_of(_labelled(title, "MONOMACHIA")), DISPLAY_FONT)
 	var prompt: Control = _labelled(title, "Press any key or button")
 	assert_eq(_font_of(prompt), UI_FONT)
+	# the demo's title: 一騎討ち down the side, the 一騎 seal, the device note
+	assert_eq(_font_of(_labelled(title, "一\n騎\n討\nち")), DISPLAY_FONT)
+	var seal: Label = _labelled(title, "一\n騎") as Label
+	assert_eq(_font_of(seal), DISPLAY_FONT)
+	_assert_color(_flat(seal, &"normal").bg_color, LACQUER, "the seal")
+	assert_eq(_flat(seal, &"normal").corner_radius_top_left, 8)
+	assert_not_null(_labelled(title, TitleScreen.DEVICE_NOTE))
+
+
+func test_the_main_menu_has_the_logo_over_its_entries() -> void:
+	var menu: MainMenu = MainMenu.new()
+	add_child_autofree(menu)
+	var duel: Button = menu.add_button("Duel", "vs computer", func() -> void: pass)
+	_assert_themed(menu)
+	var logo: Label = _labelled(menu, "MONOMACHIA") as Label
+	assert_eq(_font_of(logo), DISPLAY_FONT)
+	_assert_color(logo.get_theme_color(&"font_color"), GOLD, "the gold logo")
+	assert_not_null(_labelled(menu, "一騎討ち · Single combat"))
+	var sub: Label = duel.get_node("Sub")
+	assert_eq(sub.theme_type_variation, UiTheme.EYEBROW, "the sublabel is small spaced capitals")
+	assert_true(sub.uppercase)
+	assert_eq(duel.text, "Duel", "the entry's own text is its name")
 
 
 func test_menus_are_a_themed_panel_of_menu_entries_under_a_display_heading() -> void:

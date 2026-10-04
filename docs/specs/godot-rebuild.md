@@ -40,7 +40,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 ### Playing a duel
 
 1. [ ] As a player, I want to start Monomachia as a Windows program, so that I can play without a browser.
-2. [ ] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
+2. [x] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
 3. [ ] As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
 4. [ ] As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
 5. [ ] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.

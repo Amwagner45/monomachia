@@ -14,6 +14,9 @@ const MUTED: StringName = &"MutedLabel"
 ## A boxed warning in the HUD (the plate's Disarmed tag): small spaced
 ## capitals in danger red in a thin danger-red box.
 const TAG: StringName = &"HudTag"
+## The title's seal (the demo's .hanko): kanji in pale paper on a rounded
+## lacquer square.
+const HANKO: StringName = &"HankoLabel"
 ## A main-menu button: no box until focused, then a lacquer wash and bar.
 const MENU_ENTRY: StringName = &"MenuEntry"
 ## A menu row (an OptionRow or SliderRow): no box, and while focused the menu

@@ -51,12 +51,11 @@ func _ready() -> void:
 	ui.add_child(title)
 	title.proceed.connect(show_main_menu)
 
-	main_menu = MenuScreen.new()
+	main_menu = MainMenu.new()
 	main_menu.name = "MainMenu"
-	main_menu.add_heading("MONOMACHIA")
-	main_menu.add_button("Duel", "against the computer", start_duel)
-	main_menu.add_button("Watch", "computer against computer", start_watch)
-	main_menu.add_button("Quit", "", quit_game)
+	main_menu.add_button("Duel", "vs computer", start_duel)
+	main_menu.add_button("Watch", "computer vs computer", start_watch)
+	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
 	pause_menu = MenuScreen.new()

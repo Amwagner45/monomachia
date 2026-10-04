@@ -2395,6 +2395,9 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **22.15 Pause menu.** 休止 Paused with Resume, Move list, Controls, Settings, Restart and Quit to menu; sub-screens over the frozen match; a profile picked here takes effect on resume.
     - Check: it opens on the pause binding and on focus loss; each entry and Back work; a profile change applies on resume; the rules never step while it is open; walks; shots reviewed.
     - Blocked by: 22.9, 22.12, 22.14 · Stories: 9, 10, 56
+    - Decided with the owner (Oct 4, wayfinder questions for the 22.15–23.3 lane):
+      - Move list opens How to play on the tab of the weapon the player holds (`HowToPlayScreen.show_weapon`); Watch, with no player, opens it on the Rules.
+      - Restart and Quit to menu act at once, as the demo's did, with no confirm step.
   - [ ] **22.16 Versus on the menu: device and profile pickers; task 23 ticked.** Player 1 and Player 2 select steps with "Plays with" and a profile picker; a clash refuses lock in.
     - Check: the pickers write the device and profile; a clash blocks lock in; a started Versus samples each player from their own device and profile; shots reviewed.
     - Owner: playtests Versus with two controllers and with a shared keyboard.
@@ -2407,12 +2410,20 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **23.1 Training upkeep in the rules.** `TrainingUpkeep` in `game/sim`, run by the host inside the fixed step: getting up at once after a KO, refill after 90 frames unhurt, the dummy's posture drain and ultimate back, and re-arming after 240 frames disarmed.
     - Check: a KO in Training stands up; refill timing and rates; the re-arm; refill off; nothing changes outside Training; a short soak is clean.
     - Blocked by: none · Stories: 53
+    - Decided with the owner (Oct 4): the dummy's behaviour and the refill setting carry through Restart only; a new Training from the menu starts on Stand still with refill on (nothing is saved).
   - [ ] **23.2 Choosing the dummy's behaviour.** `MatchHost.set_training_behaviour`. The dummy swaps to a weapon that can perform the behaviour, cleanly in the rules, and the view and HUD follow the swap.
     - Check: each of the nine behaviours on each dummy weapon ends with a weapon that can do it; no dropped weapon or impale is left behind; a shot after a swap reviewed.
     - Blocked by: 23.1 · Stories: 53
+    - Decided with the owner (Oct 4):
+      - When the dummy's weapon can't perform a behaviour, it swaps to the first weapon that can, in the select's order (Katana, Greatsword, Daggers), worked out from the abilities' counter kinds (`TrainingBrain.ability_for`), not a fixed table: Thrust gives the Katana and Slam the Greatsword, as the demo's.
+      - A swap is a detour: whenever the weapon picked in the select can perform the chosen behaviour, the dummy goes back to it. (The demo kept the swapped weapon.)
   - [ ] **23.3 Training: select and panel.** Training on the menu through the select (the dummy picks fighter and weapon only). A panel shows the nine behaviour chips and refill, driven by keys 1–9 and 0 and by mouse. The pause menu gets a Training section for controllers.
     - Check: keys, clicks and the pause section change the behaviour and refill; a digit bound in the profile is ignored; Training starts from the menu; shots reviewed.
     - Blocked by: 22.6, 22.15, 23.2, 24.3 · Stories: 3, 53
+    - Decided with the owner (Oct 4):
+      - Built ahead of 24.3 without the "Dummy behaviour" toast: the lit chip and the "Dummy · <weapon>" line show the change, and 24.3 adds the toast when toasts land.
+      - The panel is always shown in Training, bottom left, as the demo's: "Dummy · <weapon>", a short hint, the nine numbered chips and the refill chip.
+      - The pause menu's Training section is two rows at the top of the pause list, in Training only: "Dummy  < behaviour >" and "Refill health  < On/Off >", changed with left and right.
   - [ ] **23.4 Parry timing feedback.** In Training: the frames before impact and the window on a parry, and too early, too late and evaded.
     - Check: scripted parries in the window, 5 frames early and 3 late each give the right toast and number; nothing shows outside Training; shots reviewed.
     - Blocked by: 23.3, 24.3 · Stories: 53
@@ -2450,6 +2461,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **24.3 Toasts.** Up to three, 69 rules frames each, for parries, counters, ultimates, backstabs, dazes and evades, in the player's and Watch's wording.
     - Check: each event's text, subline and colour from both views; a fourth drops the oldest; they expire on steps and hold in pause; shots of each colour.
     - Blocked by: 24.2 · Stories: 7
+    - Note from 23.3 (built first, on the owner's word): also toast a behaviour change in Training, the demo's dim "<behaviour>" with the subline "Dummy behaviour", from the Training panel's and the pause rows' changes.
   - [ ] **24.4 Prompts with button names.** Up to two prompts with key caps from the last device used, for recall, Breaker Palm, the Moonsplitter tilt, detonating the Impaler, the counter lunge, picking up the weapon and the ultimate. `GameSettings.button_hints` (added early with 22.9, with its Settings row) hides them.
     - Check: each state gives its prompt, at most two and urgent first; labels follow the device; the setting hides them; shots with keyboard and controller names.
     - Blocked by: 24.3 · Stories: 7, 56, 57

@@ -5,9 +5,11 @@ extends GutTest
 ## Greatsword 3.0, Daggers 2.0, bare hands 1.6), puts the last 15-20 cm of its
 ## blade into them: the most blade inside the defender's capsule at any
 ## moment of the active ticks (SwingReach.touches(), BladeSweep's length
-## inside). Its lunge ends on the frame it first touches, so the front foot
-## lands on contact, and from 6 m it whiffs. Empty until the lights have
-## swings; the check itself is tested on synthetic lights.
+## inside); bare hands' fist, shorter than that across its knuckles, goes
+## 15-20 cm deep (SwingReach.inside(), authored-animation task 24). Its
+## lunge ends on the frame it first touches, so the front foot lands on
+## contact, and from 6 m it whiffs. The check itself is tested on synthetic
+## lights.
 
 const RT := preload("res://tests/sim/reach_table.gd")
 const SF := preload("res://tests/sim/swing_fixtures.gd")
@@ -33,7 +35,7 @@ static func _problems(w: WeaponDef, id: StringName) -> Array[String]:
 	else:
 		var inside: float = 0.0
 		for c: SwingReach.Contact in touches:
-			inside = maxf(inside, c.length_inside)
+			inside = maxf(inside, SwingReach.inside(c, w))
 		if inside < MIN_INSIDE or inside > MAX_INSIDE:
 			out.append("%s: %.1f cm of blade inside from %.1f m, not 15-20 cm" % [at, inside * 100.0, w.duel_distance])
 		var lunge_end: int = m.lunge_end if m.lunge_end != AttackDef.UNSET else m.startup + m.active
@@ -58,6 +60,17 @@ func test_each_weapon_has_its_duelling_distance() -> void:
 	var want: Dictionary[StringName, float] = {&"katana": 2.5, &"greatsword": 3.0, &"daggers": 2.0, &"fists": 1.6}
 	for id: StringName in want:
 		assert_eq(Moves.WEAPONS[id].duel_distance, want[id], String(id))
+
+
+func test_a_fist_is_measured_by_its_depth_and_a_blade_by_its_length_inside() -> void:
+	assert_true(SwingReach.measures_depth(Moves.FISTS), "the knuckles are shorter than the rule")
+	for w: WeaponDef in [Moves.KATANA, Moves.GREATSWORD, Moves.DAGGERS]:
+		assert_false(SwingReach.measures_depth(w), "%s: its blade" % w.id)
+	var c: SwingReach.Contact = SwingReach.Contact.new()
+	c.depth = 0.18
+	c.length_inside = 0.07
+	assert_eq(SwingReach.inside(c, Moves.FISTS), 0.18)
+	assert_eq(SwingReach.inside(c, Moves.DAGGERS), 0.07)
 
 
 func test_every_light_with_a_swing_puts_15_to_20_cm_into_a_defender_at_the_duelling_distance() -> void:

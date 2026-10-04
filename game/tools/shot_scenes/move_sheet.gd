@@ -10,7 +10,8 @@ extends Node3D
 ##
 ## Options:
 ## - --fighter=rogue|hunter: the attacker, in palette A (default rogue);
-## - --weapon=katana|greatsword|daggers: its weapon (default katana);
+## - --weapon=katana|greatsword|daggers|fists: its weapon (default katana;
+##   fists for bare hands' moves, task 24);
 ## - --move=<move id>, guard (the default: the fighter standing in its guard,
 ##   one row) or all: the batch, a sheet for the guard and for every move of
 ##   the weapon, each saved beside <out.png> as <out>_<move>.png, and
@@ -442,8 +443,8 @@ func apply_args(args: PackedStringArray) -> void:
 		fighter_id = FighterLook.IDS[0]
 	if defender_id != &"" and not FighterLook.IDS.has(defender_id):
 		defender_id = &""
-	if not Moves.PLAYABLE_WEAPONS.has(weapon_id):
-		push_error("move_sheet.gd: no weapon '%s' (%s)" % [weapon_id, ", ".join(PackedStringArray(Moves.PLAYABLE_WEAPONS))])
+	if not Moves.WEAPONS.has(weapon_id):
+		push_error("move_sheet.gd: no weapon '%s' (%s)" % [weapon_id, ", ".join(PackedStringArray(Moves.WEAPONS.keys()))])
 		weapon_id = Moves.PLAYABLE_WEAPONS[0]
 
 

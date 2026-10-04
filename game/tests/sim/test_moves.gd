@@ -183,6 +183,17 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	# held) reaches less far than its cone, so its lunge carries it to a touch
 	# from the unblockables' test distance (3.0 m)
 	{"move": "d_needle", "field": "lunge", "was": 0.8, "now": 1.15},
+	# authored animation 24: the punches. Bare hands' lights are measured by
+	# how deep the fist goes (15-20 cm at 1.6 m; its knuckles are shorter than
+	# the rule's 15-20 cm of blade), each lunge ending on its first touch:
+	# Hook's looping AttackPunch01_L steps in by itself; Lunging Palm's
+	# AttackPunch01_R falls short of 3.6 m
+	{"move": "f_l1", "field": "lunge_end", "was": AttackDef.UNSET, "now": 6},
+	{"move": "f_l2", "field": "lunge", "was": 0.3, "now": 0.27},
+	{"move": "f_l2", "field": "lunge_end", "was": AttackDef.UNSET, "now": 7},
+	{"move": "f_l3", "field": "lunge", "was": 0.3, "now": 0.07},
+	{"move": "f_l3", "field": "lunge_end", "was": AttackDef.UNSET, "now": 9},
+	{"move": "f_bh", "field": "lunge", "was": 1.8, "now": 1.9},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

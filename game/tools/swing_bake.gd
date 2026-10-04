@@ -344,7 +344,8 @@ static func _carry_frame(f: int, old: PackedInt32Array, new: PackedInt32Array) -
 	return new[3] + (f - old[3])
 
 
-## [the most blade inside the defender (m, -1 for no touch), the attack
+## [the most blade inside the defender, or a fist's depth (SwingReach.inside();
+## m, -1 for no touch), the attack
 ## frame of the first touch (-1)] for r on `move` pushed by `offset`.
 static func _measure(r: Result, move: AttackDef, weapon: WeaponDef, distance: float, offset: V3) -> Array:
 	var def: AttackDef = retimed(move, r.timing, swing_of(r, offset))
@@ -353,7 +354,7 @@ static func _measure(r: Result, move: AttackDef, weapon: WeaponDef, distance: fl
 		return [-1.0, -1]
 	var inside: float = 0.0
 	for c: SwingReach.Contact in touches:
-		inside = maxf(inside, c.length_inside)
+		inside = maxf(inside, SwingReach.inside(c, weapon))
 	return [inside, touches[0].frame]
 
 

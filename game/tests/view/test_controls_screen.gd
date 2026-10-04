@@ -63,7 +63,7 @@ func test_it_opens_on_the_keyboard_tab_with_the_profiles_keys() -> void:
 	assert_eq(screen.tab, ControlProfile.KB)
 	assert_eq(screen.tabs.index, 0)
 	assert_eq(screen.focused_item(), screen.tabs)
-	assert_eq(screen.profile_label.text, "Profile · Player 1")
+	assert_eq(screen.profile_row.chips[screen.profile_row.index].text, "Player 1")
 	assert_eq(screen.status.text, ControlsTable.KB_NOTE)
 	assert_eq([screen.slot_text("light", 0), screen.slot_text("light", 1)], ["Left Click", "J"])
 	assert_eq([screen.slot_text("dodge", 0), screen.slot_text("dodge", 1)], ["Space", "—"])
@@ -106,7 +106,7 @@ func test_the_table_shows_the_active_profile() -> void:
 	var p: ControlProfile = profiles.add_profile()
 	p.bind(ControlProfile.KB, "light", 0, InputToken.key(KEY_H))
 	_reopen()
-	assert_eq(screen.profile_label.text, "Profile · Player 2")
+	assert_eq(screen.profile_row.chips[screen.profile_row.index].text, "Player 2")
 	assert_eq(screen.slot_text("light", 0), "H")
 
 

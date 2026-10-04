@@ -26,7 +26,8 @@ The build order runs these as 14 stages; each stage note shows how many of its t
 On Oct 4, 2026 the owner changed course (`docs/adr/0001-animation-leads-realistic-look.md`). Animation now leads the rules' timing instead of clips being fitted to the rules, a realistic look replaces toon and ink-wash, and an RTX 3090 at 4K and 60 fps is the target, with Low holding 60 fps at 1080p (upscaled) on the Ryzen 7 4700U laptop.
 
 - The rebuild merges into `master` first, so new work branches from `master` again.
-- The plan's open tasks are triaged: look-independent ones are to be finished, tuning and effects move into the slice plan, and toon-only ones retire.
+- The plan's open tasks were triaged on Oct 4: the computer opponent, tuning and effects move to milestone 1 (the Greatsword and Daggers parts to milestone 2), and the authored-animation plan closes after task 30b.
+- **Consolidation first:** the finished lanes merged into the rebuild on Oct 4 (PRs #21, #25 and #19; #7 was closed, replaced by the lanes board), stage 14 retires the web version, CI goes green, and the rebuild merges into `master`. The remaining look-independent tasks (menus, modes and HUD) are finished on `master` alongside milestone 1, which gets its own spec.
 - The existing content then reaches final quality in two milestones (the Hunter with the Katana and bare hands on the Moonlit Shrine; then the Greatsword, the Twin Daggers and the second fighter) before any new weapon, fighter or arena.
 
 The choices behind all this: [[Key decisions]]. How the work is organised: [[Workflow]] and [[Lanes and the board]].

@@ -182,3 +182,5 @@ const DISARMED_MULT_JUMP: float = 1.35
 
 # --- Ultimates ------------------------------------------------------------
 const ULT_CHOICE_FRAMES: int = 40
+## The Lightning Tempest spins this many times before its finisher.
+const TEMPEST_SPINS: int = 6

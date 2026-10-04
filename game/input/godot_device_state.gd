@@ -72,5 +72,9 @@ func joy_info(device: int) -> Dictionary:
 	return Input.get_joy_info(device)
 
 
+func joy_known(device: int) -> bool:
+	return Input.is_joy_known(device)
+
+
 func _on_joy_connection_changed(device: int, connected: bool) -> void:
 	joy_connection_changed.emit(device, connected)

@@ -30,6 +30,11 @@ const DEFS: Dictionary[StringName, String] = {
 }
 
 
+## The arenas a player can pick in the fighter select, in its order: the
+## real ones, never the stand-in.
+const SELECTABLE: Array[StringName] = [MOONLIT_SHRINE]
+
+
 static func has(id: StringName) -> bool:
 	return id == STANDIN or DEFS.has(id)
 

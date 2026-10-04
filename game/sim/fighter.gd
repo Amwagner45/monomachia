@@ -1585,7 +1585,7 @@ func _ult_tempest(u: UltState) -> void:
 			W.queue_scripted_hit(self, o, Moves.ULT_HITS[&"u_tempest"], cb)
 		if u.pf >= 10:
 			u.spins += 1
-			if u.spins >= 6:
+			if u.spins >= SimConst.TEMPEST_SPINS:
 				_set_ult_phase(&"final")
 			else:
 				_set_ult_phase(&"spin")

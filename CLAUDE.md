@@ -8,6 +8,7 @@ Read these before changing gameplay or planning new features:
 
 - `docs/design.md`: the full game design document, the vision for the finished game (all 9 weapons, arenas, progression, online play).
 - `docs/mvp-spec.md`: the MVP plan and spec, what the current demo builds and how. Its "Decisions", "Scope" and "Gaps in the design doc" tables record the choices made so far, and its combat numbers match the code.
+- `docs/architecture.md`: a map of the code with diagrams: the folders, how one frame flows through the Godot game, the rules, the view, tests and tools. Start here when new to the code, and update it when a change moves a boundary it describes.
 
 - `GLOSSARY.md`: the game's vocabulary (Fighter, Weapon, Loadout and so on). Use its terms.
 
@@ -67,9 +68,12 @@ Rules:
 - `npm run typecheck`: TypeScript check
 - `npm run build`: type-check, then build the single-file game
 - `npm run soak -- 40`: 40 computer-vs-computer matches, prints balance numbers
+- `npm run brain`: write the second brain's generated notes to `brain/generated/` (not committed); `npm run brain:serve` shows the vault at http://localhost:5196
+- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work. It also listens on this PC's Tailscale address (never the LAN) and serves phones `tools/lanes-board/m.html`; `LANES_LOCAL_ONLY=1` turns that off
 
 ## Code notes
 
 - `src/sim` holds the rules with no graphics, stepped at a fixed 60 per second. Keep rendering, input and audio code out of it.
 - Weapon frame data lives in `src/sim/moves`. Global tuning lives in `src/sim/constants.ts`.
 - When you change combat rules or tuning, add or update a test in `tests/`.
+- `brain/` is an Obsidian vault (the second brain). Hand-written notes link with `[[Note name]]`, must not reuse a generated name (glossary terms, `Task 7.1`, `Stage N - …`, `game.sim`, `<Doc> - <Section>`), and must keep every link resolving: `tests/second-brain.test.mjs` fails otherwise. When a concept a note explains changes, update the note in the same branch. Never edit or commit `brain/generated/`.

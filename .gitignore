@@ -33,3 +33,8 @@ game/_scratch/
 # Animation Studio: the refinement log and the chat panel's context folder (may hold screenshots of Iglesias clips)
 .anim-refine/
 game/tools/anim_studio/.refinements.json
+
+# Second brain: generated notes and Obsidian workspace state
+brain/generated/
+brain/.obsidian/workspace*.json
+brain/.obsidian/cache

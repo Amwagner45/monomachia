@@ -12,12 +12,14 @@ var _catalogue: StudioCatalogue
 
 
 func before_each() -> void:
+	AnimTile.builds_per_frame = 1000000
 	ClipLibraries.force_missing = true
 	var manifest: ClipManifest = ClipManifest.read()
 	_catalogue = StudioCatalogue.build(manifest, MoveClips.read(manifest), StateClips.read(), StudioLibraries.keyed().get_animation_list())
 
 
 func after_each() -> void:
+	AnimTile.builds_per_frame = 2
 	ClipLibraries.force_missing = false
 
 
@@ -280,3 +282,97 @@ func test_clicking_a_tile_opens_the_editor_in_the_studio() -> void:
 	assert_true((studio.get_node("%Editor") as Control).visible, "to the editor")
 	await wait_process_frames(2)
 	assert_eq(_playing(gallery.tiles_in(&"katana")).size(), 0, "and its tiles stop playing")
+
+
+# --- the build budget, a repeated setup, an unknown group, refresh_filter ------------------
+
+
+func test_opening_a_tab_builds_a_couple_of_tiles_a_frame() -> void:
+	AnimTile.builds_per_frame = 2
+	var gallery: Gallery = await _gallery()
+	gallery.show_group(&"source")
+	await wait_process_frames(1)
+	var tiles: Array[AnimTile] = gallery.tiles_in(&"source")
+	var before: int = _built(tiles).size()
+	var frame: int = Engine.get_process_frames()
+	await wait_process_frames(1)
+	var elapsed: int = Engine.get_process_frames() - frame
+	assert_lte(_built(tiles).size() - before, 2 * elapsed, "%d frame(s) build at most two each" % elapsed)
+	await wait_process_frames(10)
+	assert_eq(_built(tiles).size(), _playing(tiles).size(), "in the end every tile in view is built")
+	assert_gt(_built(tiles).size(), 0)
+
+
+func test_a_body_switch_in_the_gallery_rebuilds_a_few_a_frame() -> void:
+	var gallery: Gallery = await _gallery()
+	var tiles: Array[AnimTile] = gallery.tiles_in(&"katana")
+	var visible_count: int = _built(tiles).size()
+	assert_gt(visible_count, 4, "enough tiles in view to need several frames")
+	AnimTile.builds_per_frame = 2
+	gallery.set_fighter(&"rogue")
+	assert_eq(_built(tiles).size(), 0, "every fighter is dropped at the switch")
+	await wait_process_frames(1)
+	var after_one: int = _built(tiles).size()
+	assert_lt(after_one, visible_count, "not all come back at once")
+	assert_lte(after_one, 4, "a couple a frame")
+	await wait_process_frames(visible_count + 2)
+	assert_eq(_built(tiles).size(), visible_count, "but they all do")
+
+
+func test_showing_a_group_with_no_tab_does_nothing() -> void:
+	var gallery: Gallery = await _gallery()
+	gallery.show_group(&"states")
+	gallery.show_group(&"no_such_group")
+	assert_eq(gallery.current_group(), &"states", "the open tab stays")
+	assert_eq((gallery.get_node("%Tabs") as TabContainer).current_tab, 4)
+	gallery.show_group(&"")
+	assert_eq(gallery.current_group(), &"states")
+
+
+func test_setting_the_gallery_up_again_replaces_its_tiles() -> void:
+	var gallery: Gallery = await _gallery()
+	gallery.show_group(&"states")
+	var flow: Node = gallery.scroll_of(&"katana").get_child(0).get_child(0)
+	var old: Array[AnimTile] = gallery.tiles_in(&"katana")
+	assert_eq(flow.get_child_count(), old.size())
+	gallery.setup(_catalogue, &"rogue")
+	assert_eq(flow.get_child_count(), 0, "the old tiles are out of the flow at once, before they are freed")
+	for t: AnimTile in old:
+		assert_null(t.get_parent(), "%s is out of the tree" % t.entry.id)
+	assert_eq(gallery.fighter_id, &"rogue")
+	assert_false(gallery.is_tab_built(&"katana"), "a tab that is not open starts unbuilt again")
+	assert_true(gallery.is_tab_built(&"states"), "and the open one is made at once")
+	assert_eq(gallery.tiles_in(&"states").size(), _catalogue.in_group(&"states").size())
+	await wait_process_frames(2)
+	gallery.show_group(&"katana")
+	assert_eq(flow.get_child_count(), _catalogue.in_group(&"katana").size(), "one tile for each entry, no more")
+	assert_eq(gallery.tiles_in(&"katana").size(), flow.get_child_count())
+
+
+func test_refresh_filter_applies_badges_set_after_the_tiles_were_made() -> void:
+	var gallery: Gallery = await _gallery()
+	var tiles: Array[AnimTile] = gallery.tiles_in(&"katana")
+	(gallery.get_node("%Badge_unsaved") as Button).button_pressed = true
+	for t: AnimTile in tiles:
+		assert_false(t.visible, "no entry is unsaved yet")
+	tiles[1].entry.badges[&"unsaved"] = true
+	tiles[3].entry.badges[&"unsaved"] = true
+	gallery.refresh_filter()
+	for i: int in tiles.size():
+		assert_eq(tiles[i].visible, i == 1 or i == 3, "tile %d" % i)
+	assert_string_contains((gallery.get_node("%CountLabel") as Label).text, "2 of %d" % tiles.size())
+	tiles[1].entry.badges[&"unsaved"] = false
+	gallery.refresh_filter()
+	assert_false(tiles[1].visible, "an entry that lost the badge hides")
+	assert_true(tiles[3].visible)
+	assert_string_contains((gallery.get_node("%CountLabel") as Label).text, "1 of %d" % tiles.size())
+
+
+func test_refresh_filter_keeps_the_search_text() -> void:
+	var gallery: Gallery = await _gallery()
+	var tiles: Array[AnimTile] = gallery.tiles_in(&"katana")
+	var wanted: String = String(tiles[0].entry.id)
+	gallery.set_filter(wanted, [] as Array[StringName])
+	var shown: int = tiles.filter(func(t: AnimTile) -> bool: return t.visible).size()
+	gallery.refresh_filter()
+	assert_eq(tiles.filter(func(t: AnimTile) -> bool: return t.visible).size(), shown, "unchanged data, unchanged result")

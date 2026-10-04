@@ -11,13 +11,18 @@ extends Node
 ## - --body=hunter|rogue (default hunter)
 ## - --search=<text>: type this in the search box
 ## - --badges=<badge>,<badge>...: choose these badge chips
+## - --warm=<tab>: open this tab first and, once its tiles are built, switch to
+##   --tab and start measuring (the libraries are loaded by then, so the
+##   opening measured is a later one, not the first)
+## - --budget=<n>: AnimTile.builds_per_frame (a huge number is the old build-all-at-once)
 ##
-## It also prints how the frames went (how long the frame that built the tiles
-## in view took, then the average and the slowest frame, and how many of the
-## tab's tiles were built and playing), so it doubles as the gallery's
-## performance check. `--fixed-fps` switches off the wait for the next frame,
-## so a frame takes what its work costs (an empty gallery, `--search=zzz`, is
-## the baseline: the Studio's own cost).
+## It also prints how the frames went: how long opening the tab took until
+## every tile in view had its fighter (frames, ms and the worst frame, the
+## stall), then the average and the slowest frame after, and how many of the
+## tab's tiles were built and playing. So it doubles as the gallery's
+## performance check. `--fixed-fps` switches off the wait for the next frame, so
+## a frame takes what its work costs (an empty gallery, `--search=zzz`, is the
+## baseline: the Studio's own cost).
 
 ## Frames after the tiles in view are built before the shot is taken, so the
 ## animations are part way through and the viewports have drawn.
@@ -26,6 +31,10 @@ const SETTLE_FRAMES: int = 30
 var studio: AnimStudio = null
 var _tab: StringName = &"katana"
 var _frames_since_ready: int = 0
+## The frame (count) at which every tile in view had its fighter; -1 before.
+var _built_at: int = -1
+## The tab to open first (--warm), until it is built; empty after.
+var _warm: StringName = &""
 var _last_usec: int = 0
 var _frame_msec: PackedFloat32Array = PackedFloat32Array()
 
@@ -41,6 +50,10 @@ func _ready() -> void:
 			body = StringName(a.substr(7))
 		elif a.begins_with("--search="):
 			search = a.substr(9)
+		elif a.begins_with("--warm="):
+			_warm = StringName(a.substr(7))
+		elif a.begins_with("--budget="):
+			AnimTile.builds_per_frame = int(a.substr(9))
 		elif a.begins_with("--badges="):
 			for b: String in a.substr(9).split(",", false):
 				badges.append(StringName(b))
@@ -48,7 +61,7 @@ func _ready() -> void:
 	add_child(studio)
 	studio.set_fighter(body)
 	var gallery: Gallery = studio.get_node("%Gallery") as Gallery
-	gallery.show_group(_tab)
+	gallery.show_group(_warm if _warm != &"" else _tab)
 	if not search.is_empty() or not badges.is_empty():
 		gallery.set_filter(search, badges)
 	_last_usec = Time.get_ticks_usec()
@@ -56,10 +69,21 @@ func _ready() -> void:
 
 func _process(_delta: float) -> void:
 	var now: int = Time.get_ticks_usec()
-	if _all_in_view_built():
-		_frames_since_ready += 1
-		_frame_msec.append(float(now - _last_usec) / 1000.0)
+	if _warm != &"" and _all_in_view_built(_warm):
+		(studio.get_node("%Gallery") as Gallery).show_group(_tab)
+		_warm = &""
+		_frame_msec.clear()
+		_last_usec = Time.get_ticks_usec()
+		return
+	if _warm != &"":
+		_last_usec = now
+		return
+	_frame_msec.append(float(now - _last_usec) / 1000.0)
 	_last_usec = now
+	if _built_at < 0 and _all_in_view_built():
+		_built_at = _frame_msec.size()
+	elif _built_at >= 0:
+		_frames_since_ready += 1
 
 
 func shot_frames() -> int:
@@ -78,20 +102,34 @@ func shot_ready() -> bool:
 	for t: AnimTile in tiles:
 		built += 1 if t.model != null else 0
 		playing += 1 if t.is_playing() else 0
-	# The first frame is the one that built the tiles: report it apart.
+	# The frames up to the one that finished building the tiles in view (the
+	# worst of them is the stall), then the frames after, the first few skipped.
+	var open_total: float = 0.0
+	var open_worst: float = 0.0
+	for i: int in _built_at:
+		open_total += _frame_msec[i]
+		open_worst = maxf(open_worst, _frame_msec[i])
 	var total: float = 0.0
 	var slowest: float = 0.0
-	for i: int in range(1, _frame_msec.size()):
+	var count: int = 0
+	for i: int in range(_built_at + 5, _frame_msec.size()):
 		total += _frame_msec[i]
 		slowest = maxf(slowest, _frame_msec[i])
-	print("studio_shot: %s: %d tiles, %d built, %d playing; building them took %.0f ms; then %d frames, average %.1f ms, slowest %.1f ms" % [
-		_tab, tiles.size(), built, playing, _frame_msec[0], _frame_msec.size() - 1, total / maxf(1.0, float(_frame_msec.size() - 1)), slowest])
+		count += 1
+	print("studio_shot: opening frames (ms): ", _frame_msec.slice(0, _built_at))
+	print("studio_shot: %s: %d tiles, %d built, %d playing; opening took %d frames, %.0f ms, worst frame %.0f ms; then %d frames, average %.1f ms, slowest %.1f ms" % [
+		_tab, tiles.size(), built, playing, _built_at, open_total, open_worst, count, total / maxf(1.0, float(count)), slowest])
 	return true
 
 
-func _all_in_view_built() -> bool:
+## True once at least one tile is playing and every tile in view has its
+## fighter.
+func _all_in_view_built(tab: StringName = _tab) -> bool:
 	var gallery: Gallery = studio.get_node("%Gallery") as Gallery
-	for t: AnimTile in gallery.tiles_in(_tab):
-		if t.visible and t.is_on_screen() and t.model == null:
-			return false
-	return true
+	var any: bool = false
+	for t: AnimTile in gallery.tiles_in(tab):
+		if t.visible and t.is_on_screen():
+			if t.model == null:
+				return false
+			any = true
+	return any or not gallery.tiles_in(tab).any(func(t: AnimTile) -> bool: return t.visible)

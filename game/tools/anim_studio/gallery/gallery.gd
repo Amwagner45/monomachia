@@ -11,7 +11,8 @@ extends PanelContainer
 ## makes the Katana's and nothing else. A tile only plays while it is on screen
 ## (AnimTile), so a hidden tab, a filtered-out tile and a tile below the fold
 ## cost nothing; the Studio's Hunter/Rogue switch re-sets up every tile that
-## exists (`set_fighter()`), and the ones in view rebuild on the new body.
+## exists (`set_fighter()`), and the ones in view rebuild on the new body a few
+## a frame.
 
 ## A tile was clicked: open `entry` in the editor.
 signal opened(entry: StudioCatalogue.Entry)
@@ -71,6 +72,8 @@ func setup(p_catalogue: StudioCatalogue, p_fighter_id: StringName) -> void:
 	fighter_id = p_fighter_id
 	for g: StringName in _tiles:
 		for t: AnimTile in _tiles[g]:
+			# out of the flow at once, so the old tiles and the new never share it
+			t.get_parent().remove_child(t)
 			t.queue_free()
 	_tiles.clear()
 	_error_label.text = ERROR_INTRO + "\n" + "\n".join(catalogue.errors)
@@ -91,9 +94,13 @@ func current_group() -> StringName:
 	return TABS[_tabs.current_tab]["group"]
 
 
-## Opens the tab of `group` (building its tiles if this is the first time).
+## Opens the tab of `group` (building its tiles if this is the first time); a
+## group with no tab does nothing.
 func show_group(group: StringName) -> void:
-	_tabs.current_tab = groups().find(group)
+	var index: int = groups().find(group)
+	if index < 0:
+		return
+	_tabs.current_tab = index
 	_ensure_built(group)
 
 
@@ -116,7 +123,8 @@ func scroll_of(group: StringName) -> ScrollContainer:
 
 
 ## Chooses the body the tiles play on (&"hunter" or &"rogue"): every tile that
-## exists is set up again, and the ones in view rebuild at once.
+## exists is set up again, and the ones in view rebuild on the new body a few
+## a frame (AnimTile.builds_per_frame), top to bottom.
 func set_fighter(id: StringName) -> void:
 	if id == fighter_id:
 		return
@@ -135,7 +143,7 @@ func set_filter(text: String, badges: Array[StringName]) -> void:
 		_search.text = text
 	for b: StringName in StudioCatalogue.BADGES:
 		(_chips.get_node("%%Badge_%s" % b) as Button).set_pressed_no_signal(badges.has(b))
-	_apply_filter()
+	refresh_filter()
 
 
 func _add_tab(group: StringName, title: String) -> void:
@@ -171,7 +179,10 @@ func _ensure_built(group: StringName) -> void:
 	_update_summary()
 
 
-func _apply_filter() -> void:
+## Applies the search box and the badge chips to every tile again, and updates
+## the count: call it after changing an entry's badges (a tile that is no
+## longer in the filter hides, one that now is shows).
+func refresh_filter() -> void:
 	for g: StringName in _tiles:
 		for t: AnimTile in _tiles[g]:
 			t.visible = GalleryFilter.matches(t.entry, _text, _badges)
@@ -198,7 +209,7 @@ func _on_tab_changed(_index: int) -> void:
 
 func _on_search_changed(text: String) -> void:
 	_text = text
-	_apply_filter()
+	refresh_filter()
 
 
 func _on_chip_toggled(_pressed: bool) -> void:
@@ -207,7 +218,7 @@ func _on_chip_toggled(_pressed: bool) -> void:
 		if (_chips.get_node("%%Badge_%s" % b) as Button).button_pressed:
 			chosen.append(b)
 	_badges = chosen
-	_apply_filter()
+	refresh_filter()
 
 
 func _on_tile_opened(entry: StudioCatalogue.Entry) -> void:

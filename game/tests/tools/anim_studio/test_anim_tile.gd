@@ -12,11 +12,13 @@ var _catalogue: StudioCatalogue
 
 
 func before_each() -> void:
+	AnimTile.builds_per_frame = 1000000
 	_manifest = ClipManifest.read()
 	_catalogue = StudioCatalogue.build(_manifest, MoveClips.read(_manifest), StateClips.read(), StudioLibraries.keyed().get_animation_list())
 
 
 func after_each() -> void:
+	AnimTile.builds_per_frame = 2
 	ClipLibraries.force_missing = false
 
 
@@ -116,12 +118,12 @@ func test_pausing_switches_the_viewport_off() -> void:
 	ClipLibraries.force_missing = true
 	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
 	tile.set_playing(true)
-	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "playing renders")
+	assert_ne(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "playing renders")
 	tile.set_playing(false)
 	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "paused doesn't")
 	assert_false(tile.is_playing())
 	tile.set_playing(true)
-	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "resumed renders again")
+	assert_ne(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "resumed renders again")
 
 
 func test_time_loops_at_the_clips_length() -> void:
@@ -270,7 +272,7 @@ func test_play_state_set_before_the_tile_is_ready_applies_on_ready() -> void:
 	assert_true(tile.is_playing(), "stored")
 	tile.setup(_move_with_fallback(&"katana"), &"hunter")
 	add_child_autofree(tile)
-	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ALWAYS, "applied once ready")
+	assert_ne(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "applied once ready")
 	assert_not_null(tile.model, "and a playing tile has its fighter")
 	var other: AnimTile = TILE_SCENE.instantiate() as AnimTile
 	other.set_playing(false)
@@ -424,3 +426,133 @@ func test_tiles_scrolled_out_of_a_scroll_container_pause_and_resume() -> void:
 	assert_true(tiles[3].is_playing(), "the last plays once in view")
 	assert_not_null(tiles[3].model, "and is built when it scrolls into view")
 	assert_true(tiles[3].is_on_screen())
+
+
+# --- the build budget and the 30 Hz tick ---------------------------------------------------
+
+
+## `count` tiles on a flow in a roomy area, set up on one move, not yet built.
+func _flow_of_tiles(count: int) -> Array[AnimTile]:
+	var area: Control = Control.new()
+	area.size = Vector2(1200.0, 800.0)
+	add_child_autofree(area)
+	var flow: HFlowContainer = HFlowContainer.new()
+	flow.size = Vector2(1200.0, 800.0)
+	area.add_child(flow)
+	var entry: StudioCatalogue.Entry = _move_with_fallback(&"katana")
+	var tiles: Array[AnimTile] = []
+	for i: int in count:
+		var t: AnimTile = TILE_SCENE.instantiate() as AnimTile
+		flow.add_child(t)
+		t.setup(entry, &"hunter")
+		tiles.append(t)
+	return tiles
+
+
+func _built_count(tiles: Array[AnimTile]) -> int:
+	var n: int = 0
+	for t: AnimTile in tiles:
+		n += 1 if t.model != null else 0
+	return n
+
+
+func test_tiles_coming_on_screen_build_at_most_two_a_frame() -> void:
+	ClipLibraries.force_missing = true
+	AnimTile.builds_per_frame = 2
+	var tiles: Array[AnimTile] = _flow_of_tiles(6)
+	await wait_process_frames(1)
+	var previous: int = _built_count(tiles)
+	assert_lte(previous, 4, "the first two frames built a couple each at most")
+	for frame: int in 5:
+		await wait_process_frames(1)
+		var now: int = _built_count(tiles)
+		assert_lte(now - previous, 2, "frame %d built %d" % [frame, now - previous])
+		previous = now
+	await wait_process_frames(6)
+	assert_eq(_built_count(tiles), 6, "all are built in the end")
+
+
+func test_the_tiles_at_the_top_build_first() -> void:
+	ClipLibraries.force_missing = true
+	AnimTile.builds_per_frame = 2
+	var tiles: Array[AnimTile] = _flow_of_tiles(6)
+	var seen: Array[int] = []
+	for frame: int in 8:
+		await wait_process_frames(1)
+		var built: int = _built_count(tiles)
+		if built > 0 and built < 6:
+			# whichever are built are the first ones, in order
+			for i: int in tiles.size():
+				assert_eq(tiles[i].model != null, i < built, "tile %d, with %d built" % [i, built])
+		seen.append(built)
+	assert_eq(seen.back(), 6)
+
+
+func test_a_tile_waiting_to_build_has_its_caption_and_plays_once_built() -> void:
+	ClipLibraries.force_missing = true
+	AnimTile.builds_per_frame = 1
+	var tiles: Array[AnimTile] = _flow_of_tiles(3)
+	await wait_process_frames(1)
+	var waiting: AnimTile = tiles[2]
+	assert_null(waiting.model, "the last tile hasn't built yet")
+	assert_eq(waiting.name_label.text, _move_with_fallback(&"katana").name, "but it shows its caption")
+	await wait_process_frames(5)
+	assert_not_null(waiting.model, "its turn came")
+	assert_true(waiting.is_playing())
+
+
+func test_a_body_switch_rebuilds_a_few_a_frame() -> void:
+	ClipLibraries.force_missing = true
+	AnimTile.builds_per_frame = 1000000
+	var tiles: Array[AnimTile] = _flow_of_tiles(5)
+	await wait_process_frames(2)
+	assert_eq(_built_count(tiles), 5)
+	AnimTile.builds_per_frame = 2
+	for t: AnimTile in tiles:
+		t.setup(t.entry, &"rogue")
+	assert_eq(_built_count(tiles), 0, "they are all dropped")
+	await wait_process_frames(1)
+	var first: int = _built_count(tiles)
+	assert_lte(first, 4, "and come back a couple at a time")
+	await wait_process_frames(1)
+	assert_lte(_built_count(tiles) - first, 2, "also in the next frame")
+	await wait_process_frames(6)
+	assert_eq(_built_count(tiles), 5)
+	assert_eq(tiles[4].model.look.id, &"rogue")
+
+
+func test_a_playing_tile_ticks_at_thirty_hertz_and_keeps_the_time() -> void:
+	ClipLibraries.force_missing = true
+	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
+	tile.set_playing(true)
+	tile._process(1.0 / 60.0)
+	assert_eq(tile.time, 0.0, "half a tick later it hasn't posed yet")
+	tile._process(1.0 / 60.0)
+	assert_almost_eq(tile.time, tile.playback_rate / 30.0, 0.0001, "the next frame poses a whole tick on")
+	var t0: float = tile.time
+	for i: int in 60:
+		tile._process(1.0 / 60.0)
+	assert_almost_eq(tile.time, fposmod(t0 + tile.playback_rate, tile.duration), 0.0001, "a second of frames moves it a second of the clip")
+
+
+func test_an_uneven_frame_advances_by_the_time_that_passed() -> void:
+	ClipLibraries.force_missing = true
+	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
+	tile.set_playing(true)
+	tile._process(0.01)
+	tile._process(0.01)
+	tile._process(0.02)
+	assert_almost_eq(tile.time, 0.04 * tile.playback_rate, 0.0001, "the ticks add up to the real time")
+
+
+func test_the_viewport_draws_once_per_tick() -> void:
+	ClipLibraries.force_missing = true
+	var tile: AnimTile = _tile(_move_with_fallback(&"katana"))
+	tile.set_playing(true)
+	tile.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	tile._process(0.0)
+	tile.viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+	tile._process(1.0 / 60.0)
+	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_DISABLED, "no draw between ticks")
+	tile._process(1.0 / 60.0)
+	assert_eq(tile.viewport.render_target_update_mode, SubViewport.UPDATE_ONCE, "a draw on the tick")

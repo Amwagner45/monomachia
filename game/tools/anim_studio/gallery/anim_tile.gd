@@ -24,13 +24,27 @@ extends PanelContainer
 ## caption and chips, and the fighter (its libraries, weapon and poser) is built
 ## when the tile first plays, which is when it first scrolls into view (or
 ## `ensure_built()` is called), so opening a gallery of 100+ tiles builds only
-## the ones on screen.
+## the ones on screen. A tile that finds itself on screen waits for a slot in
+## the frame's build budget (`builds_per_frame`, shared by all tiles, top to
+## bottom), showing its caption and the empty stage meanwhile, so opening a tab
+## or switching body spreads its builds over a few frames. `set_playing(true)`
+## and `ensure_built()` build at once.
+##
+## A playing tile poses and draws at 30 Hz (TICK): the viewport is asked to
+## draw once per tick and is otherwise off, and the pose time advances by the
+## real time that has passed, so the loop's speed is right.
 
 ## The tile was clicked: open `entry` in the editor.
 signal opened(entry: StudioCatalogue.Entry)
 
 ## The tile's viewport is this many pixels square.
 const VIEW_SIZE: int = 256
+## A playing tile poses and draws 30 times a second, not every frame: one tick
+## is this long (s). A tick is due once the time since the last one is within
+## TICK_SLACK of it, so a steady 60 Hz gives every other frame whatever the
+## rounding.
+const TICK: float = 1.0 / 30.0
+const TICK_SLACK: float = 0.9
 ## The weapon of the ultimates (the weapon whose moveset has them).
 const ULT_WEAPONS: Dictionary[StringName, StringName] = {
 	&"moonsplitter_vertical": &"katana",
@@ -46,6 +60,15 @@ const CHIP_COLORS: Dictionary[StringName, Color] = {
 	&"unsaved": Color(0.75, 0.35, 0.35),
 	&"balance": Color(0.55, 0.45, 0.78),
 }
+
+## How many fighters tiles build in one frame, all tiles together: opening a
+## tab or switching body makes the tiles in view build a few a frame, top to
+## bottom, instead of all in one stall. Tests that don't test the queue raise
+## it.
+static var builds_per_frame: int = 2
+
+static var _budget_frame: int = -1
+static var _budget_used: int = 0
 
 ## The fighter on the tile, or null before it is built.
 var model: FighterModel = null
@@ -75,6 +98,8 @@ var _stage_built: bool = false
 ## Set by _chain() when it chose a move's fallback, which plays stretched over
 ## the move.
 var _stretched: bool = false
+## Time that has passed since the last tick (s).
+var _accumulated: float = 0.0
 
 
 func _ready() -> void:
@@ -90,15 +115,17 @@ func _exit_tree() -> void:
 
 ## Shows `p_entry` on fighter `p_fighter_id` (&"hunter" or &"rogue"). Cheap: the
 ## fighter is built when the tile first plays (see the class comment). Calling
-## it again drops the fighter, and a tile that is playing builds the new one
-## at once (the gallery's body switch).
+## it again drops the fighter; a tile that is playing builds the new one in a
+## following frame, within the per-frame build budget (the gallery's body
+## switch), and shows the empty stage meanwhile (drawn once).
 func setup(p_entry: StudioCatalogue.Entry, p_fighter_id: StringName) -> void:
 	entry = p_entry
 	fighter_id = p_fighter_id
 	_drop_fighter()
 	if is_node_ready():
 		_show_caption()
-		_sync()
+		if _playing:
+			_request_render()
 
 
 ## Builds the fighter now if it isn't built (the tile has an entry and is
@@ -130,8 +157,9 @@ func is_playing() -> bool:
 
 
 ## Plays or pauses the loop; paused, the viewport stops rendering and keeps the
-## last frame. Playing builds the fighter if it isn't yet. Before the tile is
-## ready it only stores the wish, which _ready() applies.
+## last frame. Playing builds the fighter now if it isn't yet (a tile that
+## finds itself on screen builds within the frame budget instead). Before the
+## tile is ready it only stores the wish, which _ready() applies.
 func set_playing(on: bool) -> void:
 	_playing = on
 	if is_node_ready():
@@ -174,18 +202,63 @@ func badge_texts() -> PackedStringArray:
 
 ## The viewport follows `_playing`, and a playing tile has its fighter.
 func _sync() -> void:
-	viewport.render_target_update_mode = SubViewport.UPDATE_ALWAYS if _playing else SubViewport.UPDATE_DISABLED
+	_accumulated = 0.0
 	if _playing:
 		ensure_built()
+		_request_render()
+	else:
+		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
+
+
+## Draws the viewport once, on the next frame (it switches itself off after).
+## A playing tile asks again at each tick, so it draws at TICK_RATE.
+func _request_render() -> void:
+	viewport.render_target_update_mode = SubViewport.UPDATE_ONCE
+
+
+## Whether this frame still has room to build a fighter: at most
+## `builds_per_frame` are built in any one frame, the first tiles to ask (the
+## tiles run `_process` in tree order, so top to bottom) taking the slots.
+static func _take_build_slot() -> bool:
+	var frame: int = Engine.get_process_frames()
+	if frame != _budget_frame:
+		_budget_frame = frame
+		_budget_used = 0
+	if _budget_used >= builds_per_frame:
+		return false
+	_budget_used += 1
+	return true
 
 
 func _process(delta: float) -> void:
 	var now: bool = is_on_screen()
 	if now != _on_screen:
 		_on_screen = now
-		set_playing(now)
-	if _playing and duration > 0.0 and _poser != null:
-		seek(time + delta * playback_rate)
+		_playing = now
+		_sync_without_building()
+	if not _playing:
+		return
+	if model == null:
+		# queued: waits for a slot in the frame's build budget
+		if not _take_build_slot():
+			return
+		_build()
+	if duration > 0.0 and _poser != null:
+		_accumulated += delta
+		if _accumulated >= TICK * TICK_SLACK:
+			seek(time + _accumulated * playback_rate)
+			_accumulated = 0.0
+			_request_render()
+
+
+## `_sync()` for a tile that found itself on or off screen: it plays or stops,
+## but a fighter still to build waits for its turn in `_process`.
+func _sync_without_building() -> void:
+	_accumulated = 0.0
+	if _playing:
+		_request_render()
+	else:
+		viewport.render_target_update_mode = SubViewport.UPDATE_DISABLED
 
 
 func _gui_input(event: InputEvent) -> void:
@@ -285,6 +358,7 @@ func _build() -> void:
 		duration = _poser.length
 		playback_rate = _rate()
 	_poser.pose(0.0)
+	_request_render()
 
 
 ## The shared libraries on the fighter's player: the Iglesias sets (with the

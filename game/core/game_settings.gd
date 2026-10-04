@@ -142,6 +142,14 @@ static func load_from(path: String = PATH) -> GameSettings:
 	return settings
 
 
+## Where a run saves a file the player keeps at `path` (user://settings.cfg,
+## user://controls.cfg): there, except in a run that asks for the defaults
+## (DEFAULTS_ENV, test and shot runs), which saves beside it under a
+## "test_run_" name so it never changes what the player saved.
+static func save_path_for_run(path: String, use_defaults: bool = OS.has_environment(DEFAULTS_ENV)) -> String:
+	return path.get_base_dir().path_join("test_run_" + path.get_file()) if use_defaults else path
+
+
 ## The settings a run starts with: the defaults when the run asks for them
 ## (DEFAULTS_ENV is set), the saved ones otherwise.
 static func load_for_run(use_defaults: bool = OS.has_environment(DEFAULTS_ENV), path: String = PATH) -> GameSettings:

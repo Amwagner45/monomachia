@@ -83,11 +83,11 @@ func test_the_title_leads_to_the_main_menu() -> void:
 	var labels: Array[String] = []
 	for b: Button in menu.buttons:
 		labels.append(b.text.get_slice("\n", 0))
-	assert_eq(labels, ["Duel", "Watch", "Quit"] as Array[String])
+	assert_eq(labels, ["Duel", "Watch", "Controls", "Settings", "Quit"] as Array[String])
 	var subs: Array[String] = []
 	for b: Button in menu.buttons:
 		subs.append((b.get_node("Sub") as Label).text)
-	assert_eq(subs, ["vs computer", "computer vs computer", "to the desktop"] as Array[String], "each entry's sublabel")
+	assert_eq(subs, ["vs computer", "computer vs computer", "keys and buttons", "picture and sound", "to the desktop"] as Array[String], "each entry's sublabel")
 
 
 func test_the_main_menu_hides_the_title_and_stays_open_while_the_duel_plays() -> void:

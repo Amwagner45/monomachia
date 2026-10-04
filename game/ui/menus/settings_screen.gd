@@ -5,8 +5,9 @@ extends MenuScreen
 ## effects and music volumes. Each row applies and saves its change at once;
 ## Back returns to the page that opened it (the main menu or the pause menu).
 ##
-## The rows act on a GameSettings saved to a path, both GameServices' by
-## default; tests hand it their own so the player's file is never touched.
+## The rows act on a GameSettings saved to a path: GameServices' settings in
+## the player's file by default (GameSettings.save_path_for_run, so a test
+## run never writes it); tests hand it their own.
 
 ## A setting changed (and was saved).
 signal settings_changed
@@ -26,10 +27,10 @@ var effects: SliderRow
 var music: SliderRow
 
 
-func _init(p_settings: GameSettings = null, p_save_path: String = GameSettings.PATH) -> void:
+func _init(p_settings: GameSettings = null, p_save_path: String = "") -> void:
 	super()
 	settings = p_settings if p_settings != null else GameServices.settings
-	save_path = p_save_path
+	save_path = p_save_path if p_save_path != "" else GameSettings.save_path_for_run(GameSettings.PATH)
 	add_label("Saved on this computer", UiTheme.EYEBROW, 15)
 	add_heading("Settings")
 	var names: Array[String] = []

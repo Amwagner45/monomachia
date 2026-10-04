@@ -114,7 +114,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 50. [ ] As a player, I want metal clangs on blocks, a distinct ringing clang on parries, slicing hits, bone-and-rock crunches for the Greatsword, whooshes on swings and dodges, footsteps and arena ambience, so that combat sounds physical.
 51. [ ] As a player, I want menu music at 100–120 BPM, battle music at 130–150 BPM and a faster match-point version at 150–170 BPM, so that the music matches the design.
-52. [ ] As a player, I want master, effects and music volume settings, so that I can balance the mix.
+52. [x] As a player, I want master, effects and music volume settings, so that I can balance the mix.
 
 ### Modes and controls
 

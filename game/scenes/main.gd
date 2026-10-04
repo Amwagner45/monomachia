@@ -1,6 +1,6 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, Quit) -> a match -> results (Rematch, Main
+## title -> main menu (Duel, Watch, Controls, Settings, Quit) -> a match -> results (Rematch, Main
 ## menu), with a pause menu (Resume, Main menu) during play, which Back, Start
 ## or the pause binding also closes. The pages sit on a ScreenStack: Back on
 ## a page goes to the page that opened it (the main menu's to the title).
@@ -35,6 +35,8 @@ var title: TitleScreen
 var main_menu: MenuScreen
 var pause_menu: MenuScreen
 var results_screen: ResultsScreen
+var controls_screen: ControlsScreen
+var settings_screen: SettingsScreen
 ## The menus' pages, the open one on top.
 var stack: ScreenStack = ScreenStack.new()
 ## The last match played, for Rematch.
@@ -55,6 +57,8 @@ func _ready() -> void:
 	main_menu.name = "MainMenu"
 	main_menu.add_button("Duel", "vs computer", start_duel)
 	main_menu.add_button("Watch", "computer vs computer", start_watch)
+	main_menu.add_button("Controls", "keys and buttons", show_controls)
+	main_menu.add_button("Settings", "picture and sound", show_settings)
 	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
@@ -72,6 +76,13 @@ func _ready() -> void:
 	results_screen.rematch.connect(rematch)
 	results_screen.main_menu.connect(quit_to_menu)
 	ui.add_child(results_screen)
+
+	controls_screen = ControlsScreen.new()
+	controls_screen.name = "Controls"
+	ui.add_child(controls_screen)
+	settings_screen = SettingsScreen.new()
+	settings_screen.name = "Settings"
+	ui.add_child(settings_screen)
 	stack.changed.connect(_on_stack_changed)
 
 	host.match_finished.connect(_on_match_finished)
@@ -134,6 +145,16 @@ func show_title() -> void:
 func show_main_menu() -> void:
 	stack.reset([title, main_menu] as Array[MenuPage])
 	GameServices.play_menu_music()
+
+
+## Controls and Settings open over the page that chose them; Back returns
+## there.
+func show_controls() -> void:
+	stack.push(controls_screen)
+
+
+func show_settings() -> void:
+	stack.push(settings_screen)
 
 
 func start_duel() -> void:

@@ -12,8 +12,10 @@ extends MenuScreen
 ## The profile row (pick, rename, new, delete) comes with 22.12: until then
 ## the table shows the active profile, named over it.
 ##
-## The screen acts on a ControlProfiles saved to a path and an InputDevices,
-## GameServices' by default; tests hand it their own.
+## The screen acts on a ControlProfiles saved to a path and an InputDevices:
+## GameServices' by default, saved to the player's file
+## (GameSettings.save_path_for_run, so a test run never writes it); tests hand
+## it their own.
 
 ## A slot was chosen (keys, a controller or a click).
 signal slot_chosen(tab: String, action: String, slot: int)
@@ -41,10 +43,10 @@ var reset_button: Button
 var fight_stick_button: Button
 
 
-func _init(p_profiles: ControlProfiles = null, p_save_path: String = ControlProfiles.PATH, p_input: InputDevices = null) -> void:
+func _init(p_profiles: ControlProfiles = null, p_save_path: String = "", p_input: InputDevices = null) -> void:
 	super()
 	profiles = p_profiles if p_profiles != null else GameServices.profiles
-	save_path = p_save_path
+	save_path = p_save_path if p_save_path != "" else GameSettings.save_path_for_run(ControlProfiles.PATH)
 	input = p_input if p_input != null else GameServices.input
 	add_label("Saved on this computer", UiTheme.EYEBROW, 15)
 	add_heading("Controls")

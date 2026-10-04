@@ -15,7 +15,7 @@ extends RefCounted
 ## the same shot, so everything holds still.
 ##
 ## What it covers so far:
-## - the free state's idle, by weapon class (IDLE; FALLBACK_IDLE without the
+## - the free state's idle, by weapon class (StateClips.idle; fallback_idle without the
 ##   packs): under the legs' blend (Shot.idle);
 ## - an attack whose move has a baked swing (Swing.clips): its clip, timed
 ##   from the attack frame on the frames the bake used (ClipTiming: the
@@ -34,14 +34,14 @@ extends RefCounted
 ##   slashes, each cutting on its spin's hit, and an outward double slash
 ##   for the final; a change of an ultimate's phase fades as a follow-up does;
 ## - the Greatsword's shoulder carry (task 18; carry_clip()): while the
-##   fighter is shouldered, CARRY_POSE on the upper body over the legs' blend
+##   fighter is shouldered, StateClips.carry_pose on the upper body over the legs' blend
 ##   (Shot.legs_free()), faded in as a stance (8 frames); an attack from the
 ##   shoulder fades from it into the attack's first frame over the lift
 ##   (AttackState.lift, 6 frames), the legs handed over with it, and a guard
 ##   raised from it fades back to the legs over the same lift. There is no
 ##   CC0 carry, so without the packs nothing shows it;
-## - the states with a clip of their own (STATE_CLIPS; so far the stomp
-##   counter's hand-keyed Mikiri_Stomp, KeyedClips; and by cause, STUN_CLIPS,
+## - the states with a clip of their own (StateClips.state_clips; so far the stomp
+##   counter's hand-keyed Mikiri_Stomp, KeyedClips; and by cause, stun_clips,
 ##   the stomped thruster's Mikiri_Pinned): the clip fitted to the
 ##   state's length, whole body, with or without the packs (the keyed clips
 ##   are committed);
@@ -52,7 +52,7 @@ extends RefCounted
 ##   hidden through the blink, the active frames that carry it round the
 ##   opponent (blinks());
 ## - the reactions (task 26; reaction_of(), reaction_clip()): hitstun's
-##   recoil (HIT_CLIPS, light or heavy by the hitstun's length), a held
+##   recoil (StateClips.hit_clips, light or heavy by the hitstun's length), a held
 ##   block's guard (the weapon class's Parry Loop, looped) and blockstun's
 ##   Parry Hit on the upper body over the legs' blend, and the long stuns'
 ##   Stun01 (STUN_STATES), each timed to its state (fitted_time()); without
@@ -61,71 +61,39 @@ extends RefCounted
 ##   its recovery (any parry: a block's, a Flash's or a Redirect); the
 ##   parried attacker (recoiling, or stunned by a Flash or a Redirect) plays
 ##   its own attack's clip backwards from where the parry met it over the
-##   rebound (REBOUND_FRAMES at REBOUND_SPEED; Shot.rebound), then Stun01 for
-##   the rest of the recoil or stun, faded over FADES' rebound;
+##   rebound (StateClips.rebound_frames at rebound_speed; Shot.rebound), then Stun01 for
+##   the rest of the recoil or stun, faded over the fades' rebound;
 ## - knockdown and KO (task 28; down_clip()): Knockdown01's Fall, Ground and
 ##   StandUp fitted to the knockdown's three phases, and the KO's death
 ##   (KO_CLIPS, by the final blow's side and weight) at 1.0, so the
 ##   final-blow slow motion slows it with the rules;
-## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
+## - the crossfades, in rules frames (StateClips.fades): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
 ##   of the dodge), 3 into a raised guard.
 
-## The crossfades' lengths, in rules frames.
+## What the director plays by is data, in StateClips (state_clips.json, read
+## through StateClips.shared()): the crossfades' lengths, the idles, the hit,
+## guard and stun clips, the rebound, the carry pose and the three
+## ultimates' clips and timings, and the hand-keyed clips of the states with
+## their own. What stays here are the rules' states and the knockdown and KO
+## clips (not yet on data).
+
 ## The Daggers turn back into the reverse grip over an attack's last this
 ## many recovery frames when no follow-up is queued (task 21).
 const GRIP_BACK: int = 6
-const FADES: Dictionary[StringName, int] = {
-	&"attack": 3, &"follow_up": 4, &"dodge_cancel": 2, &"hitstun": 0, &"locomotion": 6, &"stance": 8, &"state": 2,
-	&"guard": 3, &"rebound": 4,
-}
-## The free state's idle per weapon (a WeaponDef id; bare hands and a
-## disarmed fighter are fists): clip-manifest ids.
-const IDLE: Dictionary[StringName, StringName] = {
-	&"katana": &"CombatIdle1H01", &"daggers": &"CombatIdle1H01",
-	&"greatsword": &"CombatIdle2H01", &"fists": &"CombatIdle01",
-}
-## The idle without the packs: clips of the committed CC0 library.
-const FALLBACK_IDLE: Dictionary[StringName, StringName] = {
-	&"katana": &"Sword_Idle", &"daggers": &"Sword_Idle", &"greatsword": &"Sword_Idle", &"fists": &"Idle",
-}
 ## What drives the body: the legs' blend, an authored attack clip, the
 ## shoulder carry's pose on the upper body over the legs, or a state's own
-## clip (STATE_CLIPS).
+## clip (StateClips.state_clips).
 const LEGS: StringName = &"legs"
 const ATTACK: StringName = &"attack"
 const CARRY: StringName = &"carry"
 const STATE: StringName = &"state"
-## The rules states that play a clip of their own, fitted to the state's
-## length: hand-keyed clips (KeyedClips).
-const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.STOMP}
-## A stun's own clip by what caused it (Fighter.stun_cause): the stomped
-## thruster's pin and stagger.
-const STUN_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.PINNED}
-## Hitstun's recoil (task 26), light and heavy: CombatDamage01 snaps the head
-## back, CombatDamage02 reels back on bent knees. Both recoil straight back
-## (neither is a side-on reaction), so a hitstun longer than HEAVY_HITSTUN
-## frames (a heavy's 26, an ultimate's 40) plays the heavy one, a light's 14
-## the light one. Without the packs: the CC0 Hit_Chest and Hit_Head.
-const HIT_CLIPS: Array[StringName] = [&"CombatDamage01", &"CombatDamage02"]
-const HIT_FALLBACKS: Array[StringName] = [&"Hit_Chest", &"Hit_Head"]
-const HEAVY_HITSTUN: int = 20
-## The guard per weapon class (bare hands' the one-handed): its Parry Loop,
-## held while blocking, and its Parry Hit, played through blockstun; both on
-## the upper body over the legs' blend. Without the packs the CC0 Sword_Block.
-const GUARD_CLIPS: Dictionary[StringName, Array] = {
-	&"katana": [&"Parry1H01_R_Loop", &"Parry1H01_R_Hit"], &"greatsword": [&"Parry2H01_Loop", &"Parry2H01_Hit"],
-	&"daggers": [&"ParryDW01_Loop", &"ParryDW01_Hit"], &"fists": [&"Parry1H01_R_Loop", &"Parry1H01_R_Hit"],
-}
-const GUARD_FALLBACK: StringName = &"Sword_Block"
 ## The long stuns (a leap's, a redirect's or a flash's stun, the disarmed
 ## daze, a disarm's stagger, the impaled) play Stun01's stagger into a dazed
-## sway; without the packs the CC0 Hit_Knockback. (The stomped thruster plays
-## its keyed pin, STUN_CLIPS.)
+## sway (StateClips.stun_clip); without the packs the CC0 Hit_Knockback. (The
+## stomped thruster plays its keyed pin, StateClips.stun_clips.)
 const STUN_STATES: Array[StringName] = [&"stunned", &"stagger", &"disarmStagger", &"impaled"]
-const STUN_CLIP: StringName = &"Stun01"
-const STUN_FALLBACK: StringName = &"Hit_Knockback"
 ## The reactions that show on the upper body alone.
 const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun", &"parry"]
 ## Knockdown (task 28): Knockdown01's fall timed to the fall's frames (it
@@ -150,63 +118,9 @@ const KNOCKDOWN_STANDUP_FROM: float = 6.0
 ## packs the CC0 Death01.
 const KO_CLIPS: Array[Array] = [[&"CombatDeath01", &"CombatDeath02"], [&"CombatDeath03", &"CombatDeath04"]]
 const KO_FALLBACK: StringName = &"Death01"
-## The parried attacker's rebound (task 27): its attack's clip runs backwards
-## from where the parry met it for this many rules frames (the parry's
-## knock back, World: 8 frames) at this speed, then hands over to Stun01.
-const REBOUND_FRAMES: int = 8
-const REBOUND_SPEED: float = 2.0
 ## The states a parried attacker rebounds in: a block's parry recoils it, a
-## Flash's or a Redirect's stuns it.
+## Flash's or a Redirect's stuns it (task 27).
 const REBOUND_STATES: Array[StringName] = [&"recoil", &"stunned"]
-## The Greatsword's shoulder carry: the right hand on the grip at the
-## shoulder, the blade resting back over it (a masked pose of the Crafting
-## pack; ObjectGripShoulder01_R throws the elbow out to the side).
-const CARRY_POSE: StringName = &"ObjectGripShoulder02_R"
-## Moonsplitter's clip per variant (clip-manifest ids) and the source frame
-## it holds at through the wind-up: Attack2H01 raised overhead for the
-## vertical wave, Attack2H03 wound round for the horizontal. The wind-up
-## plays at 1.0 to the hold and waits there; the release plays at 2.0 from
-## it, its cut landing as the rules send the wave.
-const ULT_CLIPS: Dictionary[StringName, Array] = {&"vertical": [&"Attack2H01", 12.0], &"horizontal": [&"Attack2H03", 7.0]}
-## Without the packs: the CC0 clip stretched over the wind-up and release.
-const ULT_FALLBACK: StringName = &"Sword_Heavy_Combo"
-## Moonsplitter's wind-up and release, in rules frames (Fighter._ult_moonsplitter()).
-const ULT_WINDUP: int = 36
-const ULT_RELEASE: int = 34
-## Impaler's clip (the thrust) and the source frames it plays through
-## (Fighter._ult_impaler()): drawn back to IMPALER_DRAWN at 1.0 through the
-## aim and held; thrust out to IMPALER_OUT at 1.5 as the dash starts, and held
-## there through the dash and the impale (the victim on the blade); the burst
-## plays on at 0.5, and the recovery from IMPALER_RECOVER to the clip's end
-## over its 30 frames. (The clip table's Sprint01 into AttackPolearm03 would
-## swing the arms free through the dash, and Polearm03 is an overhead.)
-const IMPALER_CLIP: StringName = &"AttackPolearm01"
-const IMPALER_DRAWN: float = 8.0
-const IMPALER_OUT: float = 14.0
-const IMPALER_RECOVER: float = 18.0
-const IMPALER_RECOVER_FRAMES: float = 30.0
-## Without the packs: the CC0 dash stretched over the aim and the dash.
-const IMPALER_FALLBACK: StringName = &"Sword_Dash"
-const IMPALER_AIM: int = 30
-const IMPALER_DASH: int = 40
-## Lightning Tempest (task 23; Fighter._ult_tempest()): the flash eases into
-## TEMPEST_SPIN's first slash as the fighter darts in; each of the six spins
-## plays one of its two whole-body spinning slashes in turn (TEMPEST_SLASHES:
-## the source frame each starts from) at 2.0, its cut landing on the spin's
-## hit (its fifth frame); the final plays TEMPEST_FINAL's outward double slash
-## from TEMPEST_FINAL_FROM at 1.5, the cut on the final's hit (its eighth),
-## and the recovery the rest of the clip over its 24 frames. (The clip
-## table's AttackDW01 and AttackDW02 stab to the front; Sword_Aerial_Combo, a
-## CC0 clip, spins, so the spins play without the packs too.)
-const TEMPEST_SPIN: StringName = &"ual/Sword_Aerial_Combo"
-const TEMPEST_SLASHES: Array[float] = [2.0, 17.0]
-const TEMPEST_FLASH: int = 8
-const TEMPEST_FINAL: StringName = &"AttackDW02"
-const TEMPEST_FINAL_FROM: float = 12.0
-const TEMPEST_FINAL_FRAMES: int = 14
-const TEMPEST_RECOVER_FRAMES: int = 24
-## Without the packs: the CC0 combo stretched over the final and recovery.
-const TEMPEST_FALLBACK: StringName = &"Sword_Heavy_Combo"
 
 
 ## What a fighter is playing and from what it plays.
@@ -325,6 +239,7 @@ class Shot:
 
 ## The next shot for fighter `f`, after `prev` (null at first).
 static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
+	var sc: StateClips = StateClips.shared()
 	var frame: int = f.world.frame if f.world != null else 0
 	if prev != null and prev.frame == frame:
 		return prev
@@ -353,16 +268,16 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 				phase = f.knockdown_phase() if f.state == &"knockdown" else &"ko"
 		var reaction: StringName = reaction_of(f) if playing == null else &""
 		out.rebound = _rebound_from(prev, f, reaction)
-		if out.rebound != null and f.sf < REBOUND_FRAMES:
+		if out.rebound != null and f.sf < sc.rebound_frames:
 			reaction = &"rebound"
-			playing = Clip.make(out.rebound.name, maxf(0.0, out.rebound.time - float(f.sf) * REBOUND_SPEED / float(SimConst.FPS)))
+			playing = Clip.make(out.rebound.name, maxf(0.0, out.rebound.time - float(f.sf) * sc.rebound_speed / float(SimConst.FPS)))
 			phase = reaction
 		elif reaction != &"":
 			var held: int = prev.since + 1 if prev != null and prev.drive == STATE and prev.phase == reaction else 0
 			playing = reaction_clip(f, ctx, reaction, held)
 			if playing != null and out.rebound != null and reaction != &"guard":
 				# after the rebound: the stun's clip over the rest of the state
-				playing.time = fitted_time(f.sf - REBOUND_FRAMES, f.state_dur - REBOUND_FRAMES, ctx.lengths.get(playing.name, 0.0))
+				playing.time = fitted_time(f.sf - sc.rebound_frames, f.state_dur - sc.rebound_frames, ctx.lengths.get(playing.name, 0.0))
 			phase = reaction if playing != null else &""
 		if playing != null:
 			drive = STATE
@@ -418,13 +333,14 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	return out
 
 
-## The clip of `f`'s state when it has one of its own (STATE_CLIPS), fitted
+## The clip of `f`'s state when it has one of its own (StateClips.state_clips), fitted
 ## to the state's length; null otherwise, or when the clip isn't in the
 ## tree. Keyed clips are committed, so it plays without the packs too.
 static func state_clip(f: Fighter, ctx: Context) -> Clip:
-	var id: StringName = STATE_CLIPS.get(f.state, &"")
+	var sc: StateClips = StateClips.shared()
+	var id: StringName = sc.state_clips.get(f.state, &"")
 	if id == &"" and f.state == &"stunned":
-		id = STUN_CLIPS.get(f.stun_cause, &"")
+		id = sc.stun_clips.get(f.stun_cause, &"")
 	if id == &"":
 		return null
 	var anim_name: String = KeyedClips.anim_name(id)
@@ -461,24 +377,25 @@ static func reaction_of(f: Fighter) -> StringName:
 ## from when the guard went up (`held` rules frames ago) at 1.0; the others
 ## timed to their state (fitted_time()). Without the packs, the fallbacks.
 static func reaction_clip(f: Fighter, ctx: Context, reaction: StringName, held: int) -> Clip:
+	var sc: StateClips = StateClips.shared()
 	var wid: StringName = f.weapon.id if f.armed and f.weapon != null else &"fists"
-	var guard: Array = GUARD_CLIPS.get(wid, GUARD_CLIPS[&"fists"])
+	var guard: Array = sc.guard_clips.get(wid, sc.guard_clips[&"fists"])
 	var id: StringName = &""
 	var fallback: StringName = &""
 	match reaction:
 		&"guard":
 			id = guard[0]
-			fallback = GUARD_FALLBACK
+			fallback = sc.guard_fallback
 		&"blockstun", &"parry":
 			id = guard[1]
-			fallback = GUARD_FALLBACK
+			fallback = sc.guard_fallback
 		&"hitstun":
-			var heavy: int = 1 if f.state_dur > HEAVY_HITSTUN else 0
-			id = HIT_CLIPS[heavy]
-			fallback = HIT_FALLBACKS[heavy]
+			var heavy: int = 1 if f.state_dur > sc.heavy_hitstun else 0
+			id = sc.hit_clips[heavy]
+			fallback = sc.hit_fallbacks[heavy]
 		&"stun":
-			id = STUN_CLIP
-			fallback = STUN_FALLBACK
+			id = sc.stun_clip
+			fallback = sc.stun_fallback
 		_:
 			return null
 	var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, fallback]
@@ -588,16 +505,17 @@ static func carry_clip(f: Fighter, ctx: Context) -> Clip:
 
 ## The carry's pose as a name in the tree, in the fighter's own set.
 static func carry_name(ctx: Context) -> String:
-	return ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), CARRY_POSE)
+	return ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), StateClips.shared().carry_pose)
 
 
 ## The idle under the legs' blend for `f`'s weapon class (bare hands when
 ## disarmed), as a name in the tree.
 static func idle_clip(f: Fighter, ctx: Context) -> String:
+	var sc: StateClips = StateClips.shared()
 	var wid: StringName = f.weapon.id if f.armed and f.weapon != null else &"fists"
 	if ctx.libraries:
-		return "%s/%s" % [ClipLibraries.FIGHTER_SETS.get(ctx.fighter_id, &"HumanM"), IDLE.get(wid, IDLE[&"fists"])]
-	return "%s/%s" % [FighterModel.LIBRARY, FALLBACK_IDLE.get(wid, FALLBACK_IDLE[&"fists"])]
+		return "%s/%s" % [ClipLibraries.FIGHTER_SETS.get(ctx.fighter_id, &"HumanM"), sc.idle.get(wid, sc.idle[&"fists"])]
+	return "%s/%s" % [FighterModel.LIBRARY, sc.fallback_idle.get(wid, sc.fallback_idle[&"fists"])]
 
 
 ## The authored clip `f`'s attack plays at attack frame `t` (which may fall
@@ -630,6 +548,7 @@ static func attack_clip(f: Fighter, ctx: Context, t: float) -> Clip:
 ## without the packs the fallback stretched over both. A Greatsword's lift
 ## off the shoulder waits at the clip's start.
 static func ult_clip(f: Fighter, ctx: Context) -> Clip:
+	var sc: StateClips = StateClips.shared()
 	if f.state != &"ult" or f.ult == null:
 		return null
 	if f.ult.kind == &"impaler":
@@ -641,10 +560,10 @@ static func ult_clip(f: Fighter, ctx: Context) -> Clip:
 	var u: UltState = f.ult
 	var pf: float = float(u.pf)
 	if not ctx.libraries:
-		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, ULT_FALLBACK]
-		var done: float = pf if u.phase == &"windup" else float(ULT_WINDUP) + pf
-		return Clip.make(anim_name, clampf(done / float(ULT_WINDUP + ULT_RELEASE), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
-	var pick: Array = ULT_CLIPS.get(u.variant, ULT_CLIPS[&"vertical"])
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, sc.ult_fallback]
+		var done: float = pf if u.phase == &"windup" else float(sc.ult_windup) + pf
+		return Clip.make(anim_name, clampf(done / float(sc.ult_windup + sc.ult_release), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
+	var pick: Array = sc.ult_clips.get(u.variant, sc.ult_clips[&"vertical"])
 	var anim_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), pick[0])
 	var hold: float = pick[1]
 	var source: float = minf(pf * 0.5, hold) if u.phase == &"windup" else hold + pf
@@ -655,49 +574,51 @@ static func ult_clip(f: Fighter, ctx: Context) -> Clip:
 ## Impaler's clip in ultimate state `u` (see IMPALER_CLIP); without the packs
 ## the fallback stretched over the aim and the dash, then held.
 static func impaler_clip(u: UltState, ctx: Context) -> Clip:
+	var sc: StateClips = StateClips.shared()
 	var pf: float = float(u.pf)
 	if not ctx.libraries:
-		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, IMPALER_FALLBACK]
-		var done: float = pf if u.phase == &"aim" else (float(IMPALER_AIM) + pf if u.phase == &"dash" else float(IMPALER_AIM + IMPALER_DASH))
-		return Clip.make(anim_name, clampf(done / float(IMPALER_AIM + IMPALER_DASH), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
-	var anim_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), IMPALER_CLIP)
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, sc.impaler_fallback]
+		var done: float = pf if u.phase == &"aim" else (float(sc.impaler_aim) + pf if u.phase == &"dash" else float(sc.impaler_aim + sc.impaler_dash))
+		return Clip.make(anim_name, clampf(done / float(sc.impaler_aim + sc.impaler_dash), 0.0, 1.0) * ctx.lengths.get(anim_name, 0.0))
+	var anim_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), sc.impaler_clip)
 	var length: float = ctx.lengths.get(anim_name, 0.0)
-	var source: float = IMPALER_OUT
+	var source: float = sc.impaler_out
 	match u.phase:
 		&"aim":
-			source = minf(pf * 0.5, IMPALER_DRAWN)
+			source = minf(pf * 0.5, sc.impaler_drawn)
 		&"dash":
-			source = minf(IMPALER_DRAWN + pf * 0.75, IMPALER_OUT)
+			source = minf(sc.impaler_drawn + pf * 0.75, sc.impaler_out)
 		&"burst":
-			source = IMPALER_OUT + pf * 0.25
+			source = sc.impaler_out + pf * 0.25
 		&"recover":
 			var end: float = length * float(ClipManifest.SOURCE_FPS)
-			source = lerpf(IMPALER_RECOVER, end, clampf(pf / IMPALER_RECOVER_FRAMES, 0.0, 1.0))
+			source = lerpf(sc.impaler_recover, end, clampf(pf / sc.impaler_recover_frames, 0.0, 1.0))
 	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
 
 
 ## Lightning Tempest's clip in ultimate state `u` (see TEMPEST_SPIN).
 static func tempest_clip(u: UltState, ctx: Context) -> Clip:
+	var sc: StateClips = StateClips.shared()
 	var pf: float = float(u.pf)
 	var fps: float = float(ClipManifest.SOURCE_FPS)
 	if u.phase == &"flash" or u.phase == &"spin":
-		var source: float = TEMPEST_SLASHES[0] * minf(1.0, pf / float(TEMPEST_FLASH))
+		var source: float = sc.tempest_slashes[0] * minf(1.0, pf / float(sc.tempest_flash))
 		if u.phase == &"spin":
-			var start: float = TEMPEST_SLASHES[u.spins % TEMPEST_SLASHES.size()]
+			var start: float = sc.tempest_slashes[u.spins % sc.tempest_slashes.size()]
 			source = start + minf(pf, 10.0)
-		var spin_name: String = String(TEMPEST_SPIN)
+		var spin_name: String = String(sc.tempest_spin)
 		return Clip.make(spin_name, clampf(source / fps, 0.0, ctx.lengths.get(spin_name, 0.0)))
-	var done: float = pf if u.phase == &"final" else float(TEMPEST_FINAL_FRAMES) + pf
+	var done: float = pf if u.phase == &"final" else float(sc.tempest_final_frames) + pf
 	if not ctx.libraries:
-		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, TEMPEST_FALLBACK]
-		var share: float = clampf(done / float(TEMPEST_FINAL_FRAMES + TEMPEST_RECOVER_FRAMES), 0.0, 1.0)
+		var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, sc.tempest_fallback]
+		var share: float = clampf(done / float(sc.tempest_final_frames + sc.tempest_recover_frames), 0.0, 1.0)
 		return Clip.make(anim_name, share * ctx.lengths.get(anim_name, 0.0))
-	var final_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), TEMPEST_FINAL)
+	var final_name: String = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), sc.tempest_final)
 	var length: float = ctx.lengths.get(final_name, 0.0)
-	var cut_end: float = TEMPEST_FINAL_FROM + float(TEMPEST_FINAL_FRAMES) * 0.75
-	var source: float = TEMPEST_FINAL_FROM + pf * 0.75
+	var cut_end: float = sc.tempest_final_from + float(sc.tempest_final_frames) * 0.75
+	var source: float = sc.tempest_final_from + pf * 0.75
 	if u.phase == &"recover":
-		source = lerpf(cut_end, length * fps, clampf(pf / float(TEMPEST_RECOVER_FRAMES), 0.0, 1.0))
+		source = lerpf(cut_end, length * fps, clampf(pf / float(sc.tempest_recover_frames), 0.0, 1.0))
 	return Clip.make(final_name, clampf(source / fps, 0.0, length))
 
 
@@ -746,33 +667,34 @@ static func _shown(prev: Shot) -> Clip:
 ## hitstun cuts. Onto the shoulder 8 (a stance); off it into an attack or a
 ## guard over the lift off the shoulder.
 static func _fade(prev: Shot, f: Fighter, drive: StringName) -> int:
+	var sc: StateClips = StateClips.shared()
 	if f.state == &"hitstun":
-		return FADES[&"hitstun"]
+		return sc.fades[&"hitstun"]
 	if drive == CARRY:
-		return FADES[&"stance"]
+		return sc.fades[&"stance"]
 	if prev.drive == CARRY and f.guard_lift_left > 0:
 		# a guard raised from the shoulder, over the lift off it
 		return SimConst.GS_SHOULDER_LIFT_FRAMES
 	if drive == STATE:
 		if prev.phase == &"rebound":
-			return FADES[&"rebound"]
+			return sc.fades[&"rebound"]
 		if f.blocking and f.state != &"blockstun" and f.state != &"parryAnim":
-			return FADES[&"guard"]
-		return FADES[&"state"]
+			return sc.fades[&"guard"]
+		return sc.fades[&"state"]
 	if drive == ATTACK:
 		if prev.drive == ATTACK and f.atk == null and prev.attack == null:
 			# a change of the ultimate's phase
-			return FADES[&"follow_up"]
+			return sc.fades[&"follow_up"]
 		if prev.drive == CARRY and f.atk != null and f.atk.lift > 0:
 			return f.atk.lift
 		if prev.drive == CARRY and f.atk == null:
 			# the ultimate from the shoulder waits out the same lift
 			return SimConst.GS_SHOULDER_LIFT_FRAMES
 		if prev.drive == ATTACK and f.atk != null and f.atk.chained_from != null:
-			return FADES[&"follow_up"]
-		return FADES[&"attack"]
+			return sc.fades[&"follow_up"]
+		return sc.fades[&"attack"]
 	if prev.drive == CARRY and f.guard_lift_left > 0:
 		return SimConst.GS_SHOULDER_LIFT_FRAMES
 	if prev.drive == ATTACK and (f.state == &"dodge" or f.state == &"backstep"):
-		return FADES[&"dodge_cancel"]
-	return FADES[&"locomotion"]
+		return sc.fades[&"dodge_cancel"]
+	return sc.fades[&"locomotion"]

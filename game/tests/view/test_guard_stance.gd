@@ -195,7 +195,8 @@ func test_only_the_katana_stands_in_the_guard() -> void:
 		for weapon: WeaponDef in [Moves.GREATSWORD, Moves.DAGGERS]:
 			var other: MoveBench = _bench(id, weapon)
 			await other.frame()
-			var idle: StringName = (ClipDirector.IDLE if ClipLibraries.available() else ClipDirector.FALLBACK_IDLE)[weapon.id]
+			var table: StateClips = StateClips.shared()
+			var idle: StringName = (table.idle if ClipLibraries.available() else table.fallback_idle)[weapon.id]
 			assert_eq(String(other.view.locomotion.idle_clip()).get_file(), String(idle), "%s with the %s: the class's idle" % [id, weapon.id])
 			assert_almost_eq(other.view.model.rig.clip_feet, 1.0, 1e-5, "%s with the %s: the clip's feet" % [id, weapon.id])
 			assert_eq(other.view.model.rig.body.untwist, 0.0, "%s with the %s: the clip's own chest" % [id, weapon.id])

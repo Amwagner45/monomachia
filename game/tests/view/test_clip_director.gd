@@ -212,7 +212,7 @@ func test_each_crossfade_has_its_length() -> void:
 	shot = ClipDirector.step(shot, f, ctx)
 	assert_eq(shot.fade, 0, "hitstun cuts")
 	assert_eq(shot.authored(), 0.0, "nothing fades out")
-	assert_eq(ClipDirector.FADES[&"stance"], 8, "a stance change fades 8")
+	assert_eq(StateClips.shared().fades[&"stance"], 8, "a stance change fades 8")
 
 
 func test_a_move_without_a_baked_swing_keeps_the_stand_in() -> void:
@@ -308,10 +308,10 @@ func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
 		assert_eq(c.name, "HumanM/AttackPolearm01")
 		return c.time * 30.0
 	assert_almost_eq(at.call(&"aim", 8), 4.0, 1e-6, "drawing back at 1.0")
-	assert_almost_eq(at.call(&"aim", 29), ClipDirector.IMPALER_DRAWN, 1e-6, "held drawn back through the aim")
-	assert_almost_eq(at.call(&"dash", 4), ClipDirector.IMPALER_DRAWN + 3.0, 1e-6, "thrusting out as the dash starts")
-	assert_almost_eq(at.call(&"dash", 30), ClipDirector.IMPALER_OUT, 1e-6, "held out through the dash")
-	assert_almost_eq(at.call(&"impale", 20), ClipDirector.IMPALER_OUT, 1e-6, "and the impale")
+	assert_almost_eq(at.call(&"aim", 29), StateClips.shared().impaler_drawn, 1e-6, "held drawn back through the aim")
+	assert_almost_eq(at.call(&"dash", 4), StateClips.shared().impaler_drawn + 3.0, 1e-6, "thrusting out as the dash starts")
+	assert_almost_eq(at.call(&"dash", 30), StateClips.shared().impaler_out, 1e-6, "held out through the dash")
+	assert_almost_eq(at.call(&"impale", 20), StateClips.shared().impaler_out, 1e-6, "and the impale")
 	assert_almost_eq(at.call(&"recover", 30), 41.0, 1e-4, "recovering to the clip's end")
 	# a phase change fades as a follow-up
 	f.ult.phase = &"aim"
@@ -321,7 +321,7 @@ func test_impaler_draws_back_thrusts_on_the_dash_and_holds_the_victim() -> void:
 	f.ult.phase = &"dash"
 	f.ult.pf = 1
 	shot = ClipDirector.step(shot, f, ctx)
-	assert_eq([shot.drive, shot.move, shot.fade], [ClipDirector.ATTACK, &"impaler", ClipDirector.FADES[&"follow_up"]], "a phase change fades")
+	assert_eq([shot.drive, shot.move, shot.fade], [ClipDirector.ATTACK, &"impaler", StateClips.shared().fades[&"follow_up"]], "a phase change fades")
 	var bare: ClipDirector.Context = ClipDirector.Context.make(&"hunter", false, lengths)
 	f.ult.phase = &"dash"
 	f.ult.pf = 5
@@ -362,7 +362,7 @@ func test_tempest_spins_cutting_on_each_hit_and_ends_on_the_outward_slash() -> v
 	f.ult.pf = 0
 	f.ult.spins = 3
 	shot = ClipDirector.step(shot, f, ctx)
-	assert_eq([shot.move, shot.fade, shot.since], [&"tempest", ClipDirector.FADES[&"follow_up"], 0], "the next spin fades in")
+	assert_eq([shot.move, shot.fade, shot.since], [&"tempest", StateClips.shared().fades[&"follow_up"], 0], "the next spin fades in")
 
 # ------------------------------------------------------------------ the shoulder carry (task 18)
 
@@ -372,7 +372,7 @@ static func _gs_ctx(libraries: bool = true) -> ClipDirector.Context:
 	var lengths: Dictionary[String, float] = {"ual/Sword_Heavy_A": 1.2, "ual/Sword_Idle": 2.0}
 	for set_name: StringName in ClipLibraries.SETS:
 		lengths["%s/Attack2H01" % set_name] = 1.6
-		lengths["%s/%s" % [set_name, ClipDirector.CARRY_POSE]] = 0.33
+		lengths["%s/%s" % [set_name, StateClips.shared().carry_pose]] = 0.33
 	return ClipDirector.Context.make(&"hunter", libraries, lengths)
 
 
@@ -396,10 +396,10 @@ func test_the_carry_shows_on_the_upper_body_while_shouldered() -> void:
 	var shot: ClipDirector.Shot = got[1]
 	assert_true(W.fighters[0].shouldered, "walked onto the shoulder")
 	assert_eq(shot.drive, ClipDirector.CARRY, "the carry drives")
-	assert_eq(shot.clip.name, "HumanM/" + ClipDirector.CARRY_POSE)
-	assert_eq(shot.fade, ClipDirector.FADES[&"stance"], "faded in as a stance")
+	assert_eq(shot.clip.name, "HumanM/" + StateClips.shared().carry_pose)
+	assert_eq(shot.fade, StateClips.shared().fades[&"stance"], "faded in as a stance")
 	assert_eq(shot.legs_free(), 1.0, "the legs are the legs' blend's")
-	for i: int in ClipDirector.FADES[&"stance"]:
+	for i: int in StateClips.shared().fades[&"stance"]:
 		shot = _next(W, shot, ctx, [SimHelpers.move(0.0, 1.0), SimHelpers.idle()])
 	assert_eq(shot.authored(), 1.0, "all of it on the upper body")
 	assert_eq(shot.legs_free(), 1.0, "and the legs still walk")
@@ -428,7 +428,7 @@ func test_an_attack_from_the_shoulder_fades_in_over_the_lift() -> void:
 	assert_eq([f.state, f.atk.def.id, f.atk.lift], [&"attack", &"g_l1", SimConst.GS_SHOULDER_LIFT_FRAMES], "Heavy Swing from the shoulder")
 	assert_eq(shot.drive, ClipDirector.ATTACK)
 	assert_eq(shot.fade, SimConst.GS_SHOULDER_LIFT_FRAMES, "the lift is the crossfade")
-	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
+	assert_eq(shot.from.name, "HumanM/" + StateClips.shared().carry_pose, "from the shoulder")
 	assert_true(shot.from_upper)
 	var first: float = shot.clip.time
 	var legs: Array[float] = [shot.legs_free()]
@@ -482,7 +482,7 @@ func test_the_stomp_plays_its_keyed_clip_fitted_to_the_state() -> void:
 				assert_almost_eq(shot.clip.time, float(b.sf) / float(b.state_dur) * ctx.lengths[stomp], 0.0001, "fitted to the stomp's length")
 				assert_gte(shot.clip.time, last_time, "it runs forward")
 				if was != ClipDirector.STATE:
-					assert_eq(shot.fade, ClipDirector.FADES[&"state"], "it springs out of the dodge over 2 frames")
+					assert_eq(shot.fade, StateClips.shared().fades[&"state"], "it springs out of the dodge over 2 frames")
 				last_time = shot.clip.time
 				stomped += 1
 			elif stomped > 0 and after == null:
@@ -491,7 +491,7 @@ func test_the_stomp_plays_its_keyed_clip_fitted_to_the_state() -> void:
 		assert_not_null(after, "the stomp ended")
 		if after != null:
 			assert_eq(after.drive, ClipDirector.LEGS, "the legs take over after it")
-			assert_eq(after.fade, ClipDirector.FADES[&"locomotion"], "over the fade back to the legs")
+			assert_eq(after.fade, StateClips.shared().fades[&"locomotion"], "over the fade back to the legs")
 		SimHelpers.dispose_all()
 
 
@@ -532,7 +532,7 @@ func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:
 		poke.call(&"d_l1", 1 + i)
 		shot = ClipDirector.step(shot, f, ctx)
 		grips.append(shot.grip)
-	assert_eq(shot.fade, ClipDirector.FADES[&"attack"])
+	assert_eq(shot.fade, StateClips.shared().fades[&"attack"])
 	assert_eq(grips[0], 1.0, "reverse on the attack's first frame")
 	assert_true(grips[1] < 1.0 and grips[1] > 0.0, "turning over the crossfade: %s" % [grips])
 	assert_eq(grips[3], 0.0, "forward once it is done")
@@ -671,7 +671,7 @@ func test_a_held_block_loops_the_guard_on_the_upper_body() -> void:
 	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
 	assert_true(f.blocking)
 	assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"guard", "HumanM/Parry1H01_R_Loop"], "the Katana's guard")
-	assert_eq(shot.fade, ClipDirector.FADES[&"guard"], "raised over 3 frames")
+	assert_eq(shot.fade, StateClips.shared().fades[&"guard"], "raised over 3 frames")
 	assert_true(shot.upper)
 	assert_eq(shot.legs_free(), 1.0, "the legs walk under it")
 	var length: float = ctx.lengths["HumanM/Parry1H01_R_Loop"]
@@ -682,7 +682,7 @@ func test_a_held_block_loops_the_guard_on_the_upper_body() -> void:
 		assert_almost_eq(shot.clip.time, fmod(float(held) / 60.0, length), 1e-9, "looped at 1.0 (frame %d)" % held)
 	shot = _next(W, shot, ctx)
 	assert_false(f.blocking)
-	assert_eq([shot.drive, shot.fade], [ClipDirector.LEGS, ClipDirector.FADES[&"locomotion"]], "lowered back to the legs")
+	assert_eq([shot.drive, shot.fade], [ClipDirector.LEGS, StateClips.shared().fades[&"locomotion"]], "lowered back to the legs")
 	assert_true(shot.from_upper)
 	assert_eq(shot.legs_free(), 1.0, "the legs stay the legs' blend's as it fades")
 
@@ -721,7 +721,7 @@ func test_blockstun_plays_the_guards_hit_timed_to_it() -> void:
 		shot = ClipDirector.step(shot, f, ctx)
 		var want: String = "HumanM/Parry1H01_R_Hit" if libraries else "ual/Sword_Block"
 		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"blockstun", want], "packs: %s" % libraries)
-		assert_eq(shot.fade, ClipDirector.FADES[&"state"], "from the guard over 2 frames")
+		assert_eq(shot.fade, StateClips.shared().fades[&"state"], "from the guard over 2 frames")
 		assert_true(shot.upper, "on the upper body")
 		f.sf = 8
 		assert_almost_eq(ClipDirector.reaction_clip(f, ctx, &"blockstun", 0).time, ClipDirector.fitted_time(8, 16, ctx.lengths[want]), 1e-9)
@@ -763,7 +763,7 @@ func test_a_guard_raised_from_the_shoulder_fades_into_the_guard_over_the_lift() 
 	shot = _next(W, shot, ctx, [SimHelpers.btn(Btn.BLOCK), SimHelpers.idle()])
 	assert_false(W.fighters[0].shouldered, "off the shoulder")
 	assert_eq([shot.drive, shot.phase, shot.fade], [ClipDirector.STATE, &"guard", SimConst.GS_SHOULDER_LIFT_FRAMES], "into the guard over the lift")
-	assert_eq(shot.from.name, "HumanM/" + ClipDirector.CARRY_POSE, "from the shoulder")
+	assert_eq(shot.from.name, "HumanM/" + StateClips.shared().carry_pose, "from the shoulder")
 	assert_eq(shot.legs_free(), 1.0, "the legs the legs' blend's throughout")
 
 
@@ -777,7 +777,7 @@ func test_the_parrier_plays_its_guards_parry_hit() -> void:
 		f.set_state(&"parryAnim", SimConst.PARRIER_RECOVERY)
 		f.sf = 3
 		var shot: ClipDirector.Shot = ClipDirector.step(null, f, ctx)
-		var want: String = "HumanM/" + String(ClipDirector.GUARD_CLIPS[wid][1])
+		var want: String = "HumanM/" + String(StateClips.shared().guard_clips[wid][1])
 		assert_eq([shot.drive, shot.phase, shot.clip.name], [ClipDirector.STATE, &"parry", want], String(wid))
 		assert_true(shot.upper, "on the upper body")
 		assert_almost_eq(shot.clip.time, ClipDirector.fitted_time(3, SimConst.PARRIER_RECOVERY, ctx.lengths[want]), 1e-9, "timed to the recovery")
@@ -811,22 +811,22 @@ func test_a_parried_attack_runs_back_then_staggers() -> void:
 	assert_almost_eq(shot.clip.time, met.time, 1e-9, "from where the parry met it")
 	assert_eq(shot.upper, false, "the whole body")
 	var times: Array[float] = [shot.clip.time]
-	while f.sf < ClipDirector.REBOUND_FRAMES:
+	while f.sf < StateClips.shared().rebound_frames:
 		f.sf += 1
 		W.frame += 1
 		shot = ClipDirector.step(shot, f, ctx)
-		if f.sf < ClipDirector.REBOUND_FRAMES:
+		if f.sf < StateClips.shared().rebound_frames:
 			assert_eq(shot.phase, &"rebound")
-			assert_almost_eq(shot.clip.time, maxf(0.0, met.time - float(f.sf) * ClipDirector.REBOUND_SPEED / 60.0), 1e-9, "backwards at 2.0 (frame %d)" % f.sf)
+			assert_almost_eq(shot.clip.time, maxf(0.0, met.time - float(f.sf) * StateClips.shared().rebound_speed / 60.0), 1e-9, "backwards at 2.0 (frame %d)" % f.sf)
 			times.append(shot.clip.time)
 	for i: int in times.size() - 1:
 		assert_lte(times[i + 1], times[i], "running backwards, holding at its start: %s" % [times])
 	assert_lt(times[-1], times[0], "it runs back")
 	# handed over to the stagger
-	assert_eq([shot.phase, shot.clip.name, shot.fade], [&"stun", "HumanM/Stun01", ClipDirector.FADES[&"rebound"]], "then Stun01, faded over 4 frames")
+	assert_eq([shot.phase, shot.clip.name, shot.fade], [&"stun", "HumanM/Stun01", StateClips.shared().fades[&"rebound"]], "then Stun01, faded over 4 frames")
 	assert_eq(shot.from.name, met.name, "from the rebound's last pose")
-	var rest: int = SimConst.PARRY_RECOIL - ClipDirector.REBOUND_FRAMES
-	f.sf = ClipDirector.REBOUND_FRAMES + 6
+	var rest: int = SimConst.PARRY_RECOIL - StateClips.shared().rebound_frames
+	f.sf = StateClips.shared().rebound_frames + 6
 	W.frame += 1
 	shot = ClipDirector.step(shot, f, ctx)
 	assert_almost_eq(shot.clip.time, ClipDirector.fitted_time(6, rest, ctx.lengths["HumanM/Stun01"]), 1e-9, "over the rest of the recoil")
@@ -851,7 +851,7 @@ func test_a_flash_or_redirect_stun_rebounds_too_but_not_a_stomp() -> void:
 		W.frame += 1
 		shot = ClipDirector.step(shot, f, ctx)
 		assert_eq([shot.phase, shot.clip.name], [&"rebound", met.name], "a %d-frame stun rebounds" % stun)
-		f.sf = ClipDirector.REBOUND_FRAMES
+		f.sf = StateClips.shared().rebound_frames
 		W.frame += 1
 		shot = ClipDirector.step(shot, f, ctx)
 		assert_eq([shot.phase, shot.clip.name], [&"stun", "HumanM/Stun01"])

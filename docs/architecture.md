@@ -240,7 +240,7 @@ sequenceDiagram
 
 **Interpolation.** The host keeps each fighter's position and yaw from before and after the last step. `display_position(i)` and `display_yaw(i)` blend them by `alpha()`, the fraction of a step left in the accumulator. During hit-stop `alpha()` holds at 1 so poses don't jitter, and a `roundStart` event places fighters instead of blending them.
 
-**Pause.** The pause binding, Esc, Start or the window losing focus calls `host.pause()`; `pause_changed` opens the pause menu and holds the match's sounds. A rules button pressed in a menu is ignored by the match until it is let go, so pressing A to resume doesn't also jump.
+**Pause.** The pause binding, Esc, Start or the window losing focus calls `host.pause()`; `pause_changed` opens the pause menu (`PauseScreen`) and holds the match's sounds. The same press resumes, unless a screen is open over the pause menu (Move list, Controls, Settings): `main.gd` then turns `host.pause_press_resumes` off, so Esc is only that screen's Back. A rules button pressed in a menu is ignored by the match until it is let go, so pressing A to resume doesn't also jump, and a profile picked in the pause's Controls is taken up on resume.
 
 ## 6. The rules (`game/sim`)
 
@@ -825,7 +825,9 @@ stateDiagram-v2
     MENU --> [*] : Quit
     PLAYING --> PAUSED : pause binding, Esc, Start, focus lost
     PAUSED --> PLAYING : Resume, Back
-    PAUSED --> MENU : Main menu
+    PAUSED --> PAUSED : Move list, Controls, Settings (Back returns)
+    PAUSED --> PLAYING : Restart (next seed)
+    PAUSED --> MENU : Quit to menu
     PLAYING --> RESULTS : match_finished
     RESULTS --> PLAYING : Rematch (next seed)
     RESULTS --> MENU : Main menu
@@ -837,6 +839,7 @@ stateDiagram-v2
 | `scenes/smoke_run.gd` | `SmokeRun` | `--smoke`: plays Watch to the results, exits 0 or 1. |
 | `ui/menus/menu_screen.gd` | `MenuScreen` | A generic menu panel with keyboard, mouse and controller navigation. |
 | `ui/menus/title_screen.gd` | `TitleScreen` | "Press any key". |
+| `ui/menus/pause_screen.gd` | `PauseScreen` | 休止 Paused: Resume, Move list, Controls, Settings, Restart, Quit to menu. |
 | `ui/menus/results_screen.gd` | `ResultsScreen` | Winner, rounds, seven stats, Rematch and Main menu. |
 | `ui/hud/match_hud.gd/.tscn` | `MatchHud` | HP and posture bars, round pips, ultimate badge, announcements timed on rules steps, button hints. Hidden in the attract duel. |
 | `ui/hud/hud_bar.gd` | `HudBar` | A meter with a lagging band. |

@@ -2,10 +2,13 @@ extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
 ## title -> main menu (Duel, Watch, How to play, Controls, Settings, Quit)
 ## -> the fighter select (Duel and Watch) -> a match -> results (Rematch,
-## Change fighters, Main menu), with a pause menu (Resume, Main menu) during
-## play, which Back, Start or the pause binding also closes. The pages sit on
-## a ScreenStack: Back on a page goes to the page that opened it (the main
-## menu's to the title).
+## Change fighters, Main menu), with a pause menu during play (PauseScreen:
+## Resume, Move list, Controls, Settings, Restart, Quit to menu), which Back,
+## Start or the pause binding also closes. The pages sit on a ScreenStack:
+## Back on a page goes to the page that opened it (the main menu's to the
+## title, a screen opened from the pause's to the pause). While a screen is
+## open over the pause, the pause binding, Esc and Start don't resume (Esc is
+## that screen's Back).
 ## A computer duel plays behind the title
 ## and the menus, seen from the orbiting menu camera; its restarts and the
 ## matches draw their seeds from one sequence (_next_seed).
@@ -39,7 +42,7 @@ enum Screen { TITLE, MENU, PLAYING, PAUSED, RESULTS, SELECT }
 var screen: Screen = Screen.TITLE
 var title: TitleScreen
 var main_menu: MenuScreen
-var pause_menu: MenuScreen
+var pause_menu: PauseScreen
 var results_screen: ResultsScreen
 var select: FighterSelect
 ## The fighter select's drafts and last picks.
@@ -73,13 +76,14 @@ func _ready() -> void:
 	main_menu.add_button("Quit", "to the desktop", quit_game)
 	ui.add_child(main_menu)
 
-	pause_menu = MenuScreen.new()
+	pause_menu = PauseScreen.new()
 	pause_menu.name = "Pause"
-	pause_menu.add_heading("Paused")
-	pause_menu.add_button("Resume", "", resume)
-	pause_menu.add_button("Main menu", "", quit_to_menu)
-	pause_menu.back_pops = false
-	pause_menu.back_requested.connect(resume)
+	pause_menu.resume_requested.connect(resume)
+	pause_menu.move_list.connect(show_move_list)
+	pause_menu.controls.connect(show_controls)
+	pause_menu.settings.connect(show_settings)
+	pause_menu.restart.connect(restart)
+	pause_menu.quit_to_menu.connect(quit_to_menu)
 	ui.add_child(pause_menu)
 
 	results_screen = ResultsScreen.new()
@@ -152,6 +156,12 @@ func _on_stack_changed(top: MenuPage) -> void:
 		screen = Screen.RESULTS
 	elif top == select:
 		screen = Screen.SELECT
+	# A screen over the pause takes Esc as its Back: the host mustn't resume
+	# on it. Back on the pause again, the keys still down from that Back
+	# count as already pressed.
+	host.pause_press_resumes = top == pause_menu or not host.is_paused()
+	if top == pause_menu and host.input != null:
+		host.input.rearm_pause()
 
 
 # ------------------------------------------------------------------ screens
@@ -184,6 +194,16 @@ func show_controls() -> void:
 
 func show_settings() -> void:
 	stack.push(settings_screen)
+
+
+## The pause's Move list: How to play over the pause, on the tab of the
+## weapon the player holds (bare hands while disarmed); Watch, with no
+## player, opens it on the Rules.
+func show_move_list() -> void:
+	stack.push(how_to_play)
+	var me: int = host.config.first_human_side() if host.config != null else -1
+	if me >= 0:
+		how_to_play.show_weapon(host.fighter(me).moveset().id)
 
 
 ## Opens the fighter select for a mode over the page on top, on the mode's
@@ -237,6 +257,11 @@ func rematch() -> void:
 	if last_config == null:
 		return
 	start_match(last_config.with_seed(_next_seed()))
+
+
+## The pause's Restart: the same match again with the next seed, at once.
+func restart() -> void:
+	rematch()
 
 
 ## From the results: the select for the mode just played, on its last picks,

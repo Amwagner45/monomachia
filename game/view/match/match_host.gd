@@ -34,6 +34,8 @@ extends Node
 ## rule button pressed while the match stands still (or held when it starts),
 ## such as the menu's A, B or Space, is ignored until it is let go, so it
 ## doesn't jump or dodge on resume; a button held through the pause carries on.
+## While pause_press_resumes is off (a screen opened over the pause menu, where
+## Esc is that screen's Back), the presses are still read but don't resume.
 ##
 ## A match ends on the results data, 140 frames into the match-end phase (as
 ## the demo): match_finished carries a MatchResults. The duel behind the menus
@@ -90,6 +92,9 @@ var step_count: int = 0
 ## attract restarts never share a seed. Unset: MatchConfig.next_seed() of the
 ## current one.
 var seed_source: Callable = Callable()
+## Whether the pause binding, Esc or Start resumes a paused match. main.gd
+## turns it off while a screen is open over the pause menu.
+var pause_press_resumes: bool = true
 
 ## Per side: an AIBrain, a TrainingBrain, or null for a human.
 var _brains: Array[RefCounted] = [null, null]
@@ -227,8 +232,9 @@ func _process(delta: float) -> void:
 		return
 	if input != null:
 		if _paused:
-			# the pause binding, Esc or Start closes the pause, as Back does
-			if input.any_pause_pressed():
+			# the pause binding, Esc or Start closes the pause, as Back does;
+			# the presses are read either way, so their edges stay current
+			if input.any_pause_pressed() and pause_press_resumes:
 				resume()
 			return
 		if is_playing() and input.any_pause_pressed():

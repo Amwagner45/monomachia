@@ -16,8 +16,8 @@ A minimalist fighting-game HUD: HP bars in classic style with the posture bar un
 
 An ink-wash UI theme with bundled Zen fonts, on a screen stack with keyboard and controller navigation ([[Task 22]]).
 
-- **Built:** the title over a live duel, the main menu, the fighter select (grid, sides, difficulty, arena, lock in and the loadout panel), results with stats, Rematch and Change fighters, Settings, and the Controls binding table.
-- **To come:** the select's 3D preview, rebinding capture and profiles, the move list, How to play, the pause menu, and Versus device pickers.
+- **Built:** the title over a live duel, the main menu, the fighter select (grid, sides, difficulty, arena, lock in and the loadout panel), results with stats, Rematch and Change fighters, Settings, the Controls screen with rebinding capture and profiles, How to play with the move list, and the pause menu (Resume, Move list, Controls, Settings, Restart, Quit to menu) over the frozen match.
+- **To come:** the select's 3D preview and Versus device pickers.
 
 Most of this is stage 10 of the plan, begun early while the swings were reviewed: [[Stage 10 - While the owner reviews]].
 

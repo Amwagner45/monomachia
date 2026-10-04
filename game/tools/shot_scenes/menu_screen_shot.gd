@@ -13,12 +13,15 @@ extends Node
 ## "results_watch" the results of a played Duel the player lost and of a
 ## Watch match; "loadout_<weapon>" the fighter select on your side of a Duel
 ## with that weapon, and "loadout_random" on the opponent's side left to
-## Random. The screens save to throwaway paths, never the player's.
+## Random; "pause" the pause menu over a Duel mid-fight (22.15), and
+## "pause_move_list", "pause_controls" and "pause_settings" its screens
+## opened over it. The screens save to throwaway paths, never the player's.
 
 @export_enum(
 	"settings", "controls_kb", "controls_pad", "controls_listening", "controls_profiles", "controls_rename",
 	"results_defeat", "results_watch",
 	"loadout_katana", "loadout_greatsword", "loadout_daggers", "loadout_random",
+	"pause", "pause_move_list", "pause_controls", "pause_settings",
 ) var shot: String = "settings"
 ## Frames to let the renderer settle before the capture.
 @export var settle_frames: int = 10
@@ -88,6 +91,19 @@ func _ready() -> void:
 			else:
 				MatchSelection.set_weapon(select.draft, 0, StringName(shot.trim_prefix("loadout_")))
 				select.show_side(0)
+		"pause", "pause_move_list", "pause_controls", "pause_settings":
+			var duel: MatchConfig = MatchConfig.default_duel(7)
+			duel.arena_id = main.get("arena_id")
+			main.call("start_match", duel)
+			host.step(Match.INTRO_FRAMES + 150)
+			host.pause()
+			match shot:
+				"pause_move_list":
+					(main.get("pause_menu") as PauseScreen).move_list_button.pressed.emit()
+				"pause_controls":
+					(main.get("pause_menu") as PauseScreen).controls_button.pressed.emit()
+				"pause_settings":
+					(main.get("pause_menu") as PauseScreen).settings_button.pressed.emit()
 		"results_defeat", "results_watch":
 			var cfg: MatchConfig = MatchConfig.default_duel(7) if shot == "results_defeat" else MatchConfig.default_watch(7)
 			cfg.arena_id = main.get("arena_id")

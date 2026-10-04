@@ -35,6 +35,16 @@ func test_every_other_move_with_a_swing_touches_from_its_test_distance() -> void
 	assert_eq(problems, [] as Array[String])
 
 
+func test_every_bare_hands_move_misses_from_6_m() -> void:
+	# task 25: a punch or kick lunging its furthest still falls well short
+	# (Counter Lunge works its lunge out from the distance, so it reaches)
+	var w: WeaponDef = Moves.FISTS
+	for id: StringName in w.moves:
+		var m: AttackDef = w.moves[id]
+		if m.swing != null and RT.strikes(m) and m.special != &"counterLunge":
+			assert_null(SwingReach.first_contact(m, w, 6.0, 0.0, FighterBody.of(&"")), "%s touches from 6 m" % id)
+
+
 func test_the_table_gives_each_kind_of_move_its_distance() -> void:
 	# the Katana, duelling at 2.5 m, has a move of every kind but an ultimate
 	var want: Dictionary[StringName, float] = {

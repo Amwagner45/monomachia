@@ -23,6 +23,10 @@ extends Node
 ## halfway through the draw), the horizontal from her front right so its
 ## wind-up at the right shoulder shows.
 ##
+## --no-packs plays any shot as a fresh clone without the Iglesias clip
+## libraries does: the CC0 fallback clips and the HUD's "animation packs
+## missing" note (authored-animation task 8).
+##
 ## "trail_light", "trail_unblockable" and "trail_moonsplitter" show the
 ## brush-stroke trails (18.3) on the same Rogue against the idle dummy: Right
 ## Cut and Swallow Sweep on their last active frame, and Moonsplitter on the
@@ -91,6 +95,8 @@ func _ready() -> void:
 			steps_after = iai_frame
 		elif a.begins_with("--call="):
 			call = a.trim_prefix("--call=")
+		elif a == "--no-packs":
+			ClipLibraries.force_missing = true
 	match shot:
 		"round_start":
 			_gameplay(MatchConfig.DUEL)

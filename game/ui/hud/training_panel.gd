@@ -31,7 +31,8 @@ func _init() -> void:
 	set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
 	grow_vertical = Control.GROW_DIRECTION_BEGIN
 	offset_left = 24.0
-	offset_bottom = -24.0
+	# above the HUD's packs-missing note in the same corner
+	offset_bottom = -48.0
 	custom_minimum_size = Vector2(560.0, 0.0)
 	var box: VBoxContainer = VBoxContainer.new()
 	box.add_theme_constant_override("separation", 8)

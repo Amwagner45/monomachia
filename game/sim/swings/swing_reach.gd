@@ -30,6 +30,26 @@ class Contact:
 	var length_inside: float = 0.0
 
 
+## A strike part shorter than this (m) is measured by how deep it goes
+## rather than how much of it is inside (inside()): the reach rule's 15-20 cm
+## of blade can't fit along a fist's knuckles (bare hands, authored-animation
+## task 24).
+const SHORT_PART: float = 0.15
+
+
+## How far touch `c` of `weapon`'s main strike part went in, as the reach
+## rule reads it: the most blade inside the defender, or for a part shorter
+## than SHORT_PART (a fist across its knuckles) how deep it went.
+static func inside(c: Contact, weapon: WeaponDef) -> float:
+	return c.depth if measures_depth(weapon) else c.length_inside
+
+
+## Whether `weapon`'s main strike part (its blade, or bare hands' fist) is
+## shorter than SHORT_PART.
+static func measures_depth(weapon: WeaponDef) -> bool:
+	return weapon.blade != null and V3.length(V3.sub(weapon.blade.tip, weapon.blade.base)) < SHORT_PART
+
+
 ## Where `def`'s swing on `weapon` first touches a defender with `body`
 ## standing `distance` m away (centre to centre, at least the fighters' two
 ## radii) at `bearing` degrees to the right of the attacker's facing, the

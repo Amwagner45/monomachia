@@ -9,8 +9,10 @@ extends CanvasLayer
 ## Double K.O., 勝 or 敗 for the round's result, 武器喪失 Disarmed), with the
 ## demo's entrance (AnnouncementEntrance). And a hint line (ultimate ready, pick up
 ## your weapon), shown only while the round is being fought. In Training,
-## the TrainingPanel at the bottom left (23.3). It hides when the results
-## open.
+## the TrainingPanel at the bottom left (23.3). Without the Iglesias clip
+## libraries a small note in the corner says the animation packs are missing
+## (authored-animation task 8), and the log says what to fix
+## (ClipLibraries.warn_if_missing()). It hides when the results open.
 ##
 ## Announcements, their entrance included, are timed on the host's rules
 ## steps, not the wall clock, so they slow down with slow motion and freeze
@@ -69,6 +71,7 @@ var _announce_kanji: Label
 var _announce_label: Label
 var _announce_sub: Label
 var _hint: Label
+var _packs_note: Label
 var _lags: Array[HudLag] = [HudLag.new(), HudLag.new()]
 var _states: Array[HudState] = [HudState.new(), HudState.new()]
 var _blink: float = 0.0
@@ -102,6 +105,11 @@ func bind(p_host: MatchHost) -> void:
 	training_panel.bind(host)
 	if host.is_started():
 		_on_match_started(host.config)
+
+
+## The packs-missing note's text when it shows, else "".
+func packs_note() -> String:
+	return _packs_note.text if _packs_note != null and _packs_note.visible else ""
 
 
 ## The centre text now ("" when none), for tests and screenshots.
@@ -158,6 +166,7 @@ func side_state(i: int) -> HudState:
 
 func _on_match_started(cfg: MatchConfig) -> void:
 	visible = not host.attract
+	_packs_note.visible = ClipLibraries.warn_if_missing()
 	announcement = {}
 	_queued.clear()
 	var me: int = _me()
@@ -497,3 +506,13 @@ func _build() -> void:
 	_hint.offset_top = -110.0
 	_hint.offset_bottom = -40.0
 	_root.add_child(_hint)
+
+	_packs_note = _label("PacksNote", ClipLibraries.MISSING_NOTE, &"", 14, 3)
+	_packs_note.add_theme_color_override("font_color", Color(UiPalette.PAPER, 0.7))
+	_packs_note.set_anchors_preset(Control.PRESET_BOTTOM_LEFT)
+	_packs_note.offset_left = 16.0
+	_packs_note.offset_right = 400.0
+	_packs_note.offset_top = -34.0
+	_packs_note.offset_bottom = -12.0
+	_packs_note.visible = false
+	_root.add_child(_packs_note)

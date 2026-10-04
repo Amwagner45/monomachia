@@ -6,8 +6,9 @@ A one-on-one weapon duel in the browser, built with three.js, TypeScript and Vit
 
 Read these before changing gameplay or planning new features:
 
-- `docs/design.md`: the full game design document, the vision for the finished game (all 9 weapons, arenas, progression, online play).
-- `docs/mvp-spec.md`: the MVP plan and spec, what the current demo builds and how. Its "Decisions", "Scope" and "Gaps in the design doc" tables record the choices made so far, and its combat numbers match the code.
+- `docs/design.md`: the full game design document, the vision for the finished game (all 9 weapons, arenas, progression, online play). Its "(Oct 4)" lines set the current direction: animation leads the rules' timing, a realistic look replaces the toon and ink-wash style, an RTX 3090 is the target, and the existing content reaches final quality before new content.
+- `docs/adr/0001-animation-leads-realistic-look.md`: why that direction was taken. Where an older spec or plan section carries a "Superseded by ADR 0001" note, follow `docs/design.md` and the ADR, not that section.
+- `docs/mvp-spec.md`: the MVP plan and spec, the record of the original web demo. Its "Decisions", "Scope" and "Gaps in the design doc" tables record the choices it made; the Godot game's rules and numbers have moved on (see `docs/specs/`).
 - `docs/architecture.md`: a map of the code with diagrams: the folders, how one frame flows through the Godot game, the rules, the view, tests and tools. Start here when new to the code, and update it when a change moves a boundary it describes.
 
 - `GLOSSARY.md`: the game's vocabulary (Fighter, Weapon, Loadout and so on). Use its terms.
@@ -55,6 +56,7 @@ For each change:
 
 Rules:
 - Never commit secrets, API keys, tokens or passwords. Never commit anything that `.gitignore` excludes (node_modules, dist, shots, coverage, logs).
+- Never commit paid assets (the Kevin Iglesias packs or anything bought), or files converted from them. They live in the private asset repository, which the import tools read through `.assets-src-path`; numbers measured from them (frame data, hit paths, travel) may be committed with their source clip recorded.
 - Never force-push or rewrite history on `master`.
 - Never merge a pull request or turn on auto-merge without my approval. Approval of one pull request doesn't cover the next. Ask again for each one.
 - If a push is rejected because GitHub has newer commits, run `git pull --rebase origin <branch>`, rerun the tests, then push again.
@@ -69,7 +71,7 @@ Rules:
 - `npm run build`: type-check, then build the single-file game
 - `npm run soak -- 40`: 40 computer-vs-computer matches, prints balance numbers
 - `npm run brain`: write the second brain's generated notes to `brain/generated/` (not committed); `npm run brain:serve` shows the vault at http://localhost:5196
-- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work. It also listens on this PC's Tailscale address (never the LAN) and serves phones `tools/lanes-board/m.html`; `LANES_LOCAL_ONLY=1` turns that off
+- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work. Its Graph tab shows each plan's tasks as a dependency graph (queue, launch and end from there too); its Sessions tab shows every Claude session of the last three days, and a session switched to "Answer from board" has its prompts, questions and replies answered there (through `tools/lanes-board/relay-hook.mjs`, installed in user settings). It also listens on this PC's Tailscale address (never the LAN) and serves phones `tools/lanes-board/m.html`; `LANES_LOCAL_ONLY=1` turns that off
 
 ## Code notes
 

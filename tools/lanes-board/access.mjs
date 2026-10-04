@@ -34,6 +34,7 @@ const FILES = {
   '/manifest.webmanifest': { file: 'manifest.webmanifest', type: 'application/manifest+json' },
   '/icon.png': { file: 'icon.png', type: 'image/png' },
   '/apple-touch-icon.png': { file: 'icon.png', type: 'image/png' },
+  '/graph.mjs': { file: 'graph.mjs', type: 'text/javascript; charset=utf-8' },
 };
 
 // The file for a GET that isn't /data or /brain: phones get m.html, computers

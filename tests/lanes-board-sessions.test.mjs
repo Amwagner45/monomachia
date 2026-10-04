@@ -1,0 +1,273 @@
+// Tests for the lanes board's Graph and Sessions tabs: the graph layout
+// (tools/lanes-board/graph.mjs), the transcript reader and relay answers
+// (sessions.mjs), and the relay hook a session runs (relay-hook.mjs).
+
+import { spawn } from 'node:child_process';
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { edgePath, layoutPlan, related } from '../tools/lanes-board/graph.mjs';
+import { PENDING_ID, SESSION_ID, parseTranscript, questionAnswers, relayAnswer, toolSummary } from '../tools/lanes-board/sessions.mjs';
+import { pageFor } from '../tools/lanes-board/access.mjs';
+
+// A plan as /data serves it.
+const task = (title, status, blockers = []) => ({
+  title, status, gate: false, ownerOk: [], blockers: blockers.map((ref) => ({ ref, label: ref.split(':')[1], done: ref.endsWith('.1') })),
+});
+const PLAN = {
+  key: 'gr',
+  stages: [{ n: 1, name: 'One', ids: ['1.1', '1.2', '1.3', '1.4'] }, { n: 2, name: 'Two', ids: ['2.1', '2.2'] }],
+  tasks: {
+    '1.1': task('Root', 'done'),
+    '1.2': task('After root', 'ready', ['gr:1.1']),
+    '1.3': task('After that', 'blocked', ['gr:1.2', 'aa:9']),
+    '1.4': task('Old idea', 'retired'),
+    '2.1': task('Next stage', 'blocked', ['gr:1.3']),
+    '2.2': task('Also next', 'blocked', ['gr:2.1']),
+  },
+};
+
+describe('layoutPlan', () => {
+  const L = layoutPlan(PLAN, { hide: ['retired'] });
+  const node = (id) => L.nodes.find((n) => n.id === id);
+
+  it('gives each stage a band, other plans\' blockers a band on top, and leaves hidden tasks out', () => {
+    expect(L.bands.map((b) => b.name)).toEqual(['From other plans', 'One', 'Two']);
+    expect(node('aa:9')).toMatchObject({ external: true, label: '9' });
+    expect(node('1.4')).toBeUndefined();
+    expect(L.width).toBeGreaterThan(0);
+    expect(L.height).toBeGreaterThan(L.bands.at(-1).y);
+  });
+
+  it('puts a task one column right of its latest blocker in the same stage', () => {
+    expect(node('1.1').x).toBeLessThan(node('1.2').x);
+    expect(node('1.2').x).toBeLessThan(node('1.3').x);
+    expect(node('2.1').x).toBe(node('1.1').x); // its blocker is in another stage
+    expect(node('2.2').x).toBeGreaterThan(node('2.1').x);
+  });
+
+  it('draws an edge per blocker shown, and drops done ones when done tasks are hidden', () => {
+    expect(L.edges).toContainEqual({ from: '1.1', to: '1.2', done: true });
+    expect(L.edges).toContainEqual({ from: 'aa:9', to: '1.3', done: false });
+    const open = layoutPlan(PLAN, { hide: ['retired', 'done'] });
+    expect(open.nodes.find((n) => n.id === '1.1')).toBeUndefined();
+    expect(open.edges.some((e) => e.from === '1.1')).toBe(false);
+  });
+
+  it('survives a loop in the plan', () => {
+    const loop = { key: 'gr', stages: [{ n: 1, name: 'L', ids: ['1.1', '1.2'] }],
+      tasks: { '1.1': task('A', 'blocked', ['gr:1.2']), '1.2': task('B', 'blocked', ['gr:1.1']) } };
+    expect(layoutPlan(loop).nodes).toHaveLength(2);
+  });
+});
+
+describe('related', () => {
+  it('finds everything a task waits on and everything that waits on it, however far', () => {
+    const { edges } = layoutPlan(PLAN, { hide: ['retired'] });
+    const { up, down } = related(edges, '1.3');
+    expect([...up].sort()).toEqual(['1.1', '1.2', 'aa:9']);
+    expect([...down].sort()).toEqual(['2.1', '2.2']);
+  });
+});
+
+describe('edgePath', () => {
+  it('runs left to right within a band and top to bottom between bands', () => {
+    const a = { x: 0, y: 0, w: 100, h: 40 };
+    expect(edgePath(a, { x: 200, y: 0, w: 100, h: 40 })).toMatch(/^M100,20 C/);
+    expect(edgePath(a, { x: 0, y: 200, w: 100, h: 40 })).toMatch(/^M50,40 C.* 50,200$/);
+  });
+});
+
+describe('the board serves graph.mjs to the page', () => {
+  it('as JavaScript', () => {
+    expect(pageFor('/graph.mjs', '')).toEqual({ file: 'graph.mjs', type: 'text/javascript; charset=utf-8' });
+  });
+});
+
+// ---------- transcripts ----------
+
+const line = (o) => JSON.stringify({ sessionId: 's', timestamp: '2026-10-04T06:00:00.000Z', ...o });
+const TRANSCRIPT = [
+  '{"cut off mid-li', // the tail read starts mid-line
+  line({ type: 'custom-title', customTitle: 'Board work' }),
+  line({ type: 'user', cwd: 'C:/repo', message: { content: 'Build the graph' } }),
+  line({ type: 'user', isMeta: true, message: { content: 'meta' } }),
+  line({ type: 'user', message: { content: '<command-name>/goal</command-name>\n<command-args>finish it</command-args>' } }),
+  line({ type: 'user', message: { content: '<local-command-stdout>noise</local-command-stdout>' } }),
+  line({ type: 'assistant', message: { content: [{ type: 'thinking', thinking: 'hm' }, { type: 'text', text: 'On it.' },
+    { type: 'tool_use', id: 't1', name: 'Bash', input: { command: 'npm test\nmore', description: 'Run tests' } }] } }),
+  line({ type: 'user', message: { content: [{ type: 'tool_result', tool_use_id: 't1', content: [{ type: 'text', text: 'ok' }] }] } }),
+  line({ type: 'assistant', isSidechain: true, message: { content: [{ type: 'text', text: 'subagent' }] } }),
+  line({ type: 'assistant', message: { content: [{ type: 'tool_use', id: 't2', name: 'AskUserQuestion',
+    input: { questions: [{ question: 'Which?', options: [{ label: 'A' }, { label: 'B' }] }] } }] } }),
+];
+
+describe('parseTranscript', () => {
+  const t = parseTranscript(TRANSCRIPT);
+
+  it('reads the title, the folder and the turns, skipping meta, side chains, app noise and thinking', () => {
+    expect(t.title).toBe('Board work');
+    expect(t.cwd).toBe('C:/repo');
+    expect(t.entries.map((e) => e.kind)).toEqual(['user', 'user', 'assistant', 'tool', 'result', 'tool']);
+    expect(t.entries[1].text).toBe('/goal finish it');
+    expect(t.entries[3]).toMatchObject({ name: 'Bash', summary: 'npm test' });
+    expect(t.entries[4]).toMatchObject({ tool: 't1', text: 'ok', error: false });
+  });
+
+  it('finds the tool call still waiting, with a question\'s choices', () => {
+    expect(t.open).toMatchObject({ id: 't2', name: 'AskUserQuestion' });
+    expect(t.open.questions[0].options.map((o) => o.label)).toEqual(['A', 'B']);
+    expect(parseTranscript(TRANSCRIPT.slice(0, 8)).open).toBeNull();
+  });
+
+  it('keeps the newest turns and says how many it left out', () => {
+    const short = parseTranscript(TRANSCRIPT, { limit: 2 });
+    expect(short.entries.map((e) => e.kind)).toEqual(['result', 'tool']);
+    expect(short.more).toBe(4);
+  });
+
+  it('falls back to the first prompt for a title', () => {
+    expect(parseTranscript(TRANSCRIPT.slice(2)).title).toBe('Build the graph');
+  });
+});
+
+describe('toolSummary', () => {
+  it('names what a call does in one line', () => {
+    expect(toolSummary('Read', { file_path: 'a.ts' })).toBe('a.ts');
+    expect(toolSummary('AskUserQuestion', { questions: [{ question: 'X?' }, { question: 'Y?' }] })).toBe('X? · Y?');
+    expect(toolSummary('Mystery', { n: 1, what: 'thing' })).toBe('thing');
+  });
+});
+
+describe('relay answers', () => {
+  const questions = [{ question: 'One?', options: [] }, { question: 'Many?', multiSelect: true, options: [] }];
+
+  it('answers AskUserQuestion with each question\'s label, several joined by commas', () => {
+    expect(questionAnswers(questions, ['A', ['B', 'C']])).toEqual({ 'One?': 'A', 'Many?': 'B, C' });
+    expect(() => questionAnswers(questions, ['A', []])).toThrow(/No answer/);
+    expect(() => questionAnswers(questions, [['A', 'B'], ['C']])).toThrow(/one answer/);
+  });
+
+  it('passes the question back with its answers, as the tool takes them', () => {
+    const pending = { kind: 'question', input: { questions } };
+    expect(relayAnswer(pending, { picks: ['A', ['B']] })).toEqual({
+      behavior: 'allow', updatedInput: { questions, answers: { 'One?': 'A', 'Many?': 'B' } },
+    });
+  });
+
+  it('allows (adding the suggested rule only when asked), denies with a reason, or hands back', () => {
+    const sug = [{ type: 'addRules', rules: [{ toolName: 'Bash', ruleContent: 'ls:*' }] }];
+    const pending = { kind: 'permission', suggestions: sug };
+    expect(relayAnswer(pending, { behavior: 'allow' })).toEqual({ behavior: 'allow' });
+    expect(relayAnswer(pending, { behavior: 'allow', always: true })).toEqual({ behavior: 'allow', updatedPermissions: sug });
+    expect(relayAnswer(pending, { behavior: 'deny', message: 'not now' }).message).toMatch(/not now$/);
+    expect(relayAnswer(pending, { release: true })).toEqual({ release: true });
+    expect(() => relayAnswer(pending, {})).toThrow();
+  });
+
+  it('takes a reply at a turn\'s end, but not an empty one', () => {
+    expect(relayAnswer({ kind: 'stop' }, { reply: ' Go on ' })).toEqual({ reply: 'Go on' });
+    expect(() => relayAnswer({ kind: 'stop' }, { reply: ' ' })).toThrow();
+  });
+
+  it('checks ids before they name a file', () => {
+    expect(SESSION_ID.test('11111111-2222-4333-8444-555555555555')).toBe(true);
+    expect(SESSION_ID.test('../../etc')).toBe(false);
+    expect(PENDING_ID.test('muteg88c-076glmmy')).toBe(true);
+    expect(PENDING_ID.test('../x')).toBe(false);
+  });
+});
+
+// ---------- the relay hook ----------
+
+describe('relay hook', () => {
+  const HOOK = fileURLToPath(new URL('../tools/lanes-board/relay-hook.mjs', import.meta.url));
+  const ID = '11111111-2222-4333-8444-555555555555';
+  let dir;
+  beforeEach(() => { dir = mkdtempSync(path.join(os.tmpdir(), 'lanes-relay-')); });
+  afterEach(() => rmSync(dir, { recursive: true, force: true }));
+
+  const switchOn = (on = true) => writeFileSync(path.join(dir, 'on.json'), JSON.stringify({ sessions: on ? { [ID]: { since: 1 } } : {} }));
+  // Runs the hook; when it writes a pending item, `answer` decides what the board does.
+  const run = (input, answer = null, waitMs = 8000) => new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, [HOOK], { env: { ...process.env, LANES_RELAY: dir, LANES_RELAY_WAIT_MS: String(waitMs) } });
+    let out = '';
+    child.stdout.on('data', (c) => { out += c; });
+    child.on('error', reject);
+    let seen = null;
+    const timer = setInterval(() => {
+      const p = path.join(dir, 'pending');
+      const names = existsSync(p) ? readdirSync(p) : [];
+      if (!seen && names.length) {
+        seen = JSON.parse(readFileSync(path.join(p, names[0]), 'utf8'));
+        if (answer) answer(seen);
+      }
+    }, 50);
+    child.on('close', () => { clearInterval(timer); resolve({ out, pending: seen }); });
+    child.stdin.end(JSON.stringify({ session_id: ID, cwd: 'C:/repo', ...input }));
+  });
+  const reply = (p, body) => {
+    mkdirSync(path.join(dir, 'answers'), { recursive: true });
+    writeFileSync(path.join(dir, 'answers', `${p.id}.json`), JSON.stringify(body));
+  };
+
+  it('does nothing for a session that isn\'t switched on, or with no relay at all', async () => {
+    expect((await run({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' })).out).toBe('');
+    switchOn(false);
+    expect((await run({ hook_event_name: 'Stop' })).out).toBe('');
+  });
+
+  it('hands a permission prompt to the board and returns its decision', async () => {
+    switchOn();
+    const { out, pending } = await run({ hook_event_name: 'PermissionRequest', tool_name: 'Bash', tool_input: { command: 'ls' } },
+      (p) => reply(p, { behavior: 'deny', message: 'no' }));
+    expect(pending).toMatchObject({ kind: 'permission', tool: 'Bash', session: ID, input: { command: 'ls' } });
+    expect(PENDING_ID.test(pending.id)).toBe(true);
+    expect(JSON.parse(out)).toEqual({ hookSpecificOutput: { hookEventName: 'PermissionRequest', decision: { behavior: 'deny', message: 'no' } } });
+    expect(readdirSync(path.join(dir, 'pending'))).toEqual([]);
+  });
+
+  it('answers a question with the board\'s picks', async () => {
+    switchOn();
+    const input = { questions: [{ question: 'Which?', options: [{ label: 'A' }] }] };
+    const { out, pending } = await run({ hook_event_name: 'PermissionRequest', tool_name: 'AskUserQuestion', tool_input: input },
+      (p) => reply(p, relayAnswer(p, { picks: ['A'] })));
+    expect(pending.kind).toBe('question');
+    expect(JSON.parse(out).hookSpecificOutput.decision).toEqual({ behavior: 'allow', updatedInput: { ...input, answers: { 'Which?': 'A' } } });
+  });
+
+  it('falls back to the app\'s dialog when handed back, switched off, or out of time', async () => {
+    switchOn();
+    expect((await run({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, (p) => reply(p, { release: true }))).out).toBe('');
+    expect((await run({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, () => switchOn(false))).out).toBe('');
+    switchOn();
+    const late = await run({ hook_event_name: 'PermissionRequest', tool_name: 'Bash' }, null, 300);
+    expect(late.out).toBe('');
+    expect(late.pending).not.toBeNull();
+    expect(readdirSync(path.join(dir, 'pending'))).toEqual([]);
+  });
+
+  it('carries on with the owner\'s reply when a turn ends', async () => {
+    switchOn();
+    const { out, pending } = await run({ hook_event_name: 'Stop', last_assistant_message: 'Done.' }, (p) => reply(p, { reply: 'Now test it' }));
+    expect(pending).toMatchObject({ kind: 'stop', last: 'Done.' });
+    expect(JSON.parse(out)).toEqual({ decision: 'block', reason: expect.stringMatching(/Now test it$/) });
+  });
+
+  it('hands over a reply queued while the session was idle, without waiting', async () => {
+    switchOn();
+    mkdirSync(path.join(dir, 'replies'));
+    writeFileSync(path.join(dir, 'replies', `${ID}.json`), JSON.stringify({ text: 'Queued words' }));
+    const { out, pending } = await run({ hook_event_name: 'Stop' });
+    expect(pending).toBeNull();
+    expect(JSON.parse(out).reason).toMatch(/Queued words$/);
+    expect(existsSync(path.join(dir, 'replies', `${ID}.json`))).toBe(false);
+  });
+
+  it('never blocks on a broken on.json', async () => {
+    writeFileSync(path.join(dir, 'on.json'), '{not json');
+    expect((await run({ hook_event_name: 'Stop' })).out).toBe('');
+  });
+});

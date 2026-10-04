@@ -59,7 +59,7 @@ The once-per-round signature move a fighter can use at 25% HP or less.
 
 **Recall**:
 The disarmed ultimate's re-arm: a power-up whose burst returns the weapon to the fighter's hands and blasts a nearby opponent away and down.
-_Avoid_: Summon, pick-up (that is walking to the dropped weapon)
+_Avoid_: Summon, pick-up (that is pulling the dropped weapon out of the ground)
 
 ## Hits
 
@@ -79,11 +79,35 @@ _Avoid_: Timing (on its own), speed
 The range of frame data an attack is allowed, set by design. An attack's clip is edited until it lands inside its band.
 _Avoid_: Window (that's the parry's), target frames
 
+**Move kind**:
+The row of the timing and distance band tables a move belongs to, such as a string light, a string heavy, an Iai follow-up or a sprint heavy. A move has one kind wherever it is played from.
+_Avoid_: Slot (that's where a move is played from), move type (that's slash, thrust, sweep and the rest)
+
 **Distance band**:
 The range of duelling distances a weapon's attacks must connect from, set by design. A clip that falls short is re-keyed, never slid.
 
+**Marker**:
+A named frame on a clip that the frame data are generated from: the active frames' start and end, the dodge-cancel window, a branch point, a foot plant or lift, and on some clips a ready or kill frame. Markers are set on the Animation Studio's timeline.
+_Avoid_: Keyframe (that's an animation key), tag
+
+**Branch point**:
+A marker on an attack's clip where the body can plausibly break off into a follow-up. The follow-up starts there instead of waiting for the attack to end. Dodge cancels open at markers of their own.
+_Avoid_: Cancel frame (for the follow-up's start), chain point
+
+**Inertial blending**:
+How one motion hands over to the next: the new clip starts at once, and what is left of the old pose fades out over a few frames. It changes only the picture.
+_Avoid_: Crossfade (that was the fixed-length blend it replaces)
+
+**Transition clip**:
+A short authored clip that bridges two motions, such as a return to guard, a bridge between the hits of a string, a run stop or a pivot. It plays on top of inertial blending, so the hand-off looks keyed rather than computed.
+_Avoid_: Blend (that's the computed part)
+
+**Physical reaction layer**:
+A picture-only layer on the spine, head and arms that pushes the pose from where and how hard a hit landed, so no two hits look alike. The rules never read it.
+_Avoid_: Ragdoll, physics (on their own)
+
 **Protected timing**:
-A defensive timing the rules set and every clip that shows it must fit: the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases.
+A defensive timing the rules set and every clip that shows it must fit: the parry window, the input buffer, the dodge and backstep, hitstun, blockstun, hit-stop and the knockdown phases, and also the stuns the counters buy, the disarm's stagger and the disarmed fighter's daze, and the parry recoil.
 _Avoid_: Fixed frames, hard-coded timing
 
 **Hurt capsule**:
@@ -171,11 +195,46 @@ _Avoid_: Portal (in docs)
 **Match intro**:
 The skippable sequence before the first round in which each fighter walks out of their gate and performs their intro.
 
+**Warrior Slain**:
+The call for every KO that ends a round, finishers included, shown with the brushed kanji 討死 ("fallen in battle"). A double KO keeps its own call.
+_Avoid_: K.O. (the old call), ippon
+
+**Cinematic shot**:
+An authored camera shot, with its own path, lens and camera effects, that takes over from the gameplay camera for a moment: an ultimate once it connects, a finisher, the KO that wins the match. A **push-in** is smaller: the gameplay camera moves briefly closer, as on a parry, a Flash, a redirect or an ultimate's wind-up.
+_Avoid_: Cutscene, replay
+
+**Blood setting**:
+The player's choice of On (blood on hits, and a finisher can cut the opponent apart), Reduced (finishers show the cut with less blood and the body stays whole) or Off (no blood). It changes only the picture.
+_Avoid_: Gore setting, violence filter
+
 ## Making the game
 
 **Milestone**:
 A sign-off point where the owner plays the work so far and judges it against the quality bar. Bringing the existing content to final quality has two.
 _Avoid_: Gate (that's the portal), checkpoint
+
+**Move family**:
+A group of moves and the clips that go with them (their deflect pairs, reactions, sounds and effects) brought to final quality together and reviewed by the owner as one, such as the Katana's light string. The first one, which proves the pipeline and the bar, is the **pilot family**.
+_Avoid_: Batch, move set (that's a weapon's whole list)
+
+**Mood board**:
+The page of reference images, colours, a UI page and notes the owner approves before anything converts to the realistic look.
+
+**Look test**:
+The test scene, one fighter with the Katana in a corner of the Moonlit Shrine at Ultra on the RTX 3090, that settles the look, the lighting and the camera effects after the mood board and before the art converts.
+_Avoid_: Vertical slice, demo scene
+
+**Balance run**:
+A long run of computer-against-computer matches whose numbers (round length, disarms, finishers, which moves appear) must come out inside a milestone's targets.
+_Avoid_: Soak (that's the tool that plays it; a soak can also just check for failures)
+
+**Stand-in**:
+A labelled placeholder (a CC0 clip, a code-built model) that a clone or CI build without the asset repository plays in place of the real asset.
+_Avoid_: Fallback (outside code), dummy (that's Training's opponent)
+
+**Procedural pose**:
+A pose made in code rather than played from a clip, such as the demo's stick poses, the swing player, the weapon-hold idles and the demo swings, which posed the weapon in space before every state had a clip. Milestone 1 retires them.
+_Avoid_: Stand-in (that's a labelled placeholder asset)
 
 **Reference preset**:
 The graphics preset every look is judged at: Ultra, on an RTX 3090.
@@ -187,7 +246,7 @@ _Avoid_: Asset store (that's Unity's shop), asset pack
 ## Tools
 
 **Animation Studio**:
-The dev tool for looking at and refining animations: a gallery of every animation, an editor and a chat panel.
+The dev tool for looking at animations and setting their markers: a gallery of every animation, a timeline with each move's frame data against its timing band, the markers, and the chains of clips a move plays. Saving regenerates the frame data. Bone posing happens in Blender.
 
 **Corrective**:
 Per-bone rotation offsets keyed on top of a clip, shared by both bodies or overridden for one, and baked into the swing.

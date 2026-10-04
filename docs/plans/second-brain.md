@@ -15,7 +15,7 @@ Each task is finished, tested (`npm test`, `npm run typecheck`), committed and p
 - [x] **SB.3 Sources and `npm run brain`.** `sources.mjs` with `fsSource(dir)` and `gitSource(repo, ref)`; `build.mjs` writes `brain/generated/`; `brain/generated/` git-ignored; `npm run brain` script.
   - Check: `fsSource` and `gitSource('HEAD')` list and read the same tracked doc; `npm run brain` writes notes and a rerun changes nothing.
   - Blocked by: SB.2.
-- [ ] **SB.4 Hand-written notes.** `brain/Home.md` and the concept notes: weapons (Katana, Greatsword, Twin Daggers, Bare hands, the planned five), fighters, posture, parry, clash, disarm, strings, ultimates, the round and match flow, arenas, modes, the computer opponent, architecture (sim/view split, golden replays, swings), sound, the HUD and menus, the rebuild and its decisions; `.obsidian/app.json` with sensible defaults.
+- [x] **SB.4 Hand-written notes.** `brain/Home.md` and the concept notes: weapons (Katana, Greatsword, Twin Daggers, Bare hands, the planned five), fighters, posture, parry, clash, disarm, strings, ultimates, the round and match flow, arenas, modes, the computer opponent, architecture (sim/view split, golden replays, swings), sound, the HUD and menus, the rebuild and its decisions; `.obsidian/app.json` with sensible defaults.
   - Check: the whole-vault test (real working tree) finds no broken link and no duplicate name.
   - Blocked by: SB.3.
 - [ ] **SB.5 Viewer and standalone server.** `serve.mjs` (`brainHandler`, port 5196) and `viewer.html` with vendored `marked.min.js`: folder tree, search, rendered notes with wikilinks, unresolved links struck through, "Linked from", URL hash navigation, "Open in Obsidian".

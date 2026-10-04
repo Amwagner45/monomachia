@@ -1,0 +1,24 @@
+---
+tags: [game, ui]
+---
+
+# HUD and menus
+
+## HUD
+
+A minimalist fighting-game HUD: HP bars in classic style with the posture bar underneath.
+
+- **Built:** the top bar ([[Task 24]]: plates with the 赤 and 青 seals, HP with a lag band and a low-HP pulse, posture, and round pips) and the announcements in kanji on the rules' frames (round calls, Fight, K.O.).
+- **To come:** toasts for parries, counters and ultimates, button prompts with the last device's key names, and the dropped-weapon marker.
+- The ultimate is shown by a glowing aura around a fighter at 25% HP or less.
+
+## Menus
+
+An ink-wash UI theme with bundled Zen fonts, on a screen stack with keyboard and controller navigation ([[Task 22]]).
+
+- **Built:** the title over a live duel, the main menu, the fighter select (grid, sides, difficulty, arena, lock in and the loadout panel), results with stats, Rematch and Change fighters, Settings, and the Controls binding table.
+- **To come:** the select's 3D preview, rebinding capture and profiles, the move list, How to play, the pause menu, and Versus device pickers.
+
+Most of this is stage 10 of the plan, begun early while the swings were reviewed: [[Stage 10 - While the owner reviews]].
+
+**Sources:** [[Design doc - 5. Visuals, Audio, & UI-UX]] · [[Rebuild plan notes 22-24-screens-modes-hud]] · code in [[game.ui.hud]] and [[game.ui.menus]] · see [[Game modes]]

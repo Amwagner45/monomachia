@@ -55,6 +55,9 @@ extends Node3D
 ##   the legs' walks and runs too, unless the fighter is down.
 ## Moves without a baked swing keep the stand-in poses below.
 ##
+## A roll turns the whole body toward the way it rolls (ClipDirector.Shot.turn,
+## task 30), and back to the opponent over the recovery.
+##
 ## Shadow Step's blink (ClipDirector.blinks()) hides the model and its floor
 ## marks.
 ##
@@ -397,8 +400,10 @@ func _pose(f: Fighter, p: StickPose.Pose, _seconds: float, alpha: float) -> void
 		swing_body.weight = 0.0
 	swing_body.apply(rig.body)
 	rig.clip_feet = 1.0
-	# a sprint held backwards turns the whole body away (task 29)
-	model.rotation = Vector3(0.0, spin + locomotion.shown_away, 0.0)
+	# a sprint held backwards turns the whole body away (task 29), and a roll
+	# toward the way it rolls (task 30)
+	var turn: float = lerp_angle(shot.turn_before, shot.turn, alpha) if shot != null else 0.0
+	model.rotation = Vector3(0.0, spin + locomotion.shown_away + turn, 0.0)
 	# planted feet held where they landed under every clip, the legs' too
 	rig.foot_lock = foot_lock
 	rig.rules_frame = f.world.frame if f.world != null else 0

@@ -164,6 +164,11 @@ const CUES: Dictionary = {
 		"files": ["dodge_cloth_01.wav", "dodge_cloth_02.wav", "dodge_cloth_03.wav"],
 		"volume_db": -12.0, "pitch": Vector2(0.94, 1.08), "bus": BUS_FOLEY, "spatial": true,
 	},
+	# a roll: a cloth tumble and a thump on the stone (authored-animation task 30)
+	&"roll": {
+		"files": ["roll_01.wav", "roll_02.wav", "roll_03.wav"],
+		"volume_db": -10.0, "pitch": Vector2(0.94, 1.06), "bus": BUS_FOLEY, "spatial": true,
+	},
 	&"step_scuff": {
 		"files": ["gen_step_scuff_01.wav", "gen_step_scuff_02.wav"],
 		"volume_db": -13.0, "pitch": Vector2(0.9, 1.1), "bus": BUS_FOLEY, "spatial": true,
@@ -242,7 +247,7 @@ const EVENTS: Dictionary = {
 	&"evade": [], # the dodge that caused it already swished
 	&"disarm": [&"disarm_sting", &"clang_heavy"],
 	&"stagger": [&"stagger"],
-	&"dodge": [&"dodge_swish", &"dodge_cloth"],
+	&"dodge": [&"dodge_swish", &"dodge_cloth"], # a backstep's; a roll's is the roll (cues_for)
 	&"jump": [&"step_scuff"],
 	&"land": [&"land"],
 	&"step": [&"step_scuff"],
@@ -331,6 +336,12 @@ static func cues_for(event: Dictionary) -> Array[Dictionary]:
 					names = [&"parry_redirect"]
 				_:
 					names = [&"parry_contact", &"parry_ring"]
+		&"dodge":
+			# the backstep keeps the dash's whoosh; a roll tumbles (task 30)
+			if bool(_field(event, "back", false)):
+				names = [&"dodge_swish", &"dodge_cloth"]
+			else:
+				names = [&"roll"]
 		&"counter":
 			match str(_field(event, "kind", "")):
 				"stomp":

@@ -67,10 +67,69 @@ extends RefCounted
 ##   StandUp fitted to the knockdown's three phases, and the KO's death
 ##   (KO_CLIPS, by the final blow's side and weight) at 1.0, so the
 ##   final-blow slow motion slows it with the rules;
+## - the roll and the other movement states (task 30; move_clip()): the
+##   roll's Roll01, its tumble over the travel and its getting-up over the
+##   recovery, the body turned toward the roll (Shot.turn; roll_turn()) and
+##   back to the opponent over the recovery or a dodge attack's first
+##   TURN_BACK_FRAMES; the backstep's Dodge01 lean back; jump and land; the
+##   leap; the pick-up; each whole body, without the packs their CC0
+##   fallbacks;
 ## - the crossfades, in rules frames (FADES): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
 ##   the legs, 8 for a stance, 2 into a state's clip (the stomp springs out
 ##   of the dodge), 3 into a raised guard.
+
+## The roll (task 30): Roll01, its tumble (source frames 0 to
+## ROLL_TRAVEL_END, the stretch its root travels, which the rules' roll
+## curve was read from, task 17) over the dodge's travel frames, and its
+## getting-up (the rest of the clip) over the recovery, so the body and the
+## ground agree (the owner's choice, Oct 4: past the 1.0-2.0 range, about
+## 2.75x and 3.8x). Without the packs the CC0 Roll stretched over the dodge.
+const ROLL_CLIP: StringName = &"Roll01"
+const ROLL_TRAVEL_END: float = 22.0
+const ROLL_FALLBACK: StringName = &"Roll"
+## The body turns toward the roll over its first ROLL_TURN_FRAMES (the
+## dodge-cancel's crossfade) and back to the opponent over the recovery, or
+## over a dodge attack's first TURN_BACK_FRAMES.
+const ROLL_TURN_FRAMES: int = 2
+const TURN_BACK_FRAMES: int = 3
+## The backstep (and the evade counter's back-dash, which is the backstep):
+## Dodge01's lean back, its source frames 0 to BACKSTEP_LEAN_END (task 1),
+## over the backstep's travel, then on from there at 2.0 through the
+## recovery as it comes upright. Without the packs the CC0 Roll run
+## backwards over the backstep.
+const BACKSTEP_CLIP: StringName = &"Dodge01"
+const BACKSTEP_LEAN_END: float = 12.0
+## The jump: Jump01_Begin from JUMP_BEGIN_FROM (the crouch before it is
+## skipped: the rules leave the ground on the jump's first frame) at 2.0,
+## then Jump01's airborne frames from JUMP_AIR_FROM at 1.0, held at
+## JUMP_AIR_TO (before its own landing); the landing Jump01_Land from its
+## touch-down, JUMP_LAND_FROM, at 2.0 over the land's frames. Without the
+## packs the CC0 Jump_Start, Jump and Jump_Land.
+const JUMP_BEGIN: StringName = &"Jump01_Begin"
+const JUMP_BEGIN_FROM: float = 5.0
+const JUMP_AIR: StringName = &"Jump01"
+const JUMP_AIR_FROM: float = 14.0
+const JUMP_AIR_TO: float = 28.0
+const JUMP_LAND: StringName = &"Jump01_Land"
+const JUMP_LAND_FROM: float = 3.0
+const JUMP_FALLBACKS: Dictionary[StringName, StringName] = {&"begin": &"Jump_Start", &"air": &"Jump", &"land": &"Jump_Land"}
+## The leap off a sweep (32 frames: up onto the attacker's shoulders over
+## LEAP_SPRING, then the arc down): Jump01_Begin from JUMP_BEGIN_FROM over the
+## spring, then Fall01 looped. Without the packs NinjaJump_Start stretched
+## over it.
+const LEAP_SPRING: int = 10
+const LEAP_FALL: StringName = &"Fall01"
+const LEAP_FALLBACK: StringName = &"NinjaJump_Start"
+## The pick-up (SimConst.PICKUP_FRAMES, the weapon in hand on
+## SimConst.PICKUP_ATTACH_FRAME): Loot01_Begin from PICKUP_FROM at 2.0,
+## reaching the ground as the weapon comes to the hand, then Loot01_Stop
+## rising over the rest. Without the packs the CC0 PickUp_Table stretched
+## over it.
+const PICKUP_BEGIN: StringName = &"Loot01_Begin"
+const PICKUP_STOP: StringName = &"Loot01_Stop"
+const PICKUP_FROM: float = 4.0
+const PICKUP_FALLBACK: StringName = &"PickUp_Table"
 
 ## The crossfades' lengths, in rules frames.
 ## The Daggers turn back into the reverse grip over an attack's last this
@@ -282,6 +341,12 @@ class Shot:
 	## attack began (task 21).
 	var grip: float = 1.0
 	var grip_from: float = 1.0
+	## How far the body is turned from facing the opponent (radians, + to its
+	## left; the roll's, task 30), at this frame and the frame before, and
+	## where it stood as a dodge attack began.
+	var turn: float = 0.0
+	var turn_before: float = 0.0
+	var turn_from: float = 0.0
 
 	## How far the crossfade is in (0 to 1, smoothed): the share of the new
 	## drive over what it fades in from.
@@ -348,6 +413,11 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	else:
 		playing = state_clip(f, ctx)
 		if playing == null:
+			var moving: Array = move_clip(f, ctx)
+			if not moving.is_empty():
+				playing = moving[0]
+				phase = moving[1]
+		if playing == null:
 			playing = down_clip(f, ctx)
 			if playing != null:
 				phase = f.knockdown_phase() if f.state == &"knockdown" else &"ko"
@@ -385,6 +455,9 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 		out.upper = drive == STATE and UPPER_REACTIONS.has(phase)
 		out.grip_from = 1.0
 		out.grip = _grip(out, f)
+		out.turn = roll_turn(f)
+		out.turn_before = out.turn
+		out.turn_from = 0.0
 		return out
 	var changed: bool = drive != prev.drive or (drive == ATTACK and f.atk != prev.attack) 		or (phase != &"" and prev.phase != &"" and phase != prev.phase)
 	if changed:
@@ -415,6 +488,15 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 	out.state = f.state
 	out.phase = phase
 	out.grip = _grip(out, f)
+	out.turn_before = prev.turn
+	if drive == ATTACK and f.atk != null and changed and prev.state == &"dodge":
+		# a dodge attack turns back to the opponent from where the roll stood
+		out.turn_from = prev.turn
+	elif changed or drive != ATTACK:
+		out.turn_from = 0.0
+	out.turn = roll_turn(f)
+	if drive == ATTACK and f.atk != null and out.turn_from != 0.0:
+		out.turn = out.turn_from * (1.0 - smoothstep(0.0, 1.0, float(f.atk.frame) / float(TURN_BACK_FRAMES)))
 	return out
 
 
@@ -433,6 +515,122 @@ static func state_clip(f: Fighter, ctx: Context) -> Clip:
 		return null
 	var share: float = clampf(float(f.sf) / float(maxi(1, f.state_dur)), 0.0, 1.0)
 	return Clip.make(anim_name, share * length)
+
+
+## How far fighter `f`'s body is turned toward its roll (radians, + to its
+## left; task 30): in a roll (not the backstep), the roll's way from the way
+## it faces, turned in over ROLL_TURN_FRAMES and back over the recovery; 0
+## otherwise.
+static func roll_turn(f: Fighter) -> float:
+	if f.state != &"dodge" or f.dodge == null:
+		return 0.0
+	var dg: DodgeState = f.dodge
+	var way: float = wrapf(atan2(dg.dir_x, dg.dir_z) - f.yaw, -PI, PI)
+	var sf: float = float(f.sf)
+	var share: float = smoothstep(0.0, 1.0, sf / float(ROLL_TURN_FRAMES))
+	if f.sf > dg.frames:
+		share = 1.0 - smoothstep(0.0, 1.0, (sf - float(dg.frames)) / float(maxi(1, dg.recovery)))
+	return way * share
+
+
+## The clip of `f`'s movement state (task 30) and its phase, as
+## [Clip, phase], or [] when it isn't in one or the clip isn't in the tree:
+## the roll, the backstep, the jump (its take-off, then in the air), the
+## land, the leap (its spring, then the fall) and the pick-up (its reach,
+## then the rise). Without the packs, each fallback stretched over its
+## state (looped in the air).
+static func move_clip(f: Fighter, ctx: Context) -> Array:
+	var src: float = float(ClipManifest.SOURCE_FPS)
+	var fps: float = float(SimConst.FPS)
+	var sf: float = float(f.sf)
+	var id: StringName = &""
+	var fallback: StringName = &""
+	var phase: StringName = f.state
+	# the time (source frames) with the packs; without, the share of the
+	# fallback (or < 0 to loop it)
+	var source: float = 0.0
+	var share: float = 0.0
+	match f.state:
+		&"dodge":
+			if f.dodge == null:
+				return []
+			var travel: float = float(f.dodge.frames)
+			id = ROLL_CLIP
+			fallback = ROLL_FALLBACK
+			share = sf / (travel + float(f.dodge.recovery))
+			if sf <= travel:
+				source = ROLL_TRAVEL_END * sf / travel
+			else:
+				var end: float = _length(ctx, ROLL_CLIP) * src
+				source = lerpf(ROLL_TRAVEL_END, end, (sf - travel) / float(maxi(1, f.dodge.recovery)))
+		&"backstep":
+			if f.dodge == null:
+				return []
+			var travel: float = float(f.dodge.frames)
+			id = BACKSTEP_CLIP
+			fallback = ROLL_FALLBACK
+			share = 1.0 - sf / (travel + float(f.dodge.recovery))
+			source = BACKSTEP_LEAN_END * minf(1.0, sf / travel) + maxf(0.0, sf - travel) * 2.0 * src / fps
+		&"jump":
+			var begin_frames: float = maxf(1.0, (_length(ctx, JUMP_BEGIN) * src - JUMP_BEGIN_FROM) * fps / (2.0 * src))
+			if not ctx.libraries:
+				begin_frames = 8.0
+			if sf < begin_frames:
+				id = JUMP_BEGIN
+				fallback = JUMP_FALLBACKS[&"begin"]
+				phase = &"jump_begin"
+				source = JUMP_BEGIN_FROM + sf * 2.0 * src / fps
+				share = sf / begin_frames
+			else:
+				id = JUMP_AIR
+				fallback = JUMP_FALLBACKS[&"air"]
+				phase = &"jump_air"
+				source = minf(JUMP_AIR_TO, JUMP_AIR_FROM + (sf - begin_frames) * src / fps)
+				share = -1.0
+		&"land":
+			if f.blocking:
+				return []
+			id = JUMP_LAND
+			fallback = JUMP_FALLBACKS[&"land"]
+			source = JUMP_LAND_FROM + sf * 2.0 * src / fps
+			share = sf / float(maxi(1, f.state_dur))
+		&"leap":
+			id = JUMP_BEGIN
+			fallback = LEAP_FALLBACK
+			phase = &"leap_spring"
+			source = JUMP_BEGIN_FROM + sf * 2.0 * src / fps
+			share = sf / float(maxi(1, f.state_dur))
+			if sf >= float(LEAP_SPRING) and ctx.libraries:
+				id = LEAP_FALL
+				phase = &"leap_fall"
+				source = fmod((sf - float(LEAP_SPRING)) * src / fps, maxf(1.0, _length(ctx, LEAP_FALL) * src))
+		&"pickup":
+			var grab: int = SimConst.PICKUP_ATTACH_FRAME
+			id = PICKUP_BEGIN
+			fallback = PICKUP_FALLBACK
+			source = PICKUP_FROM + sf * 2.0 * src / fps
+			share = sf / float(maxi(1, f.state_dur))
+			if f.sf > grab and ctx.libraries:
+				id = PICKUP_STOP
+				phase = &"pickup_rise"
+				source = fitted_time(f.sf - grab, maxi(1, f.state_dur - grab), _length(ctx, PICKUP_STOP)) * src
+		_:
+			return []
+	var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, fallback]
+	if ctx.libraries:
+		anim_name = ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), id)
+	var length: float = ctx.lengths.get(anim_name, 0.0)
+	if length <= 0.0:
+		return []
+	if not ctx.libraries:
+		var at: float = clampf(share, 0.0, 1.0) * length if share >= 0.0 else fmod(sf / fps, length)
+		return [Clip.make(anim_name, at), phase]
+	return [Clip.make(anim_name, clampf(source / src, 0.0, length)), phase]
+
+
+## Clip `id`'s length (s) in the fighter's own set, or 0.
+static func _length(ctx: Context, id: StringName) -> float:
+	return ctx.lengths.get(ClipChain.anim_name(ClipLibraries.set_for(ctx.fighter_id), id), 0.0)
 
 
 ## The reaction `f`'s state plays (task 26): &"guard" (a held block, in a

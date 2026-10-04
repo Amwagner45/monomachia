@@ -279,7 +279,10 @@ func test_a_hit_plays_from_a_3d_voice_at_its_contact_point() -> void:
 func test_a_dodge_plays_at_the_dodging_fighter() -> void:
 	var log := _record_places()
 	_fought()
+	# a roll tumbles (authored-animation task 30); a backstep keeps the swish
 	host.sim_event.emit({"t": &"dodge", "f": 1, "back": false})
+	assert_almost_eq(_at(log, &"roll"), _chest(1), Vector3.ONE * 1e-4)
+	host.sim_event.emit({"t": &"dodge", "f": 1, "back": true})
 	assert_almost_eq(_at(log, &"dodge_swish"), _chest(1), Vector3.ONE * 1e-4)
 	assert_almost_eq(_at(log, &"dodge_cloth"), _chest(1), Vector3.ONE * 1e-4)
 

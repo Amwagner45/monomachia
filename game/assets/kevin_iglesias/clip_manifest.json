@@ -921,6 +921,23 @@
 				"states"
 			]
 		},
+		"Loot01_Stop": {
+			"pack": "Human Basic Motions",
+			"dir": "Misc/Loot",
+			"source": "Loot01 - Stop",
+			"mirror": false,
+			"loop": false,
+			"markers": {
+				"windup": 0,
+				"contact": 4,
+				"contact_end": 16,
+				"settle": 24
+			},
+			"provisional": true,
+			"groups": [
+				"states"
+			]
+		},
 		"ObjectGripShoulder01_R": {
 			"pack": "Human Crafting Animations",
 			"dir": "Masked Poses",

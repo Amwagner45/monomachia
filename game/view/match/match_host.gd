@@ -48,7 +48,8 @@ extends Node
 ## the refill off and on; every match starts with it on.
 ## set_training_behaviour() tells the dummy what to do, swapping its weapon
 ## in the rules first when it can't (TrainingUpkeep.weapon_for), and
-## loadout_changed tells the view and the HUD. Versus samples two
+## loadout_changed tells the view and the HUD; training_changed tells
+## Training's panel and pause rows of any change to the behaviour or refill. Versus samples two
 ## humans on two different devices.
 
 ## The match was (re)started from a config: views rebuild from it.
@@ -65,6 +66,9 @@ signal stopped
 ## A side's weapon changed mid-match (the training dummy's, for a behaviour):
 ## views re-read fighter(side).weapon.
 signal loadout_changed(side: int)
+## Training's dummy behaviour or refill changed (set_training_behaviour,
+## set_refill).
+signal training_changed
 
 const DT: float = SimConst.DT
 const MAX_STEPS_PER_FRAME: int = 6
@@ -384,6 +388,7 @@ func set_training_behaviour(behaviour: StringName) -> void:
 	b.set_behaviour(behaviour)
 	if swapped:
 		loadout_changed.emit(_upkeep.dummy)
+	training_changed.emit()
 
 
 func _dummy_brain() -> TrainingBrain:
@@ -396,6 +401,7 @@ func _dummy_brain() -> TrainingBrain:
 func set_refill(on: bool) -> void:
 	if _upkeep != null:
 		_upkeep.refill = on
+		training_changed.emit()
 
 
 func results() -> MatchResults:

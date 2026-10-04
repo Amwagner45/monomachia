@@ -1,6 +1,7 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
-## title -> main menu (Duel, Watch, How to play, Controls, Settings, Quit)
+## title -> main menu (Duel, Training, Watch, How to play, Controls, Settings,
+## Quit)
 ## -> the fighter select (Duel and Watch) -> a match -> results (Rematch,
 ## Change fighters, Main menu), with a pause menu during play (PauseScreen:
 ## Resume, Move list, Controls, Settings, Restart, Quit to menu), which Back,
@@ -69,6 +70,7 @@ func _ready() -> void:
 	main_menu = MainMenu.new()
 	main_menu.name = "MainMenu"
 	main_menu.add_button("Duel", "vs computer", open_select.bind(MatchConfig.DUEL))
+	main_menu.add_button("Training", "parries and counters", open_select.bind(MatchConfig.TRAINING))
 	main_menu.add_button("Watch", "computer vs computer", open_select.bind(MatchConfig.WATCH))
 	main_menu.add_button("How to play", "rules and move lists", show_how_to_play)
 	main_menu.add_button("Controls", "keys and buttons", show_controls)
@@ -84,6 +86,8 @@ func _ready() -> void:
 	pause_menu.settings.connect(show_settings)
 	pause_menu.restart.connect(restart)
 	pause_menu.quit_to_menu.connect(quit_to_menu)
+	pause_menu.dummy_behaviour.connect(func(b: StringName) -> void: host.set_training_behaviour(b))
+	pause_menu.refill_set.connect(func(on: bool) -> void: host.set_refill(on))
 	ui.add_child(pause_menu)
 
 	results_screen = ResultsScreen.new()
@@ -114,6 +118,7 @@ func _ready() -> void:
 	host.match_finished.connect(_on_match_finished)
 	host.pause_changed.connect(_on_pause_changed)
 	host.sim_event.connect(_on_sim_event)
+	host.training_changed.connect(_show_pause_training)
 	# the attract restarts draw from the same seed sequence as the matches
 	host.seed_source = _next_seed
 	start_attract()
@@ -298,10 +303,18 @@ func quit_game() -> void:
 
 func _on_pause_changed(paused: bool) -> void:
 	if paused:
+		_show_pause_training()
 		stack.reset([pause_menu] as Array[MenuPage])
 	elif screen == Screen.PAUSED:
 		stack.clear()
 		screen = Screen.PLAYING
+
+
+## The pause's Training rows follow the dummy's behaviour and the refill
+## (shown only in Training).
+func _show_pause_training() -> void:
+	var b: StringName = host.training_behaviour() if host.is_started() else &""
+	pause_menu.show_training(b != &"", b if b != &"" else &"idle", host.refill())
 
 
 func _on_match_finished(results: MatchResults) -> void:

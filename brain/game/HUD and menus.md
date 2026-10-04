@@ -9,6 +9,7 @@ tags: [game, ui]
 A minimalist fighting-game HUD: HP bars in classic style with the posture bar underneath.
 
 - **Built:** the top bar ([[Task 24]]: plates with the 赤 and 青 seals, HP with a lag band and a low-HP pulse, posture, and round pips) and the announcements in kanji on the rules' frames (round calls, Fight, K.O.).
+- **Built in Training:** the panel at the bottom left with the dummy's behaviour chips and refill.
 - **To come:** toasts for parries, counters and ultimates, button prompts with the last device's key names, and the dropped-weapon marker.
 - The ultimate is shown by a glowing aura around a fighter at 25% HP or less.
 

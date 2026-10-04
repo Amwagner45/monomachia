@@ -9,7 +9,7 @@ tags: [game]
 - **Watch:** two computer fighters duel, filmed side-on. It's handy for learning the moves and for automated tests.
 - **Versus:** two players on one PC in split screen, each picking a device (keyboard and mouse, a controller, or the arrow-key layout).
 
-The demo added Training, Watch and Versus, and the design keeps them. In the rebuild they come through the fighter select ([[Task 23]]), after the menus ([[Task 22]]).
+The demo added Training, Watch and Versus, and the design keeps them. In the rebuild they come through the fighter select ([[Task 23]]), after the menus ([[Task 22]]). Training is on the main menu: the dummy picks a fighter and a weapon, and in the match a panel at the bottom left (keys 1–9 and 0, or clicks) or the pause menu's two rows choose its behaviour and the refill. The dummy swaps weapons when its own can't do the chosen drill, and gets up, refills and re-arms by itself.
 
 ## The road to a match
 

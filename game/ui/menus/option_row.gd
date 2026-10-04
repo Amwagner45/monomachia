@@ -20,6 +20,9 @@ var seg: HBoxContainer
 ## turns them into cards).
 var chip_style: StringName = UiTheme.OPTION
 var chip_on_style: StringName = UiTheme.OPTION_ON
+## Shows only the chosen option, between arrows (show_only_chosen()), for a
+## long list in a narrow panel.
+var only_chosen: bool = false
 
 
 func _init(p_title: String, options: Array[String], p_index: int = 0) -> void:
@@ -66,6 +69,31 @@ func set_index(i: int) -> void:
 	index = clampi(i, 0, chips.size() - 1)
 	for c: int in chips.size():
 		chips[c].theme_type_variation = chip_on_style if c == index else chip_style
+		if only_chosen:
+			chips[c].visible = c == index
+
+
+## Shows only the chosen option, between a ‹ and a › that step it (as left
+## and right do), so a long list fits a narrow panel.
+func show_only_chosen() -> void:
+	if only_chosen:
+		return
+	only_chosen = true
+	for pair: Array in [["‹", -1, 0], ["›", 1, -1]]:
+		var arrow: Button = Button.new()
+		arrow.name = "Prev" if int(pair[1]) < 0 else "Next"
+		arrow.text = pair[0]
+		arrow.flat = true
+		arrow.focus_mode = Control.FOCUS_NONE
+		arrow.pressed.connect(func() -> void:
+			if not has_focus():
+				grab_focus()
+			if nav_step(int(pair[1])):
+				GameServices.play_ui(&"ui_move"))
+		seg.add_child(arrow)
+		if int(pair[2]) == 0:
+			seg.move_child(arrow, 0)
+	set_index(index)
 
 
 ## Shows the options as cards (UiTheme.CARD, the chosen one CARD_ON) of

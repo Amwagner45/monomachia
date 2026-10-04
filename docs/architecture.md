@@ -667,7 +667,7 @@ flowchart LR
 
 | File | Class | What it does |
 | --- | --- | --- |
-| `match_host.gd` | `MatchHost` | The fixed-step loop (section 5). Signals: `match_started`, `sim_event`, `stepped`, `match_finished`, `pause_changed`, `stopped`, `loadout_changed` (the training dummy swapped weapons; the view and the HUD's plate follow). |
+| `match_host.gd` | `MatchHost` | The fixed-step loop (section 5). Signals: `match_started`, `sim_event`, `stepped`, `match_finished`, `pause_changed`, `stopped`, `loadout_changed` (the training dummy swapped weapons; the view and the HUD's plate follow), `training_changed` (the dummy's behaviour or the refill changed). |
 | `match_view.gd` | `MatchView` | Loads the arena, builds the two `FighterView`s, draws dropped weapons and contact flashes, drives the camera. Reacts to events with shake, FOV kick and the KO orbit. |
 | `camera_rig.gd` | `CameraRig` | FOLLOW (over the shoulder), WATCH (side-on) and MENU (orbit) cameras with damping, arena clamp, shake and FOV kick. |
 | `match_audio.gd` | `MatchAudio` | Event sounds, footsteps, arena ambience; the listener follows the camera. |
@@ -825,6 +825,7 @@ stateDiagram-v2
     MENU --> TITLE : back
     MENU --> PLAYING : Duel (Rogue + Katana vs Hunter + Greatsword)
     MENU --> PLAYING : Watch (Katana vs Daggers)
+    MENU --> PLAYING : Training (through the select)
     MENU --> [*] : Quit
     PLAYING --> PAUSED : pause binding, Esc, Start, focus lost
     PAUSED --> PLAYING : Resume, Back
@@ -842,9 +843,10 @@ stateDiagram-v2
 | `scenes/smoke_run.gd` | `SmokeRun` | `--smoke`: plays Watch to the results, exits 0 or 1. |
 | `ui/menus/menu_screen.gd` | `MenuScreen` | A generic menu panel with keyboard, mouse and controller navigation. |
 | `ui/menus/title_screen.gd` | `TitleScreen` | "Press any key". |
-| `ui/menus/pause_screen.gd` | `PauseScreen` | 休止 Paused: Resume, Move list, Controls, Settings, Restart, Quit to menu. |
+| `ui/menus/pause_screen.gd` | `PauseScreen` | 休止 Paused: Resume, Move list, Controls, Settings, Restart, Quit to menu; in Training, Dummy and Refill health rows above them. |
 | `ui/menus/results_screen.gd` | `ResultsScreen` | Winner, rounds, seven stats, Rematch and Main menu. |
-| `ui/hud/match_hud.gd/.tscn` | `MatchHud` | HP and posture bars, round pips, ultimate badge, announcements timed on rules steps, button hints. Hidden in the attract duel. |
+| `ui/hud/match_hud.gd/.tscn` | `MatchHud` | HP and posture bars, round pips, ultimate badge, announcements timed on rules steps, button hints, and in Training the `TrainingPanel`. Hidden in the attract duel. |
+| `ui/hud/training_panel.gd` | `TrainingPanel` | Training's panel at the bottom left: "Dummy · <weapon>", the nine behaviour chips (keys 1–9) and refill (key 0), clicks too; a digit bound in the player's profile is left to its action. Follows `MatchHost.training_changed` and `loadout_changed`; hidden while paused. |
 | `ui/hud/hud_bar.gd` | `HudBar` | A meter with a lagging band. |
 
 ## 14. The web demo (`src/`)

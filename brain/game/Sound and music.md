@@ -9,6 +9,7 @@ tags: [game, audio]
 - Clangs when weapons meet, and a satisfying metal ring unique to parries.
 - Slicing-flesh sounds when blades connect, and bone-and-rock crunches when colossal weapons land.
 - Each fighter's movement has its own sound, such as the Skeleton Knight's rattling bones, and footsteps fall where the feet come down.
+- **KO (Oct 4):** the final hit's impact rings out as the slow motion drains the arena's sound and the music, then a deep drum lands under the Warrior Slain call.
 - The best of the Sonniss bundle (clangs, swings, gore, ice cracks, wind, water, UI), trimmed and converted, plus generated sound for what it lacks: taiko, gong, the parry ring layer, footsteps and bone-crunch layers. Raw Sonniss files are never committed.
 
 ## Music

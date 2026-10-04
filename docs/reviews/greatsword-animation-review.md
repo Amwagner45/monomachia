@@ -14,6 +14,8 @@ Every Greatsword move now animates from a clip, and its hits are decided by the 
 
 ## Decisions for you
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Decision 1 is answered: the rules-authored lunges and the reach push retire, and a clip that falls short of the weapon's distance band is re-keyed with a longer step or reach, never slid. Decision 4's tuning change against the baseline gives way to a rebalance of each weapon as its animation lands, and the ±5-point rule retires.
+
 1. **The lunges, again.** As with the Katana, the clips reach less far than the demo's cones, and the spec's answer is a longer lunge in the rules. With its long blade the Greatsword needed less on its string (Heavy Swing 0.4 → 0.45 m), but much more on the moves whose test distances are long: Shoulder Charge 2.2 → 3.35 m (its shoulder gets 0.65 m ahead and its test distance is 4.5 m, which even its cone didn't reach), Reaping Sweep 0.3 → 1.65, Mountain Slam 0.6 → 1.35. The Katana's question (decision 1 of its review) is still open; the Greatsword followed the same rule meanwhile. **Recommended: keep them for now and judge them in play, with the Katana's.**
 2. **The clip table changed where the probe showed the named clips don't match their moves**, as it did for the Katana: Attack2H01 is the diagonal from the right shoulder (Heavy Swing) and Attack2H02 the straight overhead (Overhead Strike), the reverse of the table. No two-handed clip cuts left to right, so Backswing is Attack2H01 mirrored, the only mirrored clip so far. Reaping Sweep plays AttackPolearm04 (a whole-body spin, newly added to the manifest) so it reads apart from Low Sweep, and Mountain Slam AttackPolearm03 so it reads apart from Leaping Smash. Rising Edge and Aerial Chop use Kevin's clips where the table named UAL2 ones (side-on and short, or too short to fill the move). Impaler draws back, thrusts and holds on AttackPolearm01 instead of Sprint01 into AttackPolearm03 (Sprint01 swings the arms free through the dash, and Polearm03 is an overhead). **Recommended: keep the new fits.**
 3. **Overhead Strike's recovery is 3 frames shorter** (32 → 29): Attack2H02 runs out before the old recovery ends, and stretching it slower would push its startup off. Every other move keeps its frames. **Recommended: accept.**
@@ -81,6 +83,8 @@ As for the Katana (its table holds for the Greatsword too, with these difference
 | Condition 7: keyed or mocap clips for ultimates | Impaler plays from a clip |
 
 ## The soak
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The target of staying within ±5 points of the baseline retires. Every weapon is rebalanced around its clips as its animation lands.
 
 A 300-match `soak:tune` with every Katana and Greatsword move on its clip (Oct 3), against the baseline before any rules change (task 3):
 

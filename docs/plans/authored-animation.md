@@ -2,6 +2,8 @@
 
 Spec: `docs/specs/authored-animation.md` · branch `feature/authored-animation` · draft pull request #12 (into `feature/godot-rebuild`)
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This plan closes after task 30b (the recall's power-up burst, added beside tasks 29 and 30 on `lane/aa-29-30-31`), and its timing fit, rules-authored lunges, short crossfades and ±5-point soak rule are superseded. Task 31 isn't run under the old bar, tasks 32–35 (draws, victories, retiring the stand-ins) move into the slice spec, and task 36 retires.
+
 ## Destination
 
 Every fighter animates from authored clips. The attacks come from Kevin Iglesias's packs, with UAL2 Source filling the gaps, retargeted onto the Rogue and the Hunter. Hits are decided by paths baked from those same clips, and every move's frame data is retuned to its clip. The dodge is a roll, big hits knock the defender down, the Greatsword rides on the shoulder, and each weapon has a draw and a victory pose. The procedural swings, the guard shuffle, the hip-turn, the lean and the stick poses are gone. A fresh clone without the packs plays the committed CC0 fallback clips and says so. The rules still decide everything at 60 steps a second and never read a clip.
@@ -47,15 +49,20 @@ Every fighter animates from authored clips. The attacks come from Kevin Iglesias
 - The Greatsword's recovery slide keeps running along the facing; the retired 7.24 would have taken its direction from the follow-through.
 - The counters (stomp, leap, evade) keep their demo cones; the retired 7.37 would have measured them from the paths.
 - Story 42, the email to Kevin Iglesias, is drafted in the spec's Licence section; the owner sends it. Until he answers, the baked paths are committed.
+  - Superseded by ADR 0001 (Oct 4): no request is sent to Kevin Iglesias. The numbers measured from his clips (frame data, hit paths, travel) stay committed, with each move's source clip recorded.
 - **Task 1 passed** (Oct 3). The owner chose foot locking under every clip, not just locomotion: task 8 builds it, and task 29 reuses it.
 - **Pacing** (owner, Oct 3): tasks run back to back with no OK between them, each still ending with its checks, a commit and a push; work stops only at the hard gates (5, 14, 20, 23, 25, 31, 36).
 - The merge of `origin/feature/godot-rebuild` (PR #11) into this branch was done at the start of task 1, on the owner's go-ahead (Oct 3).
 - **The catalogue passed** (Oct 3, task 5's gate): the first candidates stand, so task 9 starts. The `add-3d-references-530c11` worktree was removed on the owner's OK (its branch was already merged).
 - The Rogue's 5 cm drift is measured on her own body, HumanF against HumanM (task 7; the owner kept it on Oct 3): measured against the Hunter's path, every move tried was 7–12 cm off from her smaller body alone, which her hand IK closes anyway, so every move would have played HumanM.
 - **The Katana's gate** (task 14): the owner closed the gate questions without answering, then set a goal of finishing the next four tasks (Oct 3). That was taken as the go-ahead for the Greatsword (task 18 on). The review's open questions stand: the longer lunges (the Greatsword's follow the same rule meanwhile) and the PoseCheck exemption for clip frames.
+  - Superseded by ADR 0001 (Oct 4): rules-authored lunges retire, which answers the lunge question; a clip that falls short of its weapon's distance band is re-keyed with a longer step or reach, never slid. The ADR leaves the PoseCheck question as it was.
 - **The Greatsword passed** (Oct 3, task 20's gate): task 21 starts. Its win rate (39.1% against its 46.1% baseline, the shoulder lift's and knockdown's cost) is taken as its own small tuning change after the Daggers, measured on 300-match runs (the owner's choice).
+  - Superseded by ADR 0001 (Oct 4): the tuning change against the baseline gives way to a rebalance of each weapon around its clips as its animation lands, and the ±5-point baseline rule retires.
 - **The Daggers passed** (Oct 3, task 23's gate): task 24 starts. The new clip fits and composed clips stand; the lunges wait to be judged in play with the Katana's and Greatsword's; the Daggers' 55.8% (5.4 over their 50.4% baseline) goes into the Greatsword's tuning change after this weapon, measured on 300-match runs (the owner's choice of the review's recommendations).
+  - Superseded by ADR 0001 (Oct 4): rules-authored lunges retire rather than being judged in play, and clips are re-keyed to reach their distance band. The Daggers' win rate goes into the same per-weapon rebalance, not a tuning change against the baseline.
 - **Bare hands passed** (Oct 3, task 25's gate): task 26 starts. All four of the review's recommendations stand: a fist measured by its depth, the new fits (Snap Kick and Axe Kick on the left leg), the knee strike, and Breaker Palm's 2.95 m lunge.
+  - Superseded by ADR 0001 (Oct 4): Breaker Palm's longer rules lunge retires with the others; its clip is re-keyed to reach the distance band instead.
 
 ## Progress
 
@@ -409,6 +416,7 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
   - The guard shuffle, the hip-turn, the reversed cycle and the lean go. Footsteps follow the clips' foot contacts.
   - Check: director tests for the blend weights by direction and speed; planted feet move under 1 cm; strips of running, strafing, backpedalling and sprinting; the footstep tests pass.
   - Blocked by: 28 · Stories: 22, 23, 24
+  - Superseded by ADR 0001 (Oct 4): kept. It is built on `lane/aa-29-30-31` and stays in this plan, which closes after task 30b.
 - [ ] **30. The roll and the other states.**
   - **The roll** plays Roll01 with the body turned toward the roll's direction. The body turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames.
   - **The backstep** plays Dodge01.
@@ -419,11 +427,13 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
     - a sound test that the roll and the backstep play different cues;
     - sheets.
   - Blocked by: 17, 29 · Stories: 13, 25, 28, 29, 30
+  - Superseded by ADR 0001 (Oct 4): kept. It is built on `lane/aa-29-30-31` and stays in this plan, which closes after task 30b.
 - [ ] **31. The reactions and movement review.**
   - Contact sheets and strips of every state on both fighters.
   - A short playtest of the reactions, the roll and the knockdown.
   - **Owner:** OKs reactions and movement. This gates task 32.
   - Blocked by: 30 · Stories: 47
+  - Superseded by ADR 0001 (Oct 4): not run, since this plan closes after task 30b. Reactions and movement are judged instead against the Oct 4 quality bar in `docs/design.md`.
 
 ### Phase I: the round flow
 
@@ -434,14 +444,17 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
   - Bare hands play CombatEnter1H01.
   - Check: director tests for the intro clip by weapon; sheets of each draw; the scene smoke test loads the sheaths.
   - Blocked by: 31 (and the owner's OK) · Stories: 31
+  - Superseded by ADR 0001 (Oct 4): moves into the slice spec; the weapon draws reach final quality in the two milestones (`docs/design.md`, Order of work).
 - [ ] **33. The victory poses from the packs.** The Katana sheathes into the saya (Sheathe Hips01_R) and bows (Reverence01); bare hands cheer (Cheer01).
   - Check: director tests for the victory clip by weapon; sheets.
   - Blocked by: 32 · Stories: 32, 35
+  - Superseded by ADR 0001 (Oct 4): moves into the slice spec; the victory poses reach final quality in the two milestones (`docs/design.md`, Order of work).
 - [ ] **34. The hand-keyed victories.** Both are keyed in Blender on the Quaternius rig, CC0 and committed:
   - the Daggers' toss, flip and catch;
   - the Greatsword planted in the ground, with both hands on the pommel (hand IK locks them to it).
   - Check: the clips are in the committed library; sheets; the art budget holds.
   - Blocked by: 33 · Stories: 33, 34
+  - Superseded by ADR 0001 (Oct 4): moves into the slice spec, with the victory poses. Size budgets per storage place replace the 110 MB art budget its check names.
 
 ### Phase J: finish
 
@@ -454,9 +467,11 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
     - the scene smoke test loads every scene;
     - a 40-match soak is clean.
   - Blocked by: 34 · Stories: 37, 43, 49
+  - Superseded by ADR 0001 (Oct 4): moves into the slice spec (retiring the stand-ins).
 - [ ] **36. The final playtest and the hand-over.**
   - A playtest of cancels, hitstun interrupts, the roll, knockdowns and the shoulder carry.
   - The final sheets and soak.
   - The spec and the godot-rebuild docs brought up to date, and the pull request marked ready.
   - **Owner:** plays the build and approves the pull request.
   - Blocked by: 35 · Stories: 1–49
+  - Superseded by ADR 0001 (Oct 4): retired, since this plan closes after task 30b. The owner plays the real build and signs off at each milestone instead (`docs/design.md`, Order of work).

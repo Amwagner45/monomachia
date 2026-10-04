@@ -2,6 +2,8 @@
 
 Oct 2, 2026 · written at commit `9205183` on `feature/godot-rebuild`
 
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This page still maps the code as it stood on Oct 2. Under ADR 0001, an attack's frame data and footwork come from its clip, a realistic look replaces the toon and ink-wash look, and the RTX 3090 is the target; the sections marked with it are replaced as the slice lands.
+
 This is a guide for a developer who is new to the repository. It shows what each folder holds, how the pieces connect, and how one frame of a duel flows from a button press to a sound. The diagrams are Mermaid and render on GitHub.
 
 It describes the code, not the game. For the game's rules and vision read `docs/design.md`, for the web demo's spec `docs/mvp-spec.md`, for the Godot rebuild `docs/specs/godot-rebuild.md` and `docs/plans/godot-rebuild.md`, and for the vocabulary `GLOSSARY.md`. Where this page names a concept (Fighter, Weapon, Posture, Parry, Counter and so on) it uses the glossary's meaning.
@@ -92,7 +94,7 @@ flowchart TD
 | `game/core` | `GameServices` (the only autoload), `GameSettings`, `MatchConfig`, `MatchSide`, `MatchResults`. |
 | `game/view/match` | `MatchHost` (the fixed-step loop), `MatchView`, `CameraRig`, `MatchAudio`, `StickPose`, the arena registry. |
 | `game/view/fighter` | Animating a rigged fighter from the rules' state: locomotion, lean, guard stance and shuffle, IK rig. |
-| `game/view/look` | Toon materials, outline, ink-wash post pass, colour grade, graphics presets. |
+| `game/view/look` | Toon materials, outline, ink-wash post pass, colour grade, graphics presets. **Superseded by ADR 0001 (Oct 4):** This is the code today; as the slice lands, a realistic look (physically based materials under a painterly colour grade) replaces the toon materials, outlines and ink-wash pass, and four presets with Ultra as the reference preset replace today's three. |
 | `game/view/mesh_kit*.gd` | Procedural mesh building for props and stand-ins. |
 | `game/fighters`, `game/weapons`, `game/arenas` | Content: fighter models and palettes, weapon models, the Moonlit Shrine. |
 | `game/shaders` | Every `.gdshader` and shared include. |
@@ -613,6 +615,8 @@ flowchart TD
 
 ### 6.9 Tuning
 
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This describes the code today. As the slice lands, an attack's frame data and steps come from its clip (generated into a committed table with no hand overrides, with cancels at markers on the clip) and knockback from the reaction clips; the protected timings and jump arcs stay rules numbers.
+
 Global tuning lives in `game/sim/constants.gd` (`SimConst`), weapon frame data in `game/sim/moves`. A few of the numbers that shape the duel:
 
 | Constant | Value | Meaning |
@@ -676,6 +680,8 @@ flowchart LR
 | `standin_arena.gd/.tscn` | | A simple code-built arena, used by tests and as the fallback. |
 
 ### 9.2 `view/fighter`: from rules state to a moving body
+
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This describes the code today. As the slice lands, physically based materials replace the toon materials built here, and while the game runs a clip is adjusted only by foot locking, the hands' grip on the weapon, mirroring and blending, plus the hit reactions' physical layer.
 
 The rules know only a position, a yaw, a state and a frame. The fighter view turns that into a rigged, animated body.
 
@@ -748,9 +754,12 @@ flowchart LR
 - A **fighter** (Rogue, Hunter) is a `FighterModel` scene plus a `FighterLook` resource. The look says which weapon each fighter holds how (`WeaponHold`: reverse grip, guard stance, wrist tweaks).
 - A **weapon's look** (`WeaponLook`) is separate from its rules (`WeaponDef` in `sim/moves`). They share the id (`katana`, `greatsword`, `daggers`) by convention.
 - An **arena** is an `ArenaDef` resource plus a scene that builds itself in code. Every arena must provide a `def` property, `Spawn0/1` and `Gate0/1` markers, its own environment, lights and `InkWashPass`, and apply the graphics preset to itself. Its `walkable_radius` must equal `SimConst.ARENA_RADIUS`, or `ArenaScenes` falls back to the stand-in.
+  > **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This is the code today. ADR 0001 retires the ink-wash pass, so an arena will no longer need an `InkWashPass` once the slice lands.
 - `fighters/preview/` is a dev stage for looking at fighters and weapons; it isn't part of the game or the export.
 
 ## 11. The look: shaders and graphics presets
+
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This section describes the code today. As the slice lands, a realistic look (physically based materials, dark lighting and volumetric fog under a painterly colour grade) replaces the toon materials, outlines and ink-wash pass. Four presets replace these three: Ultra is the reference preset at 4K and 60 fps on the RTX 3090, High and Medium scale down, and Low must hold 60 fps at 1080p, upscaled, on the Ryzen 7 4700U laptop.
 
 ```mermaid
 flowchart TD
@@ -769,12 +778,14 @@ flowchart TD
 
 | Shader | Used by |
 | --- | --- |
-| `toon`, `toon_two_sided` (+ `toon_light`, `toon_surface` includes) | Fighters, weapons and props, through `ToonMaterials` |
-| `outline` | Inverted-hull outline on fighters, weapons and (on High) props |
-| `ink_wash_lite`, `ink_wash` (+ include) | The full-screen `InkWashPass` in each arena |
+| `toon`, `toon_two_sided` (+ `toon_light`, `toon_surface` includes) | Fighters, weapons and props, through `ToonMaterials`. **Superseded by ADR 0001 (Oct 4):** Retires with the toon look; physically based materials replace it as the slice lands. |
+| `outline` | Inverted-hull outline on fighters, weapons and (on High) props. **Superseded by ADR 0001 (Oct 4):** Retires; the realistic look has no outlines, and dyed palettes with key and rim lights on the fighters tell the sides apart. |
+| `ink_wash_lite`, `ink_wash` (+ include) | The full-screen `InkWashPass` in each arena. **Superseded by ADR 0001 (Oct 4):** Retires; there is no ink-wash screen effect during play, and ink survives only as calligraphy in the UI. |
 | `sky_moonlit`, `stone_floor`, `rock`, `cloud_sea`, `mountain_layer`, `lake_water`, `waterfall`, `mist_puff`, `lantern_glow`, `particle_glow`, `particle_flake` | The Moonlit Shrine |
 | `weapons/katana/katana_blade`, `katana_wrap` | The Katana's blade and grip |
 | `look_noise.gdshaderinc` | Shared noise texture (`LookNoise`) |
+
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Outlines and ink-wash quality leave the presets with the toon look. High, Medium and Low scale the realistic look down from Ultra.
 
 Presets differ in shadow quality, prop outlines, ink-wash quality, height fog, particle count, minor lights and scenery detail. Fighter and weapon outlines are always on. Anything a preset should be able to turn off joins one of the `look_*` node groups.
 
@@ -905,13 +916,15 @@ flowchart LR
 | Folder | Files | What it covers |
 | --- | --- | --- |
 | `game/tests/` (root) | 2 | Godot version; every scene loads |
-| `game/tests/sim` | 16 | Ports of the web rule tests, fixture parity (`rng`, `moves`, `math`, port regressions), fluid combat, each weapon's strings, string continuity, training brain, soak |
-| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, guard stance and shuffle, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes |
+| `game/tests/sim` | 16 | Ports of the web rule tests, fixture parity (`rng`, `moves`, `math`, port regressions), fluid combat, each weapon's strings, string continuity, training brain, soak. **Superseded by ADR 0001 (Oct 4):** Tests that pin frame data to the web demo, such as the `moves` fixture parity, will be replaced as the slice lands, and a test will keep every attack inside its timing band. |
+| `game/tests/view` | 24 | Arenas, camera, fighter rig and view, stick pose, locomotion, guard stance and shuffle, toon and ink look, presets, MatchHost, main flow, the `--smoke` run, tool scenes. **Superseded by ADR 0001 (Oct 4):** The toon and ink look tests will be replaced as the slice lands. |
 | `game/tests/audio` | 10 | Bus layout and ducking, FadedLoop, footsteps, music director and player, sound bank, sound player, headless playback of a match |
 | `game/tests/input` | 7 | Device state, InputFeed, labels, profiles, rebinding, sampling, seats and pause |
-| `game/tests/content` | 5 | Animation library, asset size budgets, fighter scenes, palettes, weapon models |
+| `game/tests/content` | 5 | Animation library, asset size budgets, fighter scenes, palettes, weapon models. **Superseded by ADR 0001 (Oct 4):** Size budgets per place (public repository, asset repository, shipped game) replace the asset budget test's 110 MB art cap, and the test will be replaced as the slice lands. |
 | `game/tests/core` | 3 | GameServices, GameSettings, MatchConfig and MatchSide |
 | `game/tests/fixtures` | data | JSON from the TypeScript (`rng`, `moves`, `math`, `port`) and a hand-made arena scene |
+
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The ink-line and outline-width render checks below belong to the toon look, which ADR 0001 retires. They will be replaced as the slice lands.
 
 Rule tests build a `World` directly, feed it scripted `RawInput`s and assert on events and state; `sim_helpers.gd` holds the shared helpers. Nothing graphical is needed. Render checks that need a real window (shaders compile, ink lines, outline width) are screenshot scenes in `game/tools/shot_scenes` run by `npm run shots`.
 
@@ -997,6 +1010,8 @@ flowchart TD
     CLAUDE["CLAUDE.md<br/>workflow: spec, plan, implement;<br/>branch and PR per change"] -.-> PLAN
 ```
 
+> **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The rebuild plan's open tasks are triaged against ADR 0001 (look-independent ones finished, tuning and effects moved into the slice plan, toon-only ones retired), and the authored-animation spec closes after its task 30b. The rebuild merges into `master` first, so new work branches from `master` again.
+
 The plan's **build order** runs in 14 stages, one task at a time. Stages 1 to 6 are done (safety nets, the look and real fighters, the shrine, fluid rules, sound and music, the new strings). Stage 7 (swing foundations, where weapon paths drive both the animation and the hit detection) is in progress on its own branch, and stage 8 (the fighter animation core) is partly done. Check the plan's Progress section for the current state rather than this page.
 
 Major features follow `CLAUDE.md`: a spec in `docs/specs/`, a plan in `docs/plans/`, then implementation task by task, each on a branch with a pull request.
@@ -1005,7 +1020,7 @@ Major features follow `CLAUDE.md`: a spec in `docs/specs/`, a plan in `docs/plan
 
 | I want to... | Start here |
 | --- | --- |
-| Change a move's timing or damage | `game/sim/moves/<weapon>.gd`, then a test in `game/tests/sim` |
+| Change a move's timing or damage | `game/sim/moves/<weapon>.gd`, then a test in `game/tests/sim`. **Superseded by ADR 0001 (Oct 4):** As the slice lands, an attack's startup, active and recovery come from its clip with no hand overrides, so its timing changes by editing the clip until it lands inside its timing band. |
 | Change global tuning (parry, posture, movement) | `game/sim/constants.gd`, then a test, then the docs that record the number |
 | Add a rules event | Emit it in `world.gd` or `fighter.gd`, add it to `SimEvents.TYPES` and the header in `events.gd`, then decide its sound (`SoundBank.EVENTS`), HUD text (`match_hud.gd`) and view reaction (`match_view.gd`) |
 | Give an event a new sound | A cue in `SoundBank.CUES`, its WAVs from `scripts/audio`, and the mapping in `SoundBank.EVENTS` or `cues_for()` |
@@ -1013,7 +1028,7 @@ Major features follow `CLAUDE.md`: a spec in `docs/specs/`, a plan in `docs/plan
 | Add a fighter | `fighters/<id>/` (scene, `FighterLook`, palettes), `FighterLook.IDS`, and the asset tools |
 | Add a weapon's look | `weapons/<id>/` (`WeaponLook`, scene with markers), `WeaponLook.IDS`, holds in each `FighterLook` |
 | Add an arena | An `ArenaDef` resource and scene in `arenas/<id>/`, registered in `ArenaScenes.DEFS`; radius must match the rules |
-| Add a graphics option | A field on `GraphicsPreset`, the three preset files, and `GraphicsApplier` |
+| Add a graphics option | A field on `GraphicsPreset`, the three preset files, and `GraphicsApplier`. **Superseded by ADR 0001 (Oct 4):** Four presets (Ultra, High, Medium, Low) replace the three as the slice lands, with Ultra the reference preset. |
 | Add a binding or action | `Bindings.ACTIONS`, `ACTION_BUTTON`, the default sets, `Btn` if it is a new rules button |
 | Add a screen | Build it in `ui/menus`, switch to it from `scenes/main.gd` (task 22 reworks this) |
 | Check the balance after a change | `npm run soak:godot -- 40` |
@@ -1032,3 +1047,4 @@ Major features follow `CLAUDE.md`: a spec in `docs/specs/`, a plan in `docs/plan
 - **Saved settings leak into tests.** Tests and screenshots set `MONOMACHIA_DEFAULT_SETTINGS=1`, so they start from the default settings and one fresh controls profile, and never write the player's files. Do the same in any new runner.
 - **Big files.** `check:sizes` fails CI on any tracked file over 10 MB. Never commit the raw Sonniss recordings.
 - **`docs/adr/` doesn't exist yet**, although `docs/agents/domain.md` mentions it. Create it with the first ADR.
+  > **Superseded by [ADR 0001](adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** `docs/adr/` now exists, and ADR 0001 is its first record.

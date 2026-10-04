@@ -6,9 +6,11 @@ extends Control
 ## or the editor; the chat panel is docked on the right and can be collapsed.
 ## Open it with `node scripts/godot.mjs studio`.
 ##
-## The gallery, editor and chat areas are empty placeholders here; later tasks
-## fill them. Their nodes keep these unique names so those tasks (and the smoke
-## test) can find them: %Gallery, %Editor, %ChatPanel.
+## The gallery fills the central area (the Hunter/Rogue switch above re-sets up
+## its tiles, and a click on a tile opens the editor); the editor and chat areas
+## are still empty placeholders that later tasks fill. Their nodes keep these
+## unique names so those tasks (and the smoke test) can find them: %Gallery,
+## %Editor, %ChatPanel.
 
 ## The gallery-wide body changed: `fighter_id` is &"hunter" (the HumanM clips) or
 ## &"rogue" (the HumanF clips).
@@ -16,10 +18,12 @@ signal body_changed(fighter_id: StringName)
 
 ## The body the gallery and editor play on.
 var fighter_id: StringName = &"hunter"
+## Every animation the Studio shows, read from the data files the game reads.
+var catalogue: StudioCatalogue = null
 ## The catalogue entry open in the editor, or null while the gallery shows.
 var current_entry: StudioCatalogue.Entry = null
 
-@onready var _gallery: Control = %Gallery
+@onready var _gallery: Gallery = %Gallery
 @onready var _editor: Control = %Editor
 @onready var _chat_panel: Control = %ChatPanel
 @onready var _chat_toggle: Button = %ChatToggle
@@ -34,6 +38,11 @@ func _ready() -> void:
 	_hunter_button.toggled.connect(_on_body_button.bind(&"hunter"))
 	_rogue_button.toggled.connect(_on_body_button.bind(&"rogue"))
 	_chat_toggle.toggled.connect(_on_chat_toggled)
+	var manifest: ClipManifest = ClipManifest.read()
+	catalogue = StudioCatalogue.build(manifest, MoveClips.read(manifest), StateClips.read(), StudioLibraries.keyed().get_animation_list())
+	_gallery.setup(catalogue, fighter_id)
+	_gallery.opened.connect(open_editor)
+	body_changed.connect(_gallery.set_fighter)
 	show_gallery()
 
 

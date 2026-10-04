@@ -83,3 +83,15 @@ func test_the_packs_note_follows_the_libraries() -> void:
 
 func after_each() -> void:
 	ClipLibraries.force_missing = false
+
+
+func test_buttons_and_labels_share_one_font() -> void:
+	var studio: AnimStudio = await _studio()
+	var button_font: Font = (studio.get_node("%HunterButton") as Button).get_theme_font(&"font")
+	var label_font: Font = (studio.get_node("%PacksNote") as Label).get_theme_font(&"font")
+	var search_font: Font = ((studio.get_node("%Gallery") as Gallery).get_node("%Search") as LineEdit).get_theme_font(&"font")
+	var tabs_font: Font = ((studio.get_node("%Gallery") as Gallery).get_node("%Tabs") as TabContainer).get_theme_font(&"font")
+	assert_not_null(button_font, "buttons have a font")
+	assert_same(button_font, label_font, "buttons and labels use the same font, not the project's serif")
+	assert_same(button_font, search_font, "so does the search box")
+	assert_same(button_font, tabs_font, "and the tabs")

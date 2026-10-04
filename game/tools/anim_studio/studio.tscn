@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" path="res://tools/anim_studio/studio.gd" id="1_studio"]
 [ext_resource type="Theme" path="res://tools/anim_studio/studio_theme.tres" id="2_theme"]
+[ext_resource type="PackedScene" path="res://tools/anim_studio/gallery/gallery.tscn" id="3_gallery"]
 
 [sub_resource type="ButtonGroup" id="ButtonGroup_body"]
 
@@ -79,7 +80,7 @@ theme_override_constants/separation = 0
 layout_mode = 2
 size_flags_horizontal = 3
 
-[node name="Gallery" type="PanelContainer" parent="Layout/Body/Center"]
+[node name="Gallery" parent="Layout/Body/Center" instance=ExtResource("3_gallery")]
 unique_name_in_owner = true
 layout_mode = 1
 anchors_preset = 15
@@ -87,13 +88,6 @@ anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-
-[node name="Placeholder" type="Label" parent="Layout/Body/Center/Gallery"]
-layout_mode = 2
-theme_type_variation = &"PlaceholderLabel"
-text = "Gallery"
-horizontal_alignment = 1
-vertical_alignment = 1
 
 [node name="Editor" type="PanelContainer" parent="Layout/Body/Center"]
 unique_name_in_owner = true

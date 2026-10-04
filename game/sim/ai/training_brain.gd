@@ -29,8 +29,13 @@ const BEHAVIOURS: Array[StringName] = [
 
 ## The id of f's weapon ability with the given counter kind, or &"" (TS null).
 static func ability_for(f: Fighter, kind: StringName) -> StringName:
-	for ab_id: StringName in f.weapon.abilities:
-		if f.weapon.moves.has(ab_id) and f.weapon.moves[ab_id].counter == kind:
+	return weapon_ability_for(f.weapon, kind)
+
+
+## The id of weapon w's ability with the given counter kind, or &"".
+static func weapon_ability_for(w: WeaponDef, kind: StringName) -> StringName:
+	for ab_id: StringName in w.abilities:
+		if w.moves.has(ab_id) and w.moves[ab_id].counter == kind:
 			return ab_id
 	return &""
 

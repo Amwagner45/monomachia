@@ -35,6 +35,11 @@ extends Node
 ## by frame, and the camera stands off her front left, raised to see the
 ## stroke's arc.
 ##
+## "training_swap" shows the Hunter dummy, picked with the Greatsword, after
+## Thrust was chosen for it (23.2): it swapped to the Katana, which the HUD's
+## plate names, and is 30 steps into its drill. "training_panel" shows the
+## Training panel at the bottom left (23.3): the dummy on Light chains with
+## refill off, 40 steps into its drill.
 ## "recall_burst" shows the recall's power-up (task 30b) on the disarmed Rogue
 ## against the idle dummy at 2.2 m, up to its frame --frame= (default 18,
 ## just after the burst): the aura, the burst's flare and shockwave, the dummy
@@ -45,7 +50,8 @@ const SEED: int = 7
 @export_enum(
 	"round_start", "exchange", "parry", "watch", "dropped", "results", "main_menu", "title", "mirror", "spacing", "hud_states", "ko", "call",
 	"iai_stance", "iai_vertical", "iai_horizontal", "select_duel", "select_watch",
-	"trail_light", "trail_unblockable", "trail_moonsplitter", "recall_burst",
+	"trail_light", "trail_unblockable", "trail_moonsplitter", "training_swap", "training_panel",
+	"recall_burst",
 ) var shot: String = "round_start"
 ## The fighters' distance apart for the "spacing" shot (m).
 @export var spacing: float = 2.5
@@ -173,6 +179,21 @@ func _ready() -> void:
 			_iai(shot)
 		"trail_light", "trail_unblockable", "trail_moonsplitter":
 			_trail(shot)
+		"training_swap":
+			var cfg: MatchConfig = MatchConfig.default_training(SEED)
+			_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(FakeDeviceState.new()))
+			host.step(Match.INTRO_FRAMES + 20)
+			_place_apart(2.6)
+			host.set_training_behaviour(&"thrust")
+			host.step(30)
+		"training_panel":
+			var cfg: MatchConfig = MatchConfig.default_training(SEED)
+			_gameplay(MatchConfig.TRAINING, cfg, InputDevices.new(FakeDeviceState.new()))
+			host.step(Match.INTRO_FRAMES + 20)
+			_place_apart(2.6)
+			host.set_training_behaviour(&"lights")
+			host.set_refill(false)
+			host.step(40)
 		"recall_burst":
 			_recall_burst()
 	var view: MatchView = host.get_node("View")

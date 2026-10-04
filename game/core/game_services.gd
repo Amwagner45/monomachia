@@ -7,7 +7,8 @@ extends Node
 ##   applies their graphics preset to the renderer (the shadow atlas and
 ##   filtering, which are global) and the root viewport, and their volumes to
 ##   the buses; scenes apply graphics_preset() to themselves when they load;
-## - one ControlProfiles (the saved controls profiles, user://controls.cfg);
+## - one ControlProfiles (the saved controls profiles, user://controls.cfg,
+##   or one fresh profile when the run sets GameSettings.DEFAULTS_ENV);
 ## - one InputDevices, which every match samples, with its InputFeed in the
 ##   tree so labels follow the last device used, even in menus (the shared
 ##   input home that task 21 asked for; see the recipe in input_devices.gd);
@@ -40,7 +41,7 @@ var _match: Node = null
 func _init() -> void:
 	process_mode = Node.PROCESS_MODE_ALWAYS
 	settings = GameSettings.load_for_run()
-	profiles = ControlProfiles.load_from()
+	profiles = ControlProfiles.load_for_run()
 	input = InputDevices.new()
 	feed = InputFeed.new(input)
 	feed.name = "InputFeed"

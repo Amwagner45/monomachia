@@ -11,8 +11,8 @@ tags: [architecture, presentation]
 - **Weapons:** a weapon is never fixed to a hand. It's posed in the fighter's space by its [[Weapon swings|swing]], and the arms reach for it with inverse kinematics; each fist curls round its own handle.
 - **Attacks:** the swing that decides hits also moves the weapon on screen, with the torso and hips coiling and the feet stepping with the lunge. The free packs have no weapon attacks, and one path for hits and visuals keeps them in sync.
 
-Procedural animation is less expressive than hand-keyed clips, so a separate lane (the authored-animation plan, on its own branch until it merges) is replacing moves with authored clips while keeping the rules unchanged. Clips play on the rules' clock and hold still in hit-stop.
+Procedural animation is less expressive than hand-keyed clips, so the authored-animation plan ([[Plan - Authored animation and the dodge roll]]) is replacing moves, reactions, knockdowns and KOs with authored clips while keeping the rules unchanged. It retired the rebuild plan's task 15 (full fighter animation) and 14b (the swing editor). Clips play on the rules' clock and hold still in hit-stop.
 
-Plan: [[Task 13]], [[Task 14]], [[Task 15]] · [[Stage 8 - Fighter animation core]] · [[Stage 13 - Full animation]]
+Plan: [[Task 13]], [[Task 14]] · [[Stage 8 - Fighter animation core]] · [[Stage 13 - Full animation]]
 
 **Sources:** [[Rebuild spec - Implementation Decisions]] · [[Rebuild plan notes 13-15-fighters-and-animation]] · [[Animation spike (Sep 30, 2026)]] · code in [[game.view.fighter]] · see [[Roster]]

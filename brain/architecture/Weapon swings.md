@@ -22,7 +22,7 @@ Each tick, every hand and foot track is placed in the world, and the blade's [[S
 
 Checked headless on both fighters' reference bodies: wrists within about ±60° of bend and ±25° of deviation, elbows never locked, the blade never within 5 cm of the fighter's own body, a 2–4 frame cocked hold before the strike, and the attack type readable in the first third of the wind-up.
 
-The same path drives the animation: the arms reach for the grip by inverse kinematics. See [[Fighter animation]]. There's also a swing editor for authoring keys ([[Task 14b]]).
+The same path drives the animation: the arms reach for the grip by inverse kinematics. See [[Fighter animation]]. The planned swing editor (the rebuild plan's task 14b) was retired: authored clips replace hand-keyed swings ([[Plan - Authored animation and the dodge roll]]).
 
 Plan: [[Task 7]], [[Stage 7 - Swing foundations]], then the [[Katana]] in [[Stage 9 - The Katana on swings, and the animation review]] and the other weapons in [[Stage 11 - The other weapons' swings]].
 

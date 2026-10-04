@@ -752,8 +752,8 @@ func test_the_other_weapons_walk_on_the_clips() -> void:
 		assert_lt(v.locomotion.shown[0], 0.5, "%s: walking on the clips" % weapon.id)
 
 
-## While the fighter shuffles, its hips bob with the shuffle and the weapon
-## rides the bob on its spring.
+## While the fighter shuffles, its hips bob with the shuffle; blocking, the
+## guard's clip holds the weapon (task 26), else it rides the bob on its spring.
 func test_the_hips_bob_and_the_weapon_rides_it() -> void:
 	var W: World = _world(8.0)
 	var v: FighterView = _view(&"rogue")
@@ -774,12 +774,17 @@ func test_the_hips_bob_and_the_weapon_rides_it() -> void:
 		var hips: Vector3 = GuardStance.offset(seconds) + Vector3(0.0, shuffle.shown_bob - v.sink - v.last_pose.crouch - v.locomotion.lean.shown_drop, 0.0)
 		assert_almost_eq(rig.body.hips_offset, hips, Vector3.ONE * 1e-5, "frame %d: the hips are the stance's, bobbing, sunk, braced" % i)
 		var now: float = rig.grip_point("Right").y
-		var sway: float = GuardStance.offset(seconds).y - GuardStance.offset(seconds - 1.0 / 60.0).y
-		assert_almost_eq(now - grip, shuffle.shown_weapon_bob - v.sink - bob + sway, 0.003, "frame %d: the grip rides the weapon's bob" % i)
+		if v.shot == null or v.shot.drive != ClipDirector.STATE:
+			# the stand-in's hold: the grip rides the weapon's bob on its spring
+			var sway: float = GuardStance.offset(seconds).y - GuardStance.offset(seconds - 1.0 / 60.0).y
+			assert_almost_eq(now - grip, shuffle.shown_weapon_bob - v.sink - bob + sway, 0.003, "frame %d: the grip rides the weapon's bob" % i)
 		grip = now
 		bob = shuffle.shown_weapon_bob - v.sink
 		bobs.append(bob)
 	assert_gt(bobs.max() - bobs.min(), 0.005, "and it bobs")
+	# blocking, the guard's clip holds the weapon on the upper body (task
+	# 26): it rides the clip's hand, the shuffle's hips bobbing under it
+	assert_eq([v.shot.drive, v.shot.phase], [ClipDirector.STATE, &"guard"], "the guard's clip on the upper body")
 
 
 # ------------------------------------------------------------ footwork (14.13)

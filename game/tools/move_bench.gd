@@ -33,6 +33,9 @@ class Step:
 
 
 var weapon: WeaponDef
+## The defender's weapon (the Katana unless given; a parry's sheets pair
+## every weapon, task 27).
+var defender_weapon: WeaponDef = Moves.KATANA
 var spacing: float = PoseCheck.SPACING
 var world: World
 var attacker: Fighter
@@ -50,9 +53,11 @@ var _last: int = 0
 
 ## A bench for fighter `fighter_id` (a FighterLook id) with `weapon`, its
 ## view added under `parent`, standing in its guard.
-func _init(parent: Node, fighter_id: StringName, p_weapon: WeaponDef, p_spacing: float = PoseCheck.SPACING) -> void:
+func _init(parent: Node, fighter_id: StringName, p_weapon: WeaponDef, p_spacing: float = PoseCheck.SPACING, p_defender_weapon: WeaponDef = null) -> void:
 	weapon = p_weapon
 	spacing = p_spacing
+	if p_defender_weapon != null:
+		defender_weapon = p_defender_weapon
 	view = FighterView.new()
 	view.name = &"MoveBench"
 	parent.add_child(view)
@@ -85,7 +90,7 @@ func dispose() -> void:
 func stand() -> void:
 	if world != null:
 		world.dispose()
-	world = World.new(FighterConfig.make(weapon, []), FighterConfig.make(Moves.KATANA, []), 7)
+	world = World.new(FighterConfig.make(weapon, []), FighterConfig.make(defender_weapon, []), 7)
 	attacker = world.fighters[0]
 	defender = world.fighters[1]
 	attacker.pos = V3.make(0.0, 0.0, -spacing / 2.0)
@@ -94,13 +99,15 @@ func stand() -> void:
 	defender.yaw = PI
 	attacker.set_state(&"free")
 	defender.set_state(&"free")
+	# in its guard, not on the shoulder: the bench plays a move's own frames
+	attacker.shouldered = false
 	_show()
 
 
 ## Steps the rules once with `input` for the fighter (none for the
 ## defender) and shows it.
-func drive(input: RawInput) -> void:
-	world.step([input, RawInput.empty()])
+func drive(input: RawInput, defender_input: RawInput = null) -> void:
+	world.step([input, defender_input if defender_input != null else RawInput.empty()])
 	_show()
 
 

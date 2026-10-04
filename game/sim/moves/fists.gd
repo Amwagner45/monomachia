@@ -11,17 +11,17 @@ const MOVES: Dictionary = {
 	&"f_l1": {
 		"id": &"f_l1", "name": "Jab", "kind": &"light", "type": &"punch", "anim": &"f_jab", "hand": &"L", "sound": F,
 		"startup": 5, "active": 2, "recovery": 10, "damage": 3, "posture": 8, "knockback": 0.5,
-		"range": 1.3, "arc": 90, "lunge": 0.3, "chain_light": &"f_l2", "chain_heavy": &"f_h1", "dodge_cancel_from": 9, "hitstun": 16,
+		"range": 1.3, "arc": 90, "lunge": 0.3, "lunge_end": 6, "chain_light": &"f_l2", "chain_heavy": &"f_h1", "dodge_cancel_from": 9, "hitstun": 16,
 	},
 	&"f_l2": {
 		"id": &"f_l2", "name": "Cross", "kind": &"light", "type": &"punch", "anim": &"f_cross", "hand": &"R", "sound": F,
 		"startup": 6, "active": 2, "recovery": 10, "damage": 3, "posture": 8, "knockback": 0.5,
-		"range": 1.3, "arc": 90, "lunge": 0.3, "chain_light": &"f_l3", "chain_heavy": &"f_h1", "dodge_cancel_from": 10, "hitstun": 16,
+		"range": 1.3, "arc": 90, "lunge": 0.27, "lunge_end": 7, "chain_light": &"f_l3", "chain_heavy": &"f_h1", "dodge_cancel_from": 10, "hitstun": 16,
 	},
 	&"f_l3": {
 		"id": &"f_l3", "name": "Hook", "kind": &"light", "type": &"punch", "anim": &"f_hook", "hand": &"L", "sound": F,
 		"startup": 8, "active": 3, "recovery": 14, "damage": 4, "posture": 10, "knockback": 0.9,
-		"range": 1.3, "arc": 110, "lunge": 0.3, "chain_heavy": &"f_h1",
+		"range": 1.3, "arc": 110, "lunge": 0.07, "lunge_end": 9, "chain_heavy": &"f_h1",
 	},
 	&"f_h1": {
 		"id": &"f_h1", "name": "Roundhouse", "kind": &"heavy", "type": &"kick", "anim": &"f_roundhouse", "sound": F,
@@ -54,14 +54,14 @@ const MOVES: Dictionary = {
 		"range": 1.4, "arc": 150,
 	},
 	&"f_bl": {
-		"id": &"f_bl", "name": "Snap Kick", "kind": &"light", "type": &"kick", "anim": &"f_snapKick", "sound": F,
+		"id": &"f_bl", "name": "Snap Kick", "kind": &"light", "type": &"kick", "anim": &"f_snapKick", "hand": &"L", "sound": F,
 		"startup": 7, "active": 3, "recovery": 12, "damage": 3, "posture": 10, "knockback": 1.0,
 		"range": 1.5, "arc": 90, "lunge": 0.5,
 	},
 	&"f_bh": {
 		"id": &"f_bh", "name": "Lunging Palm", "kind": &"heavy", "type": &"punch", "anim": &"f_palm", "hand": &"R", "sound": F,
 		"startup": 12, "active": 4, "recovery": 16, "damage": 5, "posture": 16, "knockback": 1.6,
-		"range": 1.4, "arc": 90, "lunge": 1.8, "lunge_end": 14,
+		"range": 1.4, "arc": 90, "lunge": 1.9, "lunge_end": 14,
 	},
 	&"f_jl": {
 		"id": &"f_jl", "name": "Air Kick", "kind": &"light", "type": &"kick", "anim": &"f_airKick", "sound": F,
@@ -69,7 +69,7 @@ const MOVES: Dictionary = {
 		"range": 1.4, "arc": 110, "airborne": true,
 	},
 	&"f_jh": {
-		"id": &"f_jh", "name": "Axe Kick", "kind": &"heavy", "type": &"kick", "anim": &"f_axeKick", "sound": F,
+		"id": &"f_jh", "name": "Axe Kick", "kind": &"heavy", "type": &"kick", "anim": &"f_axeKick", "hand": &"L", "sound": F,
 		"startup": 12, "active": 4, "recovery": 18, "damage": 6, "posture": 16, "knockback": 1.4,
 		"range": 1.5, "arc": 100, "airborne": true,
 	},
@@ -81,7 +81,7 @@ const MOVES: Dictionary = {
 	&"f_breaker": {
 		"id": &"f_breaker", "name": "Breaker Palm", "kind": &"ultimate", "type": &"punch", "anim": &"f_breakerPalm", "hand": &"R",
 		"sound": F, "special": &"breakerPalm", "startup": 14, "active": 3, "recovery": 26, "damage": 6, "posture": 50,
-		"knockback": 1.8, "range": 1.5, "arc": 90, "lunge": 2.5, "lunge_end": 15, "power": true, "hitstop": 12, "hitstun": 36,
+		"knockback": 1.8, "range": 1.5, "arc": 90, "lunge": 2.95, "lunge_end": 15, "power": true, "hitstop": 12, "hitstun": 36,
 	},
 }
 

@@ -391,9 +391,17 @@ func apply(a: Fighter, b: Fighter, def: AttackDef, kind: StringName, scripted: b
 
 		&"stomp":
 			a.release_if_impaling()
-			a.enter_stun(SimConst.STOMP_STUN)
+			a.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
 			a.add_posture(SimConst.STOMP_POSTURE)
-			b.begin_stomp(a)
+			# the stomp lands on the blade's tip: the thruster is jolted back if
+			# the defender is already nearer than that
+			var pin: float = SimConst.STOMP_PIN_DIST.get(a.weapon.id if a.weapon != null else &"", SimConst.STOMP_PIN_DIST_DEFAULT)
+			var fwd: V2 = SimMath.fwd(a.yaw)
+			var gap: float = (b.pos.x - a.pos.x) * fwd.x + (b.pos.z - a.pos.z) * fwd.z
+			var push: float = maxf(0.0, pin - gap)
+			if push > 0.0:
+				a.knock(a.pos.x + fwd.x, a.pos.z + fwd.z, push, SimConst.STOMP_PUSH_FRAMES)
+			b.begin_stomp(a, pin, push)
 			b.stats.counters += 1
 			emit({
 				"t": &"counter",

@@ -34,7 +34,12 @@ const DECEL: float = SimConst.MOVE_DECEL
 const TAP_SPEED: float = SimConst.MOVE_STEP_DIST / (SimConst.MOVE_STEP_FRAMES * SimConst.DT)
 
 
+func before_each() -> void:
+	FrozenStateClips.install()
+
+
 func after_each() -> void:
+	FrozenStateClips.restore()
 	MoveBench.free_all()
 	SimHelpers.dispose_all()
 

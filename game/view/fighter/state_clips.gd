@@ -15,7 +15,9 @@ extends RefCounted
 ##    "rebound": {"frames": 8, "speed": 2},
 ##    "carry": {"pose": "ObjectGripShoulder02_R"},
 ##    "ults": {"moonsplitter": {...}, "impaler": {...}, "tempest": {...}},
-##    "keyed": {"state": {"stomp": "Mikiri_Stomp"}, "stun": {"stomp": "Mikiri_Pinned"}}}
+##    "keyed": {"state": {"stomp": "Mikiri_Stomp"}, "stun": {"stomp": "Mikiri_Pinned"}},
+##    "knockdown": {"clips": {"fall": ...}, "fallbacks": {"fall": ...}, "standup_from": 6},
+##    "ko": {"clips": {"front": [light, heavy], "behind": [light, heavy]}, "fallback": "Death01"}}
 ##
 ## Every group and field is needed, and a field it doesn't know is an error,
 ## as in MoveClips. An "about" field may say what the file is. Weapon-keyed
@@ -23,7 +25,8 @@ extends RefCounted
 ## stands in for a weapon without an entry.
 
 const PATH: String = "res://assets/kevin_iglesias/state_clips.json"
-const GROUPS: Array[String] = ["idle", "fades", "hit", "guard", "stun", "rebound", "carry", "ults", "keyed"]
+const GROUPS: Array[String] = ["idle", "fades", "hit", "guard", "stun", "rebound", "carry", "ults", "keyed", "knockdown", "ko"]
+const KNOCKDOWN_PHASES: Array[String] = ["fall", "ground", "standUp"]
 const FADE_NAMES: Array[String] = ["attack", "follow_up", "dodge_cancel", "hitstun", "locomotion", "stance", "state", "guard", "rebound"]
 const ULT_KINDS: Array[String] = ["moonsplitter", "impaler", "tempest"]
 const MOONSPLITTER_FIELDS: Array[String] = ["clips", "fallback", "windup", "release"]
@@ -86,6 +89,19 @@ var tempest_final_from: float = 0.0
 var tempest_final_frames: int = 0
 var tempest_recover_frames: int = 0
 var tempest_fallback: StringName = &""
+## Knockdown: Knockdown01's fall timed to the fall's frames (it lands, the
+## hips on the floor, on its source frame 20), its ground loop at 1.0, and its
+## stand-up from `knockdown_standup_from` (the source frame; the frames before
+## lie still) timed to the stand-up's frames. By phase (KNOCKDOWN_PHASES), and
+## without the packs.
+var knockdown_clips: Dictionary[StringName, StringName] = {}
+var knockdown_fallbacks: Dictionary[StringName, StringName] = {}
+var knockdown_standup_from: float = 0.0
+## The KO's death by the final blow: [from the front, from behind] each
+## [light, heavy]; and without the packs. Played at 1.0 from the blow, held
+## lying at the end.
+var ko_clips: Array[Array] = []
+var ko_fallback: StringName = &""
 ## What is wrong with the file, one line each; empty when it read cleanly.
 var errors: PackedStringArray = []
 
@@ -164,6 +180,16 @@ static func read(path: String = PATH) -> StateClips:
 	var keyed: Dictionary = t._object(root.get("keyed"), "keyed", ["state", "stun"])
 	t.state_clips = t._id_map(keyed, "keyed", "state", [])
 	t.stun_clips = t._id_map(keyed, "keyed", "stun", [])
+
+	g = t._object(root.get("knockdown"), "knockdown", ["clips", "fallbacks", "standup_from"])
+	t.knockdown_clips = t._id_map(g, "knockdown", "clips", KNOCKDOWN_PHASES)
+	t.knockdown_fallbacks = t._id_map(g, "knockdown", "fallbacks", KNOCKDOWN_PHASES)
+	t.knockdown_standup_from = t._num(g, "knockdown", "standup_from")
+
+	g = t._object(root.get("ko"), "ko", ["clips", "fallback"])
+	var deaths: Dictionary = t._object(g.get("clips"), "ko.clips", ["front", "behind"])
+	t.ko_clips = [t._ids(deaths, "ko.clips", "front", 2), t._ids(deaths, "ko.clips", "behind", 2)]
+	t.ko_fallback = t._id(g, "ko", "fallback")
 	return t
 
 

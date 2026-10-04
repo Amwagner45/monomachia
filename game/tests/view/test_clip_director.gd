@@ -10,6 +10,7 @@ var _saved: Dictionary[StringName, Swing] = {}
 
 
 func before_each() -> void:
+	FrozenStateClips.install()
 	var k: WeaponDef = Moves.KATANA
 	for id: StringName in [&"k_l1", &"k_l2"]:
 		_saved[id] = k.moves[id].swing
@@ -20,6 +21,7 @@ func after_each() -> void:
 	for id: StringName in _saved:
 		Moves.KATANA.moves[id].swing = _saved[id]
 	_saved.clear()
+	FrozenStateClips.restore()
 	SimHelpers.dispose_all()
 
 
@@ -908,7 +910,7 @@ func test_a_knockdown_fits_knockdown01_to_its_three_phases() -> void:
 	var fall_len: float = ctx.lengths["HumanM/Knockdown01_Fall"]
 	var ground_len: float = ctx.lengths["HumanM/Knockdown01_Ground"]
 	var up_len: float = ctx.lengths["HumanM/Knockdown01_StandUp"]
-	var from: float = ClipDirector.KNOCKDOWN_STANDUP_FROM / 30.0
+	var from: float = StateClips.shared().knockdown_standup_from / 30.0
 	for sf: int in range(1, fall + ground + up + 1):
 		f.sf = sf
 		W.frame += 1

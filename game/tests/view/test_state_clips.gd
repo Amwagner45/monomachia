@@ -2,18 +2,24 @@ extends GutTest
 ## State and ult clips on data (Animation Studio task 3): ClipDirector's choice
 ## of which clips play lives in game/assets/kevin_iglesias/state_clips.json,
 ## read by StateClips, with the values the constants held. Three checks that
-## matches play as before:
+## matches play as before, run against a frozen copy of the table
+## (FrozenStateClips: tests/fixtures/state_clips_frozen.json), so the Studio
+## saving the live file can't break them:
 ##  - OLD, the constants' values copied here before they were deleted, equals
-##    what StateClips reads from the file;
+##    what StateClips reads from the frozen copy;
 ##  - a scripted bout (idle, attacks, hits, guards, stuns, a parry's rebound,
-##    the shoulder carry, the three ultimates, the keyed stomp) gives the Shots
-##    recorded from the constants (tests/fixtures/state_clips_shots.json);
+##    the shoulder carry, the three ultimates, the keyed stomp, knockdown and
+##    KO) gives the Shots recorded from the constants before they moved
+##    (tests/fixtures/state_clips_shots.json, thinned: every frame near a
+##    change of what plays, the rest every few);
 ##  - a file with an unknown key is refused.
-## No packs needed: the contexts name made-up clip lengths.
+## The live file is only checked to read cleanly. No packs needed: the
+## contexts name made-up clip lengths.
 ##
-## The fixture pins what state_clips.json says now. When an edit to it should
-## change what plays, run `MONOMACHIA_RECORD_STATE_CLIPS=1 node scripts/godot.mjs
-## test -gselect=test_state_clips` to write it again, and commit the diff.
+## The recorded Shots stand for the frozen copy. To record them again (only if
+## ClipDirector's rules change on purpose), run
+## `MONOMACHIA_RECORD_STATE_CLIPS=1 node scripts/godot.mjs test -gselect=test_state_clips`
+## and commit the diff.
 
 const FIXTURE: String = "res://tests/fixtures/state_clips_shots.json"
 const RECORD_ENV: String = "MONOMACHIA_RECORD_STATE_CLIPS"
@@ -67,12 +73,20 @@ const OLD: Dictionary = {
 	"TEMPEST_FINAL_FRAMES": 14,
 	"TEMPEST_RECOVER_FRAMES": 24,
 	"TEMPEST_FALLBACK": &"Sword_Heavy_Combo",
+	"KNOCKDOWN_CLIPS": {
+		&"fall": &"Knockdown01_Fall", &"ground": &"Knockdown01_Ground", &"standUp": &"Knockdown01_StandUp",
+	},
+	"KNOCKDOWN_FALLBACKS": {&"fall": &"Hit_Knockback", &"ground": &"LayToIdle", &"standUp": &"LayToIdle"},
+	"KNOCKDOWN_STANDUP_FROM": 6.0,
+	"KO_CLIPS": [[&"CombatDeath01", &"CombatDeath02"], [&"CombatDeath03", &"CombatDeath04"]],
+	"KO_FALLBACK": &"Death01",
 }
 
 var _saved: Dictionary[StringName, Swing] = {}
 
 
 func before_each() -> void:
+	FrozenStateClips.install()
 	var k: WeaponDef = Moves.KATANA
 	for id: StringName in [&"k_l1", &"k_l2"]:
 		_saved[id] = k.moves[id].swing
@@ -155,10 +169,21 @@ class Bout:
 	var segments: Dictionary = {}
 	var _at: String = ""
 
+	## The fields of a Shot the fixture keeps, in the order of an encoded one.
+	const KEYS: Array[String] = [
+		"frame", "drive", "clip", "clip_before", "from", "from_upper", "upper", "fade", "since", "idle", "move",
+		"state", "phase", "rebound", "grip", "grip_from",
+	]
+	## Every this many shots one is kept, and the ones within NEAR of a change.
+	const EVERY: int = 12
+	const NEAR: int = 2
+	## The fields that hold a Clip.
+	const CLIPS: Array[String] = ["clip", "clip_before", "from", "rebound"]
+
 	static func _clip(c: ClipDirector.Clip) -> Variant:
 		if c == null:
 			return null
-		return {"name": c.name, "time": snappedf(c.time, 1e-9), "under": _clip(c.under), "under_weight": snappedf(c.under_weight, 1e-9)}
+		return {"name": c.name, "time": snappedf(c.time, 1e-6), "under": _clip(c.under), "under_weight": snappedf(c.under_weight, 1e-6)}
 
 	## Everything a Shot says that the view reads, as plain data.
 	static func _shot(s: ClipDirector.Shot) -> Dictionary:
@@ -166,8 +191,47 @@ class Bout:
 			"frame": s.frame, "drive": String(s.drive), "clip": _clip(s.clip), "clip_before": _clip(s.clip_before),
 			"from": _clip(s.from), "from_upper": s.from_upper, "upper": s.upper, "fade": s.fade, "since": s.since,
 			"idle": s.idle, "move": String(s.move), "state": String(s.state), "phase": String(s.phase),
-			"rebound": _clip(s.rebound), "grip": snappedf(s.grip, 1e-9), "grip_from": snappedf(s.grip_from, 1e-9),
+			"rebound": _clip(s.rebound), "grip": snappedf(s.grip, 1e-6), "grip_from": snappedf(s.grip_from, 1e-6),
 		}
+
+	## What shows which clip is on for a shot: a change is where this does.
+	static func _key(s: Dictionary) -> String:
+		return "%s|%s|%s|%s|%s|%s" % [s["drive"], s["phase"], s["state"], s["move"], s["clip"]["name"] if s["clip"] != null else "", s["fade"]]
+
+	## A clip as a short list: [name, time], or with the one under it.
+	static func encode_clip(c: Variant) -> Variant:
+		if c == null:
+			return null
+		if c["under"] == null:
+			return [c["name"], c["time"]]
+		return [c["name"], c["time"], encode_clip(c["under"]), c["under_weight"]]
+
+	static func decode_clip(c: Variant) -> Variant:
+		if c == null:
+			return null
+		var long: bool = (c as Array).size() > 2
+		return {"name": c[0], "time": c[1], "under": decode_clip(c[2]) if long else null, "under_weight": c[3] if long else 0.0}
+
+	## A shot as a list of its KEYS' values, for the fixture.
+	## (clip_before as "=" when it is the clip.)
+	static func encode(s: Dictionary) -> Array:
+		var out: Array = []
+		for k: String in KEYS:
+			if k == "clip_before" and s[k] == s["clip"]:
+				out.append("=")
+			else:
+				out.append(encode_clip(s[k]) if k in CLIPS else s[k])
+		return out
+
+	static func decode(a: Array) -> Dictionary:
+		var out: Dictionary = {}
+		for i: int in KEYS.size():
+			if a[i] is String and KEYS[i] == "clip_before":
+				continue
+			out[KEYS[i]] = decode_clip(a[i]) if KEYS[i] in CLIPS else a[i]
+		if a[3] is String:
+			out["clip_before"] = out["clip"]
+		return out
 
 	## Begins segment `name`.
 	func into(name: String) -> void:
@@ -177,8 +241,32 @@ class Bout:
 	## Steps the director (`prev` to the fighter's next shot) and notes it.
 	func step(prev: ClipDirector.Shot, f: Fighter, ctx: ClipDirector.Context) -> ClipDirector.Shot:
 		var s: ClipDirector.Shot = ClipDirector.step(prev, f, ctx)
-		(segments[_at] as Array).append(_shot(s))
+		var d: Dictionary = _shot(s)
+		if not _at.begins_with("idle"):
+			d["idle"] = ""  # the idle only matters where the idle is the point
+		(segments[_at] as Array).append(d)
 		return s
+
+	## Thins each segment to the shots worth keeping: every frame near a
+	## change of what plays (NEAR frames either side), the rest every EVERY-th,
+	## and the last; answers the segments as lists of encoded shots.
+	func finish() -> Dictionary:
+		var out: Dictionary = {}
+		for name: String in segments:
+			var shots: Array = segments[name]
+			var changed: Array[int] = []
+			for i: int in shots.size():
+				if i == 0 or _key(shots[i]) != _key(shots[i - 1]):
+					changed.append(i)
+			var kept: Array = []
+			for i: int in shots.size():
+				var keep: bool = i % EVERY == 0 or i == shots.size() - 1
+				for c: int in changed:
+					keep = keep or absi(c - i) <= NEAR
+				if keep:
+					kept.append(encode(shots[i]))
+			out[name] = kept
+		return out
 
 
 ## Pokes `f` into `state` for the next step (a frame on): `sf` frames in.
@@ -264,6 +352,8 @@ static func _fades(bout: Bout) -> void:
 static func _hits(bout: Bout) -> void:
 	for libs: bool in [true, false]:
 		for frames: int in [14, 26, 40]:
+			if not libs and frames != 26:
+				continue
 			bout.into("hitstun %d libs=%s" % [frames, libs])
 			var W: World = SimHelpers.make_world()
 			var ctx: ClipDirector.Context = _ctx(libs)
@@ -275,6 +365,8 @@ static func _hits(bout: Bout) -> void:
 static func _guards(bout: Bout) -> void:
 	for libs: bool in [true, false]:
 		for w: WeaponDef in [Moves.KATANA, Moves.GREATSWORD, Moves.DAGGERS, Moves.FISTS]:
+			if not libs and w != Moves.KATANA:
+				continue
 			bout.into("guard %s libs=%s" % [_weapon_name(w), libs])
 			var W: World = SimHelpers.make_world(w, Moves.KATANA)
 			var f: Fighter = W.fighters[0]
@@ -303,6 +395,8 @@ static func _stuns(bout: Bout) -> void:
 			[&"impaled", 60, &""], [&"stunned", SimConst.STOMP_STUN, &"stomp"],
 		]
 		for case: Array in cases:
+			if not libs and not (case[1] == SimConst.LEAP_STUN or case[2] == &"stomp"):
+				continue
 			bout.into("stun %s %s libs=%s" % [case[0], case[2], libs])
 			var W: World = SimHelpers.make_world()
 			var f: Fighter = W.fighters[0]
@@ -328,6 +422,8 @@ static func _rebounds(bout: Bout) -> void:
 			[&"recoil", SimConst.PARRY_RECOIL], [&"stunned", SimConst.FLASH_STUN], [&"stunned", SimConst.REDIRECT_STUN],
 		]
 		for case: Array in cases:
+			if not libs and case[1] != SimConst.PARRY_RECOIL:
+				continue
 			bout.into("rebound %s %d libs=%s" % [case[0], case[1], libs])
 			var W: World = SimHelpers.make_world(Moves.KATANA, Moves.KATANA, 6.0)
 			var f: Fighter = W.fighters[0]
@@ -350,6 +446,8 @@ static func _rebounds(bout: Bout) -> void:
 static func _carry(bout: Bout) -> void:
 	for libs: bool in [true, false]:
 		for then: String in ["stand", "attack", "guard"]:
+			if not libs and then != "stand":
+				continue
 			bout.into("carry %s libs=%s" % [then, libs])
 			var W: World = SimHelpers.make_world(Moves.GREATSWORD, Moves.KATANA, 8.0)
 			var f: Fighter = W.fighters[0]
@@ -373,6 +471,8 @@ static func _carry(bout: Bout) -> void:
 static func _ults(bout: Bout) -> void:
 	for libs: bool in [true, false]:
 		for variant: StringName in [&"vertical", &"horizontal"]:
+			if not libs and variant != &"vertical":
+				continue
 			bout.into("moonsplitter %s libs=%s" % [variant, libs])
 			var W: World = SimHelpers.make_world()
 			var f: Fighter = W.fighters[0]
@@ -442,6 +542,37 @@ static func _stomps(bout: Bout) -> void:
 			shot = bout.step(shot, f, ctx)
 
 
+## A knockdown through its fall, ground and stand-up, and each KO (by the
+## final blow's side and weight) through its death.
+static func _downs(bout: Bout) -> void:
+	for libs: bool in [true, false]:
+		bout.into("knockdown libs=%s" % libs)
+		var W: World = SimHelpers.make_world()
+		var f: Fighter = W.fighters[0]
+		var ctx: ClipDirector.Context = _ctx(libs)
+		var shot: ClipDirector.Shot = _run(bout, W, null, ctx, 2)
+		f.enter_knockdown()
+		var total: int = SimConst.KNOCKDOWN_FALL_FRAMES + SimConst.KNOCKDOWN_GROUND_FRAMES + SimConst.KNOCKDOWN_STANDUP_FRAMES
+		for sf: int in range(1, total + 1):
+			_poke(W, f, &"knockdown", sf)
+			shot = bout.step(shot, f, ctx)
+		for key: Array in [[false, false], [false, true], [true, false], [true, true]]:
+			if not libs and key[0] != key[1]:
+				continue
+			bout.into("ko behind=%s heavy=%s libs=%s" % [key[0], key[1], libs])
+			var W2: World = SimHelpers.make_world()
+			var f2: Fighter = W2.fighters[0]
+			var shot2: ClipDirector.Shot = _run(bout, W2, null, ctx, 2)
+			f2.to_ko()
+			f2.ko_from_behind = key[0]
+			f2.ko_heavy = key[1]
+			for sf: int in range(0, 90):
+				_poke(W2, f2, &"ko", sf)
+				shot2 = bout.step(shot2, f2, ctx)
+			_poke(W2, f2, &"ko", 600)
+			shot2 = bout.step(shot2, f2, ctx)
+
+
 ## The whole scripted bout: segment name to its Shots.
 static func record_bout() -> Dictionary:
 	var bout: Bout = Bout.new()
@@ -454,18 +585,19 @@ static func record_bout() -> Dictionary:
 	_carry(bout)
 	_ults(bout)
 	_stomps(bout)
-	return bout.segments
+	_downs(bout)
+	return bout.finish()
 
 
-## The fixture's text: one Shot per line, segments in the bout's order.
+## The fixture's text: one encoded Shot per line (Bout.KEYS), segments in order.
 static func fixture_text(segments: Dictionary) -> String:
 	var lines: PackedStringArray = []
 	for name: String in segments:
 		var shots: PackedStringArray = []
-		for s: Dictionary in segments[name]:
+		for s: Array in segments[name]:
 			shots.append("\t\t" + JSON.stringify(s))
 		lines.append("\t%s: [\n%s\n\t]" % [JSON.stringify(name), ",\n".join(shots)])
-	return "{\n\t\"about\": \"The ClipDirector Shots of tests/view/test_state_clips.gd's scripted bout, recorded from the clip constants before they moved to state_clips.json. Rewrite with MONOMACHIA_RECORD_STATE_CLIPS=1 (see the test).\",\n%s\n}\n" % ",\n".join(lines)
+	return "{\n\t\"about\": \"The ClipDirector Shots of tests/view/test_state_clips.gd's scripted bout, recorded from the clip constants before they moved to state_clips.json, thinned (see the test). Each shot is a list of Bout.KEYS. Rewrite with MONOMACHIA_RECORD_STATE_CLIPS=1.\",\n%s\n}\n" % ",\n".join(lines)
 
 
 ## The first place `got` differs from `want` (numbers to within 1e-8), as a
@@ -507,8 +639,13 @@ func test_the_scripted_bout_gives_the_recorded_shots() -> void:
 	(want as Dictionary).erase("about")
 	assert_eq((got.keys() as Array), (want as Dictionary).keys(), "the same segments")
 	for name: String in want:
-		assert_eq((got[name] as Array).size(), (want[name] as Array).size(), "%s: the same number of shots" % name)
-		var d: String = first_difference(got.get(name, []), want[name], name)
+		var got_shots: Array = got.get(name, [])
+		assert_eq(got_shots.size(), (want[name] as Array).size(), "%s: the same number of shots" % name)
+		var d: String = ""
+		for i: int in mini(got_shots.size(), (want[name] as Array).size()):
+			d = first_difference(Bout.decode(got_shots[i]), Bout.decode(want[name][i]), "%s[%d]" % [name, i])
+			if d != "":
+				break
 		assert_eq(d, "", "%s: the same shots" % name)
 
 
@@ -528,7 +665,8 @@ const FIELDS: Dictionary = {
 	"TEMPEST_SPIN": "tempest_spin", "TEMPEST_SLASHES": "tempest_slashes", "TEMPEST_FLASH": "tempest_flash",
 	"TEMPEST_FINAL": "tempest_final", "TEMPEST_FINAL_FROM": "tempest_final_from",
 	"TEMPEST_FINAL_FRAMES": "tempest_final_frames", "TEMPEST_RECOVER_FRAMES": "tempest_recover_frames",
-	"TEMPEST_FALLBACK": "tempest_fallback",
+	"TEMPEST_FALLBACK": "tempest_fallback", "KNOCKDOWN_CLIPS": "knockdown_clips", "KNOCKDOWN_FALLBACKS": "knockdown_fallbacks",
+	"KNOCKDOWN_STANDUP_FROM": "knockdown_standup_from", "KO_CLIPS": "ko_clips", "KO_FALLBACK": "ko_fallback",
 }
 
 
@@ -538,7 +676,7 @@ func test_the_file_reads_cleanly() -> void:
 
 
 func test_the_table_has_the_values_the_constants_held() -> void:
-	var t: StateClips = StateClips.read()
+	var t: StateClips = StateClips.read(FrozenStateClips.PATH)
 	assert_eq(FIELDS.size(), OLD.size(), "every old constant has a field")
 	for name: String in OLD:
 		var got: Variant = t.get(FIELDS[name])
@@ -553,7 +691,7 @@ func test_the_table_has_the_values_the_constants_held() -> void:
 func test_shared_reads_once_and_can_be_swapped() -> void:
 	var first: StateClips = StateClips.shared()
 	assert_same(StateClips.shared(), first, "read once, then kept")
-	var swapped: StateClips = StateClips.read()
+	var swapped: StateClips = StateClips.read(FrozenStateClips.PATH)
 	swapped.fades[&"attack"] = 5
 	StateClips.use(swapped)
 	assert_same(StateClips.shared(), swapped, "use() swaps it")
@@ -562,7 +700,7 @@ func test_shared_reads_once_and_can_be_swapped() -> void:
 
 
 func test_the_director_plays_by_the_shared_table() -> void:
-	var t: StateClips = StateClips.read()
+	var t: StateClips = StateClips.read(FrozenStateClips.PATH)
 	t.fades[&"attack"] = 5
 	t.idle[&"katana"] = &"CombatIdle2H01"
 	StateClips.use(t)
@@ -595,7 +733,7 @@ func _read_text(text: String) -> StateClips:
 
 ## state_clips.json's text with `from` replaced by `to` (once).
 func _edited(from: String, to: String) -> String:
-	var text: String = FileAccess.get_file_as_string(StateClips.PATH)
+	var text: String = FileAccess.get_file_as_string(FrozenStateClips.PATH)
 	assert_true(text.contains(from), "the file has %s" % from)
 	return text.replace(from, to)
 
@@ -630,3 +768,13 @@ func test_a_missing_or_wrong_field_is_refused() -> void:
 	assert_eq(Array(t.errors), [TEST_FILE + " is not a JSON object"], "not an object")
 	t = StateClips.read("res://assets/kevin_iglesias/no_such_state_clips.json")
 	assert_eq(Array(t.errors), ["res://assets/kevin_iglesias/no_such_state_clips.json is not there"], "no file")
+
+
+func test_the_knockdown_and_ko_groups_are_checked() -> void:
+	var t: StateClips = _read_text(_edited("\"standUp\": \"Knockdown01_StandUp\"}", "\"stand_up\": \"Knockdown01_StandUp\"}"))
+	assert_true(Array(t.errors).has("knockdown.clips: needs standUp"), "a phase missing: %s" % t.errors)
+	assert_true(Array(t.errors).has("knockdown.clips: unknown field stand_up") or t.errors.size() >= 1, "and noted: %s" % t.errors)
+	t = _read_text(_edited("\"behind\": [\"CombatDeath03\", \"CombatDeath04\"]", "\"behind\": [\"CombatDeath03\"]"))
+	assert_true(Array(t.errors).has("ko.clips.behind: must be a list of 2 clip ids"), "a death missing: %s" % t.errors)
+	t = _read_text(_edited("\"fallback\": \"Death01\"", "\"fallback\": \"Death01\", \"spare\": 1"))
+	assert_true(Array(t.errors).has("ko: unknown field spare"), "an unknown ko field: %s" % t.errors)

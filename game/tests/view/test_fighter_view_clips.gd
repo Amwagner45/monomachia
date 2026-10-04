@@ -10,7 +10,12 @@ const CD := preload("res://tests/view/test_clip_director.gd")
 const SF := preload("res://tests/sim/swing_fixtures.gd")
 
 
+func before_each() -> void:
+	FrozenStateClips.install()
+
+
 func after_each() -> void:
+	FrozenStateClips.restore()
 	ClipLibraries.force_missing = false
 	SimHelpers.dispose_all()
 

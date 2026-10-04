@@ -11,7 +11,12 @@ extends GutTest
 const SIDES: Array[String] = ["Right", "Left"]
 
 
+func before_each() -> void:
+	FrozenStateClips.install()
+
+
 func after_each() -> void:
+	FrozenStateClips.restore()
 	MoveBench.free_all()
 	SimHelpers.dispose_all()
 

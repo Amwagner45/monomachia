@@ -65,7 +65,7 @@ extends RefCounted
 ##   the rest of the recoil or stun, faded over the fades' rebound;
 ## - knockdown and KO (task 28; down_clip()): Knockdown01's Fall, Ground and
 ##   StandUp fitted to the knockdown's three phases, and the KO's death
-##   (KO_CLIPS, by the final blow's side and weight) at 1.0, so the
+##   (StateClips.ko_clips, by the final blow's side and weight) at 1.0, so the
 ##   final-blow slow motion slows it with the rules;
 ## - the crossfades, in rules frames (StateClips.fades): into an attack 3, a follow-up 4
 ##   from the last clip's pose, a dodge-cancel 2, a cut for hitstun, 6 back to
@@ -76,8 +76,8 @@ extends RefCounted
 ## through StateClips.shared()): the crossfades' lengths, the idles, the hit,
 ## guard and stun clips, the rebound, the carry pose and the three
 ## ultimates' clips and timings, and the hand-keyed clips of the states with
-## their own. What stays here are the rules' states and the knockdown and KO
-## clips (not yet on data).
+## their own, and the knockdown's and the KO's clips. What stays here are the
+## rules' states and the handful of constants that name them.
 
 ## The Daggers turn back into the reverse grip over an attack's last this
 ## many recovery frames when no follow-up is queued (task 21).
@@ -96,28 +96,6 @@ const STATE: StringName = &"state"
 const STUN_STATES: Array[StringName] = [&"stunned", &"stagger", &"disarmStagger", &"impaled"]
 ## The reactions that show on the upper body alone.
 const UPPER_REACTIONS: Array[StringName] = [&"guard", &"blockstun", &"parry"]
-## Knockdown (task 28): Knockdown01's fall timed to the fall's frames (it
-## lands, the hips on the floor, on its source frame 20, the fall's 20 rules
-## frames at 2.0), its ground loop at 1.0, and its stand-up from
-## KNOCKDOWN_STANDUP_FROM (the frames before lie still) timed to the
-## stand-up's frames (up on its source frame 31). Without the packs the CC0
-## Hit_Knockback for the fall and LayToIdle lying and rising.
-const KNOCKDOWN_CLIPS: Dictionary[StringName, StringName] = {
-	&"fall": &"Knockdown01_Fall", &"ground": &"Knockdown01_Ground", &"standUp": &"Knockdown01_StandUp",
-}
-const KNOCKDOWN_FALLBACKS: Dictionary[StringName, StringName] = {
-	&"fall": &"Hit_Knockback", &"ground": &"LayToIdle", &"standUp": &"LayToIdle",
-}
-const KNOCKDOWN_STANDUP_FROM: float = 6.0
-## The KO's death by the final blow (Fighter.ko_heavy, ko_from_behind),
-## [from the front, from behind] each [light, heavy]: from the front a light
-## blow reels the fighter round to collapse sideways (CombatDeath01), a
-## heavy one blows it flat on its back (02); from behind a light blow turns
-## it round to fall back (03), a heavy one doubles it over onto its face
-## (04). Played at 1.0 from the blow, held lying at the end. Without the
-## packs the CC0 Death01.
-const KO_CLIPS: Array[Array] = [[&"CombatDeath01", &"CombatDeath02"], [&"CombatDeath03", &"CombatDeath04"]]
-const KO_FALLBACK: StringName = &"Death01"
 ## The states a parried attacker rebounds in: a block's parry recoils it, a
 ## Flash's or a Redirect's stuns it (task 27).
 const REBOUND_STATES: Array[StringName] = [&"recoil", &"stunned"]
@@ -423,15 +401,16 @@ static func fitted_time(frame: int, frames: int, length: float) -> float:
 ## The clip of a knocked-down or knocked-out `f` (task 28), as a name in
 ## the tree and a time, or null: not down, or the clip isn't in the tree.
 static func down_clip(f: Fighter, ctx: Context) -> Clip:
+	var sc: StateClips = StateClips.shared()
 	var id: StringName = &""
 	var fallback: StringName = &""
 	var phase: StringName = f.knockdown_phase()
 	if f.state == &"ko":
-		id = KO_CLIPS[1 if f.ko_from_behind else 0][1 if f.ko_heavy else 0]
-		fallback = KO_FALLBACK
+		id = sc.ko_clips[1 if f.ko_from_behind else 0][1 if f.ko_heavy else 0]
+		fallback = sc.ko_fallback
 	elif phase != &"":
-		id = KNOCKDOWN_CLIPS[phase]
-		fallback = KNOCKDOWN_FALLBACKS[phase]
+		id = sc.knockdown_clips[phase]
+		fallback = sc.knockdown_fallbacks[phase]
 	else:
 		return null
 	var anim_name: String = "%s/%s" % [FighterModel.LIBRARY, fallback]
@@ -451,7 +430,7 @@ static func down_clip(f: Fighter, ctx: Context) -> Clip:
 				return Clip.make(anim_name, 0.0)
 			return Clip.make(anim_name, fmod(float(f.sf - fall) / fps, length))
 		&"standUp":
-			var from: float = KNOCKDOWN_STANDUP_FROM / float(ClipManifest.SOURCE_FPS) if ctx.libraries else 0.0
+			var from: float = sc.knockdown_standup_from / float(ClipManifest.SOURCE_FPS) if ctx.libraries else 0.0
 			return Clip.make(anim_name, from + fitted_time(f.sf - fall - ground, SimConst.KNOCKDOWN_STANDUP_FRAMES, length - from))
 	return Clip.make(anim_name, minf(float(f.sf) / fps, length))
 
@@ -571,7 +550,7 @@ static func ult_clip(f: Fighter, ctx: Context) -> Clip:
 	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
 
 
-## Impaler's clip in ultimate state `u` (see IMPALER_CLIP); without the packs
+## Impaler's clip in ultimate state `u` (see StateClips.impaler_clip); without the packs
 ## the fallback stretched over the aim and the dash, then held.
 static func impaler_clip(u: UltState, ctx: Context) -> Clip:
 	var sc: StateClips = StateClips.shared()
@@ -596,7 +575,7 @@ static func impaler_clip(u: UltState, ctx: Context) -> Clip:
 	return Clip.make(anim_name, clampf(source / float(ClipManifest.SOURCE_FPS), 0.0, length))
 
 
-## Lightning Tempest's clip in ultimate state `u` (see TEMPEST_SPIN).
+## Lightning Tempest's clip in ultimate state `u` (see StateClips.tempest_spin).
 static func tempest_clip(u: UltState, ctx: Context) -> Clip:
 	var sc: StateClips = StateClips.shared()
 	var pf: float = float(u.pf)

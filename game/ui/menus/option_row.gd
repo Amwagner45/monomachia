@@ -14,6 +14,8 @@ signal changed(index: int)
 var title: Label
 var chips: Array[Button] = []
 var index: int = 0
+## The row of chips.
+var seg: HBoxContainer
 ## The theme variations of an option and of the chosen one (use_cards()
 ## turns them into cards).
 var chip_style: StringName = UiTheme.OPTION
@@ -30,19 +32,33 @@ func _init(p_title: String, options: Array[String], p_index: int = 0) -> void:
 	title.custom_minimum_size = Vector2(190.0, 0.0)
 	title.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	row.add_child(title)
-	var seg: HBoxContainer = HBoxContainer.new()
+	seg = HBoxContainer.new()
 	seg.add_theme_constant_override("separation", 6)
 	row.add_child(seg)
-	for i: int in options.size():
-		var chip: Button = Button.new()
-		chip.text = options[i]
-		chip.focus_mode = Control.FOCUS_NONE
-		chip.pressed.connect(_on_chip.bind(i))
-		seg.add_child(chip)
-		chips.append(chip)
+	set_options(options, p_index)
 	focus_entered.connect(func() -> void: theme_type_variation = UiTheme.MENU_ROW_LIT)
 	focus_exited.connect(func() -> void: theme_type_variation = UiTheme.MENU_ROW)
-	set_index(p_index)
+
+
+## Replaces the options (a list that changes, as the Controls screen's
+## profiles), choosing `i`, without emitting changed. The chip sizes and
+## styles of use_cards() carry over.
+func set_options(options: Array[String], i: int = 0) -> void:
+	var chip_size: Vector2 = chips[0].custom_minimum_size if not chips.is_empty() else Vector2.ZERO
+	for chip: Button in chips:
+		# freed later: a chip's own click may have asked for the new options
+		seg.remove_child(chip)
+		chip.queue_free()
+	chips.clear()
+	for n: int in options.size():
+		var chip: Button = Button.new()
+		chip.text = options[n]
+		chip.focus_mode = Control.FOCUS_NONE
+		chip.custom_minimum_size = chip_size
+		chip.pressed.connect(_on_chip.bind(n))
+		seg.add_child(chip)
+		chips.append(chip)
+	set_index(i)
 
 
 ## Chooses an option without emitting changed.

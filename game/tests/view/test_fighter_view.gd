@@ -122,9 +122,13 @@ func test_the_guard_puts_the_weapon_in_both_hands() -> void:
 			assert_lt(_grip_miss(v, poses), NEAR, "%s %s: the grips land" % [id, weapon.id])
 
 
-## Through every frame of a light and a heavy attack the hands stay on the
-## grips and the elbows never lock: stick poses out of reach are pulled in.
+## Local-only: through every frame of a light and a heavy attack the Hunter
+## holds the weapon in the clip's hand, the off hand on its grip, the elbows
+## never locking. The fallback clips can't reach the baked paths.
 func test_whole_attacks_keep_the_weapon_in_the_hands() -> void:
+	if not ClipLibraries.available():
+		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
+		return
 	for weapon: WeaponDef in [Moves.KATANA, Moves.GREATSWORD, Moves.DAGGERS]:
 		for button: int in [Btn.LIGHT, Btn.HEAVY]:
 			var W: World = _world(weapon)

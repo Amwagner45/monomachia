@@ -160,6 +160,16 @@ content_margin_top = 2.0
 content_margin_bottom = 2.0
 bg_color = Color(0.78823529, 0.63137255, 0.35294118, 1)
 
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_hanko"]
+bg_color = Color(0.70196078, 0.14901961, 0.11764706, 1)
+corner_radius_top_left = 8
+corner_radius_top_right = 8
+corner_radius_bottom_right = 8
+corner_radius_bottom_left = 8
+shadow_color = Color(0, 0, 0, 0.5)
+shadow_size = 12
+shadow_offset = Vector2(0, 6)
+
 [resource]
 default_font = ExtResource("1_ui")
 default_font_size = 22
@@ -189,6 +199,13 @@ HudTag/colors/font_color = Color(1, 0.23137255, 0.14509804, 1)
 HudTag/font_sizes/font_size = 14
 HudTag/fonts/font = SubResource("FontVariation_eyebrow")
 HudTag/styles/normal = SubResource("StyleBoxFlat_tag")
+HankoLabel/base_type = &"Label"
+HankoLabel/colors/font_color = Color(0.96862745, 0.90980392, 0.83921569, 1)
+HankoLabel/constants/line_spacing = -4
+HankoLabel/constants/shadow_outline_size = 0
+HankoLabel/font_sizes/font_size = 22
+HankoLabel/fonts/font = ExtResource("2_display")
+HankoLabel/styles/normal = SubResource("StyleBoxFlat_hanko")
 HSlider/styles/grabber_area = SubResource("StyleBoxFlat_slider_fill")
 HSlider/styles/grabber_area_highlight = SubResource("StyleBoxFlat_slider_fill")
 HSlider/styles/slider = SubResource("StyleBoxFlat_slider")

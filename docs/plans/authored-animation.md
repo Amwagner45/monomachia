@@ -2,7 +2,7 @@
 
 Spec: `docs/specs/authored-animation.md` · branch `feature/authored-animation` · draft pull request #12 (into `feature/godot-rebuild`)
 
-> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This plan closes after task 30b (the recall's power-up burst, added beside tasks 29 and 30 on `lane/aa-29-30-31`), and its timing fit, rules-authored lunges, short crossfades and ±5-point soak rule are superseded. Task 31 isn't run under the old bar, tasks 32–35 (draws, victories, retiring the stand-ins) move into the slice spec, and task 36 retires.
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** This plan closes after task 30b (the recall's power-up burst, added beside tasks 29 and 30 on `lane/aa-29-30-31`), and its timing fit, rules-authored lunges, short crossfades and ±5-point soak rule are superseded. Task 31 isn't run under the old bar, tasks 32–35 (draws, victories, retiring the stand-ins) move into the slice spec, and task 36 retires. **Triaged (Oct 4):** tasks 29, 30 and 30b are built on PR #21 and ticked when it merges into `feature/godot-rebuild`; 31 and 36 are retired; 32, 33 and 35 move to milestone 1, and 34 to milestone 2.
 
 ## Destination
 
@@ -417,6 +417,7 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
   - Check: director tests for the blend weights by direction and speed; planted feet move under 1 cm; strips of running, strafing, backpedalling and sprinting; the footstep tests pass.
   - Blocked by: 28 · Stories: 22, 23, 24
   - Superseded by ADR 0001 (Oct 4): kept. It is built on `lane/aa-29-30-31` and stays in this plan, which closes after task 30b.
+  - Kept (Oct 4): done on PR #21; tick it when PR #21 merges. Three parts are interim: the playback rate matched to each clip's stride (the sprint plays about 1.2x fast), the 6-frame crossfades, and Turn01 laid on as a difference. Milestone 1's guard movement and momentum replace them with speeds taken from the clips, inertial blending, authored starts, stops and pivots, and guarded strafe and shuffle clips for each weapon class. Footsteps at the clips' foot contacts carry over.
 - [ ] **30. The roll and the other states.**
   - **The roll** plays Roll01 with the body turned toward the roll's direction. The body turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames.
   - **The backstep** plays Dodge01.
@@ -428,16 +429,18 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
     - sheets.
   - Blocked by: 17, 29 · Stories: 13, 25, 28, 29, 30
   - Superseded by ADR 0001 (Oct 4): kept. It is built on `lane/aa-29-30-31` and stays in this plan, which closes after task 30b.
-- [ ] **31. The reactions and movement review.**
+  - Kept (Oct 4): done on PR #21; tick it when PR #21 merges. Its speed-ups are interim: Roll01 plays about 2.75x over the dodge's travel and 3.8x over its recovery, and the backstep, jump, land and pick-up play at 2.0. In milestone 1 the roll and backstep clips are re-keyed to fit their protected frames, and the jump clips are made to match the rules' jump arcs. The pick-up becomes pulling the weapon out of the ground, as design.md's disarmed weapon describes, and plays at the clip's own speed.
+- [-] ~~**31. The reactions and movement review.**~~
   - Contact sheets and strips of every state on both fighters.
   - A short playtest of the reactions, the roll and the knockdown.
   - **Owner:** OKs reactions and movement. This gates task 32.
   - Blocked by: 30 · Stories: 47
   - Superseded by ADR 0001 (Oct 4): not run, since this plan closes after task 30b. Reactions and movement are judged instead against the Oct 4 quality bar in `docs/design.md`.
+  - Retired (Oct 4): the gate isn't held, and reactions and movement are judged against the Oct 4 quality bar in milestone 1. Its package (7b6cd26) merges with PR #21 as a record, with the spec's status line and the review page changed to say it was skipped. The review video tool carries over for the quality bar's side-by-side videos. Its open points carry over too: the roll sound joins the listening pass; the burst's numbers are confirmed in play; the stand-in guard goes with retiring the stand-ins; the turn and the 6-frame crossfade give way to inertial blending and authored pivots; and the hit reactions become directional.
 
 ### Phase I: the round flow
 
-- [ ] **32. The draw at the round intro.**
+- [-] ~~**32. The draw at the round intro.**~~
   - The Katana is drawn from its saya at the left hip (Unsheathe Hips01_R).
   - The Daggers are drawn from two leather sheaths at the small of the back (Unsheathe Hips01_Both, with IK onto the sheaths). The sheaths are new meshes built in code.
   - The Greatsword is lifted to the shoulder (CombatEnter2H01).
@@ -445,20 +448,23 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
   - Check: director tests for the intro clip by weapon; sheets of each draw; the scene smoke test loads the sheaths.
   - Blocked by: 31 (and the owner's OK) · Stories: 31
   - Superseded by ADR 0001 (Oct 4): moves into the slice spec; the weapon draws reach final quality in the two milestones (`docs/design.md`, Order of work).
-- [ ] **33. The victory poses from the packs.** The Katana sheathes into the saya (Sheathe Hips01_R) and bows (Reverence01); bare hands cheer (Cheer01).
+  - Moved to milestone 1 (Oct 4): the Hunter draws the Katana from its saya at the left hip, at final quality and at the clip's own speed. The saya is modelled in Blender with the Katana instead of being built in code. Bare hands' combat entry is left out, because every round starts armed and it would never play. The Greatsword's lift to the shoulder and the Daggers' draw from back sheaths follow in milestone 2, with the sheaths modelled alongside the weapons.
+- [-] ~~**33. The victory poses from the packs.**~~ The Katana sheathes into the saya (Sheathe Hips01_R) and bows (Reverence01); bare hands cheer (Cheer01).
   - Check: director tests for the victory clip by weapon; sheets.
   - Blocked by: 32 · Stories: 32, 35
   - Superseded by ADR 0001 (Oct 4): moves into the slice spec; the victory poses reach final quality in the two milestones (`docs/design.md`, Order of work).
-- [ ] **34. The hand-keyed victories.** Both are keyed in Blender on the Quaternius rig, CC0 and committed:
+  - Moved to milestone 1 (Oct 4): the Katana's sheathe into the saya and bow, and bare hands' cheer for a fighter who wins disarmed. Both reach final quality, play after the Warrior Slain call, and use today's bodies re-textured.
+- [-] ~~**34. The hand-keyed victories.**~~ Both are keyed in Blender on the Quaternius rig, CC0 and committed:
   - the Daggers' toss, flip and catch;
   - the Greatsword planted in the ground, with both hands on the pommel (hand IK locks them to it).
   - Check: the clips are in the committed library; sheets; the art budget holds.
   - Blocked by: 33 · Stories: 33, 34
   - Superseded by ADR 0001 (Oct 4): moves into the slice spec, with the victory poses. Size budgets per storage place replace the 110 MB art budget its check names.
+  - Moved to milestone 2 (Oct 4), with the Greatsword and the Daggers. The clips are keyed in Blender or Cascadeur on the shared UE5-style skeleton, not the Quaternius rig, and the tossed dagger rides the hand's prop bone. They are the repository's own art, so they are all rights reserved, not CC0. Their Blender sources live in the asset repository, and a scripted export makes the game's files. Size budgets for each storage place replace the 110 MB art cap.
 
 ### Phase J: finish
 
-- [ ] **35. Retire the procedural animation.**
+- [-] ~~**35. Retire the procedural animation.**~~
   - Removed: `SwingPlayer`, `StickPose` and the WeaponHold idles, the guard shuffle's and stance's leftovers, the demo swings (`katana_demo.json` and `scripts/swings`), and the posing of weapons in space.
   - Added: a director test that every move of every weapon resolves to a clip, and a local-only test that re-bakes every move and fails if a committed swing file differs.
   - Check:
@@ -468,10 +474,12 @@ Oct 3, 2026. Task 28 done: knockdown and KO play clips, through the director lik
     - a 40-match soak is clean.
   - Blocked by: 34 · Stories: 37, 43, 49
   - Superseded by ADR 0001 (Oct 4): moves into the slice spec (retiring the stand-ins).
-- [ ] **36. The final playtest and the hand-over.**
+  - Moved to milestone 1 (Oct 4) as retiring the stand-ins. SwingPlayer, StickPose, the WeaponHold idles, the demo swings and the posing of weapons in space go once the clips' hands hold the weapons, together with review 31's findings on the stand-in guard. The stand-ins serve every weapon, so the spec must say whether the Greatsword and the Daggers are fixed to the clips' hands in milestone 1 or in milestone 2. The re-bake test becomes a check that the committed frame-data table is generated from the clips with no hand overrides and that every attack sits inside its timing band. A director test still checks that every move resolves to a clip, and clones without the asset repository keep labelled stand-in clips.
+- [-] ~~**36. The final playtest and the hand-over.**~~
   - A playtest of cancels, hitstun interrupts, the roll, knockdowns and the shoulder carry.
   - The final sheets and soak.
   - The spec and the godot-rebuild docs brought up to date, and the pull request marked ready.
   - **Owner:** plays the build and approves the pull request.
   - Blocked by: 35 · Stories: 1–49
   - Superseded by ADR 0001 (Oct 4): retired, since this plan closes after task 30b. The owner plays the real build and signs off at each milestone instead (`docs/design.md`, Order of work).
+  - Retired (Oct 4): the plan closes after 30b, and the owner plays the real build and signs off at each milestone instead. Its hand-over doc work happens in PR #21's merge: the plan's conflicts and the spec's stale status line are resolved toward the Oct 4 notes (closed after 30b, review 31 skipped). PR #12 is already merged, so no pull request is left to mark ready.

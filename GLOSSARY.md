@@ -24,7 +24,7 @@ _Avoid_: Build, kit
 The weapon a fighter is offered by default at character select.
 
 **Palette**:
-One of a fighter's two colour schemes. In a mirror match the second fighter wears the other one, so the two can be told apart.
+One of a fighter's two colour schemes, worn by side (crimson for one, indigo for the other), so the two fighters can be told apart.
 _Avoid_: Skin, costume
 
 ## Attacking
@@ -123,7 +123,7 @@ A Greatsword resting on its fighter's shoulder, as it does at the round intro an
 The specific answer to an unblockable: **stomp** (dodge into a thrust), **leap** (jump over a sweep) or **evade** (back-dash from a slam, then lunge).
 
 **Paired clip**:
-A two-fighter clip played by both fighters at once, lined up so their bodies meet: the counters and the Impaler.
+A two-fighter clip played by both fighters at once, lined up so their bodies meet: the counters, the Impaler and the finishers.
 
 **Redirect**:
 A disarmed fighter's timed hand counter, which replaces the parry.

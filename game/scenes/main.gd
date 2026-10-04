@@ -1,9 +1,9 @@
 extends Node
 ## The game's flow for the playable skeleton (task 22 replaces the menus):
 ## title -> main menu (Duel, Watch, Controls, Settings, Quit) -> the fighter
-## select (Duel and Watch) -> a match -> results (Rematch, Main menu), with a
-## pause menu (Resume, Main menu) during play, which Back, Start or the pause
-## binding also closes. The pages sit on a ScreenStack: Back on
+## select (Duel and Watch) -> a match -> results (Rematch, Change fighters,
+## Main menu), with a pause menu (Resume, Main menu) during play, which Back,
+## Start or the pause binding also closes. The pages sit on a ScreenStack: Back on
 ## a page goes to the page that opened it (the main menu's to the title).
 ## A computer duel plays behind the title
 ## and the menus, seen from the orbiting menu camera; its restarts and the
@@ -82,6 +82,7 @@ func _ready() -> void:
 	results_screen = ResultsScreen.new()
 	results_screen.name = "Results"
 	results_screen.rematch.connect(rematch)
+	results_screen.change_fighters.connect(change_fighters)
 	results_screen.main_menu.connect(quit_to_menu)
 	ui.add_child(results_screen)
 
@@ -225,6 +226,15 @@ func rematch() -> void:
 	if last_config == null:
 		return
 	start_match(last_config.with_seed(_next_seed()))
+
+
+## From the results: the select for the mode just played, on its last picks,
+## over the main menu (where its Back goes), with the duel behind the menus
+## playing again.
+func change_fighters() -> void:
+	var mode: StringName = last_config.mode if last_config != null else MatchConfig.DUEL
+	quit_to_menu()
+	open_select(mode)
 
 
 ## Back to the match from the pause menu (Resume, Back). The host's

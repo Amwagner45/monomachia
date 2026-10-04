@@ -4,8 +4,8 @@ extends VBoxContainer
 ## ability part of showSelect() in src/ui/menus.ts): the weapon cards
 ## (WeaponCardRow, with Random for the Duel opponent), the weapon's blurb and
 ## its ultimate, and the two block-ability slots, each an OptionRow of the
-## weapon's three abilities under its button badge, with the chosen one's
-## description. Random hides the blurb, the ultimate and the slots; the
+## weapon's three abilities under its button badge (a label over the row, so
+## the chips fit the select's left column), with the chosen one's description. Random hides the blurb, the ultimate and the slots; the
 ## training dummy gets no slots.
 ##
 ## Editing a draft (edit()), the panel applies each pick through
@@ -24,8 +24,11 @@ signal ability_chosen(slot: int, ability_id: StringName)
 ## A pick changed the draft being edited.
 signal changed
 
-## The slot rows' badge column (px).
-const BADGE_WIDTH: float = 230.0
+## The text column's width (px).
+const TEXT_WIDTH: float = 400.0
+## The panel's width (px): the widest pair of ability rows (the
+## Greatsword's), so the select's columns hold still when the weapon changes.
+const WIDTH: float = 510.0
 
 var cards: WeaponCardRow
 var blurb: Label
@@ -33,6 +36,8 @@ var ultimate_name: Label
 var ultimate_desc: Label
 var abilities_title: Label
 var slots: Array[OptionRow] = []
+## The button badge over each slot.
+var slot_badges: Array[Label] = []
 var slot_descs: Array[Label] = []
 ## The weapon whose abilities the slots offer.
 var weapon_id: StringName = &""
@@ -43,24 +48,30 @@ var side_index: int = 0
 
 func _init() -> void:
 	name = "Loadout"
-	add_theme_constant_override("separation", 10)
+	custom_minimum_size.x = WIDTH
+	add_theme_constant_override("separation", 6)
 	cards = WeaponCardRow.new()
 	cards.changed.connect(_on_card)
 	add_child(cards)
-	blurb = _wrapped(&"", 19)
-	ultimate_name = _wrapped(UiTheme.DISPLAY, 22)
-	ultimate_desc = _wrapped(UiTheme.MUTED, 17)
+	blurb = _wrapped(&"", 18)
+	ultimate_name = _wrapped(UiTheme.DISPLAY, 21)
+	ultimate_desc = _wrapped(UiTheme.MUTED, 16)
 	abilities_title = UiTheme.label("Block abilities · pick 2 of 3", UiTheme.EYEBROW, 15)
 	abilities_title.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	add_child(abilities_title)
 	for slot: int in 2:
+		var badge: Label = UiTheme.label(MenuData.SLOT_BADGES[slot], UiTheme.MUTED, 15)
+		badge.name = "SlotBadge%d" % slot
+		badge.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
+		add_child(badge)
+		slot_badges.append(badge)
 		var row: OptionRow = OptionRow.new(MenuData.SLOT_BADGES[slot], ["", "", ""] as Array[String])
 		row.name = "Slot%d" % slot
-		row.title.custom_minimum_size.x = BADGE_WIDTH
+		row.title.visible = false
 		row.changed.connect(_on_slot.bind(slot))
 		add_child(row)
 		slots.append(row)
-		var desc: Label = _wrapped(UiTheme.MUTED, 16)
+		var desc: Label = _wrapped(UiTheme.MUTED, 15)
 		desc.name = "SlotDesc%d" % slot
 		slot_descs.append(desc)
 	weapon_chosen.connect(_apply_weapon)
@@ -89,11 +100,15 @@ func _show_draft() -> void:
 	show_side(draft.sides[side_index], draft.random_weapon[side_index], offers_random(draft.mode, side_index), picks_abilities(draft.mode, side_index))
 
 
-## Adds the panel's items to the page, in focus order.
+## Adds the panel's items to a page, in focus order, after its last item.
 func attach(page: MenuPage) -> void:
-	page.add_item(cards)
-	for row: OptionRow in slots:
-		page.add_item(row)
+	for c: Control in items():
+		page.add_item(c)
+
+
+## The panel's items in focus order: the cards, then the two slots.
+func items() -> Array[Control]:
+	return [cards, slots[0], slots[1]] as Array[Control]
 
 
 ## Shows a side's loadout. random: the weapon is left to chance (only with
@@ -118,6 +133,7 @@ func show_side(side: MatchSide, random: bool = false, offer_random: bool = false
 	var chosen: Array[StringName] = side.resolved_abilities()
 	for slot: int in 2:
 		slots[slot].visible = picks
+		slot_badges[slot].visible = picks
 		slot_descs[slot].visible = picks
 		if not known:
 			continue
@@ -168,6 +184,6 @@ func _wrapped(variation: StringName, font_size: int) -> Label:
 	var l: Label = UiTheme.label("", variation, font_size)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	l.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	l.custom_minimum_size = Vector2(560.0, 0.0)
+	l.custom_minimum_size = Vector2(TEXT_WIDTH, 0.0)
 	add_child(l)
 	return l

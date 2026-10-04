@@ -129,7 +129,7 @@ func test_a_keyboard_alone_walks_from_the_title_to_a_duel() -> void:
 	_walk_to(select.confirm, _press_key.bind(KEY_DOWN))
 	_press_key(KEY_ENTER)
 	await get_tree().process_frame
-	_press_key(KEY_DOWN)
+	_walk_to(select.skill_row, _press_key.bind(KEY_DOWN))
 	_press_key(KEY_LEFT)
 	_walk_to(select.confirm, _press_key.bind(KEY_DOWN))
 	_press_key(KEY_ENTER)

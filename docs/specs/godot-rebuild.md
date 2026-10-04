@@ -43,10 +43,10 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 2. [x] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
 3. [ ] As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
 4. [ ] As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
-5. [ ] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
+5. [x] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
 6. [x] As a player, I want the match to be first to three rounds with a clear round call and "Fight", so that I always know where the match stands.
 7. [ ] As a player, I want health bars with the posture bar underneath, round pips and an ultimate badge, so that I can read the state of the fight at a glance.
-8. [ ] As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
+8. [x] As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
 9. [ ] As a player, I want to pause at any time and reach the move list, controls and settings from the pause menu, so that I can check things mid-match.
 10. [x] As a player, I want the game to pause itself when the window loses focus, so that I don't lose a round while tabbed out.
 

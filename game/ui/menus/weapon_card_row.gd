@@ -3,7 +3,8 @@ extends PanelContainer
 ## The loadout panel's weapon cards (the demo's .cards): one card per playable
 ## weapon with its kanji and class, its name and the five stat bars
 ## (MenuData), and, where the side may leave it to chance, a Random card at
-## the end. Like an OptionRow it is a single item on its MenuPage: left and
+## the end: the weapons side by side, Random a short card under them, so the
+## row fits the select's left column. Like an OptionRow it is a single item on its MenuPage: left and
 ## right (and OK, which steps on) move the choice, wrapping round, and a click
 ## on a card picks it. Lit like a menu entry while focused.
 ##
@@ -14,7 +15,12 @@ signal changed(choice: StringName)
 
 ## The choice that leaves the weapon to chance.
 const RANDOM: StringName = &"random"
-const CARD_SIZE: Vector2 = Vector2(176.0, 168.0)
+## A Button doesn't grow to fit its children: the height holds the class
+## line, the name and the five bars.
+const CARD_SIZE: Vector2 = Vector2(136.0, 172.0)
+const RANDOM_CARD_SIZE: Vector2 = Vector2(136.0, 52.0)
+## Cards to a line: the three weapons.
+const COLUMNS: int = 3
 
 ## The cards' choices in order: the playable weapons, then RANDOM if offered.
 var choices: Array[StringName] = []
@@ -25,8 +31,10 @@ var _random_card: Button
 
 func _init() -> void:
 	theme_type_variation = UiTheme.MENU_ROW
-	var row: HBoxContainer = HBoxContainer.new()
-	row.add_theme_constant_override("separation", 8)
+	var row: GridContainer = GridContainer.new()
+	row.columns = COLUMNS
+	row.add_theme_constant_override("h_separation", 8)
+	row.add_theme_constant_override("v_separation", 8)
 	add_child(row)
 	for id: StringName in Moves.PLAYABLE_WEAPONS:
 		row.add_child(_card(id))
@@ -93,14 +101,14 @@ func _card(id: StringName) -> Button:
 	var card: Button = _blank(id)
 	var box: VBoxContainer = card.get_child(0)
 	box.add_child(_text("%s · %s" % [info.kanji, info.cls], UiTheme.MUTED, 15))
-	box.add_child(_text(Moves.WEAPONS[id].name, UiTheme.DISPLAY, 22))
+	box.add_child(_text(Moves.WEAPONS[id].name, UiTheme.DISPLAY, 15))
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 2
 	grid.add_theme_constant_override("h_separation", 8)
-	grid.add_theme_constant_override("v_separation", 3)
+	grid.add_theme_constant_override("v_separation", 0)
 	grid.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	for stat: StringName in MenuData.STATS:
-		var caption: Label = _text(MenuData.STAT_LABELS[stat], UiTheme.MUTED, 13)
+		var caption: Label = _text(MenuData.STAT_LABELS[stat], UiTheme.MUTED, 12)
 		caption.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		grid.add_child(caption)
 		var bar: StatBar = StatBar.new()
@@ -108,6 +116,7 @@ func _card(id: StringName) -> Button:
 		bar.value = info.stats[stat]
 		bar.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		bar.custom_minimum_size.x = 40.0
 		grid.add_child(bar)
 	box.add_child(grid)
 	return card
@@ -115,10 +124,10 @@ func _card(id: StringName) -> Button:
 
 func _random() -> Button:
 	var card: Button = _blank(RANDOM)
+	card.custom_minimum_size = RANDOM_CARD_SIZE
 	var box: VBoxContainer = card.get_child(0)
 	box.alignment = BoxContainer.ALIGNMENT_CENTER
-	box.add_child(_text("?", UiTheme.DISPLAY, 44))
-	box.add_child(_text("Random weapon", UiTheme.MUTED, 15))
+	box.add_child(_text("Random", UiTheme.DISPLAY, 16))
 	return card
 
 
@@ -132,7 +141,7 @@ func _blank(c: StringName) -> Button:
 	card.pressed.connect(_on_card.bind(c))
 	var box: VBoxContainer = VBoxContainer.new()
 	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 10)
-	box.add_theme_constant_override("separation", 4)
+	box.add_theme_constant_override("separation", 2)
 	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	card.add_child(box)
 	cards.append(card)

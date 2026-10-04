@@ -68,6 +68,14 @@
 		"f_dl": {"clips": ["AttackPunch01_L@5"], "speed": 1, "fallback": "Punch_Jab", "marks": {"windup": 0, "contact": 2.5, "contact_end": 3.5, "settle": 8.5}},
 		"f_dh": {"clips": ["AttackPunch03_R"], "speed": 1.4, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 7, "contact_end": 9.1, "settle": 20.3}},
 		"f_bh": {"clips": ["AttackPunch01_R"], "speed": 1.25, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 7.5, "contact_end": 10, "settle": 20}},
-		"f_lunge": {"clips": ["AttackPunch01_R@4"], "speed": 1.4, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 3.5, "contact_end": 5.6, "settle": 15.4}}
+		"f_lunge": {"clips": ["AttackPunch01_R@4"], "speed": 1.4, "fallback": "Punch_Cross", "marks": {"windup": 0, "contact": 3.5, "contact_end": 5.6, "settle": 15.4}},
+		"f_h1": {"clips": ["AttackKick01_R"], "speed": 1.4, "fallback": "Melee_Hook", "marks": {"windup": 0, "hold": 5.5, "contact": 9, "contact_end": 11.8, "settle": 25.8}},
+		"f_h2": {"clips": ["AttackKick02_R", "AttackKick02_R@24*3"], "speed": 1.25, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 10, "contact_end": 12.5, "settle": 26.25}},
+		"f_sl": {"clips": ["ual/Melee_Knee@2"], "speed": 1.63, "fallback": "Melee_Knee", "marks": {"windup": 0, "contact": 6.5, "contact_end": 9.76, "settle": 22.8}},
+		"f_sh": {"clips": ["Jump01_Begin@0-5", "AttackKick01_R@3"], "speed": 1.57, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 11, "contact_end": 14.93, "settle": 30.63}},
+		"f_bl": {"clips": ["AttackKick01_L@3"], "speed": 1.71, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 6, "contact_end": 8.57, "settle": 18.83}},
+		"f_jl": {"clips": ["ual/Melee_Knee@2"], "speed": 1.86, "fallback": "Melee_Knee", "marks": {"windup": 0, "contact": 6.5, "contact_end": 9.29, "settle": 20.45}},
+		"f_jh": {"clips": ["AttackKick01_L", "AttackKick01_L@30*2"], "speed": 1.83, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 11, "contact_end": 14.66, "settle": 31.13}},
+		"f_breaker": {"clips": ["AttackPunch03_R@0-4", "AttackPunch03_R@4*4", "ual/Melee_Uppercut@3"], "speed": 1.57, "fallback": "Melee_Hook", "marks": {"windup": 0, "contact": 11, "contact_end": 13.36, "settle": 33.77}}
 	}}
 }

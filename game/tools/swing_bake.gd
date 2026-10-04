@@ -358,10 +358,16 @@ static func _measure(r: Result, move: AttackDef, weapon: WeaponDef, distance: fl
 	return [inside, touches[0].frame]
 
 
+## Bare hands' kicks that strike with the knee and shin rather than the foot
+## (task 25): the Flying Knee.
+const KNEE_STRIKES: Array[StringName] = [&"f_sl"]
+
+
 ## The parts a move's swing bakes, beside the body: both hands for a pair
-## of weapons (the Daggers); the striking hand, or foot for a kick, for bare
-## hands (both hands for a move with both); a bash's leading shoulder
-## (task 19); the main hand otherwise.
+## of weapons (the Daggers); the striking hand, or foot for a kick (the knee
+## for a knee strike, KNEE_STRIKES), for bare hands, on the move's side (both
+## hands for a move with both); a bash's leading shoulder (task 19); the main
+## hand otherwise.
 static func parts_for(move: AttackDef, weapon: WeaponDef) -> Array[StringName]:
 	var out: Array[StringName] = []
 	if move.damage <= 0.0 and move.posture <= 0.0:
@@ -377,7 +383,9 @@ static func parts_for(move: AttackDef, weapon: WeaponDef) -> Array[StringName]:
 	elif weapon.id == &"daggers":
 		out.assign([&"right_hand", &"left_hand"])
 	elif weapon.id == &"fists":
-		var limb: String = "foot" if move.type == &"kick" else "hand"
+		var limb: String = "hand"
+		if move.type == &"kick":
+			limb = "knee" if KNEE_STRIKES.has(move.id) else "foot"
 		if move.hand == &"L" or move.hand == &"both":
 			out.append(StringName("left_" + limb))
 		if move.hand != &"L":

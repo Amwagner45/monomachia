@@ -39,6 +39,14 @@ const UNBLOCKABLE_SWEEP_BONUS: float = 0.1
 const SHOULDER_STRIKE_BASE: float = -0.04
 const SHOULDER_STRIKE_TIP: float = 0.08
 const SHOULDER_STRIKE_THICKNESS: float = 0.24
+## A knee strike's knee and shin (authored-animation task 25, the Flying
+## Knee; Swing's left_knee and right_knee tracks): in the shin's frame
+## (origin at the knee joint, +Y down the shin toward the ankle, +X the
+## shin's front), from the top of the kneecap to the upper third of the shin,
+## 14 cm thick for the knee and the calf.
+const KNEE_STRIKE_BASE: float = -0.05
+const KNEE_STRIKE_TIP: float = 0.18
+const KNEE_STRIKE_THICKNESS: float = 0.14
 
 # --- Defence ---------------------------------------------------------------
 const PARRY_POSTURE: float = 16.0 # "each parry does a consistent amount of posture damage"

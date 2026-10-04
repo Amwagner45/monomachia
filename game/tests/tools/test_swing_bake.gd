@@ -186,7 +186,9 @@ func test_the_parts_each_weapon_bakes() -> void:
 	for id: StringName in fists.moves:
 		var m: AttackDef = fists.moves[id]
 		var parts: Array[StringName] = SwingBake.parts_for(m, fists)
-		var limb: String = "foot" if m.type == &"kick" else "hand"
+		var limb: String = "hand"
+		if m.type == &"kick":
+			limb = "knee" if SwingBake.KNEE_STRIKES.has(id) else "foot"
 		assert_true(parts.has(StringName(("left_" if m.hand == &"L" else "right_") + limb)), "%s strikes with its %s %s" % [id, m.hand, limb])
 		assert_eq(parts[-1], &"body")
 
@@ -200,6 +202,33 @@ func test_a_bash_strikes_with_its_left_shoulder() -> void:
 	assert_eq([segment.base.y, segment.tip.y, segment.thickness],
 		[SimConst.SHOULDER_STRIKE_BASE, SimConst.SHOULDER_STRIKE_TIP, SimConst.SHOULDER_STRIKE_THICKNESS], "any weapon's bash shoulder")
 	assert_eq(Swing.strike_segment(&"right_shoulder", Moves.KATANA).thickness, SimConst.SHOULDER_STRIKE_THICKNESS)
+
+
+func test_the_flying_knee_strikes_with_its_knee() -> void:
+	# task 25: the knee and shin, down from the knee joint
+	var fists: WeaponDef = Moves.FISTS
+	assert_eq(SwingBake.parts_for(fists.moves[&"f_sl"], fists), [&"right_knee", &"body"] as Array[StringName])
+	assert_eq(SwingBake.parts_for(fists.moves[&"f_bl"], fists), [&"left_foot", &"body"] as Array[StringName], "Snap Kick, the left leg")
+	var segment: StrikeSegment = Swing.strike_segment(&"right_knee", fists)
+	assert_eq([segment.base.y, segment.tip.y, segment.thickness],
+		[SimConst.KNEE_STRIKE_BASE, SimConst.KNEE_STRIKE_TIP, SimConst.KNEE_STRIKE_THICKNESS])
+
+
+func test_a_knees_sample_is_its_joint_facing_down_the_shin() -> void:
+	var f: FighterModel = _hunter(&"katana")
+	var poser: ClipPoser = ClipPoser.new(f, ["ual/Sword_Idle"] as Array[String])
+	var p: Dictionary = poser.pose(0.2)
+	var sk: Skeleton3D = f.skeleton
+	for side: String in ["Left", "Right"]:
+		var s: Swing.Sample = p[StringName(side.to_lower() + "_knee")]
+		var knee: Vector3 = sk.get_bone_global_pose(sk.find_bone(side + "LowerLeg")).origin
+		var foot: Vector3 = sk.get_bone_global_pose(sk.find_bone(side + "Foot")).origin
+		var want: V3 = ClipPoser.to_fighter(knee)
+		assert_lt(V3.length(V3.sub(s.grip, want)), 0.001, "%s knee at its joint" % side)
+		var down: V3 = ClipPoser.to_fighter((foot - knee).normalized())
+		assert_almost_eq(V3.dot(s.blade, down), 1.0, 0.001, "%s blade down the shin" % side)
+		assert_gt(s.edge.z, 0.0, "%s edge to the shin's front" % side)
+		assert_almost_eq(V3.dot(s.edge, s.blade), 0.0, 0.001)
 
 
 func test_a_shoulders_sample_is_its_joint_facing_out_along_the_shoulders() -> void:

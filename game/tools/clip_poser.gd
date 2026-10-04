@@ -152,6 +152,15 @@ func _capture() -> void:
 		var away: Vector3 = joint - sk.get_bone_global_pose(sk.find_bone(other + "UpperArm")).origin
 		var chest: Basis = sk.get_bone_global_pose(sk.find_bone("UpperChest")).basis.orthonormalized()
 		out[StringName(side + "_shoulder")] = limb_sample(joint, away, chest.z)
+		# the knee a knee strike strikes with: down the shin, its edge the
+		# shin's front (out of the leg's bend; the toes' way when it's straight)
+		var knee: Vector3 = sk.get_bone_global_pose(sk.find_bone(bone + "LowerLeg")).origin
+		var thigh: Vector3 = (knee - sk.get_bone_global_pose(sk.find_bone(bone + "UpperLeg")).origin).normalized()
+		var shin: Vector3 = (foot.origin - knee).normalized()
+		var front: Vector3 = thigh - shin
+		if front.length() < 0.05:
+			front = basis * (axes[0] as Vector3)
+		out[StringName(side + "_knee")] = limb_sample(knee, shin, front)
 	var body: Swing.Sample = Swing.Sample.new()
 	var hips: int = sk.find_bone("Hips")
 	body.pelvis = coil(sk, hips)

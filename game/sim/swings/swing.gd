@@ -41,8 +41,10 @@ extends RefCounted
 
 ## A bash strikes with a shoulder (authored-animation task 19): its track's
 ## grip is the shoulder joint, its blade the way out along the shoulder line
-## and its edge forward (SimConst.SHOULDER_STRIKE_*).
-const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"right_shoulder", &"left_shoulder", &"body"]
+## and its edge forward (SimConst.SHOULDER_STRIKE_*). A knee strike strikes
+## with a knee (task 25): its grip is the knee joint, its blade the way down
+## the shin and its edge the shin's front (SimConst.KNEE_STRIKE_*).
+const PARTS: Array[StringName] = [&"right_hand", &"left_hand", &"right_foot", &"left_foot", &"right_shoulder", &"left_shoulder", &"right_knee", &"left_knee", &"body"]
 
 
 ## One key pose of a track. Hand and foot keys use frame, grip, blade, edge,
@@ -88,8 +90,8 @@ class Sample:
 
 ## What the track for `part` strikes with on `weapon` (task 7.9): a hand the
 ## weapon's blade (bare hands' fist), a foot bare hands' foot, a shoulder the
-## bash's shoulder on any weapon; null for the body, which doesn't strike, or
-## a foot on a weapon with no kicks.
+## bash's shoulder on any weapon, a knee the knee and shin on any weapon; null
+## for the body, which doesn't strike, or a foot on a weapon with no kicks.
 static func strike_segment(part: StringName, weapon: WeaponDef) -> StrikeSegment:
 	match part:
 		&"right_hand", &"left_hand":
@@ -99,6 +101,9 @@ static func strike_segment(part: StringName, weapon: WeaponDef) -> StrikeSegment
 		&"right_shoulder", &"left_shoulder":
 			return StrikeSegment.make(V3.make(0.0, SimConst.SHOULDER_STRIKE_BASE, 0.0),
 				V3.make(0.0, SimConst.SHOULDER_STRIKE_TIP, 0.0), SimConst.SHOULDER_STRIKE_THICKNESS)
+		&"right_knee", &"left_knee":
+			return StrikeSegment.make(V3.make(0.0, SimConst.KNEE_STRIKE_BASE, 0.0),
+				V3.make(0.0, SimConst.KNEE_STRIKE_TIP, 0.0), SimConst.KNEE_STRIKE_THICKNESS)
 	return null
 
 

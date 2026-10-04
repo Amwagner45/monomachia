@@ -54,7 +54,7 @@ const MOVES: Dictionary = {
 		"range": 1.4, "arc": 150,
 	},
 	&"f_bl": {
-		"id": &"f_bl", "name": "Snap Kick", "kind": &"light", "type": &"kick", "anim": &"f_snapKick", "sound": F,
+		"id": &"f_bl", "name": "Snap Kick", "kind": &"light", "type": &"kick", "anim": &"f_snapKick", "hand": &"L", "sound": F,
 		"startup": 7, "active": 3, "recovery": 12, "damage": 3, "posture": 10, "knockback": 1.0,
 		"range": 1.5, "arc": 90, "lunge": 0.5,
 	},
@@ -69,7 +69,7 @@ const MOVES: Dictionary = {
 		"range": 1.4, "arc": 110, "airborne": true,
 	},
 	&"f_jh": {
-		"id": &"f_jh", "name": "Axe Kick", "kind": &"heavy", "type": &"kick", "anim": &"f_axeKick", "sound": F,
+		"id": &"f_jh", "name": "Axe Kick", "kind": &"heavy", "type": &"kick", "anim": &"f_axeKick", "hand": &"L", "sound": F,
 		"startup": 12, "active": 4, "recovery": 18, "damage": 6, "posture": 16, "knockback": 1.4,
 		"range": 1.5, "arc": 100, "airborne": true,
 	},
@@ -81,7 +81,7 @@ const MOVES: Dictionary = {
 	&"f_breaker": {
 		"id": &"f_breaker", "name": "Breaker Palm", "kind": &"ultimate", "type": &"punch", "anim": &"f_breakerPalm", "hand": &"R",
 		"sound": F, "special": &"breakerPalm", "startup": 14, "active": 3, "recovery": 26, "damage": 6, "posture": 50,
-		"knockback": 1.8, "range": 1.5, "arc": 90, "lunge": 2.5, "lunge_end": 15, "power": true, "hitstop": 12, "hitstun": 36,
+		"knockback": 1.8, "range": 1.5, "arc": 90, "lunge": 2.95, "lunge_end": 15, "power": true, "hitstop": 12, "hitstun": 36,
 	},
 }
 

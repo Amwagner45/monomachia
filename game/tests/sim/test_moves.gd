@@ -194,6 +194,12 @@ const MOVE_CHANGES: Array[Dictionary] = [
 	{"move": "f_l3", "field": "lunge", "was": 0.3, "now": 0.07},
 	{"move": "f_l3", "field": "lunge_end", "was": AttackDef.UNSET, "now": 9},
 	{"move": "f_bh", "field": "lunge", "was": 1.8, "now": 1.9},
+	# authored animation 25: the kicks and Breaker Palm. Snap Kick and Axe
+	# Kick kick with the left leg (AttackKick01_L), which the bake reads from
+	# the side; Breaker Palm's crouch-and-uppercut falls short of 4.1 m
+	{"move": "f_bl", "field": "hand", "was": &"R", "now": &"L"},
+	{"move": "f_jh", "field": "hand", "was": &"R", "now": &"L"},
+	{"move": "f_breaker", "field": "lunge", "was": 2.5, "now": 2.95},
 ]
 
 ## Moves the new strings added, with no demo move to compare with: each

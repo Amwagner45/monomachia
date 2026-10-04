@@ -7,7 +7,8 @@ extends RefCounted
 ## tick's segment to this one.
 
 ## the swing's track: right_hand, left_hand, right_foot, left_foot or a
-## bash's right_shoulder or left_shoulder
+## bash's right_shoulder or left_shoulder, or a knee strike's right_knee or
+## left_knee
 var part: StringName = &""
 var base: V3 = V3.make()
 var tip: V3 = V3.make()

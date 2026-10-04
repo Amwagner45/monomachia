@@ -115,7 +115,7 @@ const TURN_FADE: int = 6
 ## How many moving clips the tree shows at once: two ways by two gaits.
 const SLOTS: int = 4
 ## How many rules frames the legs take to go from the idle to the moving
-## clips or back (ClipDirector.FADES' locomotion).
+## clips or back (StateClips.fades' locomotion).
 const MOVING_FRAMES: int = 6
 
 ## Each fighter's gaits (FighterLook id + "|" + the clip's name in the

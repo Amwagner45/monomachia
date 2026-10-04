@@ -8,7 +8,12 @@ extends GutTest
 const NEAR: float = 0.01
 
 
+func before_each() -> void:
+	FrozenStateClips.install()
+
+
 func after_each() -> void:
+	FrozenStateClips.restore()
 	SimHelpers.dispose_all()
 
 

@@ -183,3 +183,16 @@ The graphics preset every look is judged at: Ultra, on an RTX 3090.
 **Asset repository**:
 The private repository of paid and large source art (and Blender files) that the game's import tools read. The public repository never holds paid art.
 _Avoid_: Asset store (that's Unity's shop), asset pack
+
+## Tools
+
+**Animation Studio**:
+The dev tool for looking at and refining animations: a gallery of every animation, an editor and a chat panel.
+
+**Corrective**:
+Per-bone rotation offsets keyed on top of a clip, shared by both bodies or overridden for one, and baked into the swing.
+_Avoid_: Additive, fix layer
+
+**Refinement**:
+A change to one animation asked for in the Studio's chat panel, worked on in its own worktree and branch.
+_Avoid_: Request, job

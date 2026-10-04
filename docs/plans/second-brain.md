@@ -18,10 +18,10 @@ Each task is finished, tested (`npm test`, `npm run typecheck`), committed and p
 - [x] **SB.4 Hand-written notes.** `brain/Home.md` and the concept notes: weapons (Katana, Greatsword, Twin Daggers, Bare hands, the planned five), fighters, posture, parry, clash, disarm, strings, ultimates, the round and match flow, arenas, modes, the computer opponent, architecture (sim/view split, golden replays, swings), sound, the HUD and menus, the rebuild and its decisions; `.obsidian/app.json` with sensible defaults.
   - Check: the whole-vault test (real working tree) finds no broken link and no duplicate name.
   - Blocked by: SB.3.
-- [ ] **SB.5 Viewer and standalone server.** `serve.mjs` (`brainHandler`, port 5196) and `viewer.html` with vendored `marked.min.js`: folder tree, search, rendered notes with wikilinks, unresolved links struck through, "Linked from", URL hash navigation, "Open in Obsidian".
+- [x] **SB.5 Viewer and standalone server.** `serve.mjs` (`brainHandler`, port 5196) and `viewer.html` with vendored `marked.min.js`: folder tree, search, rendered notes with wikilinks, unresolved links struck through, "Linked from", URL hash navigation, "Open in Obsidian".
   - Check: `brainHandler` serves the page and `notes.json` (test); by hand in the Browser pane, links, back and search work.
   - Blocked by: SB.3.
-- [ ] **SB.6 Graph.** A canvas force-directed graph in the viewer: the open note's neighbours, or the whole vault; click a node to open it.
+- [x] **SB.6 Graph.** A canvas force-directed graph in the viewer: the open note's neighbours, or the whole vault; click a node to open it.
   - Check: by hand, both graphs draw and clicking opens the note.
   - Blocked by: SB.5.
 - [ ] **SB.7 The board's button and routes (local, untracked).** A "Second brain" header button opening `/brain/` in a named popup; `/brain/*` served by `brainHandler` loaded from the newest ref holding `brain/Home.md`.

@@ -280,3 +280,35 @@ describe('sources', async () => {
     expect(notes.find((n) => n.name === 'Rebuild plan')).toBeTruthy();
   });
 });
+
+describe('brainHandler', async () => {
+  const { brainHandler } = await import('../tools/second-brain/serve.mjs');
+  const call = async (handle, path, method = 'GET') => {
+    let status = 0, headers = {}, body = '';
+    const res = { writeHead: (s, h = {}) => { status = s; headers = h; }, end: (b = '') => { body = String(b); } };
+    await handle({ method }, res, path);
+    return { status, headers, body };
+  };
+  const source = memorySource({ 'brain/Home.md': '# Home\n\n[[Glossary]]\n', 'GLOSSARY.md': GLOSSARY });
+
+  it('serves the viewer page, its script and the notes', async () => {
+    let asked = 0;
+    const handle = brainHandler({ getSource: () => { asked++; return { key: 'abc', source }; }, label: 'test' });
+    const page = await call(handle, '/');
+    expect(page.status).toBe(200);
+    expect(page.body).toContain('<title>Second brain</title>');
+    expect((await call(handle, 'vendor/marked.umd.js')).body).toContain('marked');
+    const notes = await call(handle, 'notes.json?x=1');
+    const data = JSON.parse(notes.body);
+    expect(data).toMatchObject({ label: 'test', key: 'abc' });
+    expect(data.notes.map((n) => n.name)).toContain('Parry');
+    await call(handle, 'notes.json');
+    expect(asked).toBe(2);
+  });
+
+  it('refuses unknown paths and other methods', async () => {
+    const handle = brainHandler({ getSource: () => ({ key: null, source }) });
+    expect((await call(handle, '../package.json')).status).toBe(404);
+    expect((await call(handle, 'notes.json', 'POST')).status).toBe(405);
+  });
+});

@@ -127,7 +127,7 @@ func test_state_entries_play_the_tables_clips() -> void:
 	var cat: StudioCatalogue = StudioCatalogue.build(_manifest, _table, sc, _keyed())
 	assert_eq(cat.find(&"state", &"idle_greatsword").clips, ["CombatIdle2H01"] as Array[String], "the greatsword's idle")
 	assert_eq(cat.find(&"state", &"guard_katana").clips, ["Parry1H01_R_Loop", "Parry1H01_R_Hit"] as Array[String], "the guard's loop and hit")
-	assert_eq(cat.find(&"state", &"knockdown").clips, ["Knockdown01_Fall", "Knockdown01_Ground", "Knockdown01_StandUp"] as Array[String], "the knockdown's three phases")
+	assert_eq(cat.find(&"state", &"knockdown").clips, ["Knockdown01_Fall", "Knockdown01_Ground", "Knockdown01_StandUp@6"] as Array[String], "the knockdown's three phases, the stand-up trimmed as the game plays it")
 	assert_eq(cat.find(&"state", &"ko_behind_heavy").clips, ["CombatDeath04"] as Array[String], "a KO")
 	assert_eq(cat.find(&"state", &"stomp").clips, ["keyed/Mikiri_Stomp"] as Array[String], "the keyed stomp is named with its library")
 	assert_eq(cat.find(&"state", &"stomp_stun").clips, ["keyed/Mikiri_Pinned"] as Array[String], "and its pinned stun")
@@ -204,6 +204,41 @@ func test_without_the_packs_every_move_carries_the_fallback_badge() -> void:
 	assert_false(cat.find(&"source", &"ual/Sword_Idle").badges[&"fallback"], "a source clip isn't a fallback")
 
 
+func test_every_fallback_badge_comes_with_the_fallback_clips_to_play() -> void:
+	ClipLibraries.force_missing = true
+	var cat: StudioCatalogue = _build()
+	var badged: int = 0
+	for e: StudioCatalogue.Entry in cat.entries:
+		assert_eq(e.badges[&"fallback"], not e.fallbacks.is_empty(), "%s/%s: the badge says there is a fallback" % [e.kind, e.id])
+		if not e.badges[&"fallback"]:
+			continue
+		badged += 1
+		for fb: String in e.fallbacks:
+			assert_true(fb.begins_with("ual/"), "%s: %s names the CC0 library" % [e.id, fb])
+			assert_true(StudioLibraries.ual().has_animation(fb.get_slice("/", 1)), "%s: %s is in the CC0 library" % [e.id, fb])
+		# a move has one fallback, stretched over its whole chain; a state or ult one per part
+		if e.kind != &"move" and e.clips.size() > 1:
+			assert_eq(e.fallbacks.size(), e.clips.size(), "%s: a fallback for each part" % e.id)
+		else:
+			assert_eq(e.fallbacks.size(), 1, "%s: one fallback" % e.id)
+	assert_gt(badged, 70, "the moves and the states carry them")
+
+
+func test_fallbacks_are_what_the_director_plays_without_the_packs() -> void:
+	# the frozen copy, so a saved edit of the live table can't change this
+	var sc: StateClips = StateClips.read(FrozenStateClips.PATH)
+	var cat: StudioCatalogue = StudioCatalogue.build(_manifest, _table, sc, _keyed())
+	assert_eq(cat.find(&"move", &"k_l1").fallbacks, ["ual/Sword_Light_A"] as Array[String], "a move's own")
+	assert_eq(cat.find(&"state", &"idle_fists").fallbacks, ["ual/Idle"] as Array[String], "the idle's by weapon")
+	assert_eq(cat.find(&"state", &"hit_heavy").fallbacks, ["ual/Hit_Head"] as Array[String], "the heavy hit's")
+	assert_eq(cat.find(&"state", &"guard_daggers").fallbacks, ["ual/Sword_Block", "ual/Sword_Block"] as Array[String], "the guard's one, for the loop and the hit")
+	assert_eq(cat.find(&"state", &"knockdown").fallbacks, ["ual/Hit_Knockback", "ual/LayToIdle", "ual/LayToIdle"] as Array[String], "one per knockdown phase")
+	assert_eq(cat.find(&"state", &"ko_front_light").fallbacks, ["ual/Death01"] as Array[String], "the KO's")
+	assert_eq(cat.find(&"ult", &"tempest").fallbacks, ["ual/Sword_Heavy_Combo", "ual/Sword_Heavy_Combo"] as Array[String], "the tempest's, for the spin and the final")
+	assert_true(cat.find(&"state", &"stomp").fallbacks.is_empty(), "a keyed clip plays as it is")
+	assert_true(cat.find(&"state", &"carry").fallbacks.is_empty(), "so does the carry pose")
+
+
 func test_with_the_packs_nothing_carries_the_fallback_badge() -> void:
 	if not ClipLibraries.available():
 		pending("local-only: no clip libraries (node scripts/godot.mjs clips)")
@@ -256,8 +291,7 @@ func test_a_moves_location_is_its_line_in_move_clips_json() -> void:
 
 func test_a_source_clips_location_is_its_line_in_the_manifest() -> void:
 	var cat: StudioCatalogue = _build()
-	var lines: PackedStringArray = FileAccess.get_file_as_string(ClipManifest.PATH).split("
-")
+	var lines: PackedStringArray = FileAccess.get_file_as_string(ClipManifest.PATH).split("\n")
 	for id: StringName in [&"Roll01", &"Attack1H01_R", &"StrafeRun01_Left"]:
 		var loc: StudioCatalogue.Location = cat.find(&"source", id).source[0]
 		assert_eq(loc.path, ClipManifest.PATH, "the clip manifest")

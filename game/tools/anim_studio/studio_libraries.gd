@@ -40,3 +40,10 @@ static func keyed() -> AnimationLibrary:
 	if _keyed == null:
 		_keyed = KeyedClips.load_library()
 	return _keyed
+
+
+## Drops the cached libraries, so the next call loads them again (after the
+## keyed library has been rebuilt, say).
+static func reset() -> void:
+	_sets.clear()
+	_keyed = null

@@ -19,6 +19,16 @@ func test_the_keyed_library_is_loaded_once() -> void:
 	assert_same(StudioLibraries.keyed(), lib, "the second call shares it")
 
 
+func test_reset_drops_the_cached_libraries() -> void:
+	var lib: AnimationLibrary = StudioLibraries.keyed()
+	assert_same(StudioLibraries.keyed(), lib, "cached")
+	StudioLibraries.reset()
+	var again: AnimationLibrary = StudioLibraries.keyed()
+	assert_not_null(again, "loaded again")
+	assert_true(again.has_animation(KeyedClips.STOMP), "with its clips")
+	assert_same(StudioLibraries.keyed(), again, "and cached again")
+
+
 func test_the_packs_follow_the_game() -> void:
 	assert_eq(StudioLibraries.available(), ClipLibraries.available(), "available as the game says")
 	ClipLibraries.force_missing = true

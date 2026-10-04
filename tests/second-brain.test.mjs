@@ -263,6 +263,9 @@ describe('parseScriptSummary ports', () => {
 describe('sources', async () => {
   const { fsSource, gitSource } = await import('../tools/second-brain/sources.mjs');
   const ROOT = new URL('..', import.meta.url).pathname.replace(/^\/(\w:)/, '$1');
+  // These spawn git and read the whole repo. Alone they take 1-3 s, but in a full
+  // run, under load from the other test files, they have gone past Vitest's 5 s default.
+  const SLOW = 30_000;
 
   it('reads the same tracked doc from the working tree and from HEAD', () => {
     const fs = fsSource(ROOT);
@@ -271,8 +274,9 @@ describe('sources', async () => {
     expect(head.list()).toContain('GLOSSARY.md');
     expect(head.read('GLOSSARY.md').replace(/\r\n/g, '\n')).toBe(fs.read('GLOSSARY.md').replace(/\r\n/g, '\n'));
     expect(head.read('README.md').length).toBeGreaterThan(0);
+    expect(JSON.parse(head.read('package.json')).name).toBe(JSON.parse(fs.read('package.json')).name);
     expect(head.subjects()[0]).toEqual({ subject: expect.any(String), files: expect.any(Array) });
-  });
+  }, SLOW);
 
   it('builds the real vault with no broken links and no duplicate names', () => {
     const { notes } = buildVault(fsSource(ROOT));
@@ -280,7 +284,7 @@ describe('sources', async () => {
     expect(names.filter((n, i) => names.indexOf(n) !== i)).toEqual([]);
     expect(resolveLinks(notes).filter((l) => !l.to).map((l) => `${l.from} -> ${l.target}`)).toEqual([]);
     expect(notes.find((n) => n.name === 'Rebuild plan')).toBeTruthy();
-  });
+  }, SLOW);
 });
 
 describe('brainHandler', async () => {

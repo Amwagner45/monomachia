@@ -69,7 +69,7 @@ Rules:
 - `npm run build`: type-check, then build the single-file game
 - `npm run soak -- 40`: 40 computer-vs-computer matches, prints balance numbers
 - `npm run brain`: write the second brain's generated notes to `brain/generated/` (not committed); `npm run brain:serve` shows the vault at http://localhost:5196
-- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work
+- `npm run board`: the lanes board at http://localhost:5197, live progress of every plan and worktree; right-click a task to queue and launch it into its own session, or to end a launched session's work. It also listens on this PC's Tailscale address (never the LAN) and serves phones `tools/lanes-board/m.html`; `LANES_LOCAL_ONLY=1` turns that off
 
 ## Code notes
 

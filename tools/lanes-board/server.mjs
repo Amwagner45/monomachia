@@ -5,6 +5,9 @@
 // tasks and launch a desktop-app session to build them, end a launched
 // session's work, and open the second brain. It never fetches or takes git locks.
 //   npm run board   ->   http://localhost:5197
+// It also listens on this PC's Tailscale addresses, so the owner's phone can open
+// it (http://<tailscale ip>:5197 or http://<pc name>:5197); a phone gets the
+// mobile page, m.html. LANES_LOCAL_ONLY=1 keeps it to this PC.
 // State shared by every checkout (launch records, the stop list) lives outside
 // the repo: ~/.claude/lanes-board/ and ~/.claude/lanes-stop.json.
 import { createServer } from 'node:http';
@@ -12,9 +15,11 @@ import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import { readFile, readdir, stat, access, writeFile, open, mkdir } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { gzipSync } from 'node:zlib';
 import os from 'node:os';
 import path from 'node:path';
 import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor } from './plans.mjs';
+import { fromTailnetOrLocal, knownHost, pageFor, sameOrigin, tailnetIPv4s, tailscaleSelf, wantsGzip } from './access.mjs';
 
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -538,11 +543,33 @@ async function serveBrain(req, res, sub) {
   await tool.handle(req, res, sub);
 }
 
-// Only this page may launch: the request must come from the board's own origin.
-function sameOrigin(req) {
-  const ok = [`http://localhost:${PORT}`, `http://127.0.0.1:${PORT}`];
-  return ok.includes(req.headers.origin) && ok.some((o) => o.endsWith(`//${req.headers.host}`))
-    && (req.headers['content-type'] ?? '').startsWith('application/json');
+// ---------- who may connect (rules in access.mjs) ----------
+// The names the board answers to: localhost, and this PC's Tailscale addresses
+// and MagicDNS names, learned from the interfaces and `tailscale status --json`.
+const LOCAL_ONLY = !!process.env.LANES_LOCAL_ONLY;
+const TAILSCALE = process.env.TAILSCALE_EXE
+  ?? (process.platform === 'win32' ? 'C:\\Program Files\\Tailscale\\tailscale.exe' : 'tailscale');
+const hostNames = new Set(['localhost', '127.0.0.1']);
+const tailnetIps = new Set();
+let learnedDns = false;
+async function learnTailscale() {
+  for (const ip of tailnetIPv4s(os.networkInterfaces())) tailnetIps.add(ip);
+  if (!learnedDns) {
+    try {
+      const { stdout } = await run(TAILSCALE, ['status', '--json'], { windowsHide: true, timeout: 10_000 });
+      const { ips, names } = tailscaleSelf(JSON.parse(stdout));
+      for (const ip of ips) tailnetIps.add(ip);
+      for (const n of names) hostNames.add(n);
+      learnedDns = names.length > 0;
+    } catch { /* Tailscale not up yet; the interface scan still finds its address */ }
+  }
+  for (const ip of tailnetIps) hostNames.add(ip);
+}
+
+async function sendFile(res, { file, type }) {
+  const body = await readFile(path.join(HERE, file));
+  res.writeHead(200, { 'content-type': type, 'cache-control': 'no-store' });
+  res.end(body);
 }
 async function readJson(req) {
   let s = '';
@@ -550,10 +577,15 @@ async function readJson(req) {
   return JSON.parse(s || '{}');
 }
 
-createServer(async (req, res) => {
+async function handle(req, res) {
   try {
+    // The binds already keep to loopback and Tailscale; this is the second lock.
+    if (!fromTailnetOrLocal(req.socket.remoteAddress) || !knownHost(req.headers.host, hostNames)) {
+      res.writeHead(403, { 'content-type': 'text/plain' }); res.end('Not on this tailnet'); return;
+    }
     if (req.method === 'POST') {
-      if (!sameOrigin(req)) { res.writeHead(403); res.end('{"error":"Refused: not from the board"}'); return; }
+      const from = { origin: req.headers.origin, host: req.headers.host, contentType: req.headers['content-type'] };
+      if (!sameOrigin(from, hostNames)) { res.writeHead(403); res.end('{"error":"Refused: not from the board"}'); return; }
       const body = await readJson(req);
       let result;
       if (req.url === '/launch') result = { launched: await launch(body) };
@@ -571,18 +603,41 @@ createServer(async (req, res) => {
     if (req.url.startsWith('/brain/')) { await serveBrain(req, res, req.url.slice('/brain/'.length)); return; }
     if (req.url.startsWith('/data')) {
       const body = JSON.stringify(await data());
-      res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
-      res.end(body);
+      // About 75 KB every 4 s; gzip makes it a few KB for the phone.
+      if (wantsGzip(req.headers['accept-encoding'])) {
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store', 'content-encoding': 'gzip', vary: 'accept-encoding' });
+        res.end(gzipSync(body));
+      } else {
+        res.writeHead(200, { 'content-type': 'application/json', 'cache-control': 'no-store' });
+        res.end(body);
+      }
       return;
     }
-    const html = await readFile(path.join(HERE, 'index.html'));
-    res.writeHead(200, { 'content-type': 'text/html; charset=utf-8', 'cache-control': 'no-store' });
-    res.end(html);
+    await sendFile(res, pageFor(req.url, req.headers['user-agent']));
   } catch (err) {
     console.error(err);
     res.writeHead(req.method === 'POST' ? 400 : 500, { 'content-type': 'application/json' });
     res.end(JSON.stringify({ error: String(err?.message ?? err) }));
   }
-}).listen(PORT, '127.0.0.1', () => {
-  console.log(`All-lanes board on http://localhost:${PORT} (repo ${REPO})`);
-});
+}
+
+// Loopback always, and each Tailscale IPv4 address as soon as it exists (at logon
+// Tailscale can come up after the board), checked again every 30 s. Never 0.0.0.0.
+const bound = new Set();
+function bind(addr) {
+  if (bound.has(addr)) return;
+  bound.add(addr);
+  const server = createServer(handle);
+  server.on('error', (err) => {
+    bound.delete(addr);
+    if (addr === '127.0.0.1') { console.error(`Can't listen on ${addr}:${PORT}: ${err.message}`); process.exit(1); }
+    console.error(`Can't listen on ${addr}:${PORT} yet (${err.code}); trying again shortly`);
+  });
+  server.listen(PORT, addr, () => console.log(`All-lanes board on http://${addr === '127.0.0.1' ? 'localhost' : addr}:${PORT} (repo ${REPO})`));
+}
+bind('127.0.0.1');
+if (!LOCAL_ONLY) {
+  const bindTailnet = async () => { await learnTailscale(); for (const ip of tailnetIps) bind(ip); };
+  await bindTailnet();
+  setInterval(bindTailnet, 30_000);
+}

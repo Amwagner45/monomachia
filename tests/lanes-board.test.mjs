@@ -8,7 +8,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
-  GOAL_LIMIT, PLAN_BY_KEY, expandIds, goalFor, mergeCopies, parseFlat, parseNested, parseSteps,
+  GOAL_LIMIT, PLAN_BY_KEY, cancelStops, expandIds, goalFor, mergeCopies, parseFlat, parseNested, parseSteps,
 } from '../tools/lanes-board/plans.mjs';
 
 const GR = PLAN_BY_KEY.gr;
@@ -155,6 +155,20 @@ describe('mergeCopies', () => {
   });
 });
 
+describe('cancelStops', () => {
+  it('cancels every stop left on the relaunched lane\'s branch, and only those', () => {
+    const entries = [
+      { id: 'a', branch: 'lane/gr-1.1' },
+      { id: 'b', branch: 'lane/gr-1.1', firedAt: 5 },
+      { id: 'c', branch: 'lane/gr-2.1' },
+      { id: 'd', branch: 'lane/gr-1.1', cancelledAt: 1 },
+    ];
+    const { entries: out, cancelled } = cancelStops(entries, 'lane/gr-1.1', 99);
+    expect(cancelled).toBe(2);
+    expect(out.map((e) => e.cancelledAt ?? null)).toEqual([99, 99, null, 1]);
+  });
+});
+
 describe('goalFor', () => {
   const repo = 'C:\\Users\\me\\Monomachia';
   const tasks = { '22.15': { title: 'Pause menu' }, '23.1': { title: 'Training upkeep in the rules' } };
@@ -227,6 +241,34 @@ describe('stop hook', () => {
 
   it('lets the session go on two minutes after it first stopped it', () => {
     stopList({ firedAt: Date.now() - 3 * 60 * 1000 });
+    expect(run({ session_id: 'listed', cwd: worktree, hook_event_name: 'PreToolUse' })).toBe('');
+  });
+
+  // A relaunch of the same tasks reuses the lane's branch and worktree. Its new
+  // session (a transcript written after the lane was ended) must not inherit the
+  // old stop; the sessions running when it was ended still stop.
+  const transcript = (name, ageMs) => {
+    const f = path.join(dir, `${name}.jsonl`);
+    writeFileSync(f, '{}\n');
+    return { f, before: Date.now() - ageMs };
+  };
+
+  it('leaves a new session in the lane\'s worktree alone after the lane was ended', () => {
+    const { f } = transcript('new-session', 0);
+    stopList({ requestedAt: Date.now() - 60 * 1000 });
+    expect(run({ session_id: 'new', transcript_path: f, cwd: worktree, hook_event_name: 'PreToolUse' })).toBe('');
+    expect(JSON.parse(readFileSync(file, 'utf8')).entries[0].firedAt).toBeNull();
+  });
+
+  it('still stops a session in the worktree that was running when the lane was ended', () => {
+    const { f } = transcript('old-session', 0);
+    stopList({ requestedAt: Date.now() + 60 * 1000 });
+    const out = JSON.parse(run({ session_id: 'old', transcript_path: f, cwd: worktree, hook_event_name: 'PreToolUse' }));
+    expect(out.continue).toBe(false);
+  });
+
+  it('ignores a stop the board cancelled by launching the lane again', () => {
+    stopList({ cancelledAt: Date.now() });
     expect(run({ session_id: 'listed', cwd: worktree, hook_event_name: 'PreToolUse' })).toBe('');
   });
 

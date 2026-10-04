@@ -158,6 +158,21 @@ export function mergeCopies(copies) {
   return { tasks, stages: newest.p.stages, done, retired };
 }
 
+/**
+ * Launching a lane's tasks again is the owner taking the work back up, so any
+ * stop entry left from ending that lane (same branch) is cancelled; the stop
+ * hook skips cancelled entries. Returns the entries and how many it cancelled.
+ */
+export function cancelStops(entries, branch, now) {
+  let cancelled = 0;
+  const out = entries.map((e) => {
+    if (e.branch !== branch || e.cancelledAt) return e;
+    cancelled++;
+    return { ...e, cancelledAt: now };
+  });
+  return { entries: out, cancelled };
+}
+
 export const GOAL_LIMIT = 4000; // /goal refuses a longer condition
 
 /**

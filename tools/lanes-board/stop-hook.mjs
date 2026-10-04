@@ -8,10 +8,11 @@
 //   }
 // The board writes ~/.claude/lanes-stop.json (LANES_STOP_FILE overrides it, for
 // tests); with no file this exits at once. A session listed by id, or working
-// inside the ended lane's worktree, is stopped at its next step (continue:false)
-// once: the entry stays in force for two minutes after it first fires, so the
-// turn's own Stop hook also lets it end, and then the session can be used again.
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+// inside the ended lane's worktree since before it was ended, is stopped at its
+// next step (continue:false) once: the entry stays in force for two minutes after
+// it first fires, so the turn's own Stop hook also lets it end, and then the
+// session can be used again. Launching the lane again cancels its entries.
+import { existsSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -34,11 +35,18 @@ function main(hook) {
   const now = Date.now();
   const norm = (p) => path.normalize(p ?? '').toLowerCase();
   const cwd = norm(hook.cwd);
+  // When this session began: its transcript file's creation. A relaunch of the
+  // same tasks reuses the lane's worktree, and its new session must not inherit
+  // the stop, so a worktree match only stops sessions begun before the end.
+  let began = null;
+  try { if (hook.transcript_path) began = statSync(hook.transcript_path).birthtimeMs || null; } catch { /* no transcript yet */ }
   const entry = (list.entries ?? []).find((e) => {
+    if (e.cancelledAt) return false; // the board launched this lane again
     const live = e.firedAt ? now - e.firedAt < GRACE_MS : now - e.requestedAt < STALE_MS;
     if (!live) return false;
     if (hook.session_id && (e.sessions ?? []).includes(hook.session_id)) return true;
-    return !!e.worktree && (cwd === norm(e.worktree) || cwd.startsWith(norm(e.worktree) + path.sep));
+    const inside = !!e.worktree && (cwd === norm(e.worktree) || cwd.startsWith(norm(e.worktree) + path.sep));
+    return inside && (began === null || began < e.requestedAt);
   });
   if (!entry) return;
   if (!entry.firedAt) {

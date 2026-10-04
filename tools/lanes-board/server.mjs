@@ -1,11 +1,16 @@
 // The lanes board: a live page of every plan and every worktree in the
-// Monomachia repo. It reads the plans from every branch and worktree, each
-// worktree's git state and its Claude Code session's last activity, so it
-// follows the other sessions without anyone asking. From the page you can queue
-// tasks and launch a desktop-app session to build them (from the task tiles or
-// the Graph tab's dependency graph), end a launched session's work, read any
-// recent Claude session and answer it (the Sessions tab, through relay-hook.mjs),
-// see how full each session's context is, and open the second brain. It never fetches or takes git locks.
+// Monomachia repo. It reads the plans it follows (the roadmap, milestone 1, the
+// Godot rebuild, and authored animation as closed history; PLANS in plans.mjs)
+// from every branch and worktree, each worktree's git state and its Claude Code
+// session's last activity, so it follows the other sessions without anyone
+// asking. Its default view, the Roadmap tab, shows the roadmap's phases with the
+// current one first; Progress has every plan's tasks (tasks the Oct 4 triage
+// moved show "moved → M1/M2" and no longer count as open), Graph what waits on
+// what, and Sessions every recent Claude session. From the page you can queue
+// tasks and launch a desktop-app session to build them, end a launched session's
+// work, answer a session (through relay-hook.mjs), see how full each session's
+// context is (a gauge and a turn-by-turn chart, rules in sessions.mjs), and open
+// the second brain. It never fetches or takes git locks.
 //   npm run board   ->   http://localhost:5197
 // It also listens on this PC's Tailscale addresses, so the owner's phone can open
 // it (http://<tailscale ip>:5197 or http://<pc name>:5197); a phone gets the

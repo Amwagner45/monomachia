@@ -135,3 +135,56 @@ func test_the_press_is_the_lowest_point() -> void:
 			low = y
 			lowest = f
 	assert_between(lowest, 10, 16, "the hips bottom out in the held press")
+
+
+## Poses `model` with clip `clip` at rules frame `f`.
+func _pose_clip(model: FighterModel, clip: StringName, f: int) -> Skeleton3D:
+	model.animation_player.play(KeyedClips.anim_name(clip), 0.0)
+	model.animation_player.seek(float(f) / float(SimConst.FPS), true)
+	return model.skeleton
+
+
+## Where the right hand's held blade tip is (FighterRig's grip: the blade
+## along the hand's X axis, the grip a little past the wrist).
+func _tip(sk: Skeleton3D, weapon: StringName) -> Vector3:
+	var hand: Transform3D = _bone(sk, "RightHand")
+	var length: float = WeaponLook.blade_segment(autofree(WeaponLook.load_id(weapon).instantiate()))[1].length()
+	return hand.origin + hand.basis.x.normalized() * (length + 0.07)
+
+
+func test_the_library_holds_the_thrusters_pin_fitted_to_the_stomps_stun() -> void:
+	var lib: AnimationLibrary = KeyedClips.load_library()
+	assert_true(lib.has_animation(KeyedClips.PINNED))
+	assert_almost_eq(lib.get_animation(KeyedClips.PINNED).length * SimConst.FPS, float(SimConst.STOMP_STUN), 0.001, "the stomp's 70-frame stun")
+
+
+func test_the_held_blades_stay_above_the_floor() -> void:
+	var model: FighterModel = _model(&"hunter")
+	for f: int in 27:
+		assert_gt(_tip(_pose_clip(model, KeyedClips.STOMP, f), &"katana").y, 0.0, "the stomper's blade at frame %d" % f)
+	for f: int in 71:
+		if KeyedClips.pin_weight(float(f)) > 0.0:
+			continue  # pinned to the floor by the view
+		assert_gt(_tip(_pose_clip(model, KeyedClips.PINNED, f), &"katana").y, 0.0, "the thruster's blade at frame %d" % f)
+
+
+func test_the_thruster_is_yanked_down_then_flings_the_weapon_up() -> void:
+	var model: FighterModel = _model(&"hunter")
+	for f: int in [8, 12, 18]:
+		assert_lt(_bone(_pose_clip(model, KeyedClips.PINNED, f), "RightHand").origin.y, 0.6, "pinned: the hands down at the blade at frame %d" % f)
+	assert_gt(_bone(_pose_clip(model, KeyedClips.PINNED, 24), "RightHand").origin.y, 1.1, "wrenched free: the weapon flung up")
+	var bent: float = _bone(_pose_clip(model, KeyedClips.PINNED, 12), "Head").origin.y
+	assert_lt(bent, _bone(_pose_clip(model, KeyedClips.PINNED, 42), "Head").origin.y - 0.2, "bent over the pin, lower than in the daze")
+
+
+func test_the_pin_distances_fit_the_blades_between_the_hands_and_the_foot() -> void:
+	# at the stomp's pin distance, from the thruster's held grip to the
+	# stomper's foot is about the blade's length (KeyedClips.STOMP_FOOT)
+	var model: FighterModel = _model(&"hunter")
+	var sk: Skeleton3D = _pose_clip(model, KeyedClips.PINNED, 12)
+	var grip: Vector3 = _bone(sk, "RightHand").origin
+	for weapon: StringName in [&"katana", &"greatsword", &"daggers"]:
+		var length: float = WeaponLook.blade_segment(autofree(WeaponLook.load_id(weapon).instantiate()))[1].length()
+		var foot: Vector3 = Vector3(-KeyedClips.STOMP_FOOT.x, KeyedClips.STOMP_FOOT.y, SimConst.STOMP_PIN_DIST[weapon] - KeyedClips.STOMP_FOOT.z)
+		var gap: float = grip.distance_to(foot) - length
+		assert_between(gap, -0.15, 0.4 if weapon == &"daggers" else 0.15, "%s: the blade spans the grip to the foot (%.2f m over)" % [weapon, gap])

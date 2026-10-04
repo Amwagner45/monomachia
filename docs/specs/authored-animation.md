@@ -160,6 +160,7 @@ All of these get rule tests and a soak run.
   - The fighter is invulnerable from the first frame of the fall until frame 10 of the stand-up. For its last 15 frames the fighter can't attack, dodge or move but can block or parry (rising in guard), so a hit timed on the wake-up isn't guaranteed.
   - Knockdown replaces the hitstun of those hits; damage, posture and knockback distance are unchanged. A `knockdown` event marks the fall, and a `standup` event its end.
   - The stomp keeps its 70-frame stun (the thrust counter's reward is a punish string), and the leap's and redirect's stuns are unchanged.
+  - The stomp lands at a per-weapon pin distance in front of the thruster (`SimConst.STOMP_PIN_DIST`: Katana 1.55 m, Daggers 1.1, Greatsword 2.15; it was 0.95 for every weapon), so the stomping foot comes down on the blade's tip. A thruster nearer than that is jolted back to it over 8 frames as the stomp lands (Oct 3, 2026).
   - Settled in task 16 (`SimConst.KNOCKDOWN_*`, `Fighter.enter_knockdown()`, `World.knocks_down()`):
     - the ultimates' hits don't knock down, though their move data marks them unblockable (a Tempest spin would otherwise end the ultimate on its first hit);
     - a bare-handed defender whose posture breaks on the hit is dazed (the stagger), as before, rather than knocked down;
@@ -197,7 +198,7 @@ All of these get rule tests and a soak run.
   - Hitstun plays CombatDamage01 or CombatDamage02, picked by the hit's side.
   - Blockstun plays the weapon class's Parry Hit (1H, 2H, DW; the 1H one for bare hands), and a held block holds Parry Loop.
   - The parrier plays Parry Hit. The parried attacker's clip runs backwards from its contact frame over the rebound, then hands over to a stagger built from Stun01 for the rest of the recoil.
-  - Long stuns (stomp, leap, redirect, disarm stagger, impaled) play Stun01 fitted to the stun's length.
+  - Long stuns (leap, redirect, disarm stagger, impaled) play Stun01 fitted to the stun's length; the stomp's plays Mikiri_Pinned (above).
   - Knockdown plays Knockdown01 Fall, Ground and StandUp fitted to the three phases.
   - KO plays CombatDeath01–04, picked by the final blow's direction (front or back) and strength (light or heavy). It is slowed by the final-blow slow motion.
 - **Dodge.** A roll plays Roll01 with the body turned toward the roll's direction. It turns back to face the opponent over the recovery, or over a dodge attack's first 3 frames, so the attack comes up facing them. The backstep plays Dodge01 (to be confirmed in the prototype). The ghost trail planned in 15.9 is dropped. A new roll sound (cloth and a thump) plays on the `dodge` event when it isn't a backstep; the backstep keeps the dash whoosh.
@@ -328,6 +329,7 @@ Two-handed weapons on one-handed clips (the Katana) put the off hand on the grip
 | Block (held), blockstun, parry | Parry Loop and Parry Hit per weapon class | UAL Sword_Block |
 | Recoil after a parry | Own clip reversed, then Stun01 | UAL Hit_Knockback |
 | Hitstun | CombatDamage01, CombatDamage02 | UAL Hit_Chest, Hit_Head |
+| Stomped thruster (the stomp's 70-frame stun) | Mikiri_Pinned: hand-keyed, CC0 (KeyedClips): yanked down over the blade pinned under the stomper's foot (the view pins the weapon's tip there over the stun's first 20 frames), wrenched free, a stagger back and a dazed sway. Added Oct 3, 2026, at the owner's request | none needed (committed) |
 | Stunned, stagger, disarm stagger, impaled | Stun01 | UAL Hit_Knockback |
 | Knockdown | Knockdown01 Fall, Ground, StandUp | UAL Hit_Knockback, LayToIdle |
 | Pick-up | Basic Motions Loot01 | UAL PickUp_Table |

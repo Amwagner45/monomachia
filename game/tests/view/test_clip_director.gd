@@ -526,3 +526,19 @@ func test_the_daggers_flip_forward_into_an_attack_and_back_after_it() -> void:
 	f.atk = null
 	shot = ClipDirector.step(shot, f, ctx)
 	assert_eq(shot.grip, 1.0, "back to the legs: the reverse grip")
+
+
+func test_the_stomped_thruster_plays_its_pin_fitted_to_the_stun() -> void:
+	var W: World = SimHelpers.make_world()
+	var f: Fighter = W.fighters[0]
+	var ctx: ClipDirector.Context = _ctx()
+	var pinned: String = KeyedClips.anim_name(KeyedClips.PINNED)
+	ctx.lengths[pinned] = 70.0 / 60.0
+	f.enter_stun(SimConst.STOMP_STUN, &"stunned", &"stomp")
+	f.sf = 35
+	var clip: ClipDirector.Clip = ClipDirector.state_clip(f, ctx)
+	assert_not_null(clip)
+	assert_eq(clip.name, pinned, "the stomp's stun plays Mikiri_Pinned")
+	assert_almost_eq(clip.time, 0.5 * ctx.lengths[pinned], 0.0001, "fitted to the stun")
+	f.enter_stun(SimConst.LEAP_STUN)
+	assert_null(ClipDirector.state_clip(f, ctx), "another stun keeps the stand-in")

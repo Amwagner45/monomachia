@@ -39,7 +39,8 @@ extends RefCounted
 ##   raised from it fades back to the legs over the same lift. There is no
 ##   CC0 carry, so without the packs nothing shows it;
 ## - the states with a clip of their own (STATE_CLIPS; so far the stomp
-##   counter's hand-keyed Mikiri_Stomp, KeyedClips): the clip fitted to the
+##   counter's hand-keyed Mikiri_Stomp, KeyedClips; and by cause, STUN_CLIPS,
+##   the stomped thruster's Mikiri_Pinned): the clip fitted to the
 ##   state's length, whole body, with or without the packs (the keyed clips
 ##   are committed);
 ## - the Daggers' grip (task 21; Shot.grip): the reverse grip under the legs
@@ -77,6 +78,9 @@ const STATE: StringName = &"state"
 ## The rules states that play a clip of their own, fitted to the state's
 ## length: hand-keyed clips (KeyedClips).
 const STATE_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.STOMP}
+## A stun's own clip by what caused it (Fighter.stun_cause): the stomped
+## thruster's pin and stagger.
+const STUN_CLIPS: Dictionary[StringName, StringName] = {&"stomp": KeyedClips.PINNED}
 ## The Greatsword's shoulder carry: the right hand on the grip at the
 ## shoulder, the blade resting back over it (a masked pose of the Crafting
 ## pack; ObjectGripShoulder01_R throws the elbow out to the side).
@@ -290,9 +294,12 @@ static func step(prev: Shot, f: Fighter, ctx: Context) -> Shot:
 ## to the state's length; null otherwise, or when the clip isn't in the
 ## tree. Keyed clips are committed, so it plays without the packs too.
 static func state_clip(f: Fighter, ctx: Context) -> Clip:
-	if not STATE_CLIPS.has(f.state):
+	var id: StringName = STATE_CLIPS.get(f.state, &"")
+	if id == &"" and f.state == &"stunned":
+		id = STUN_CLIPS.get(f.stun_cause, &"")
+	if id == &"":
 		return null
-	var anim_name: String = KeyedClips.anim_name(STATE_CLIPS[f.state])
+	var anim_name: String = KeyedClips.anim_name(id)
 	var length: float = ctx.lengths.get(anim_name, 0.0)
 	if length <= 0.0:
 		return null

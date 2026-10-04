@@ -154,6 +154,32 @@ func test_the_stomp_plays_its_keyed_clip_with_the_weapon_in_hand() -> void:
 			SimHelpers.dispose_all()
 
 
+func test_the_stomped_thrusters_blade_is_pinned_under_the_stompers_foot() -> void:
+	var W: World = SimHelpers.make_world()
+	var a: Fighter = W.fighters[0]
+	var v: FighterView = _view(&"hunter", Moves.KATANA)
+	var pinned_at: Vector3 = Vector3.INF
+	var freed: bool = false
+	for i: int in 110:
+		var a_in: RawInput = SimHelpers.btn(Btn.BLOCK, Btn.HEAVY) if i == 0 else SimHelpers.idle()
+		var b_in: RawInput = SimHelpers.move(0.0, 1.0, Btn.DODGE) if i == 20 else SimHelpers.idle()
+		W.step([a_in, b_in])
+		v.update_from(a, Vector3(a.pos.x, a.pos.y, a.pos.z), a.yaw, 1.0, 1.0 / 60.0, 0.0)
+		if a.state != &"stunned" or a.stun_cause != &"stomp":
+			continue
+		if a.sf == 12:
+			assert_false(v.model.rig.is_fixed(), "pinned: the weapon posed, the hands on it")
+			var w: Node3D = v.model.weapons[0]
+			var tip: Vector3 = w.transform * WeaponLook.blade_segment(w)[1]
+			pinned_at = tip
+			assert_lt(tip.distance_to(FighterView.pin_point(a)), 0.03, "the tip under the stomper's foot")
+			assert_lt(tip.y, 0.05, "the tip on the floor")
+		if a.sf == 30:
+			freed = v.model.rig.is_fixed()
+	assert_ne(pinned_at, Vector3.INF, "the thruster was stomped")
+	assert_true(freed, "wrenched free: the weapon back in the clip's hand")
+
+
 func test_the_hud_notes_the_missing_packs() -> void:
 	ClipLibraries.force_missing = true
 	var host: MatchHost = (load("res://view/match/match_host.tscn") as PackedScene).instantiate()

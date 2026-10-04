@@ -11,11 +11,26 @@ extends RefCounted
 ##   mikiri counter: the hop onto the spear, the foot pinning it, the press
 ##   held as the attacker's posture breaks, and the rise to a ready stance,
 ##   fitted to the stomp state's 26 frames (Fighter.begin_stomp()).
+## - Mikiri_Pinned: the stomped thruster's 70-frame stun (Fighter.stun_cause
+##   &"stomp"): yanked down over the blade pinned under the stomper's foot,
+##   wrenched free as the stomper rises, a stagger back and a dazed sway, then
+##   back to the guard. Over its first frames the view pins the weapon's tip
+##   under the stomper's foot (pin_weight(), STOMP_FOOT).
 
 const LIBRARY: StringName = &"keyed"
 const PATH: String = "res://assets/authored/keyed_library.tres"
 const KEYS_FOLDER: String = "res://assets/authored/keys"
 const STOMP: StringName = &"Mikiri_Stomp"
+const PINNED: StringName = &"Mikiri_Pinned"
+## Where the stomp's right foot presses the blade from its landing on: the
+## middle of the sole, in the stomper's fighter space (+Z forward, +X its
+## left), on the floor (Mikiri_Stomp's right ankle key, 0.32 m ahead).
+const STOMP_FOOT: Vector3 = Vector3(-0.12, 0.015, 0.39)
+## The thruster's stun frames: the tip driven down onto the floor by PIN_FULL
+## (the foot's landing), held there to PIN_RELEASE, wrenched free by PIN_FREE.
+const PIN_FULL: float = 8.0
+const PIN_RELEASE: float = 20.0
+const PIN_FREE: float = 25.0
 
 
 ## The library, or null before the builder has written it.
@@ -23,6 +38,14 @@ static func load_library() -> AnimationLibrary:
 	if not ResourceLoader.exists(PATH):
 		return null
 	return load(PATH) as AnimationLibrary
+
+
+## How much the stomped thruster's weapon is pinned under the stomper's foot
+## (0 to 1), `sf` frames into the stun.
+static func pin_weight(sf: float) -> float:
+	if sf <= PIN_RELEASE:
+		return smoothstep(0.0, PIN_FULL, sf)
+	return 1.0 - smoothstep(PIN_RELEASE, PIN_FREE, sf)
 
 
 ## A clip's name in a tree that has the library.

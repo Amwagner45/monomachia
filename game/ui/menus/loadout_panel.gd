@@ -15,8 +15,8 @@ extends VBoxContainer
 ## changes nothing and only reports the picks (weapon_chosen, random_chosen,
 ## ability_chosen); show_side() shows any side.
 ##
-## Its items join the select's page with attach(page), in focus order: the
-## cards, then the two slots.
+## Its items (items(): the cards, then the two slots) join the select's focus
+## order through FighterSelect.add_loadout_item.
 
 signal weapon_chosen(weapon_id: StringName)
 signal random_chosen
@@ -79,16 +79,6 @@ func _init() -> void:
 	ability_chosen.connect(_apply_ability)
 
 
-## Whether a side may leave its weapon to chance: the Duel opponent only.
-static func offers_random(mode: StringName, side: int) -> bool:
-	return mode == MatchConfig.DUEL and side == 1
-
-
-## Whether a side picks block abilities: everyone but the training dummy.
-static func picks_abilities(mode: StringName, side: int) -> bool:
-	return MatchSelection.controller_for(mode, side) != MatchSide.DUMMY
-
-
 ## Edits one side of a draft: shows it, and applies the picks to it.
 func edit(d: MatchSelection.Draft, side: int) -> void:
 	draft = d
@@ -97,13 +87,10 @@ func edit(d: MatchSelection.Draft, side: int) -> void:
 
 
 func _show_draft() -> void:
-	show_side(draft.sides[side_index], draft.random_weapon[side_index], offers_random(draft.mode, side_index), picks_abilities(draft.mode, side_index))
-
-
-## Adds the panel's items to a page, in focus order, after its last item.
-func attach(page: MenuPage) -> void:
-	for c: Control in items():
-		page.add_item(c)
+	show_side(
+		draft.sides[side_index], draft.random_weapon[side_index], MatchSelection.offers_random(draft.mode, side_index),
+		MatchSelection.picks_abilities(draft.mode, side_index)
+	)
 
 
 ## The panel's items in focus order: the cards, then the two slots.

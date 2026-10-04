@@ -100,7 +100,7 @@ func _card(id: StringName) -> Button:
 	var info: MenuData.WeaponInfo = MenuData.weapon(id)
 	var card: Button = _blank(id)
 	var box: VBoxContainer = card.get_child(0)
-	box.add_child(_text("%s · %s" % [info.kanji, info.cls], UiTheme.MUTED, 15))
+	box.add_child(_text("%s · %s" % [info.kanji, info.weapon_class], UiTheme.MUTED, 15))
 	box.add_child(_text(Moves.WEAPONS[id].name, UiTheme.DISPLAY, 15))
 	var grid: GridContainer = GridContainer.new()
 	grid.columns = 2

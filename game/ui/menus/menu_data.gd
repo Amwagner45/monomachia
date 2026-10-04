@@ -22,18 +22,19 @@ const STAT_LABELS: Dictionary[StringName, String] = {
 const SLOT_BADGES: Array[String] = ["Hold block + light", "Hold block + heavy"]
 
 
-## One weapon's card: its kanji, class, five stat bars (0-1) and ultimate.
+## One weapon's card: its kanji, weapon class (from the rules, as the
+## demo's "Medium"), five stat bars (0-1) and ultimate.
 class WeaponInfo:
 	var kanji: String
-	var cls: String
+	var weapon_class: String
 	## stat (STATS) -> 0..1
 	var stats: Dictionary
 	var ultimate: String
 	var ultimate_desc: String
 
-	func _init(p_kanji: String, p_cls: String, p_stats: Array[float], p_ultimate: String, p_desc: String) -> void:
+	func _init(id: StringName, p_kanji: String, p_stats: Array[float], p_ultimate: String, p_desc: String) -> void:
 		kanji = p_kanji
-		cls = p_cls
+		weapon_class = String((Moves.WEAPONS[id] as WeaponDef).cls).capitalize()
 		stats = {}
 		for i: int in STATS.size():
 			stats[STATS[i]] = p_stats[i]
@@ -61,15 +62,15 @@ static func weapon(id: StringName) -> WeaponInfo:
 	if _weapons.is_empty():
 		_weapons = {
 			&"katana": WeaponInfo.new(
-				"刀", "Medium", [0.65, 0.55, 0.55, 0.6, 0.6], "Moonsplitter",
+				&"katana", "刀", [0.65, 0.55, 0.55, 0.6, 0.6], "Moonsplitter",
 				"Sheathe, then release a stage-length slash. Tilt up/down for vertical, left/right for horizontal (it can be jumped)."
 			),
 			&"greatsword": WeaponInfo.new(
-				"大剣", "Colossal", [0.3, 0.95, 0.9, 0.85, 0.85], "Impaler",
+				&"greatsword", "大剣", [0.3, 0.95, 0.9, 0.85, 0.85], "Impaler",
 				"Take aim and dash across the stage. On impact, press heavy to detonate a burst of energy."
 			),
 			&"daggers": WeaponInfo.new(
-				"双短刀", "Small", [0.95, 0.45, 0.3, 0.35, 0.35], "Lightning Tempest",
+				&"daggers", "双短刀", [0.95, 0.45, 0.3, 0.35, 0.35], "Lightning Tempest",
 				"Flash to the opponent and spin through six strikes. Each spin can be parried."
 			),
 		}

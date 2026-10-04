@@ -75,6 +75,17 @@ func test_a_won_duel_shows_victory_in_gold() -> void:
 	assert_eq(_headline().get_theme_color(&"font_color"), UiPalette.GOLD)
 
 
+## Training speaks to its one player too: its headline takes the same colours
+## as its title and kanji.
+func test_training_shows_victory_and_defeat_in_gold_and_red() -> void:
+	await _show(_results(MatchConfig.TRAINING, 0, 0))
+	assert_eq([_kanji().text, _headline().text], ["勝利", "Victory"])
+	assert_eq(_headline().get_theme_color(&"font_color"), UiPalette.GOLD)
+	await _show(_results(MatchConfig.TRAINING, 1, 0))
+	assert_eq(_headline().text, "Defeat")
+	assert_eq(_headline().get_theme_color(&"font_color"), UiPalette.HP_HI)
+
+
 func test_watch_and_versus_name_the_winner_in_their_colour() -> void:
 	for mode: StringName in [MatchConfig.WATCH, MatchConfig.VERSUS]:
 		await _show(_results(mode, 1, -1 if mode == MatchConfig.WATCH else 0))

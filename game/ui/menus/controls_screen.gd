@@ -78,16 +78,17 @@ func _build_table() -> void:
 	table.add_theme_constant_override("h_separation", 12)
 	table.add_theme_constant_override("v_separation", 4)
 	scroll.add_child(table)
-	for action: String in Bindings.ACTIONS:
+	for r: ControlsTable.Row in ControlsTable.rows(profiles.active_profile(), ControlProfile.KB, PadStyle.GENERIC):
+		var action: String = r.action
 		var names: VBoxContainer = VBoxContainer.new()
 		names.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 		names.add_theme_constant_override("separation", 0)
 		names.alignment = BoxContainer.ALIGNMENT_CENTER
-		var label: Label = UiTheme.label(Bindings.ACTION_LABELS[action], &"", 18)
+		var label: Label = UiTheme.label(r.label, &"", 18)
 		label.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 		names.add_child(label)
-		if Bindings.ACTION_HINTS.has(action):
-			var hint: Label = UiTheme.label(Bindings.ACTION_HINTS[action], UiTheme.MUTED, 13)
+		if r.hint != "":
+			var hint: Label = UiTheme.label(r.hint, UiTheme.MUTED, 13)
 			hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 			names.add_child(hint)
 		table.add_child(names)
@@ -98,7 +99,7 @@ func _build_table() -> void:
 			b.custom_minimum_size = Vector2(200.0, SLOT_HEIGHT)
 			b.add_theme_font_size_override(&"font_size", 18)
 			b.clip_text = true
-			b.tooltip_text = "%s binding %d" % [Bindings.ACTION_LABELS[action], slot + 1]
+			b.tooltip_text = "%s binding %d" % [r.label, slot + 1]
 			b.pressed.connect(func() -> void: slot_chosen.emit(tab, action, slot))
 			table.add_child(b)
 			add_item(b)
@@ -131,7 +132,7 @@ func refresh() -> void:
 	profile_label.text = "Profile · %s" % profile.name
 	var on_pad: bool = tab == ControlProfile.PAD
 	status.text = ControlsTable.status_line(input) if on_pad else ControlsTable.KB_NOTE
-	var style: int = ControlsTable.style(input) if on_pad else PadStyle.GENERIC
+	var style: int = input.pad_style() if on_pad else PadStyle.GENERIC
 	for r: ControlsTable.Row in ControlsTable.rows(profile, tab, style):
 		var pair: Array[Button] = []
 		pair.assign(slot_buttons[r.action])

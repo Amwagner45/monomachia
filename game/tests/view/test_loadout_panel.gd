@@ -17,7 +17,8 @@ func before_each() -> void:
 	add_child_autofree(page)
 	panel = LoadoutPanel.new()
 	page.box.add_child(panel)
-	panel.attach(page)
+	for c: Control in panel.items():
+		page.add_item(c)
 	panel.weapon_chosen.connect(func(id: StringName) -> void: picks.append(["weapon", id]))
 	panel.random_chosen.connect(func() -> void: picks.append(["random"]))
 	panel.ability_chosen.connect(func(slot: int, id: StringName) -> void: picks.append(["ability", slot, id]))
@@ -56,7 +57,7 @@ func test_one_card_per_playable_weapon_with_kanji_class_name_and_stat_bars() -> 
 	for id: StringName in Moves.PLAYABLE_WEAPONS:
 		var info: MenuData.WeaponInfo = MenuData.weapon(id)
 		var texts: Array[String] = _card_texts(id)
-		assert_has(texts, "%s · %s" % [info.kanji, info.cls], String(id))
+		assert_has(texts, "%s · %s" % [info.kanji, info.weapon_class], String(id))
 		assert_has(texts, Moves.WEAPONS[id].name, String(id))
 		for stat: StringName in MenuData.STATS:
 			assert_has(texts, MenuData.STAT_LABELS[stat], "%s %s caption" % [id, stat])

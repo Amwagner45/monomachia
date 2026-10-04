@@ -52,21 +52,28 @@ static func from_match(m: Match, cfg: MatchConfig, p_player_side: int) -> MatchR
 	return r
 
 
+## Whether the results speak to one human player (Victory or Defeat), not
+## name a winner (Watch, Versus).
+func for_one_player() -> bool:
+	return mode != MatchConfig.WATCH and mode != MatchConfig.VERSUS and player_side >= 0
+
+
 ## The headline: Victory or Defeat for one human player, else who won.
 func title() -> String:
 	if winner < 0:
 		return "Draw"
-	if mode != MatchConfig.WATCH and mode != MatchConfig.VERSUS and player_side >= 0:
+	if for_one_player():
 		return "Victory" if winner == player_side else "Defeat"
 	return "%s wins" % names[winner]
 
 
-## The kanji over the headline (the demo's): 勝利 Victory, 敗北 Defeat, 決着
-## (settled) when someone else's win is named, 引分 for a draw.
+## The kanji over the headline: the demo's 勝利 Victory, 敗北 Defeat and 決着
+## (settled) when someone else's win is named, and 引分 for a draw, which the
+## demo never showed.
 func kanji() -> String:
 	if winner < 0:
 		return "引分"
-	if mode != MatchConfig.WATCH and mode != MatchConfig.VERSUS and player_side >= 0:
+	if for_one_player():
 		return "勝利" if winner == player_side else "敗北"
 	return "決着"
 

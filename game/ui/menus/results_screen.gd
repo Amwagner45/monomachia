@@ -65,7 +65,7 @@ func show_results(r: MatchResults) -> void:
 	results = r
 	_kanji.text = r.kanji()
 	_title.text = r.title()
-	if r.winner >= 0 and r.player_side >= 0 and r.mode == MatchConfig.DUEL:
+	if r.winner >= 0 and r.for_one_player():
 		_title.add_theme_color_override("font_color", UiPalette.GOLD if r.winner == r.player_side else UiPalette.HP_HI)
 	elif r.winner >= 0:
 		_title.add_theme_color_override("font_color", side_color(r.palettes[r.winner]))

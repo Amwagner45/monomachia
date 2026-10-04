@@ -45,11 +45,6 @@ static func opening_tab(input: InputDevices) -> String:
 	return ControlProfile.PAD if input.last_used == InputDevices.LastUsed.PAD else ControlProfile.KB
 
 
-## The button style the controller tab names its buttons in.
-static func style(input: InputDevices) -> int:
-	return input.pad_style()
-
-
 ## The controller tab's line over the table: the connected controller and the
 ## names its buttons get, or how to connect one.
 static func status_line(input: InputDevices) -> String:

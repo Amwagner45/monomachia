@@ -269,7 +269,7 @@ export function relayAnswer(pending, body) {
   }
   if (body.behavior === 'deny') {
     const why = String(body.message ?? '').trim();
-    return { behavior: 'deny', message: why ? `The owner declined from the lanes board: ${why.slice(0, 4000)}` : 'The owner declined this from the lanes board.' };
+    return { behavior: 'deny', message: why ? `The owner declined from the Project Manager: ${why.slice(0, 4000)}` : 'The owner declined this from the Project Manager.' };
   }
   throw new Error('Allow or deny?');
 }

@@ -1,4 +1,4 @@
-// The lanes board: a live page of every plan and every worktree in the
+// The Project Manager (the lanes board): a live page of every plan and every worktree in the
 // Monomachia repo. It reads the plans it follows (the roadmap, milestone 1, the
 // Godot rebuild, and authored animation as closed history; PLANS in plans.mjs)
 // from every branch and worktree, each worktree's git state and its Claude Code
@@ -896,7 +896,7 @@ function bind(addr) {
     if (addr === '127.0.0.1') { console.error(`Can't listen on ${addr}:${PORT}: ${err.message}`); process.exit(1); }
     console.error(`Can't listen on ${addr}:${PORT} yet (${err.code}); trying again shortly`);
   });
-  server.listen(PORT, addr, () => console.log(`All-lanes board on http://${addr === '127.0.0.1' ? 'localhost' : addr}:${PORT} (repo ${REPO})`));
+  server.listen(PORT, addr, () => console.log(`Project Manager on http://${addr === '127.0.0.1' ? 'localhost' : addr}:${PORT} (repo ${REPO})`));
 }
 bind('127.0.0.1');
 if (!LOCAL_ONLY) {

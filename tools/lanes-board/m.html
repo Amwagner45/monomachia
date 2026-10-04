@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lanes">
+<meta name="apple-mobile-web-app-title" content="Project Manager">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<title>Monomachia lanes</title>
+<title>Monomachia Project Manager</title>
 <style>
 :root {
   color-scheme: light;
@@ -264,7 +264,7 @@ nav.tabs .count:empty { display: none; }
       <span><i class="sw launched"></i>Launched</span>
       <span><i class="sw blocked" style="position:relative"><i style="position:absolute;inset:3px;border-radius:50%;background:var(--page)"></i></i>Review gate</span>
     </div></details>
-    <p class="qnote"><a href="/brain/">Second brain</a> · <a href="/desktop">Desktop board</a></p>
+    <p class="qnote"><a href="/brain/">Second brain</a> · <a href="/desktop">Desktop view</a></p>
   </section>
   <section class="page" id="p-lanes" hidden>
     <div class="lanes" id="lanes"></div>
@@ -445,7 +445,7 @@ function laneTask(l) {
   if (!l.plan || !l.task) return '';
   const p = planOf(l.plan);
   const name = `${taskName(l.plan, l.task)} ${esc(l.taskTitle)}`;
-  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the board${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
+  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the Project Manager${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
   if (l.working) return `<div class="task"><i class="sw working"></i><span>Working on ${name}</span></div>`;
   if (!l.claims) return l.lastTask ? `<div class="task"><i class="sw blocked"></i><span>Last named task: ${taskName(l.plan, l.lastTask)}</span></div>` : '';
   const st = p?.tasks[l.task]?.status;

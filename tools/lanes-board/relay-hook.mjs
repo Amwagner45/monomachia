@@ -83,7 +83,7 @@ async function main(hook) {
 
 // The owner's words, as the turn's next instruction.
 function continueWith(text) {
-  return { decision: 'block', reason: `The owner replied from the lanes board:\n\n${text}` };
+  return { decision: 'block', reason: `The owner replied from the Project Manager:\n\n${text}` };
 }
 
 // Writes the pending item and waits for the board's answer (or a queued reply,

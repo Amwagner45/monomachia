@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Monomachia lanes</title>
+<title>Monomachia Project Manager</title>
 <style>
 :root {
   color-scheme: light;
@@ -349,7 +349,7 @@ details.tl pre { margin: 4px 0 4px 14px; }
 <body>
 <main>
   <header>
-    <h1>Monomachia progress</h1>
+    <h1>Monomachia Project Manager</h1>
     <nav class="tabs" role="tablist" aria-label="Views">
       <button role="tab" data-view="roadmap">Roadmap</button>
       <button role="tab" data-view="progress">Progress</button>
@@ -653,7 +653,7 @@ $('track').addEventListener('click', (e) => {
 
 function waitingItems() {
   const items = [];
-  // Sessions switched to "Answer from board" that wait on the owner.
+  // Sessions switched to "Answer from Project Manager" that wait on the owner.
   for (const s of sessions.list) {
     for (const p of s.pending) {
       const what = p.kind === 'permission' ? `wants to use ${p.tool}` : p.kind === 'question' ? 'asks you a question' : 'finished its turn and waits for your reply';
@@ -687,7 +687,7 @@ function laneTask(l) {
   if (!l.plan || !l.task) return '';
   const p = planOf(l.plan);
   const name = `${taskName(l.plan, l.task)} ${esc(l.taskTitle)}`;
-  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the board${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
+  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the Project Manager${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
   if (l.working) return `<div class="task"><i class="sw working"></i><span>Working on ${name}</span></div>`;
   if (!l.claims) return l.lastTask ? `<div class="task"><i class="sw blocked"></i><span>Last named task: ${taskName(l.plan, l.lastTask)}</span></div>` : '';
   const st = p?.tasks[l.task]?.status;
@@ -1243,7 +1243,7 @@ window.addEventListener('resize', () => { if (view === 'graph' && !gView[gOpt.pl
 
 // ---------- sessions ----------
 // Every Claude session active in the last three days. A session switched to
-// "Answer from board" hands its permission prompts, its questions and the end
+// "Answer from Project Manager" hands its permission prompts, its questions and the end
 // of each turn to this page (relay-hook.mjs); the others are read-only here.
 
 const sessions = { list: [], detail: null, limit: 300, drafts: {} };
@@ -1277,7 +1277,7 @@ function sessionPills(s) {
   }
   if (s.asking && !s.pending.some((p) => p.kind === 'question')) pills.push('<span class="pill need">Asking you (in the app)</span>');
   if (s.queued) pills.push('<span class="pill">Reply queued</span>');
-  if (s.on) pills.push('<span class="pill">Answers from board</span>');
+  if (s.on) pills.push('<span class="pill">Answers from Project Manager</span>');
   return pills.length ? `<div class="pills">${pills.join('')}</div>` : '';
 }
 const folderOf = (cwd) => String(cwd ?? '').split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? '';
@@ -1335,7 +1335,7 @@ function questionsHtml(questions, live) {
 }
 function pendingCard(p, d) {
   const when = `<span class="k">${esc(ago(p.time))}</span>`;
-  const back = `<button class="btn small ghost" data-release="${esc(p.id)}" title="Stop waiting for the board: the app shows its own prompt">Hand back to the app</button>`;
+  const back = `<button class="btn small ghost" data-release="${esc(p.id)}" title="Stop waiting for the Project Manager: the app shows its own prompt">Hand back to the app</button>`;
   if (p.kind === 'permission') {
     const always = Array.isArray(p.suggestions) && p.suggestions.length;
     return `<div class="pcard" data-pid="${esc(p.id)}"><div class="ch"><i class="sw owner"></i><b>Wants to use ${esc(p.tool)}</b>${when}</div>
@@ -1360,11 +1360,11 @@ function renderPending(d) {
   if (d.open?.name === 'AskUserQuestion' && !d.pending.some((p) => p.kind === 'question')) {
     cards.push(`<div class="pcard info"><div class="ch"><i class="sw owner"></i><b>Asks you, in the app</b><span class="k">${esc(ago(d.open.time))}</span></div>
       ${questionsHtml(d.open.questions ?? [], false)}
-      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Answer in the app</button>` : ''}<span class="m">${d.on ? 'It was asked before this session was switched on.' : 'Switch on "Answer from board" to answer its next questions here.'}</span></div></div>`);
+      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Answer in the app</button>` : ''}<span class="m">${d.on ? 'It was asked before this session was switched on.' : 'Switch on "Answer from Project Manager" to answer its next questions here.'}</span></div></div>`);
   } else if (d.open && !d.pending.length && !d.active && Date.now() - (d.open.time ?? 0) > 30000) {
     cards.push(`<div class="pcard info"><div class="ch"><b>Its last step hasn't finished: ${esc(d.open.name)}</b><span class="k">${esc(ago(d.open.time))}</span></div>
       <pre class="code">${esc(d.open.summary ?? '')}</pre>
-      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Open in the app</button>` : ''}<span class="m">If it's waiting for your approval, answer it in the app${d.on ? '' : ', or switch on "Answer from board" for the next one'}.</span></div></div>`);
+      <div class="row">${d.app ? `<button class="btn" data-open="${esc(d.app)}">Open in the app</button>` : ''}<span class="m">If it's waiting for your approval, answer it in the app${d.on ? '' : ', or switch on "Answer from Project Manager" for the next one'}.</span></div></div>`);
   }
   const sig = JSON.stringify([d.pending.map((p) => p.id), d.open?.id, d.open && !d.active, d.on]);
   if (sig === sSigs.pend) return;
@@ -1420,7 +1420,7 @@ function renderSessionDetail() {
       : '<div class="m">No context reading yet: it appears after the first reply.</div>';
     sSigs.head = headSig;
     $('sHead').innerHTML = `<div class="row1"><h2 title="${esc(d.title)}">${esc(d.title)}</h2>
-        <label class="switch" title="While on, this session's prompts, questions and turn ends wait for this page"><input type="checkbox" id="sOn" ${d.on ? 'checked' : ''}><span>Answer from board</span></label>
+        <label class="switch" title="While on, this session's prompts, questions and turn ends wait for this page"><input type="checkbox" id="sOn" ${d.on ? 'checked' : ''}><span>Answer from Project Manager</span></label>
         ${d.app ? `<button class="btn small" data-open="${esc(d.app)}">Open in app</button>` : ''}</div>
       <div class="m" title="${esc(d.cwd ?? '')}"><i class="dot ${d.active ? 'active' : 'recent'}"></i> ${d.active ? 'At work' : `Last active ${esc(ago(d.activity))}`} · ${esc(d.cwd ?? '')}</div>
       ${ctxHtml}
@@ -1435,7 +1435,7 @@ function renderSessionDetail() {
   $('sSend').disabled = !d.on;
   $('sSend').textContent = !d.on || waiting ? 'Send' : 'Queue reply';
   $('sUnqueue').hidden = !d.queued;
-  $('sNote').textContent = !d.on ? 'Switch on "Answer from board" to reply from here.'
+  $('sNote').textContent = !d.on ? 'Switch on "Answer from Project Manager" to reply from here.'
     : waiting ? 'It\'s waiting for you: your reply goes straight in.'
     : d.queued ? `Queued for when its turn next ends: "${shorten(d.queued.text, 60)}". Sending again replaces it.`
     : d.active ? 'It\'s working: your reply goes in when this turn ends.'

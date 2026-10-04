@@ -285,6 +285,28 @@ func _pin_weapons(f: Fighter, pin: float) -> void:
 		model.pose_weapon(i, held[i])
 
 
+## Each held weapon's blade in world space, as posed this frame: [BladeBase,
+## BladeTip] for the right hand's weapon, then the left's (a pair of
+## daggers). Empty with no model or nothing held. The trails read it.
+func blade_segments() -> Array[PackedVector3Array]:
+	var out: Array[PackedVector3Array] = []
+	if model == null:
+		return out
+	for w: Node3D in model.weapons:
+		if not w.is_inside_tree():
+			continue
+		var seg: PackedVector3Array = WeaponLook.blade_segment(w)
+		var xf: Transform3D = w.global_transform
+		out.append(PackedVector3Array([xf * seg[0], xf * seg[1]]))
+	return out
+
+
+## How far back from the tip the held weapon's blade trails (its
+## WeaponLook.trail_width), or 0 with nothing held.
+func trail_width() -> float:
+	return model.weapon_look.trail_width if model != null and model.weapon_look != null else 0.0
+
+
 ## The way a blade's edge faces: the way the strike sweeps the blade's tip
 ## (`sweep`), made square to the blade, or GUARD_EDGE when the strike
 ## doesn't sweep it sideways (a thrust, or no strike).

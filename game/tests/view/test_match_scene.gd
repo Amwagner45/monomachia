@@ -255,28 +255,7 @@ func test_the_hud_clears_and_hides_when_the_results_open() -> void:
 	assert_true(hud.visible, "back for the rematch")
 
 
-# ------------------------------------------------------------------ contact flashes and stray nodes
-
-func _flash_nodes() -> Array[Node]:
-	return view.find_children("Flash", "MeshInstance3D", false, false)
-
-
-func test_a_contact_flash_holds_through_its_hit_stop() -> void:
-	host.start(_cpu())
-	host.step(Match.INTRO_FRAMES + 5)
-	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
-	host.world.hitstop = 10
-	host.sim_event.emit({"t": &"parry", "parrier": 1, "attacker": 0, "kind": &"parry", "pos": at})
-	var flash: MeshInstance3D = _flash_nodes()[0]
-	var start_scale: Vector3 = flash.scale
-	host.step(10)
-	view.render(0.0)
-	assert_eq(host.world.hitstop, 0)
-	assert_almost_eq(flash.scale, start_scale, Vector3.ONE * 1e-6, "frozen with the rules")
-	host.step(5)
-	view.render(0.0)
-	assert_gt(flash.scale.x, start_scale.x, "and grows once the frame moves")
-
+# ------------------------------------------------------------------ stray nodes
 
 func _child_names() -> Array[String]:
 	var out: Array[String] = []
@@ -291,14 +270,15 @@ func test_rematches_and_restarts_leave_no_stray_nodes() -> void:
 	host.start(_cpu())
 	await get_tree().process_frame
 	var baseline: Array[String] = _child_names()
-	assert_eq(baseline.size(), 4, "the arena, the camera and two fighters")
+	assert_eq(baseline.size(), 5, "the arena, the camera, two fighters and the effects")
 	var at: Dictionary = {"x": 0.0, "y": 1.25, "z": 0.0}
 	for k: int in 3:
 		host.step(Match.INTRO_FRAMES + 20)
 		host.sim_event.emit({"t": &"parry", "parrier": 1, "attacker": 0, "kind": &"parry", "pos": at})
 		host.world.weapons.append(DroppedWeapon.new(0, &"katana", V3.make(1.0, 0.0, 1.0), V3.make(), Rng.new(k + 1)))
 		view.render(1.0 / 60.0)
-		assert_gt(view.get_child_count(), baseline.size(), "a flash and a dropped weapon")
+		assert_eq(view.effects.flash_count(), 1, "a flash, drawn from the effects' pool")
+		assert_gt(view.get_child_count(), baseline.size(), "and a dropped weapon")
 		if k == 1:
 			host.start(_with_standin(MatchConfig.attract(k + 5)), true)
 		else:

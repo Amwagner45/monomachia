@@ -40,13 +40,13 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 ### Playing a duel
 
 1. [ ] As a player, I want to start Monomachia as a Windows program, so that I can play without a browser.
-2. [ ] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
+2. [x] As a player, I want a title screen with a live duel playing behind it, so that the game feels alive the moment it opens.
 3. [ ] As a player, I want to choose Duel, Training, Versus or Watch from the main menu, so that I can play the way I want.
 4. [ ] As a player, I want to pick my fighter, my weapon and my two block abilities before a match, so that I fight with the loadout I prefer.
-5. [ ] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
+5. [x] As a player, I want to pick the computer's fighter, weapon and difficulty (Easy, Normal, Hard), or leave its weapon random, so that I control the challenge.
 6. [x] As a player, I want the match to be first to three rounds with a clear round call and "Fight", so that I always know where the match stands.
 7. [ ] As a player, I want health bars with the posture bar underneath, round pips and an ultimate badge, so that I can read the state of the fight at a glance.
-8. [ ] As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
+8. [x] As a player, I want a results screen with rounds won and match stats, and options to rematch, change fighters or go to the main menu, so that I can play again quickly.
 9. [ ] As a player, I want to pause at any time and reach the move list, controls and settings from the pause menu, so that I can check things mid-match.
 10. [x] As a player, I want the game to pause itself when the window loses focus, so that I don't lose a round while tabbed out.
 
@@ -104,7 +104,7 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 43. [ ] As a player, I want real fighters with clothing, hair and a silhouette I can recognise, so that the game looks like the dark fantasy it's meant to be.
 44. [ ] As a player, I want to choose between at least two fighters (the Rogue and the Hunter), each able to wield any of the three weapons, so that fighter and weapon are separate choices.
-45. [ ] As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
+45. [x] As a player in a mirror match, I want the second fighter in a different colour scheme, so that I can tell us apart.
 46. [ ] As a player, I want a toon look with ink outlines and a painted, ink-wash finish, so that the game has its own style.
 47. [ ] As a player, I want the arena to float above a dark fantasy, ancient oriental landscape of mountains, buildings and water, so that the setting feels grand.
 48. [ ] As a player, I want weapon trails (white for normal attacks, red for unblockables, gold for ultimates), sparks on clangs, a glowing aura when an ultimate is ready and a marker on a dropped weapon, so that the fight stays readable.
@@ -114,16 +114,16 @@ A ticked story works in the Godot build today. The plan names the tasks that del
 
 50. [ ] As a player, I want metal clangs on blocks, a distinct ringing clang on parries, slicing hits, bone-and-rock crunches for the Greatsword, whooshes on swings and dodges, footsteps and arena ambience, so that combat sounds physical.
 51. [ ] As a player, I want menu music at 100–120 BPM, battle music at 130–150 BPM and a faster match-point version at 150–170 BPM, so that the music matches the design.
-52. [ ] As a player, I want master, effects and music volume settings, so that I can balance the mix.
+52. [x] As a player, I want master, effects and music volume settings, so that I can balance the mix.
 
 ### Modes and controls
 
 53. [ ] As a player, I want Training against a dummy whose behaviour I choose (idle, block, lights, heavies, thrust, sweep, slam, random, spar), with optional health refill and early/late parry feedback, so that I can practise.
 54. [ ] As a player, I want Watch mode with a side-on cinematic camera, so that I can learn the moves by watching the computer duel.
 55. [ ] As two players on one PC, I want Versus in a vertical split screen, each with our own camera and device (keyboard and mouse, the arrow-key layout, or a controller), so that we can play head to head.
-56. [ ] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me.
+56. [x] As a player, I want to remap every action for keyboard, mouse and controller, save named profiles, and see PlayStation or Xbox button names, so that the controls suit me. (22.10–22.12: the Controls screen's binding table, rebinding capture and profiles, played with in a match through the active profile; the pause menu and Versus pick profiles with 22.15 and 22.16.)
 57. [ ] As a player, I want graphics presets, a reduce-flashes-and-shaking option and a button-hints option, so that the game runs and reads well for me.
-58. [ ] As a player, I want a move list generated from the actual move data, so that it's always correct.
+58. [x] As a player, I want a move list generated from the actual move data, so that it's always correct. (22.13 and 22.14: `MoveList` walks the move data, and How to play shows it as a tab per weapon and bare hands; the pause menu opens it with 22.15.)
 
 ### Building and maintaining
 
@@ -307,6 +307,8 @@ The bullets below describe the build up to that feature.
 
 **Look.** One toon material for everything, with a three-band light ramp and a rim light, and inverted-hull ink outlines sized in screen pixels, which thin out only far away. Outlines are always on for fighters and weapons, and on props only on High. (Godot's built-in stencil outline was tried and not used: it draws the silhouette only, its width is fixed in metres, and it needs a StandardMaterial3D.) The shaders fetch a small generated noise texture instead of computing noise, which is much cheaper on integrated graphics. A full-screen ink-wash pass paints distance mist, ink lines 2 px wide where depth breaks, paper grain and a brushy vignette over the image without copying the screen. The colour grade (muted colours that keep the fighters' red and blue, cold shadows, ink rather than pure black) is baked into the environment's lookup table, so it costs nothing per frame. Three graphics presets, Low, Medium and High (the default), turn up or down the outlines on props, the shadow map's size and reach, height fog, particle counts, lantern lights, distant scenery detail and the ink-wash pass (off on Low, ink lines from Medium, the full pass on High). The chosen preset is saved with the player's settings (`user://settings.cfg`) and applied at start. To hold 60 fps at 1080p on High on the target laptop (Ryzen 7 4700U with Radeon Vega graphics), every preset uses FXAA instead of MSAA and leaves glow off. Benchmarked there with the real fighters fighting on the Moonlit Shrine (`tools/shot_scenes/arena_bench.tscn`), High runs 69 fps from the gameplay camera (14.6 ms a frame, 15.3 ms at the 95th percentile) and 66 fps from the Watch camera, which takes in the most of the arena; Medium runs 79 fps and Low 102. The sky, clouds, mountains, pagodas, waterfalls and water are built in code and shaders from simple shapes, so they can be swapped for bought art later. The shrine's props and buildings already can be: a scene in its layout's `prop_scenes` replaces the procedural lanterns, torii, pillars, trees, floating rocks, pagodas or temple halls at the same spots. Cameras above the courtyard leave out the rock under it, which they can't see, each camera deciding from its own position, so split screen keeps the saving.
 
+**Combat effects.** One effects layer (`CombatEffects`, a child of the match view) draws the match's flashes, rings and particles, each kind from a fixed pool on one MultiMesh, so effects never add nodes. Each effect is worked out from its age on the effect clock, the world frame on show (the frame before the last step plus the host's alpha), so effects hold through hit-stop and pause, run at 0.3× in the KO's slow motion, stay smooth between steps on a fast display, and a shot taken at a given frame always looks the same. An event table (`EffectTable`) says which effects each rules event spawns at its contact point; a contact flash is a soft camera-facing glow that grows and fades. Everything clears at round start. Combat particle counts follow the graphics preset's particle ratio but never drop below half, so hits still read on Low. A blade trails (`TrailState`) in its move's active frames and fades over the next two, never while charging and never for Flash; only the hands the move strikes with trail (one dagger or both), and bare hands never do. The trail is red for unblockables, gold for the ultimates and the counter lunges, and white otherwise. The ultimates trail where the demo's did: the Moonsplitter's first six frames of release, the Impaler's dash, and the Tempest's spin and the second half of its finisher. Each trailing blade draws a brush stroke (`WeaponTrail`, one per side and hand): a ribbon over its weapon's trail width back from the tip (Katana 0.55 m, Greatsword 0.9 m, Daggers 0.2 m), swept through the last 8 frames of the effect clock and smoothed between frames, which tapers toward its tail and fades with age. It is alpha-blended: the trail's colour (white `#dfe6ff`, red `#ff3020`, gold `#ffc040`) in bristle streaks that run dry toward the tail, darkening to a ragged ink edge on the tip side. The blades are read from the held weapon models' markers as posed, so the trails follow whatever poses the weapons.
+
 **Sound.**
 
 - An event-to-sound table (`game/audio/sound_bank.gd`) picks randomized variations and sends them to buses (Master > Music, Ambience, SFX > Arena reverb > Combat, Foley; UI); impacts play in 3D, every combat and foley sound passes through the arena's reverb, and the music and ambience duck a few dB under loud combat sounds.
@@ -444,7 +446,7 @@ Sprint, backstep and jump attacks, block abilities and the ultimate are unchange
 
 - The other six weapons (Odachi, Giant Hammer, Staff, Sword & Shield, Bladed Whip, Scythe) and their ultimates.
 - The other six fighters (Knight, Samurai, Orc, Aristocrat, Monk, Skeleton Knight), per-fighter bare-hand moves and per-fighter computer personalities.
-- The character select screen of the design doc (model on the right, loadout on the left, lock-in, gate opening), the match intro with gates and fighter intros, and victory poses. The rebuild ships a simpler fighter and loadout select. (The authored-animation feature adds the weapon draw at the round intro and each weapon's victory pose.)
+- The character select's gate cinematic in the design doc (the gate opening on lock in, the arena seen through it), the match intro with gates and fighter intros, and victory poses. The rebuild's fighter select follows the design's layout (a fighter grid, the fighter's 3D preview on the right, the loadout on the left, an arena slot and lock in) without them. (The authored-animation feature adds the weapon draw at the round intro and each weapon's victory pose.)
 - Arenas other than the floating Moonlit Shrine, and stage select.
 - Real music (placeholders only), voices and announcers.
 - Online play, accounts, progression and cosmetics.

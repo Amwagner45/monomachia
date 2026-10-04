@@ -27,9 +27,11 @@ On Oct 4, 2026 the owner changed course (`docs/adr/0001-animation-leads-realisti
 
 - The rebuild merges into `master` first, so new work branches from `master` again.
 - The plan's open tasks were triaged on Oct 4: the computer opponent, tuning and effects move to milestone 1 (the Greatsword and Daggers parts to milestone 2), and the authored-animation plan closes after task 30b.
-- **Consolidation first:** the finished lanes merged into the rebuild on Oct 4 (PRs #21, #25 and #19; #7 was closed, replaced by the lanes board), stage 14 retires the web version, CI goes green, and the rebuild merges into `master`. The remaining look-independent tasks (menus, modes and HUD) are finished on `master` alongside milestone 1, which gets its own spec.
+- **Consolidation first:** the finished lanes merged into the rebuild on Oct 4 (PRs #21, #25 and #19; #7 was closed, replaced by the lanes board), stage 14 retires the web version, CI goes green, and the rebuild merges into `master`. The remaining look-independent tasks (menus, modes and HUD) are finished on `master` alongside milestone 1.
 - The existing content then reaches final quality in two milestones (the Hunter with the Katana and bare hands on the Moonlit Shrine; then the Greatsword, the Twin Daggers and the second fighter) before any new weapon, fighter or arena.
+- Milestone 1 has its own spec and plan, drafted on Oct 4 and waiting for the owner's review: [[Plan - Milestone 1]]. It starts with the pipeline (the private asset repository, the Blender export, the frame-data table generated from the clips, the replay test), then a pilot family, the Katana's light string, then the other move families one at a time, while a mood board and a look test settle the realistic look.
+- The whole order of the work, from the consolidation to online play, is in [[Roadmap - from the consolidation to online play]].
 
 The choices behind all this: [[Key decisions]]. How the work is organised: [[Workflow]] and [[Lanes and the board]].
 
-**Sources:** [[Rebuild spec]] · [[Rebuild spec - Problem Statement]] · [[Rebuild plan - Destination]] · [[Rebuild plan - Progress]]
+**Sources:** [[Rebuild spec]] · [[Rebuild spec - Problem Statement]] · [[Rebuild plan - Destination]] · [[Rebuild plan - Progress]] · [[Plan - Milestone 1 - Destination]] · [[Roadmap - from the consolidation to online play - Phases]]

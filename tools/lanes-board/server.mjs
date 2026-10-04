@@ -5,7 +5,7 @@
 // tasks and launch a desktop-app session to build them (from the task tiles or
 // the Graph tab's dependency graph), end a launched session's work, read any
 // recent Claude session and answer it (the Sessions tab, through relay-hook.mjs),
-// and open the second brain. It never fetches or takes git locks.
+// see how full each session's context is, and open the second brain. It never fetches or takes git locks.
 //   npm run board   ->   http://localhost:5197
 // It also listens on this PC's Tailscale addresses, so the owner's phone can open
 // it (http://<tailscale ip>:5197 or http://<pc name>:5197); a phone gets the
@@ -19,11 +19,12 @@ import { promisify } from 'node:util';
 import { readFile, readdir, stat, access, writeFile, open, mkdir, rm } from 'node:fs/promises';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { gzipSync } from 'node:zlib';
+import { StringDecoder } from 'node:string_decoder';
 import os from 'node:os';
 import path from 'node:path';
 import { PLANS, PLAN_BY_KEY, parsePlan, mergeCopies, goalFor, cancelStops, linkMoved, planOfBranch, roadmapView } from './plans.mjs';
 import { fromTailnetOrLocal, knownHost, pageFor, sameOrigin, tailnetIPv4s, tailscaleSelf, wantsGzip } from './access.mjs';
-import { PENDING_ID, SESSION_ID, parseTranscript, relayAnswer } from './sessions.mjs';
+import { PENDING_ID, SESSION_ID, contextTracker, parseTranscript, relayAnswer } from './sessions.mjs';
 
 const run = promisify(execFile);
 const HERE = path.dirname(fileURLToPath(import.meta.url));
@@ -138,13 +139,75 @@ async function isMerging(dir) {
 
 // A Claude Code session's transcripts live in a folder named after its working directory.
 const transcriptDir = (dir) => path.join(PROJECTS, dir.replace(/[^A-Za-z0-9]/g, '-'));
-async function sessionActivity(dir) {
+// The worktree's newest transcript: { time, file }, or null.
+async function newestTranscript(dir) {
   const folder = transcriptDir(dir);
   try {
     const names = (await readdir(folder)).filter((n) => n.endsWith('.jsonl'));
     const times = await Promise.all(names.map((n) => stat(path.join(folder, n)).then((s) => s.mtimeMs, () => 0)));
-    return Math.max(0, ...times) || null;
+    const i = times.indexOf(Math.max(0, ...times));
+    return times[i] ? { time: times[i], file: path.join(folder, names[i]) } : null;
   } catch { return null; }
+}
+
+// Every transcript by its session id, wherever its folder is (a launched session
+// sometimes opens in a scratch folder). Folder listings only, no stats.
+async function transcriptIndex() {
+  const out = new Map();
+  let dirs = [];
+  try { dirs = await readdir(PROJECTS, { withFileTypes: true }); } catch { return out; }
+  await pool(dirs.filter((d) => d.isDirectory()), 8, async (d) => {
+    let names = [];
+    try { names = await readdir(path.join(PROJECTS, d.name)); } catch { return; }
+    for (const n of names) if (n.endsWith('.jsonl')) out.set(n.slice(0, -6), path.join(PROJECTS, d.name, n));
+  });
+  return out;
+}
+
+// Each transcript's context gauge (rules in sessions.mjs), fed only the bytes
+// written since the last look. A file that shrank or was made again starts
+// over; a first look at a huge one starts near its end. Entries not looked at
+// for a day are dropped.
+const CONTEXT_FIRST_BYTES = 32 << 20;
+const CONTEXT_CHUNK = 4 << 20;
+const CONTEXT_FORGET_MS = 24 * 60 * 60 * 1000;
+const contexts = new Map(); // file -> { birth, offset, cut, decoder, tracker, seen }
+const contextQueue = new Map(); // file -> the read in progress, so reads of one file take turns
+
+async function readContext(file) {
+  let s;
+  try { s = await stat(file); } catch { contexts.delete(file); return null; }
+  let c = contexts.get(file);
+  if (!c || s.size < c.offset || s.birthtimeMs !== c.birth) {
+    const offset = Math.max(0, s.size - CONTEXT_FIRST_BYTES);
+    c = { birth: s.birthtimeMs, offset, cut: offset > 0, decoder: new StringDecoder('utf8'), tracker: contextTracker(process.env), seen: 0 };
+    contexts.set(file, c);
+  }
+  c.seen = Date.now();
+  if (s.size > c.offset) {
+    const fh = await open(file, 'r');
+    try {
+      while (c.offset < s.size) {
+        const buf = Buffer.alloc(Math.min(CONTEXT_CHUNK, s.size - c.offset));
+        const { bytesRead } = await fh.read(buf, 0, buf.length, c.offset);
+        if (!bytesRead) break;
+        c.tracker.feed(c.decoder.write(buf.subarray(0, bytesRead)), { cut: c.cut });
+        c.cut = false;
+        c.offset += bytesRead;
+      }
+    } finally { await fh.close(); }
+  }
+  return c.tracker.view();
+}
+function contextOf(file) {
+  const read = (contextQueue.get(file) ?? Promise.resolve()).then(() => readContext(file)).catch(() => null);
+  contextQueue.set(file, read);
+  read.then(() => { if (contextQueue.get(file) === read) contextQueue.delete(file); });
+  return read;
+}
+function forgetContexts() {
+  const cutoff = Date.now() - CONTEXT_FORGET_MS;
+  for (const [file, c] of contexts) if (c.seen < cutoff) contexts.delete(file);
 }
 
 // The desktop app keeps one record per Code session, naming its worktree.
@@ -271,6 +334,8 @@ async function collect() {
   // Lanes: every worktree.
   const now = Date.now();
   const sessions = await appSessions();
+  const transcripts = await transcriptIndex();
+  forgetContexts();
 
   // Each launch's session is the app session created just after it, wherever it
   // opened (the app sometimes puts it in a scratch folder).
@@ -315,10 +380,15 @@ async function collect() {
     // Commits not yet on the plan's branch on GitHub (or master for other work).
     const target = planKey ? `origin/${branchOf[planKey]}` : 'origin/master';
     const [ahead, behind] = await aheadBehind(w.head, target);
-    const session = await sessionActivity(w.path);
+    const newest = await newestTranscript(w.path);
+    const session = newest?.time ?? null;
     const pr = prs.find((p) => p.headRefName === w.branch) ?? null;
     const app = sessions.filter((s) => s.dir === path.normalize(w.path).toLowerCase())
       .sort((x, y) => (x.archived - y.archived) || (y.activity - x.activity))[0] ?? null;
+    // The context gauge follows the lane's app session (or its launch's), else
+    // the newest transcript in the worktree's folder.
+    const cli = app?.cli ?? launches.find((l) => l.branch === w.branch && l.session?.cli)?.session.cli;
+    const gaugeFile = (cli && transcripts.get(cli)) ?? newest?.file ?? null;
     const question = app && !app.archived ? await waitingQuestion(w.path, app.cli) : null;
     const own = treeFiles[i];
 
@@ -338,6 +408,8 @@ async function collect() {
       plan: planKey, claims, scope, lastTask,
       app: app && { id: app.id, title: app.title, archived: app.archived }, question, target, ahead, behind, dirty: dirty.length, merging, state, activity,
       session, last: { time: last.time, subject: last.subject },
+      context: gaugeFile ? await contextOf(gaugeFile) : null,
+      contextSession: gaugeFile ? path.basename(gaugeFile, '.jsonl') : null,
       pr: pr && { number: pr.number, url: pr.url, draft: pr.isDraft, base: pr.baseRefName },
       // Plan ticks in this worktree's file that no branch has committed yet.
       uncommittedTicks: planKey && own[planKey]
@@ -605,6 +677,7 @@ async function sessionList() {
     if (a?.archived) return null;
     let t;
     try { t = await transcript(f.file, 1); } catch { return null; }
+    const context = await contextOf(f.file);
     const pending = relay.pending.filter((p) => p.session === f.id).sort((x, y) => x.time - y.time);
     const last = t.entries.at(-1);
     return {
@@ -614,6 +687,7 @@ async function sessionList() {
       asking: t.open?.name === 'AskUserQuestion' ? t.open.questions.map((q) => q.question) : null,
       openTool: t.open && t.open.name !== 'AskUserQuestion' ? { name: t.open.name, summary: t.open.summary, time: t.open.time } : null,
       lastText: last ? String(last.text ?? last.summary ?? '').slice(0, 200) : '',
+      context,
     };
   });
   return list.filter(Boolean).sort((x, y) => (y.pending.length > 0) - (x.pending.length > 0) || y.activity - x.activity);
@@ -623,13 +697,14 @@ async function sessionDetail(id, limit) {
   if (!SESSION_ID.test(id ?? '')) throw new Error('Bad session id');
   const f = (await findTranscripts()).find((x) => x.id === id);
   if (!f) throw new Error('No recent session with that id');
-  const [t, relay, app] = await Promise.all([transcript(f.file, limit), relayState(), appSessions()]);
+  const [t, relay, app, context] = await Promise.all([transcript(f.file, limit), relayState(), appSessions(), contextOf(f.file)]);
   const a = app.find((x) => x.cli === id);
   return {
     id, app: a?.id ?? null, title: a?.title || t.title || '(untitled)', cwd: t.cwd ?? a?.dir ?? null,
     activity: f.mtime, active: Date.now() - f.mtime < ACTIVE_MS, entries: t.entries, more: t.more || (t.cut ? 1 : 0),
     open: t.open, on: !!relay.on[id], queued: relay.replies[id] ?? null,
     pending: relay.pending.filter((p) => p.session === id).sort((x, y) => x.time - y.time),
+    context,
   };
 }
 

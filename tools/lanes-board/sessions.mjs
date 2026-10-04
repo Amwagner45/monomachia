@@ -81,6 +81,150 @@ export function parseTranscript(lines, { limit = 400 } = {}) {
   };
 }
 
+// ---------- the context gauge ----------
+// How full a session's context is, turn by turn. Sources (checked Oct 4 2026):
+// - Windows: the claude-api skill's model table (cached 2026-09-25) gives 1M for
+//   Fable 5/5.1, Mythos 5/5.1, Opus 5.5/5/4.8/4.7/4.6, Sonnet 5.5/5/4.6, and 200K
+//   for Haiku 4.5 and the older models. Claude Code's docs (code.claude.com/docs/
+//   en/model-config, "Extended context") say Opus 4.6 and Sonnet 4.6 reach 1M
+//   only through their `[1m]` variant, so in Claude Code they are 200K without it.
+// - Transcripts record the API id in message.model (claude-opus-5-5, never the
+//   `[1m]` suffix), so a 4.6 model past 200K is taken to be on its 1M variant.
+//   Replies Claude Code makes up itself (errors) say model "<synthetic>".
+// - Auto-compact (same page, "Default auto-compact thresholds"): a native 1M
+//   window compacts "at about 967K tokens by default"; other sessions compact when
+//   the conversation reaches the model's limit. CLAUDE_CODE_AUTO_COMPACT_WINDOW
+//   and CLAUDE_AUTOCOMPACT_PCT_OVERRIDE (docs/en/env-vars) change that inside the
+//   session, which the board can't see, so LANES_AUTOCOMPACT_PCT sets the marker
+//   here instead, as a percentage of the window.
+// - Compaction lines: a `system` entry with subtype "compact_boundary"
+//   (compactMetadata { trigger, preTokens }), then a `user` entry with
+//   isCompactSummary. No compaction has happened in this PC's transcripts yet, so
+//   both are taken as markers and a pair counts once.
+// - One API reply is written as one line per content block, all with the same
+//   message.id and usage, so a reply is one point.
+
+export const ONE_M = 1_000_000;
+export const DEFAULT_WINDOW = 200_000;
+export const NATIVE_1M_COMPACT_PCT = 96.7;
+const WINDOWS = [
+  [/claude-(fable|mythos)-/, ONE_M],
+  [/claude-opus-(5|4-[78])\b/, ONE_M],
+  [/claude-sonnet-5\b/, ONE_M],
+];
+const envNumber = (v) => (Number(v) > 0 ? Number(v) : null);
+
+// The context window a model id runs with: LANES_CONTEXT_WINDOW, then a `[1m]`
+// suffix, then the table, then 200K.
+export function contextWindowFor(model, env = {}) {
+  const forced = envNumber(env.LANES_CONTEXT_WINDOW);
+  if (forced) return forced;
+  const m = String(model ?? '').toLowerCase();
+  if (m.endsWith('[1m]')) return ONE_M;
+  return WINDOWS.find(([re]) => re.test(m))?.[1] ?? DEFAULT_WINDOW;
+}
+
+// Where Claude Code compacts on its own, in tokens.
+export function autoCompactAt(window, env = {}) {
+  const pct = envNumber(env.LANES_AUTOCOMPACT_PCT);
+  if (pct && pct <= 100) return Math.round((window * pct) / 100);
+  return window >= ONE_M ? Math.round((window * NATIVE_1M_COMPACT_PCT) / 100) : window;
+}
+
+// At most `max` points of a { t, tokens } series: the first and newest, the
+// points either side of every compaction (times), and the highest point of each
+// equal slice of the rest.
+export function downsample(series, compactions = [], max = 120) {
+  if (series.length <= max) return series.slice();
+  const must = new Set([0, series.length - 1]);
+  for (const c of compactions) {
+    const after = series.findIndex((p) => p.t > c);
+    if (after > 0) { must.add(after - 1); must.add(after); }
+  }
+  const picked = new Set([...must].sort((a, b) => a - b).slice(-max));
+  const slices = max - picked.size;
+  for (let s = 0; s < slices; s++) {
+    let best = -1;
+    for (let i = Math.floor((s * series.length) / slices); i < Math.floor(((s + 1) * series.length) / slices); i++) {
+      if (!picked.has(i) && (best < 0 || series[i].tokens > series[best].tokens)) best = i;
+    }
+    if (best >= 0) picked.add(best);
+  }
+  return [...picked].sort((a, b) => a - b).map((i) => series[i]);
+}
+
+const KEEP = 1000; // points a tracker holds before it thins them to half
+const SHOWN = 120;
+
+// Fed a transcript's text in order, in chunks of any size (the last line of a
+// chunk may be cut off and finished by the next; with { cut: true } the chunk
+// starts mid-line and its first line is skipped). view() is the gauge, or null
+// before the first reply with usage.
+export function contextTracker(env = {}) {
+  let carry = '';
+  let skipping = false;
+  let model = null;
+  let lastId = null;
+  let compactedSinceTurn = false;
+  let shown = null;
+  let series = [];
+  let compactions = [];
+  const bigger = new Set(); // models seen past their table window
+
+  const line = (text) => {
+    if (!text.includes('"usage"') && !text.includes('compact_boundary') && !text.includes('isCompactSummary')) return;
+    let o;
+    try { o = JSON.parse(text); } catch { return; }
+    if (o.isSidechain) return;
+    const t = Date.parse(o.timestamp) || null;
+    if ((o.type === 'system' && o.subtype === 'compact_boundary') || (o.type === 'user' && o.isCompactSummary)) {
+      if (!compactedSinceTurn) compactions = [...compactions.slice(-199), t];
+      compactedSinceTurn = true;
+      shown = null;
+      return;
+    }
+    const u = o.type === 'assistant' ? o.message?.usage : null;
+    if (!u || o.message.model === '<synthetic>') return;
+    const tokens = (u.input_tokens ?? 0) + (u.cache_creation_input_tokens ?? 0) + (u.cache_read_input_tokens ?? 0);
+    model = o.message.model ?? model;
+    if (tokens > contextWindowFor(model)) bigger.add(model);
+    if (o.message.id && o.message.id === lastId) series[series.length - 1] = { t: series.at(-1).t, tokens };
+    else series.push({ t, tokens });
+    lastId = o.message.id ?? null;
+    compactedSinceTurn = false;
+    if (series.length > KEEP) series = downsample(series, compactions, KEEP / 2);
+    shown = null;
+  };
+
+  return {
+    feed(text, { cut = false } = {}) {
+      if (cut) { carry = ''; skipping = true; }
+      if (skipping) {
+        const nl = text.indexOf('\n');
+        if (nl < 0) return;
+        text = text.slice(nl + 1);
+        skipping = false;
+      }
+      const lines = (carry + text).split('\n');
+      carry = lines.pop();
+      for (const l of lines) if (l.trim()) line(l);
+    },
+    size: () => series.length,
+    view() {
+      if (!series.length) return null;
+      if (shown) return shown;
+      let window = contextWindowFor(model, env);
+      if (window < ONE_M && !envNumber(env.LANES_CONTEXT_WINDOW) && bigger.has(model)) window = ONE_M;
+      const { t, tokens } = series.at(-1);
+      shown = {
+        model, tokens, window, pct: Math.round((tokens / window) * 1000) / 10, autoCompactAt: autoCompactAt(window, env),
+        updated: t, series: downsample(series, compactions, SHOWN), compactions: compactions.slice(),
+      };
+      return shown;
+    },
+  };
+}
+
 // ---------- the relay (relay-hook.mjs on the session's side) ----------
 
 export const SESSION_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;

@@ -1,6 +1,7 @@
 // Tests for the lanes board's Graph and Sessions tabs: the graph layout
 // (tools/lanes-board/graph.mjs), the transcript reader and relay answers
-// (sessions.mjs), and the relay hook a session runs (relay-hook.mjs).
+// (sessions.mjs), each session's context gauge (sessions.mjs), and the relay
+// hook a session runs (relay-hook.mjs).
 
 import { spawn } from 'node:child_process';
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
@@ -9,7 +10,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { edgePath, layoutPlan, related } from '../tools/lanes-board/graph.mjs';
-import { PENDING_ID, SESSION_ID, parseTranscript, questionAnswers, relayAnswer, toolSummary } from '../tools/lanes-board/sessions.mjs';
+import {
+  PENDING_ID, SESSION_ID, autoCompactAt, contextTracker, contextWindowFor, downsample, parseTranscript, questionAnswers,
+  relayAnswer, toolSummary,
+} from '../tools/lanes-board/sessions.mjs';
 import { pageFor } from '../tools/lanes-board/access.mjs';
 
 // A plan as /data serves it.
@@ -138,6 +142,153 @@ describe('toolSummary', () => {
     expect(toolSummary('Read', { file_path: 'a.ts' })).toBe('a.ts');
     expect(toolSummary('AskUserQuestion', { questions: [{ question: 'X?' }, { question: 'Y?' }] })).toBe('X? · Y?');
     expect(toolSummary('Mystery', { n: 1, what: 'thing' })).toBe('thing');
+  });
+});
+
+// ---------- the context gauge ----------
+
+const T0 = Date.parse('2026-10-04T12:00:00Z');
+const at = (min) => new Date(T0 + min * 60_000).toISOString();
+// One main-chain API response: its context is input + cache writes + cache reads.
+const turn = (min, tokens, { id = `msg_${min}`, side = false, model = 'claude-opus-5-5' } = {}) => JSON.stringify({
+  type: 'assistant', isSidechain: side, timestamp: at(min),
+  message: { id, model, role: 'assistant', content: [{ type: 'text', text: 'ok' }],
+    usage: { input_tokens: 2, cache_creation_input_tokens: 100, cache_read_input_tokens: tokens - 102, output_tokens: 900 } },
+});
+const boundary = (min) => JSON.stringify({ type: 'system', subtype: 'compact_boundary', isSidechain: false, timestamp: at(min),
+  content: 'Conversation compacted', compactMetadata: { trigger: 'auto', preTokens: 966_000 } });
+const summary = (min) => JSON.stringify({ type: 'user', isSidechain: false, isCompactSummary: true, timestamp: at(min),
+  message: { role: 'user', content: 'This session is being continued from a previous conversation…' } });
+const track = (lines, env) => { const c = contextTracker(env); c.feed(lines.map((l) => `${l}\n`).join('')); return c.view(); };
+
+describe('contextWindowFor', () => {
+  it('knows each model\'s window, 1M on the current ones and 200K on Haiku and the older ones', () => {
+    for (const m of ['claude-opus-5-5', 'claude-sonnet-5-5', 'claude-fable-5-1', 'claude-fable-5', 'claude-opus-5',
+      'claude-sonnet-5', 'claude-opus-4-8', 'claude-opus-4-7', 'claude-mythos-5-1']) expect(contextWindowFor(m)).toBe(1_000_000);
+    for (const m of ['claude-haiku-4-5-20251001', 'claude-haiku-4-5', 'claude-opus-4-6', 'claude-sonnet-4-6',
+      'claude-sonnet-4-5-20250929', 'claude-opus-4-1-20250805', 'claude-3-7-sonnet-20250219']) expect(contextWindowFor(m)).toBe(200_000);
+  });
+
+  it('takes a [1m] suffix, then LANES_CONTEXT_WINDOW over everything, and falls back for an unknown model', () => {
+    expect(contextWindowFor('claude-opus-4-6[1m]')).toBe(1_000_000);
+    expect(contextWindowFor('claude-sonnet-4-6[1M]')).toBe(1_000_000);
+    expect(contextWindowFor('claude-opus-5-5', { LANES_CONTEXT_WINDOW: '500000' })).toBe(500_000);
+    expect(contextWindowFor('claude-opus-4-6[1m]', { LANES_CONTEXT_WINDOW: '300000' })).toBe(300_000);
+    expect(contextWindowFor('claude-opus-5-5', { LANES_CONTEXT_WINDOW: 'lots' })).toBe(1_000_000);
+    expect(contextWindowFor('some-gateway-alias')).toBe(200_000);
+    expect(contextWindowFor(null)).toBe(200_000);
+  });
+});
+
+describe('autoCompactAt', () => {
+  it('is about 967K on a 1M window and the window itself on a 200K one, unless LANES_AUTOCOMPACT_PCT says', () => {
+    expect(autoCompactAt(1_000_000)).toBe(967_000);
+    expect(autoCompactAt(200_000)).toBe(200_000);
+    expect(autoCompactAt(1_000_000, { LANES_AUTOCOMPACT_PCT: '80' })).toBe(800_000);
+    expect(autoCompactAt(200_000, { LANES_AUTOCOMPACT_PCT: '50' })).toBe(100_000);
+    expect(autoCompactAt(200_000, { LANES_AUTOCOMPACT_PCT: '0' })).toBe(200_000);
+  });
+});
+
+describe('contextTracker', () => {
+  it('has nothing to show before the first reply with usage', () => {
+    expect(track([summary(0)])).toBeNull();
+    expect(contextTracker().view()).toBeNull();
+  });
+
+  it('takes the newest main-chain reply\'s input, cache writes and cache reads as the context', () => {
+    const v = track([turn(0, 30_000), turn(1, 45_000), turn(2, 250_000)]);
+    expect(v).toMatchObject({ model: 'claude-opus-5-5', tokens: 250_000, window: 1_000_000, pct: 25, autoCompactAt: 967_000,
+      updated: T0 + 2 * 60_000, compactions: [] });
+    expect(v.series).toEqual([{ t: T0, tokens: 30_000 }, { t: T0 + 60_000, tokens: 45_000 }, { t: T0 + 120_000, tokens: 250_000 }]);
+  });
+
+  it('ignores side chains, synthetic replies and broken lines, and counts a reply split over lines once', () => {
+    const v = track([turn(0, 30_000), turn(1, 900_000, { side: true }), '{oops', turn(2, 0, { model: '<synthetic>' }),
+      turn(3, 40_000, { id: 'msg_x' }), turn(3, 40_000, { id: 'msg_x' })]);
+    expect(v.tokens).toBe(40_000);
+    expect(v.series.map((p) => p.tokens)).toEqual([30_000, 40_000]);
+  });
+
+  it('marks a compaction once for its boundary and summary pair, and the series drops after it', () => {
+    const v = track([turn(0, 900_000), turn(1, 960_000), boundary(2), summary(2), turn(3, 60_000), turn(4, 70_000)]);
+    expect(v.compactions).toEqual([T0 + 120_000]);
+    expect(v.series.map((p) => p.tokens)).toEqual([900_000, 960_000, 60_000, 70_000]);
+    expect(v.tokens).toBe(70_000);
+    // A summary with no boundary line still counts.
+    expect(track([turn(0, 900_000), summary(1), turn(2, 50_000)]).compactions).toEqual([T0 + 60_000]);
+    // Compactions inside a side chain don't.
+    expect(track([turn(0, 1000), JSON.stringify({ ...JSON.parse(boundary(1)), isSidechain: true })]).compactions).toEqual([]);
+  });
+
+  it('reads the same whatever the chunks, carrying a cut line over to the next chunk', () => {
+    const text = [turn(0, 30_000), turn(1, 40_000), boundary(2), summary(2), turn(3, 5_000)].map((l) => `${l}\n`).join('');
+    const whole = contextTracker();
+    whole.feed(text);
+    for (const step of [1, 7, 50, 333]) {
+      const c = contextTracker();
+      for (let i = 0; i < text.length; i += step) c.feed(text.slice(i, i + step));
+      expect(c.view()).toEqual(whole.view());
+    }
+    // An unfinished last line waits for the rest.
+    const c = contextTracker();
+    c.feed(`${turn(0, 30_000)}\n${turn(1, 40_000).slice(0, 40)}`);
+    expect(c.view().tokens).toBe(30_000);
+    c.feed(`${turn(1, 40_000).slice(40)}\n`);
+    expect(c.view().tokens).toBe(40_000);
+  });
+
+  it('skips the cut first line when it starts reading mid-file', () => {
+    const c = contextTracker();
+    c.feed(`${turn(0, 30_000).slice(20)}\n${turn(1, 40_000)}\n`, { cut: true });
+    expect(c.view().series).toEqual([{ t: T0 + 60_000, tokens: 40_000 }]);
+  });
+
+  it('gives a 200K model that has gone past 200K its 1M variant\'s window', () => {
+    const v = track([turn(0, 150_000, { model: 'claude-opus-4-6' }), turn(1, 260_000, { model: 'claude-opus-4-6' })]);
+    expect(v.window).toBe(1_000_000);
+    expect(track([turn(0, 150_000, { model: 'claude-haiku-4-5-20251001' })]))
+      .toMatchObject({ window: 200_000, pct: 75, autoCompactAt: 200_000 });
+  });
+
+  it('applies the env overrides', () => {
+    expect(track([turn(0, 100_000)], { LANES_CONTEXT_WINDOW: '400000', LANES_AUTOCOMPACT_PCT: '90' }))
+      .toMatchObject({ window: 400_000, pct: 25, autoCompactAt: 360_000 });
+  });
+
+  it('keeps its memory bounded over a very long session', () => {
+    const c = contextTracker();
+    let text = '';
+    for (let i = 0; i < 5000; i++) text += `${turn(i, 10_000 + (i % 400) * 2000)}\n`;
+    c.feed(text);
+    const v = c.view();
+    expect(c.size()).toBeLessThanOrEqual(1000);
+    expect(v.series.length).toBeLessThanOrEqual(120);
+    expect(v.series.at(-1)).toEqual({ t: T0 + 4999 * 60_000, tokens: 10_000 + (4999 % 400) * 2000 });
+    expect(v.tokens).toBe(10_000 + (4999 % 400) * 2000);
+  });
+});
+
+describe('downsample', () => {
+  // A sawtooth: climbs 1K a turn and compacts every 300 turns.
+  const series = Array.from({ length: 1000 }, (_, i) => ({ t: i, tokens: 1000 * ((i % 300) + 1) }));
+  const compactions = [299.5, 599.5, 899.5];
+
+  it('leaves a short series alone', () => {
+    expect(downsample(series.slice(0, 50), [], 120)).toEqual(series.slice(0, 50));
+  });
+
+  it('caps the points, keeping the newest, both sides of every compaction and the peaks', () => {
+    const d = downsample(series, compactions, 120);
+    expect(d.length).toBeLessThanOrEqual(120);
+    expect(d.at(-1)).toEqual(series.at(-1));
+    expect(d[0]).toEqual(series[0]);
+    for (const c of compactions) {
+      expect(d).toContainEqual(series[Math.floor(c)]);
+      expect(d).toContainEqual(series[Math.ceil(c)]);
+    }
+    expect(Math.max(...d.map((p) => p.tokens))).toBe(300_000);
+    expect(d.map((p) => p.t)).toEqual([...d.map((p) => p.t)].sort((a, b) => a - b));
   });
 });
 

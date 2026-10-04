@@ -1,6 +1,6 @@
 # Spec: Animation Studio
 
-Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan next · branch `feature/animation-studio`, off `feature/authored-animation` (at 3b9b01c, task 27), pull request against `feature/authored-animation` until PR #12 merges, then against `feature/godot-rebuild`
+Oct 3, 2026 · status: spec approved by the owner (Oct 3); plan approved (`docs/plans/animation-studio.md`, Oct 3) · branch `feature/animation-studio`, off `feature/authored-animation` (at 3b9b01c, task 27), pull request against `feature/authored-animation` until PR #12 merges, then against `feature/godot-rebuild`
 
 The Animation Studio is a local dev tool for the Godot game: a gallery of every clip the fighters play, grouped by category and playing live, where clicking one opens a full editor for it. Each animation also has a chat panel: a prompt sent from it starts a new Claude Code session in a fresh git worktree, with the animation's data and a screenshot attached, and that session takes the change through the usual spec, plan and pull request flow.
 
@@ -122,6 +122,8 @@ Everything new goes in `game/tools/anim_studio/` (scenes, scripts, its own theme
 - `view/fighter/clip_director.gd`: reads state and ult timings from `state_clips.json` instead of constants, and applies correctives.
 - `view/fighter/clip_correctives.gd` (new, in the game): loads correctives and adds them on top of a posed skeleton. It sits beside ClipDirector because matches play correctives too.
 - `tools/clip_poser.gd` / `tools/swing_bake.gd`: apply correctives when sampling, so the bake sees them.
+- `tools/build_keyed_clips.gd`: its build moves into a static function the Studio can call (the CLI is unchanged).
+- The procedural layers (guard stance, foot lock, lean, body layer): an `enabled` flag where one is missing, on by default, so the editor can switch them off.
 - `scripts/godot.mjs`: a `studio` command.
 - `.gitignore`: the refinement log and the context folder.
 - `GLOSSARY.md`: the new terms (see Further Notes).

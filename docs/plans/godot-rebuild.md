@@ -2,7 +2,11 @@
 
 Spec: `docs/specs/godot-rebuild.md` · branch `feature/godot-rebuild` · pull request #2
 
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The toon look, the laptop performance gates, the 110 MB art cap and the ink-styled effects in this plan are superseded, and the open tasks are being triaged. The look-independent open tasks are to be finished, tuning and effects move into the slice plan, toon-only items retire, and the rebuild merges into `master` first.
+
 ## Destination
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** A realistic look after Ghost of Tsushima's darker side replaces the toon and ink-wash look: physically based materials, dark lighting and volumetric fog under a painterly colour grade. Ink survives only as calligraphy in the UI.
 
 The Godot build plays everything the web demo plays, on the new direction in the spec: weapon-path hits and animation, the two first fighters, the new Katana, Greatsword and Daggers strings, the For Honor camera, the floating Moonlit Shrine, the toon and ink-wash look, sound and placeholder music, all four modes, and remappable controls. CI builds it for Windows, and the web version is deleted.
 
@@ -35,10 +39,12 @@ The Godot build plays everything the web demo plays, on the new direction in the
   - Verdict: weapon-path animation on the Quaternius fighters works, with conditions, which are now requirements of tasks 7, 14, 14b and 15.
   - Camera: the side offset is 1.3–1.4 m, because 0.9 m hides the opponent.
   - Reach: lunges must be 0.7–0.8 m so the blade really reaches a defender 2.5 m away.
+    - Superseded by ADR 0001 (Oct 4): lunges come from the clips' own steps, never a rules-added slide. Each weapon has a distance band set by design, and a clip that falls short is re-keyed with a longer step or reach.
 - Phase C is reordered: the new strings come before weapon swings, so swing paths are authored once, for the final moves.
 - The 4.7.2 export templates are installed on the owner's PC, so `npm run build` can export locally; CI exports too.
 - The match host owns the input host (one set of devices for the whole game, pause on focus loss, profiles picked up on resume), so task 6 did that part of task 22.
 - Oct 3, 2026: the authored-animation spec (`docs/specs/authored-animation.md`, plan `docs/plans/authored-animation.md`) replaces the procedural swings, reactions and movement with authored clips and baked hit paths. It retires 7.16–7.38, 14.14, 14.15, 14b and all of task 15, which are struck through below (`[-]`) with what replaces each. The tasks that waited on a retired one (14.16, 14.17, 12.2, 18.12 and 25.7) were re-pointed to that plan's tasks, each with a note. Later the same day the owner retired 14.16 (the saya) into its task 11 and folded 14.17 (the review sheets) into its task 14.
+  - Superseded by ADR 0001 (Oct 4): the authored-animation spec closes after its task 30b. Its tasks 32–35 (draws, victories, retiring the stand-ins) move into the slice spec and its task 36 retires, so 18.12 no longer waits on it.
 
 ### Decisions from the task breakdown (Oct 1, 2026)
 
@@ -53,8 +59,12 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - The export preset, the size guard and the CI export come early, to catch problems that only show in an exported build.
 
 **Fluid rules (8)**
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** A fighter moves only as their clips carry them, so the eased lunges and the colossal recovery slide below give way to the clips' own steps. Dodge cancels open at markers on each clip instead of at the heavy's cancel formula.
+
 - The goldens, the brain-parity hashes and the whole-run hashes retired in one rules-neutral commit (8.2), after behaviour tests for the dummy and the counters replaced them (8.1). The last bit-exact commit, 4222167, and its soak and counterlab reports are recorded in Progress.
 - `test_moves` keeps comparing with the demo's `moves.json`, with a table of deliberate differences.
+  - Superseded by ADR 0001 (Oct 4): tests that pin frame data to the web demo will be replaced as the slice lands. Frame data are generated from the clips into a committed table, and a test keeps every attack inside its timing band.
 - The Moonsplitter wave reaches 2 × arena radius + 3 m (33 m), so it still crosses the whole stage.
 - Lunges ease in and out (`SimMath.ease_in_out`), with the same distance and window.
 - Heavies dodge-cancel from S + A + ceil(R / 2). A charged heavy's cancel opens later by half its extra recovery. There is no cancel in the air, and abilities, specials and ultimates get none.
@@ -62,6 +72,9 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - Light hitstun 14 frees the Katana's and the Greatsword's second hits, but not the Daggers' second and third lights, which land 11 and 13 frames after the previous hit. To keep story 24, 11.1 lowers the Daggers' light hitstun until the defender has at least one frame to block or parry the next light: 10 frames, on the string's four lights (the movement lights and Counter Lunge keep 14). Bare hands keep their own 16; the spec records them as the exception.
 
 **Strings (9–11)**
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** Frame data now come from each move's clip, edited into the move's timing band, so counts such as the Iai's 23-frame startup are re-derived from the clips. Follow-ups and dodge cancels open at markers on each clip instead of at the fixed frames below.
+
 - Sides are left, right or centre. A move starting at centre (overheads, thrusts, stabs, spins, the crossing cut) may follow any end; a left or right start must match the previous move's end. The vertical Iai and Overhead Strike end on the right, so Rising Heaven and Low Sweep follow them.
 - The Iai's data startup is 23 frames: the 9-frame sheathe plus the 14-frame draw. The stance ends on release, on auto-release, or at frame 9 for a tap. The stick at that moment picks the variant, by Moonsplitter's rule: left or right past the dead zone with |x| > |y| means horizontal. A dodge cancels the stance only while it is sheathed and held.
 - The Daggers' four lights and the Passing Cut dodge-cancel from their first recovery frame. Twin Rip loses its heavy follow-up, and Twin Fang its light one in 11.1, as the continuity check needs (a stab ends at centre, and Quick Slice starts on the right). Kesa Cut dodge-cancels from frame 20.
@@ -70,6 +83,7 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 
 **Weapon swings (7)**
 - Each weapon has its own duelling distance for the reach rule: Katana 2.5 m, Greatsword 3.0 m, Daggers 2.0 m, bare hands 1.6 m. "The last 15–20 cm of blade enters" means the deepest length of blade inside a standing defender's capsule over the active ticks is 15–20 cm. Other moves are tested from the distance listed for them in the spec's table of test distances (7.14).
+  - Superseded by ADR 0001 (Oct 4): each weapon has a distance band set by design in place of one duelling distance. The weapon models set the blade lengths, and reach, spacing and balance are retuned to match.
 - Swing keys live in one JSON file per weapon under `game/sim/moves/swings/`, with stable key order and fixed decimals, so the swing editor can write them back byte for byte. The rules expand them to per-tick samples at load. A key holds the grip, the hand frame, the edge, the torso and pelvis coil, a pelvis shift, an elbow-pole tweak and an ease.
 - Swings are checked twice:
   - on the swing data, headless, against reference bodies measured once from the Rogue and the Hunter and committed (task 7): wrist bend and deviation, no locked elbow, the blade at least 5 cm from the body, and the grips kept out of the face during the wind-up;
@@ -81,23 +95,29 @@ Breaking the remaining work into single tasks raised these questions. Each takes
 - Zero-damage stances (Flash, Shadow Step, the sheathed Iai) get pose-only swings.
 - Parry and block stay timing-only, judged at the first touch. The counters keep their generous cones, measured from the paths.
 - Tuning soaks run 300 matches with mirror matches left out of the win rates; the 40-match soak stays the clean check. Tuning changes damage, posture, parry numbers and AI parameters, and keeps lunges inside the duel-reach band. A change to frame data re-keys the swing and reruns the reach test, the pose checks and the sheets in the same commit.
+  - Superseded by ADR 0001 (Oct 4): frame data are generated from the clips with no hand overrides, so a timing change edits the clip until it lands in its timing band, and a clip short of its distance band is re-keyed, never slid. Tuning moves into the slice plan, where each weapon is rebalanced as its animation lands.
 
 **Fighters and animation (14, 14b, 15)**
 - Tasks 14 and 15 may re-key swings. Each such commit reruns the swing-hit and reach tests, the soak and the move's contact sheets.
 - The guard shuffle step applies while blocking, in the tap step and below about 2.5 m/s. Above that, the clips with hip-turn take over.
 - The Katana gets a saya built in code for the Iai, before the Iai's swings are keyed.
 - Victory is a simple procedural hold; authored victory poses stay out of scope.
+  - Superseded by ADR 0001 (Oct 4): everything inside a round, victory poses and weapon draws included, reaches final quality in the two milestones. The authored-animation spec's tasks 32–35 (draws, victories) move into the slice spec.
 - Spring bones for hair and hoods wait.
+  - Superseded by ADR 0001 (Oct 4): capes, coats and other loose clothing are cloth-simulated.
 
 **Look, arena and effects (16–18)**
 - `ArenaScenes` uses an arena's scene only when its walkable radius equals the rules' arena radius. The shrine can then land before task 8 without an invisible wall, and becomes every match's arena when 8.3 sets the radius.
 - Combat effects run on a pooled MultiMesh stepped on the match clock, so they freeze in hit-stop and pause and slow with slow motion. Ambient embers and ash use GPU particles. On Low, combat particle counts drop at most by half.
 - The unblockable reach effect is a red ink arc on the floor during the wind-up.
+  - Superseded by ADR 0001 (Oct 4): as the wind-up starts, a red 危 flashes with a sound and the blade glints red, and the attack type reads from the animation. Floating labels and floor markers appear only in Training.
 - The parry push-in is a short dolly on top of the existing field-of-view kick; reduce-flashes turns both off.
 - The ultimate aura uses the side colours. The worktree's petals are dropped unless the owner wants them.
 - Outlines and ink lines are settled by the owner's look review: outlines 3, 2.4 and 2.25 px at 1080p for fighters, weapons and props (16.3), and the ink-wash lines 2 px at strength 0.85 (16.4).
+  - Superseded by ADR 0001 (Oct 4): outlines and ink lines retire with the toon look. The sides read by muted dyed palettes (crimson against indigo) and key and rim lights that touch only the fighters.
 - Shot scenes live in `game/tools/shot_scenes`. Screenshot runs fail on shader compile errors, since headless runs never compile shaders.
 - The project's own anti-aliasing matches High (FXAA, no MSAA); `GameServices` applies the saved preset at start. Test and shot runs set `MONOMACHIA_DEFAULT_SETTINGS`, so they always use High, whatever a player saved on the machine. Low keeps the owner's outline widths.
+  - Superseded by ADR 0001 (Oct 4): there are four presets, with Ultra on the RTX 3090 as the reference preset, and play uses temporal anti-aliasing and subtle bloom in place of FXAA with glow off. Outlines retire, so Low's outline widths go.
 
 **Sound and music (19, 20)**
 - Both fighters' footsteps play in 3D.
@@ -157,6 +177,7 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - The shrine's backdrop (17.7): a sea of clouds, rings of ink mountains with a valley under the moon, cliff spires with pagodas, temple halls and waterfalls, a far lake with drifting lanterns that shows from outside the walls, and mist, all inside the camera's far clip and trimmed per preset.
   - The shrine's drifting embers and ash (17.8): embers rise from each lantern and up past the rim on the updraft, and ash falls across the courtyard, all on one wind with the sea of clouds and thinned per preset.
   - The shrine's benchmark (17.9): `tools/shot_scenes/arena_bench.tscn` times a real computer duel on the shrine at 1080p, Low, Medium and High in interleaved rounds, and saves the three side by side. On the target laptop, High runs 69 fps from the gameplay camera and 66 fps from the Watch camera, Medium 79 and Low 102, so no preset needed tuning.
+    - Superseded by ADR 0001 (Oct 4): the gate of High at 60 fps on the laptop is replaced. Ultra must hold 4K at 60 fps on the RTX 3090, and Low 60 fps at 1080p (rendered at about 720p and upscaled) on the laptop.
   - The shrine as every match's arena (17.10): fighters and dropped weapons stay inside its parapet, and every match camera stays within 16.2 m of the centre (`camera_max_radius`, was 19.5), short of the props on the ledge. `test_shrine_as_arena.gd` sweeps the cameras round the wall against the props' real triangles, and `arena_wall.tscn` (or `--wall=<degrees>` on any arena view) shoots a fighter backed against the wall.
   - The fluid combat rules (task 8): the arena radius is 15 m, with the values the demo hard-coded tied to it (8.3); fighters walk at 60% of running speed while blocking (8.4); an attack keeps half the speed it starts at, and jump and hop attacks all of it (8.5); lunges ease in and out (8.6); lights stun for 14 frames, bare hands keeping their 16 (8.7); heavies dodge-cancel in the second half of their recovery (8.8); and the Greatsword's grounded attacks slide 0.35 m into their recovery (8.9). `test_fluid_combat.gd` has a section for each rule. Before the first change, behaviour tests for the training dummy and the counters replaced the checks pinned to the TypeScript (8.1, 8.2), and the dummy's lights and random were fixed (8.10).
   - The soak's balance report (12.1): each weapon's win rate against the other weapons, disarms per round and a targets block marking the spec's ranges in or out; `npm run soak:tune` runs 300 matches for tuning.
@@ -194,11 +215,13 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
   - `soak:godot -- 40` has 0 failures after 11.3 (its numbers, and a 300-match run's, are in 11.3's Done); at 8.9 (12.1 printed the same, with its new lines) it had 0 failures on task 8's finished rules, and the counterlab still reaches every counter; both reports, and their drift from the baseline, are under "Task 8's drift" below. The first 300-match `soak:tune` (12.1) is under "The first tuning run";
   - the arena shots of the shrine and the bench render with no leaks at exit, and `shader_check` (now with the stone floor, the two glow shaders, the rock, the sky, the backdrop's five and the ash's flake) passes in a window;
   - High averages 66.8 fps at 1080p on the target laptop (`arena_bench.tscn`, 17.10, on mains power; 95th percentile 16.3 ms), Medium 76.9 and Low 99.9, against 69, 79 and 102 at 17.9 with the rules' wall at 11.5 m;
+    - Superseded by ADR 0001 (Oct 4): these are a record of the old laptop gate. The gate is now Ultra at 4K and 60 fps on the RTX 3090, and Low at 60 fps (1080p, upscaled) on the laptop.
   - CI passed on every push from 16.7 (bf71b5f) to 12.1 (ec3f4ca);
   - every skeleton shot renders with no leaks at exit, and `--smoke` plays a whole Watch match with the real fighters in a window;
   - `shader_check`, `outline_check` and `ink_check` pass in a real window (CI can't run them);
   - the art comes to 55.8 MB of its 60 MB budget (the outfit's roughness map is gone), and the tracked repo to 99.5 MB.
   - 3 Oct 2026: the art budget was raised to 110 MB in all and 25 MB per file to add Quaternius's UAL2 Standard root-motion library, the UAL2 Source tier's full clip libraries (about 20 MB each, allow-listed in `check-sizes.mjs`) and the female mannequin; the art now comes to 104.5 MB. The Kevin Iglesias animation packs stay outside the repo (their licence forbids redistribution; see `game/assets/CREDITS.md`).
+    - Superseded by ADR 0001 (Oct 4): size budgets set per place replace the 110 MB art cap: a small public repository, a budget per asset in the private asset repository, and a target size for the shipped game. Paid and large source art moves to the asset repository.
   - stage 5, checked at its merge with everything above (9.1 included): 757 Godot tests and 85 web tests pass, the typecheck loads 179 scripts, `--smoke` plays a Watch match to the results with its sound in a window, the sound check plays through in a window with no errors, and the committed audio is 30.4 MB of its 40 MB budget.
   - 9.1's review fixes, rebased on stage 5's merge: 759 Godot tests (73 s) and 85 web tests pass, and the typecheck loads 179 scripts;
   - after 9.2 and its review fixes: 767 Godot tests (70 s) and 85 web tests pass, and the typecheck loads 179 scripts;
@@ -309,19 +332,26 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 ### Waiting on the owner
 
 - The project's own licence: there is no LICENSE file, and `game/assets/audio/SOURCES.md` refers to one. Needed by 25.4.
+  - Superseded by ADR 0001 (Oct 4): decided. The repository's own code and art are source-visible with all rights reserved, and third-party assets keep their own terms.
 - Whether the Daggers' second and third hits should stay guaranteed after all (11.1 freed them, with 10 frames of hitstun on the string's four lights, to keep story 24; 14 would guarantee them again).
 - Whether the Iai stance's walking speed should halve as the draw starts, as an attack start's does. Today it brakes as on every attack frame, which gives about 0.14 m of sideways drift in the draw after a full-speed strafe (9.3); halving it is one line.
 - Whether a held Twin Fang should wait for the charge check before it dashes, as Overhead Strike and the Iai do (`lunge_start` 9 or 10). Today it covers about 0.6 m of its 1.4 m dash, stands still while charging, then dashes the rest, as the demo's did with 0.8 m (11.2); bare hands' Roundhouse splits its 0.4 m the same way. Waiting would also hold a tapped Twin Fang still for 9 frames and make its dash about twice as fast.
+  - Superseded by ADR 0001 (Oct 4): an attack's travel now comes from its clip's own steps, so Twin Fang's dash and its timing are set by its clip, not by a rules split.
 - Whether the counter lunges, the evade counter's reward, keep the demo's 18 frames of hitstun. 8.7 gave them 14 with every other light, as the plan's check asked; an exception is one line.
 - Whether the running footsteps should follow the legs too. The guard's already do: on the owner's word after 14.9, a fighter walking in its guard steps where its guard shuffle puts its feet down (`Locomotion.footfalls`, reported by `MatchView.footfall`), and 19.4's `FootstepCadence` keeps counting strides for running and the other weapons, and for a match stepped without being drawn. 14.5's step phase passes 0 at the left foot's mid-stance and about 0.5 at the right's, so it could time the running clips' footsteps the same way.
+  - Superseded by ADR 0001 (Oct 4): answered in `docs/design.md`. Footsteps land where the clips' feet do and sound like the surface underfoot.
 - Reviews and sign-offs as their tasks land: the camera with a fighter backed against the shrine's wall (17.10: it now comes in to about 1.6 m behind them, short of the props, on about 5% of frames in a match that reaches the wall; story 11 waits on this; `arena_wall.tscn`, or `--wall=<degrees>` on the gameplay and Watch views; the alternative is a camera that pulls in only when a prop is in the way, which needs collision on the props), a Duel in the exported build (`npm run build`, then `build/windows/Monomachia.exe`; 25.2), a look at the outlines and ink lines under FXAA (picked under the project's old 4x MSAA; 16.5), the fighters in the toon look (16.7: the rim and normal-map strengths tuned on them, and whether the Rogue's charcoal palette needs lifting to read at night; `preview.tscn --stage=night`), the hands on the rig (14.1: `preview.tscn --pose=guard`, and the sheet's guard sheets), a Duel with the real fighters (14.2: `npm run godot:run`; and whether to widen the camera's swing, since a dagger guard's elbows or the Rogue's knees can touch the opponent's outline at 1.5 and 3.5 m), the red rim light on the fighters at the shrine (17.3: energy 1.1 against the stand-in's 0.35, so a blue-side fighter reads red from the moon's side; `arena_menu.tscn`), the lanterns' flicker (17.4: the light and its lit paper flicker separately, and the halo holds steady; `arena_gameplay.tscn` shows them still), the red moon (17.6: its seas are now soft painted shapes laid out like the real moon's face, in place of the worktree's blotchy noise; `arena_gameplay.tscn` and `arena_establishing.tscn`), the petals (17.8: left out, as the plan says; the worktree's 28 pale petals on the wind would be cheap to bring back from the recipe in the look notes), a listening pass (19.9: a Duel, a Watch match and the sound check, `node scripts/godot.mjs run res://tools/sound_check.tscn`; stories 50 and 51 wait on it, and its fixes come back as their own small tasks), the Iai's stand-in sheathe and draws (9.6: `skeleton_iai_stance.tscn`, `skeleton_iai_vertical.tscn` and `skeleton_iai_horizontal.tscn`, with `--frame=` for the draws), the animation sheets (14.17, the gate for 15.1), trying the swing editor by hand (14b.6), playtests of the Duel after 12.9 and of Versus with two controllers and a shared keyboard (22.16), the final animation (15.16), the credits wording (25.4), the CLAUDE.md rewrite (25.6), the README (25.7), and publishing the first release after the merge.
+  - Superseded by ADR 0001 (Oct 4): the toon-look reviews (the outlines and ink lines under FXAA, 16.5, and the fighters in the toon look, 16.7) are moot, since the realistic look replaces it. The Duel playtest after 12.9 moves into the slice plan with the tuning.
 
 ## Not yet specified
 
 - The match intros, the gate cinematic and victory poses, with their animations.
+  - Superseded by ADR 0001 (Oct 4): victory poses reach final quality in the two milestones. Match intros and gate walk-outs come later, with the breadth.
 - How the other six fighters get bodies and outfits (budget, packs, or commissioned art), and how the Orc and Skeleton Knight differ in size and hurt capsule.
+  - Superseded by ADR 0001 (Oct 4): where the final fighter models come from is decided at the second milestone. The other six fighters come after the two milestones.
 - The other six weapons' movesets in frame data, and the open questions the design review raised about them: which hammer, scythe and staff moves are unblockable, the whip's normal heavy, and what "good blocking" means for Sword & Shield.
 - The sourcing and licensing of real music.
+  - Superseded by ADR 0001 (Oct 4): the music's direction is set. In matches traditional percussion and instruments lead and the electronic and metal layers rise at match point, while the menus keep the groovier fusion; sourcing is still open.
 - The additional arenas and a stage select.
 
 ## Out of scope
@@ -329,6 +359,8 @@ Oct 1, 2026. **Resumed by the owner, one task at a time.** The remaining work is
 - Online play, progression and cosmetics (the design's later phases), and Mac and Linux builds.
 
 ## Build order
+
+> **Superseded by [ADR 0001](../adr/0001-animation-leads-realistic-look.md) (Oct 4, 2026):** The effects (18.4–18.12, in stages 10 and 13) and the tuning (12.8 and 12.9, in stage 12) move into the slice plan. The rest of the open work is triaged as the note at the top says.
 
 One task at a time, top to bottom. Each stage names its tasks in order. The retired tasks in stages 9, 10, 11 and 13 (7.16–7.38, 14.14, 14.15, 14b and task 15) are done by the authored-animation plan instead.
 
@@ -406,6 +438,7 @@ One task at a time, top to bottom. Each stage names its tasks in order. The reti
 Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 7 (swing paths for the final moves), then 12.
 
 - [x] **8. Fluid combat rules.** Arena radius 15 m, with the hard-coded values tied to it; blocking walk 60%; momentum carry; eased lunges; the colossal recovery slide; heavy dodge-cancel; light hitstun 14. The golden replays retire here: they record the demo's rules.
+  - Superseded by ADR 0001 (Oct 4): a fighter moves only as their clips carry them, so 8.6's eased lunges and 8.9's recovery slide give way to the clips' own steps. Dodge cancels open at markers on each clip, replacing 8.8's formula.
   - Check: the new tests from the spec pass; the soak run is clean.
   - [x] **8.1 Behaviour tests for the training dummy and the computer's counters.**
     - Delivers: `game/tests/sim/test_training_brain.gd`. Each dummy behaviour (idle, block, lights, heavies, thrust, sweep, slam, random, spar) is checked against an opponent at practice distance, by its events and states. A counterlab-style test shows a hard brain that always tries the counter lands stomp, leap and evade within 60 s. These replace the TypeScript input hashes that the first rule change breaks.
@@ -799,6 +832,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - `soak:tune` (300 matches, 0 failures): win rates against the other weapons Katana 53.1% (55.4% after 11.2), Greatsword 46.1% (42.6%), Daggers 50.4% (51.2%), all three inside the spec's 45–55% for the first time; rounds 39.6 s (38.8). Disarms stay above the spec's 0.3–0.6, at 1.06 per round (1.08); task 12 tunes toward it.
 - [ ] **7. Weapon swings drive hits.**
   - 7.16–7.38 were retired on Oct 3, 2026 by the authored-animation spec: the swings are baked from authored clips by `docs/plans/authored-animation.md`. Task 7 is ticked when that plan's last weapon task (25) is done.
+  - Superseded by ADR 0001 (Oct 4): reach no longer comes from lunges tuned by the rules. Each weapon has a distance band set by design, and a clip that falls short is re-keyed with a longer step or reach, never slid.
   - Delivers:
     - the swing data and arc interpolation, starting from the spike's swing code:
       - the hand drives the blade, with limited wrist bend and deviation;
@@ -1016,6 +1050,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Blocked by: 7.37 · Stories: 21, 58, 59, 62
 - [ ] **12. Computer opponent and balance pass.** The brain and dummy learn the Iai, the new unblockables and the dodge cancels; tuning follows soak data; the spec's numbers are updated.
   - Check: soak targets from the spec (rounds 35–60 s, 0.3–0.6 disarms per round, each weapon 45–55%); the counterlab shows every counter reachable.
+  - Superseded by ADR 0001 (Oct 4): the slower pace sets rounds of about 60–90 s, and the tuning (12.8, 12.9) moves into the slice plan with these targets. The computer-opponent tasks 12.2–12.7 are still needed.
   - [x] **12.1 The soak reports the balance targets.** Win rates in percent (mirror matches left out), disarms per round, average round length, a targets block, and a 300-match tuning mode. The exit code still reflects only failures.
     - Check: a short soak test checks the report lines and the mirror exclusion; a 40-match soak is clean.
     - Blocked by: 8.9 · Stories: 62
@@ -1050,10 +1085,12 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **12.8 Tuning round 1: round length and disarms.** 300-match runs, adjusting damage, posture, parry numbers and AI parameters (lunges only inside the duel-reach band) until rounds last 35–60 s and disarms are 0.3–0.6 per round. One commit per change, each with its tests, spec numbers and soak report. If five changes in a row leave a target out of range, record the numbers and ask the owner.
     - Check: the targets block shows both in range; the 40-match soak and counterlab are clean.
     - Blocked by: 12.1, 12.4, 12.5, 12.6, 12.7 · Stories: 62
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan, where each weapon is tuned as its animation lands, at the slower pace (rounds of about 60–90 s). Frame data and lunges come from the clips, so they are no longer tuning numbers here.
   - [ ] **12.9 Tuning round 2: weapon win rates; task 12 ticked.** Per-weapon numbers (rather than AI parameters), under the same limits and stop rule, until each weapon wins 45–55% of its non-mirror matches without leaving round 1's targets. The final soak report and counterlab table go in the spec, with the string tables checked against the data.
     - Check: the whole targets block is in range on a 300-match run; the 40-match soak is clean; counterlab reaches every counter.
     - Owner: a Duel playtest of the finished rules.
     - Blocked by: 12.8 · Stories: 62
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan, where every weapon is rebalanced around its clips, each as its animation lands, not against today's frame data.
 
 ### Phase D: fighters and animation
 
@@ -1701,6 +1738,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
 ### Phase E: look, arena and effects
 
 - [x] **16. Toon, outline and ink-wash look.** The toon material, inverted-hull outlines, the ink-wash post pass, and graphics presets.
+  - Superseded by ADR 0001 (Oct 4): a realistic look replaces this one, so the toon materials, outlines and ink-wash pass retire, and the presets become four, with Ultra on the RTX 3090 as the reference preset. The tests that assert toon materials and outlines will be replaced as the slice lands.
   - Check: side-by-side screenshots of each preset; no shader errors when loading.
   - Done (16.1–16.7): the toon material (one- and two-sided), the ink outlines, the ink-wash pass and grade, and the three presets with the saved setting. They cover the stand-in arena, the dropped weapons, the Rogue, the Hunter and the three weapons. The presets were compared side by side on the look bench (16.5) and the fighter lineup (16.7). `shader_check` compiles every shader in a real window, and screenshot runs fail on any shader error. The capsule fighters in the match keep their old materials until 14.2 replaces them.
   - Each piece below is salvaged from the uncommitted `look-and-arena` worktree (`.claude/worktrees/wf_c7f99fe5-f9a-1`), reviewed, fixed and tested on its own. Its stand-in fighter and `game/_probe` are dropped.
@@ -1892,6 +1930,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - drifting embers and ash.
   - Check: screenshots from the gameplay, Watch and menu cameras; frame time within budget.
   - Salvaged from the same worktree. The shrine lands behind a radius guard and becomes the default arena once 8.3 sets the radius.
+  - Superseded by ADR 0001 (Oct 4): the Moonlit Shrine is upgraded in place for the realistic look, keeping its layout: its props, then its materials, and last its platform are replaced with modelled ones. Its distant landscape becomes real 3D, with volumetric fog and clouds.
   - [x] **17.1 Arena data and the radius guard.** `ArenaDef` and the shrine's `.tres`, fixed: the ambience id becomes `ambience_shrine`, the music id goes, `validate()` uses `SimConst.FIGHTER_RADIUS`, and the camera clamp duplicate goes. `ArenaScenes` uses an arena's scene only when its walkable radius equals the rules' radius. View tests that don't need the shrine ask for the stand-in arena by id, to stay fast and stable.
     - Check: the arena-data tests pass (spawns facing as the rules place them, gates beyond the spawns, the wall outside the walkable circle, the sound id exists, the starting camera inside its limit); an arena with the wrong radius falls back to the stand-in.
     - Blocked by: none · Stories: 11, 15, 63
@@ -2106,6 +2145,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - **Shots reviewed:** gameplay, Watch, menu and establishing at High and Low, and the top-down view. The ash shows as pale flecks against the dark and is lost against the pale floor; embers rise past the rim in the establishing view; Low draws 30%.
   - [x] **17.9 Preset benchmark of the shrine.** The worktree's bench mode in `arena_shot.gd` (interleaved rounds, average and 95th-percentile frame time), run at 1080p on the target laptop with the real fighters. Presets are tuned if High drops below 60 fps, and the numbers go in the spec.
     - Check: High averages at least 60 fps at 1080p; side-by-side preset shots reviewed.
+    - Superseded by ADR 0001 (Oct 4): the laptop gate is replaced. Ultra must hold 4K at 60 fps on the RTX 3090, and Low 60 fps at 1080p (rendered at about 720p and upscaled) on the laptop.
     - Note from 17.7: Low draws the full domain-warped sea of clouds, and Medium two layers of it; a cloud shader without the warp for Low is the first saving if one is needed.
     - Note from 17.8: the embers and ash are 10 GPU emitters, 474 small unshaded quads on High.
     - Blocked by: 17.5, 17.7, 17.8 · Stories: 57
@@ -2133,6 +2173,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - **For later:** for task 18's effects, High leaves about 2 ms a frame from the gameplay camera (1.4 ms at the 95th percentile), but only about 1.5 ms from the Watch camera (0.3 ms at the 95th percentile); see the notes on 18.1 and 18.12. (17.10, with the rules at 15 m: about 1.7 ms from the gameplay camera, 0.4 ms at the 95th percentile.)
   - [x] **17.10 Radius check on the shrine as every match's arena; task 17 ticked.** With the rules at 15 m, a headless computer-vs-computer match on the shrine keeps fighters inside the parapet and dropped weapons bouncing inside. The camera at the wall doesn't pass through lanterns, pillars or trees.
     - Check: the shrine tests pass with the radius from `SimConst`; wall and top-down shots reviewed; the bench is still within budget.
+    - Superseded by ADR 0001 (Oct 4): "within budget" now means the new gates in 17.9's note (Ultra at 4K and 60 fps on the RTX 3090, Low at 60 fps on the laptop), not High on the laptop.
     - Blocked by: 8.3, 17.9 · Stories: 11, 15
     - Done:
       - `test_shrine_as_arena.gd` (new), with the props' real triangles (the shrine's built meshes, bought art included, and the gates' ropes) as trimesh bodies in a physics space:
@@ -2149,6 +2190,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - The bench at 1080p on mains power: High 66.8 fps (95th percentile 16.3 ms), Medium 76.9, Low 99.9, against 69, 79 and 102 at 17.9, when the rules' wall was at 11.5 m. Still within budget; no preset needed tuning. Task 18's headroom on High shrinks to about 1.7 ms a frame (0.4 ms at the 95th percentile); see 18.1.
       - Story 15 ticked in the spec. Story 11 (the over-the-shoulder camera) waits for the owner's look at the camera at the wall. Task 17 is done.
 - [ ] **18. Combat effects and game feel.**
+  - Superseded by ADR 0001 (Oct 4): combat effects become fully realistic (sparks, blood, dust, smoke and air smears), and the ink-brush trails and ink splashes retire. The open effects tasks (18.4–18.12) move into the slice plan.
   - Delivers:
     - brush-stroke trails in three colours;
     - sparks and ink splashes;
@@ -2188,6 +2230,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
       - Tests (`test_trail_state`, 10), driving a rules World: a Katana light (Right Cut) trails white in exactly its 3 active frames, half a frame after and nothing two after, with the left hand off; the fade between steps follows the alpha (0.75 and 0.25 at alpha 0.5 a frame and two frames after); a Greatsword unblockable (Reaping Sweep) trails red; a held Overhead Strike charges for more than 10 frames with no trail and trails once it strikes; Moonsplitter trails gold in its first 6 release frames only, never in its wind-up; the counter lunge trails gold; the daggers trail Quick Slice on the right, Flick on the left and Twin Rip on both; Flash never trails and Shadow Step does; bare hands (the fists weapon, and a disarmed fighter) never trail; walking trails nothing.
   - [x] **18.3 Brush-stroke trails in white, red and gold.** A tapered, ink-edged ribbon over the blade's last half metre, taken from the fighter view's blade segments and sampled on the effect clock.
     - Check: the ribbon exists only while the trail is on, stays clear of the attacker's body and freezes in hit-stop; shots of a Katana light, a Katana unblockable and a Moonsplitter reviewed.
+    - Superseded by ADR 0001 (Oct 4): the ink-brush trails retire. Combat effects become fully realistic, with air smears among them.
     - Blocked by: 18.2 · Stories: 16, 22, 48
     - Decided with the owner (Oct 3, 2026):
       - the ribbon covers each weapon's `WeaponLook.trail_width` from the tip (Katana 0.55 m, Greatsword 0.9 m, Daggers 0.2 m), not a fixed half metre;
@@ -2204,32 +2247,41 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **18.4 Sparks and ink splashes.** Hits give warm sparks and a dark-red ink splash (dust for fists, a ground ring for colossal hits, purple for backstabs); blocks give sparks and a flash; weapon bounces give sparks. Everything sits at the event's contact point.
     - Check: the table tests (counts by weight); splashes fall and settle; shots of light, heavy, blocked and colossal hits reviewed.
     - Blocked by: 18.1 · Stories: 19, 48
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan as realistic effects. Hits draw blood in place of the ink splash (a burst on each hit, blood on blades and clothes for the whole match, floor splatter that fades), with a Blood setting of On, Reduced or Off.
   - [ ] **18.5 Parry ring, sparks and the camera push-in.** A camera-facing ring (parry, flash and redirect colours), 60 sparks and a flash; `CameraRig.push_in` dollies toward the look point and eases back, frozen in hit-stop.
     - Check: the push-in moves toward the look point and settles back; a parry spawns the ring and the push-in; the parry shot reviewed.
     - Blocked by: 18.4 · Stories: 40, 49
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan, rendered realistically. On a parry the deflect pair's blades meet at the contact point, where the sparks and the clang start.
   - [ ] **18.6 Warning mark and reach arc for unblockables.** A billboard 危 with THRUST, SWEEP or SLAM in red (奥義 ULTIMATE in gold) over the attacker's head, timed on the effect clock, and a red ink arc on the floor showing the move's reach and arc during the wind-up.
     - Check: text and colour by kind; lifetime in frames; the mark follows the head; the arc's radius equals the move's reach; shots of each kind reviewed.
     - Blocked by: 18.1, 22.1 · Stories: 22, 42
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan. As the wind-up starts, a red 危 flashes with a sound and the blade glints red, and the attack type reads from the animation; floating labels and floor markers appear only in Training.
   - [ ] **18.7 Ultimate-ready aura.** Rising embers in the side colour while the fighter can use the ultimate.
     - Check: the aura is on exactly when the ultimate is ready and the fighter isn't KO'd; a shot reviewed.
     - Blocked by: 18.1 · Stories: 48
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan. The aura is a smouldering glow of embers and heat haze in the side's colour.
   - [ ] **18.8 Ultimate effects.** Rings for the ultimate start and choice; the Moonsplitter wave travelling at the rules' speed and range; Impaler dust, impale and burst; Tempest lightning.
     - Check: the wave stands where the rules put it on each frame and is gone at its range; each ultimate event spawns its effect; shots of each ultimate reviewed.
     - Blocked by: 18.4 · Stories: 30, 34, 39, 48
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan. The ultimates keep their supernatural energy (fire, lightning, shockwaves, spirit energy), lit and rendered realistically.
   - [ ] **18.9 Counter, disarm, KO and status flashes, and movement dust.**
     - Check: the table tests; shots of a stomp, a disarm and a KO reviewed.
     - Blocked by: 18.4 · Stories: 41, 48
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan, rendered realistically.
   - [ ] **18.10 Dropped-weapon beam, ground marker and model.** An additive column and a pulsing ring in the owner's colour while the weapon lies on the ground, with the toon weapon model (the Daggers as a pair).
     - Check: beam and ring only while grounded; removed on pickup, recall and round start; the pulse runs on the effect clock; a shot after a disarm reviewed.
     - Blocked by: 18.1 · Stories: 48
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan with the other effects. The toon materials retire, so the dropped weapon shows in the realistic look.
   - [ ] **18.11 Reduce flashes and shaking.** `GameSettings.reduce_flashes`, saved and off by default (the setting and its Settings row came early with 22.9), sets the shake to 0.15, turns off the field-of-view kicks and the push-in, and scales flashes to 0.45.
     - Check: with it on, a parry makes no kick or push-in, shake is scaled and flashes dimmed; the setting saves and loads.
     - Blocked by: 18.5 · Stories: 57
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan with the effects it scales.
   - [ ] **18.12 Effects parity check, re-shoot and re-benchmark on the finished fighters; task 18 ticked.** A test that every rules event has an effect or is on an explicit no-visual list, including shake and kick amounts; the effects shot series at High and Low; the shrine bench rerun with the finished fighters and effects.
     - Check: the parity test passes; the shot series is reviewed; High still averages at least 60 fps at 1080p on the target laptop, or the presets are tuned until it does.
     - Note from 17.9: the bench is `arena_bench.tscn` (gameplay view), plus `"--bench=low;medium;high"` on `arena_watch.tscn`, the heaviest view. Tuning candidates on High, by what they cost in 17.9: the lantern lights 1.1 ms, the moon's shadows 1.1 ms, the prop outlines 0.4 ms.
     - Blocked by: `docs/plans/authored-animation.md` task 36, 18.4–18.11 · Stories: 40, 48, 49, 57, 65
     - Re-pointed on Oct 3, 2026, when the authored-animation spec retired 15.16: the fighters are finished at `docs/plans/authored-animation.md` task 36.
+    - Superseded by ADR 0001 (Oct 4): moves into the slice plan, and its block on authored-animation task 36 goes, since that task retires. Its bench gate becomes Ultra holding 4K at 60 fps on the RTX 3090 and Low holding 60 fps at 1080p (upscaled) on the laptop.
 
 ### Phase F: sound and music
 
@@ -2293,6 +2345,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - Check: tests for the profile mapping and saving; rebinding every action works on keyboard and controller.
   - Done early on its own branch: 118 input tests, reviewed for parity with the demo (11 differences fixed). The Controls screen that drives rebinding is part of task 22.
 - [ ] **22. Menus.**
+  - Superseded by ADR 0001 (Oct 4): the menus and HUD are redesigned for the realistic look, replacing 22.1's ink-wash theme; the layout stays, and the style is picked from a UI page of the mood board. Ink survives only as calligraphy: brushed kanji and titles.
   - Delivers:
     - the title with a live background duel;
     - the main menu;
@@ -2481,6 +2534,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Note from 17.5: the shrine decides only for its own viewport's camera each frame. Call `MoonlitShrine.cull_below_deck(camera)` for the other view's camera every frame, after it moves.
     - Note from 17.9: the bench in `tools/shot_scenes/arena_shot.gd` times the root viewport with one camera. Measuring split screen needs the rig to build the two views, or a Versus mode on the bench.
     - Blocked by: 16.5, 17.5, 19.3 · Stories: 55
+    - Superseded by ADR 0001 (Oct 4): the ink-wash pass retires with the toon look, so only the preset applies to both views. Frame time is judged against the new targets: Ultra at 4K and 60 fps on the RTX 3090, Low at 60 fps on the laptop.
   - [ ] **23.7 Versus HUD.** Player 1 and Player 2 plates; prompts per half with each player's own device names; a dropped-weapon marker per half; the demo's Versus toasts and calls.
     - Check: each player's prompts use their own device's labels; markers project through the right camera; toasts name the player; shots reviewed.
     - Blocked by: 23.6, 24.2, 24.3, 24.4, 24.5 · Stories: 55, 56
@@ -2542,9 +2596,11 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: the build output has both files, and every asset folder's licence is listed.
     - Owner: approves the wording and picks the project's licence.
     - Blocked by: 22.1, 25.3 · Stories: 64
+    - Superseded by ADR 0001 (Oct 4): the licence is picked. The repository's own code and art are source-visible with all rights reserved, and third-party assets keep their own terms; the owner still approves the wording.
   - [ ] **25.5 Release workflow; Pages removed.** On a published release it tests, exports and attaches `Monomachia-<tag>-windows.zip`; a manual run uploads an artifact instead. `pages.yml` goes. Like CI's, its build has no baked shaders; the README says a build from `npm run build` has them.
     - Check: a manual run on the branch produces the zip, and its exe passes `--smoke`.
     - Blocked by: 25.3 · Stories: 1, 64
+    - Superseded by ADR 0001 (Oct 4): releases always use the asset repository. A CI build made without it uses labelled stand-ins, so it can't be the release build.
   - [ ] **25.6 CLAUDE.md for Godot, and mvp-spec marked as the web record.** The intro, design-docs paragraph, commands and code notes rewritten for the Godot game; `mvp-spec.md` marked as the record of the demo at `v0.1-web-mvp`.
     - Check: every path and command in CLAUDE.md exists and runs.
     - Owner: approves the CLAUDE.md change.
@@ -2562,6 +2618,7 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
   - [ ] **26.2 Delete the web version.** `src/`, `index.html`, the Vite and TypeScript configs, `Monomachia.html`, the web tests and scripts, the web screenshots, the web dependencies and the web CI steps. Comments point to the tag for the old sources, and the fixtures stay as frozen data.
     - Check: outside `docs/` and lines naming `v0.1-web-mvp`, nothing refers to `src/`, Vite, three or tsx; `npm ci`, `npm test` and `npm run typecheck` pass; CI is green.
     - Blocked by: 12.9, 18.12, 22.17, 26.1 · Stories: 59, 60
+    - Superseded by ADR 0001 (Oct 4): 12.9 and 18.12 move into the slice plan, so this task no longer waits on them.
   - [ ] **26.3 Final npm script names.** `test`, `typecheck`, `soak`, `build`, `dev`, `shots`, `play`, `counterlab`, `godot`, `check:sizes` and the `audio:*` scripts; the old names removed; the workflows and the usage text updated.
     - Check: each script runs (`npm run soak -- 4`, `npm run build`, one shot); CI is green.
     - Blocked by: 26.2 · Stories: 60, 62, 64, 65
@@ -2569,3 +2626,4 @@ Order: 8, then 9–11 (still hitting with the demo's range-and-arc cones), then 
     - Check: all of the above pass; the owner gets the one-line summary and link.
     - Owner: plays the downloaded build to the results on the target laptop, then approves the merge.
     - Blocked by: 19.9, 25.5, 25.7 · Stories: 1, 60, 62, 64, 65
+    - Superseded by ADR 0001 (Oct 4): development moves to the RTX 3090 desktop, where the look and performance are judged. The soak's balance targets move into the slice plan with the tuning (12.8, 12.9).

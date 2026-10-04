@@ -9,13 +9,13 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Lanes">
+<meta name="apple-mobile-web-app-title" content="Project Manager">
 <meta name="format-detection" content="telephone=no">
 <meta name="theme-color" content="#f9f9f7" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#0d0d0d" media="(prefers-color-scheme: dark)">
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
-<title>Monomachia lanes</title>
+<title>Monomachia Project Manager</title>
 <style>
 :root {
   color-scheme: light;
@@ -67,6 +67,7 @@ h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.01em; margin: 0; }
 .seg { display: flex; gap: 2px; margin-top: 10px; background: var(--surface); border-radius: 9px; padding: 2px; }
 .seg button { flex: 1; min-width: 0; border: 0; background: none; border-radius: 7px; padding: 6px 4px; font-size: 14px; font-weight: 500; color: var(--text-2);
   white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#planSeg button { font-size: 13px; padding: 6px 2px; }
 .seg button[aria-pressed="true"] { background: var(--card); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
 
 /* ---------- pages ---------- */
@@ -160,6 +161,46 @@ details.legend summary { color: var(--muted); padding: 6px 0; }
 details.legend div { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 12px; padding-top: 6px; }
 details.legend span { display: inline-flex; align-items: center; gap: 7px; }
 
+.t.moved { width: auto; min-width: 34px; padding: 0 5px; font-size: 11px; font-weight: 650; color: var(--muted); background: transparent; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.moved { background: transparent; box-shadow: inset 0 0 0 1px var(--muted); }
+.pclosed { font-size: 14px; color: var(--text-2); background: var(--surface); border-radius: 10px; padding: 9px 12px; margin-top: 10px; }
+
+/* ---------- context gauge (ui.mjs draws it) ---------- */
+.gauge { --g: var(--done); display: inline-flex; align-items: center; gap: 7px; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; flex: none; }
+.gauge.warn { --g: var(--owner); } .gauge.high { --g: var(--critical); }
+.gauge .gm { position: relative; width: 56px; height: 7px; border-radius: 4px; background: var(--surface); box-shadow: inset 0 0 0 0.5px var(--border-strong); }
+.gauge .gm i { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 4px; background: var(--g); }
+.gauge .gp { min-width: 3.2ch; text-align: right; }
+.gauge.stale { color: var(--muted); }
+.gauge.stale .gm i { opacity: .4; }
+.gauge.high.fresh .gp { color: var(--critical); }
+.lane .ctx { display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--text-2); margin-top: 6px; }
+
+/* ---------- roadmap (overview) ---------- */
+.steps { display: flex; gap: 4px; margin: 2px 0 10px; }
+.steps span { flex: 1; min-width: 0; height: 6px; border-radius: 3px; background: var(--blocked); position: relative; overflow: hidden; }
+.steps span i { position: absolute; left: 0; top: 0; bottom: 0; background: var(--done); }
+.steps span.cur { box-shadow: 0 0 0 2px var(--page), 0 0 0 3.5px var(--text); }
+.stepnames { display: flex; gap: 4px; font-size: 11px; color: var(--muted); margin-top: -6px; margin-bottom: 4px; }
+.stepnames span { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.stepnames span.cur { color: var(--text); font-weight: 600; }
+.phase { background: var(--card); border: 1.5px solid var(--text); border-radius: 14px; padding: 12px 14px; margin-top: 10px; }
+.phase .hd { display: flex; align-items: baseline; gap: 8px; }
+.phase .nm { font-size: 16px; font-weight: 650; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.phase .nm .n { color: var(--muted); font-weight: 400; margin-right: 6px; }
+.phase .ct { margin-left: auto; font-size: 13px; color: var(--text-2); font-variant-numeric: tabular-nums; flex: none; }
+.phase .sub { font-size: 13px; color: var(--muted); margin-top: 2px; }
+.phase .total { background: var(--blocked); }
+.phase .list { margin-top: 8px; border-radius: 10px; }
+.phase .list li { padding: 10px 12px; font-size: 14px; }
+
+/* ---------- sessions (lanes tab) ---------- */
+.sess li { align-items: flex-start; }
+.sess .t1 { display: flex; gap: 8px; align-items: center; }
+.sess .t1 b { font-weight: 600; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sess .dot { margin-top: 8px; }
+.pill { display: inline-block; font-size: 12px; border-radius: 6px; padding: 0 7px; margin-top: 4px; background: var(--owner); color: #0b0b0b; }
+
 /* ---------- tab bar ---------- */
 nav.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; background: var(--bar); -webkit-backdrop-filter: saturate(1.6) blur(18px); backdrop-filter: saturate(1.6) blur(18px);
   border-top: 0.5px solid var(--border); padding: 0 max(8px, env(safe-area-inset-left, 0px)) var(--bottom); }
@@ -206,6 +247,8 @@ nav.tabs .count:empty { display: none; }
 <main>
   <section class="page" id="p-overview">
     <div class="kpis" id="kpis"></div>
+    <div class="sh"><h2>Roadmap</h2><span class="m" id="roadMeta"></span></div>
+    <div id="road"></div>
     <div class="sh"><h2>Waiting on you</h2><span class="m" id="waitMeta"></span></div>
     <div id="waiting"></div>
     <div class="sh"><h2>At work now</h2><span class="m" id="workMeta"></span></div>
@@ -217,10 +260,11 @@ nav.tabs .count:empty { display: none; }
       <span><i class="sw owner"></i>Waits on your OK</span>
       <span><i class="sw blocked"></i>Blocked</span>
       <span><i class="sw retired"></i>Retired</span>
+      <span><i class="sw moved"></i>Moved to M1 or M2</span>
       <span><i class="sw launched"></i>Launched</span>
       <span><i class="sw blocked" style="position:relative"><i style="position:absolute;inset:3px;border-radius:50%;background:var(--page)"></i></i>Review gate</span>
     </div></details>
-    <p class="qnote"><a href="/brain/">Second brain</a> · <a href="/desktop">Desktop board</a></p>
+    <p class="qnote"><a href="/brain/">Second brain</a> · <a href="/desktop">Desktop view</a></p>
   </section>
   <section class="page" id="p-lanes" hidden>
     <div class="lanes" id="lanes"></div>
@@ -244,12 +288,18 @@ nav.tabs .count:empty { display: none; }
 <div id="sheet" role="dialog" aria-modal="true"></div>
 <div id="toast" role="status" aria-live="polite"></div>
 
+<script type="module">
+// The context gauge and the roadmap summary, shared with the desktop page.
+import * as U from '/ui.mjs';
+window.U = U;
+window.dispatchEvent(new Event('modules-ready'));
+</script>
 <script>
 const $ = (id) => document.getElementById(id);
 // The page re-renders on every poll; replacing unchanged HTML would swallow a tap
 // that lands mid-swap, so these containers only take new HTML when it differs.
 const innerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-for (const id of ['kpis', 'waiting', 'atWork', 'laneSeg', 'lanes', 'planSeg', 'plan', 'queue', 'sheet']) {
+for (const id of ['kpis', 'road', 'waiting', 'atWork', 'laneSeg', 'lanes', 'planSeg', 'plan', 'queue', 'sheet']) {
   Object.defineProperty($(id), 'innerHTML', {
     get() { return innerHTML.get.call(this); },
     set(v) { if (this._html !== v) { this._html = v; innerHTML.set.call(this, v); } },
@@ -260,8 +310,7 @@ const store = {
   get(k, d) { try { const v = localStorage.getItem(k); return v === null ? d : JSON.parse(v); } catch { return d; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} },
 };
-const SHORT = { gr: 'GR', aa: 'AA', st: 'ST' };
-const LABEL = { done: 'Done', working: 'In progress', launched: 'Launched, its session is starting', ready: 'Ready to start', owner: 'Waits on your OK', blocked: 'Blocked', retired: 'Retired' };
+const LABEL = { done: 'Done', working: 'In progress', launched: 'Launched, its session is starting', ready: 'Ready to start', owner: 'Waits on your OK', blocked: 'Blocked', retired: 'Retired', moved: 'Moved' };
 const STARTABLE = new Set(['ready', 'blocked', 'owner']);
 const TITLES = { overview: 'Overview', lanes: 'Lanes', plans: 'Plans', queue: 'Launch queue' };
 
@@ -282,7 +331,16 @@ function ago(ms) {
   return `${Math.round(s / 86400)} d ago`;
 }
 const planOf = (k) => data.plans.find((p) => p.key === k);
-const taskName = (k, id) => `${SHORT[k] ?? k} ${id}`;
+// Plans the board follows but that have no copy yet still get a short name.
+const taskName = (k, id) => `${planOf(k)?.short ?? k.toUpperCase()} ${id}`;
+const refName = (ref) => taskName(...ref.split(':'));
+const taskOf = (ref) => { const [k, id] = ref.split(':'); return planOf(k)?.tasks[id] ?? null; };
+const pct = (done, total) => (total ? Math.round((done / total) * 100) : 0);
+// "Moved → M1, carried on by M1 12" for a moved task, else its status.
+function statusLabel(t) {
+  if (t.status !== 'moved') return LABEL[t.status];
+  return `Moved → ${t.moved.toUpperCase()}${t.movedTo ? `, carried on by ${refName(t.movedTo)}` : ', no task there names it yet'}`;
+}
 const laneName = (l) => (l.main ? 'Main checkout' : l.folder.split(/[\\/]/).pop());
 
 // ---------- toast ----------
@@ -302,6 +360,7 @@ function setTab(t) {
   $('title').textContent = TITLES[t];
   window.scrollTo(0, 0);
   render();
+  pollSessions();
 }
 document.querySelector('nav.tabs').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-tab]');
@@ -324,17 +383,52 @@ function waitingItems() {
   }
   return items;
 }
+// A phase's (or plan's) counts as a bar: done, under way, ready, then blocked.
+const bar = (c) => ['done', 'working', 'launched', 'owner', 'ready'].filter((k) => c[k])
+  .map((k) => `<div class="${k}" style="flex:${c[k]}"></div>`).join('') + `<div style="flex:${c.blocked ?? 0}"></div>`;
+// Summary tiles rebased on the roadmap's current phase and milestone 1 (ui.mjs roadmapKpis).
+function kpisHtml(waits) {
+  const k = U.roadmapKpis(data);
+  const c = k.current;
+  const cur = c.names.length
+    ? `<div class="kpi wide"><div class="l">${c.fallback ? 'Open plan (no roadmap yet)' : c.names.length > 1 ? 'Current phases' : 'Current phase'}: ${esc(c.names.join(' + '))}</div>
+      <div class="v">${pct(c.done, c.total)}% <small>${c.done}/${c.total}</small></div><div class="s">${c.open} open${c.working ? ` · ${c.working} in progress` : ''}${c.blocked ? ` · ${c.blocked} blocked` : ''}</div><div class="bar">${bar(c)}</div></div>`
+    : `<div class="kpi wide"><div class="l">Current phase</div><div class="v">Done</div><div class="s">no open task in any phase</div></div>`;
+  const m1 = k.m1
+    ? `<button class="kpi" data-plan="m1"><div class="l">Milestone 1</div><div class="v">${pct(k.m1.done, k.m1.total)}% <small>${k.m1.done}/${k.m1.total}</small></div><div class="s">${k.m1.total - k.m1.done} left · ${k.m1.ready} ready</div></button>`
+    : `<div class="kpi"><div class="l">Milestone 1</div><div class="v"><small>not written</small></div><div class="s">plan not written yet</div></div>`;
+  return cur + m1
+    + `<div class="kpi"><div class="l">Ready now</div><div class="v">${k.readyRefs.length}</div><div class="s">in the current phase</div></div>
+    <button class="kpi" data-goto="lanes"><div class="l">Active lanes</div><div class="v">${k.activeLanes} <small>${k.onTask} on a task</small></div><div class="s">session in the last 3 min</div></button>
+    <div class="kpi ${waits.length ? 'alert' : ''}"><div class="l">Waiting on you</div><div class="v">${waits.length}</div><div class="s">gates, questions, PRs</div></div>`;
+}
+// The phase track condensed: a step per phase, then the current phase(s) with
+// their bar and next ready tasks (tap one for its sheet).
+function roadHtml() {
+  const phases = data.roadmap?.phases ?? U.fallbackPhases(data);
+  if (!phases.length) return '<div class="empty">No open plans.</div>';
+  const steps = phases.map((ph) => `<span class="${ph.current ? 'cur' : ''}" title="${esc(ph.name)}"><i style="width:${pct(ph.counts.done, ph.total)}%"></i></span>`).join('');
+  const names = phases.map((ph) => `<span class="${ph.current ? 'cur' : ''}">${esc(ph.name)}</span>`).join('');
+  const cards = phases.filter((ph) => ph.current).map((ph) => {
+    const next = ph.next.length
+      ? `<ul class="list">${ph.next.map((x) => `<li data-task="${esc(x.ref)}"><i class="sw ready"></i><span class="body">${esc(refName(x.ref))} ${esc(x.title)}</span></li>`).join('')}</ul>`
+      : `<div class="sub">Nothing ready${ph.counts.blocked ? `: ${ph.counts.blocked} blocked` : ''}${ph.counts.working ? `, ${ph.counts.working} in progress` : ''}.</div>`;
+    const waiting = [...new Set(ph.waiting.map((r) => r.split(':')[0].toUpperCase()))].map((k) => `${k} plan not written yet`).join(' · ');
+    return `<div class="phase"><div class="hd"><span class="nm">${ph.n != null ? `<span class="n">${ph.n}</span>` : ''}${esc(ph.name)}</span><span class="ct">${ph.counts.done}/${ph.total}</span></div>
+      <div class="total">${bar(ph.counts)}</div>
+      <div class="sub">${ph.counts.open} open${ph.counts.ready ? ` · ${ph.counts.ready} ready` : ''}${ph.lanes.length ? ` · ${ph.lanes.length} lane${ph.lanes.length === 1 ? '' : 's'} on it` : ''}${ph.alongside != null ? ` · alongside phase ${ph.alongside}` : ''}${waiting ? ` · ${waiting}` : ''}</div>
+      ${next}</div>`;
+  }).join('');
+  return (phases.length > 1 ? `<div class="steps">${steps}</div><div class="stepnames">${names}</div>` : '') + cards
+    + (data.roadmap ? '' : '<p class="qnote">The roadmap (docs/plans/roadmap.md) isn\'t committed yet: the open plans stand in for its phases.</p>');
+}
 function renderOverview() {
   const waits = waitingItems();
   const active = data.lanes.filter((l) => l.activity === 'active');
-  const bar = (p) => ['done', 'working', 'launched', 'owner', 'ready'].filter((k) => p.counts[k])
-    .map((k) => `<div class="${k}" style="flex:${p.counts[k]}"></div>`).join('') + `<div style="flex:${p.counts.blocked}"></div>`;
-  $('kpis').innerHTML = data.plans.map((p) => {
-    const pct = p.total ? Math.round((p.counts.done / p.total) * 100) : 0;
-    return `<button class="kpi" data-plan="${p.key}"><div class="l">${esc(p.name)}</div><div class="v">${pct}% <small>${p.counts.done}/${p.total}</small></div>
-      <div class="s">${p.total - p.counts.done} left${p.counts.working ? ` · ${p.counts.working} in progress` : ''}</div><div class="bar">${bar(p)}</div></button>`;
-  }).join('') + `<button class="kpi" data-goto="lanes"><div class="l">Sessions at work</div><div class="v">${active.length} <small>of ${data.lanes.length}</small></div><div class="s">worktrees, last 3 min</div></button>
-    <div class="kpi ${waits.length ? 'alert' : ''} ${data.plans.length % 2 ? 'wide' : ''}"><div class="l">Waiting on you</div><div class="v">${waits.length}</div><div class="s">gates, questions, ready PRs</div></div>`;
+  $('kpis').innerHTML = kpisHtml(waits);
+  const cur = (data.roadmap?.phases ?? []).filter((ph) => ph.current);
+  $('roadMeta').textContent = data.roadmap ? (cur.length ? `phase ${cur.map((ph) => ph.n).join(' + ')} of ${data.roadmap.phases.length}` : 'all done') : '';
+  $('road').innerHTML = roadHtml();
   $('waitMeta').textContent = waits.length ? `${waits.length}` : '';
   $('waiting').innerHTML = waits.length
     ? `<ul class="list">${waits.map((i) => `<li ${i.task ? `data-task="${esc(i.task)}"` : ''}><i class="sw ${i.sw}"></i><span class="body">${i.url ? `<a href="${esc(i.url)}" target="_blank" rel="noopener">${esc(i.text)}</a>` : esc(i.text)}<span class="k">${esc(i.k)}</span></span>${i.open ? `<button class="btn small" data-open="${esc(i.open)}">Open on PC</button>` : ''}</li>`).join('')}</ul>`
@@ -351,7 +445,7 @@ function laneTask(l) {
   if (!l.plan || !l.task) return '';
   const p = planOf(l.plan);
   const name = `${taskName(l.plan, l.task)} ${esc(l.taskTitle)}`;
-  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the board${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
+  if (l.ended) return `<div class="task"><i class="sw blocked"></i><span>Work ended from the Project Manager${l.scope ? ` (${l.scope.map((i) => taskName(l.plan, i)).join(', ')})` : ''}</span></div>`;
   if (l.working) return `<div class="task"><i class="sw working"></i><span>Working on ${name}</span></div>`;
   if (!l.claims) return l.lastTask ? `<div class="task"><i class="sw blocked"></i><span>Last named task: ${taskName(l.plan, l.lastTask)}</span></div>` : '';
   const st = p?.tasks[l.task]?.status;
@@ -378,6 +472,7 @@ function laneCard(l) {
     ${laneTask(l)}
     ${l.question ? `<div class="ask"><i class="sw owner"></i><span>Asking you: ${esc(l.question)}</span>${l.app ? `<button class="btn small" data-open="${esc(l.app.id)}">Open on PC</button>` : ''}</div>` : ''}
     <div class="act"><i class="dot ${l.activity}"></i>${act}</div>
+    ${l.context ? `<div class="ctx">Context ${U.gaugeHtml(l.context, { live: l.activity === 'active' })}</div>` : ''}
     <div class="meta">${esc(laneGit(l))}</div>
     <div class="meta">Last commit ${ago((l.last.time ?? 0) * 1000)}: ${esc(l.last.subject)}</div>
     ${l.pr ? `<div class="meta"><a href="${esc(l.pr.url)}" target="_blank" rel="noopener">PR #${l.pr.number}</a> into ${esc(l.pr.base)}${l.pr.draft ? ' (draft)' : ''}</div>` : ''}
@@ -389,41 +484,72 @@ function renderLanes() {
   const order = (a, b) => (rank(a) - rank(b)) || ((b.session ?? b.last.time * 1000) - (a.session ?? a.last.time * 1000));
   const work = data.lanes.filter(live).sort(order);
   const parked = data.lanes.filter((l) => !live(l)).sort(order);
-  $('laneSeg').innerHTML = `<button data-lanes="work" aria-pressed="${laneFilter === 'work'}">Work going on · ${work.length}</button><button data-lanes="parked" aria-pressed="${laneFilter === 'parked'}">Parked · ${parked.length}</button>`;
+  $('laneSeg').innerHTML = `<button data-lanes="work" aria-pressed="${laneFilter === 'work'}">At work · ${work.length}</button><button data-lanes="parked" aria-pressed="${laneFilter === 'parked'}">Parked · ${parked.length}</button>`
+    + `<button data-lanes="sessions" aria-pressed="${laneFilter === 'sessions'}">Sessions${sessionList ? ` · ${sessionList.length}` : ''}</button>`;
+  if (laneFilter === 'sessions') { $('lanes').innerHTML = sessionsHtml(); return; }
   const list = laneFilter === 'parked' ? parked : work;
   $('lanes').innerHTML = list.map(laneCard).join('') || `<div class="empty">${laneFilter === 'parked' ? 'No parked worktrees.' : 'No lanes at work.'}</div>`;
 }
+
+// ---------- sessions ----------
+// Every Claude session of the last three days (/sessions), with its context
+// gauge; read-only here: the desktop board answers them.
+let sessionList = null;
+let sessionsTimer = 0;
+const folderOf = (cwd) => String(cwd ?? '').split(/[\\/]/).filter(Boolean).slice(-1)[0] ?? '';
+function sessionsHtml() {
+  if (!sessionList) return '<div class="empty">Loading sessions…</div>';
+  if (!sessionList.length) return '<div class="empty">No sessions in the last three days.</div>';
+  return `<ul class="list sess">${sessionList.map((s) => {
+    const needs = s.pending.length ? 'Waiting on you' : s.asking ? 'Asking you (in the app)' : '';
+    return `<li><i class="dot ${s.active ? 'active' : 'recent'}"></i><span class="body"><span class="t1"><b>${esc(s.title)}</b>${U.gaugeHtml(s.context, { live: s.active })}</span>
+      <span class="k">${esc(folderOf(s.cwd))} · ${s.active ? 'at work' : esc(ago(s.activity))}</span>${needs ? `<span class="pill">${needs}</span>` : ''}</span>
+      ${needs && s.app ? `<button class="btn small" data-open="${esc(s.app)}">Open on PC</button>` : ''}</li>`;
+  }).join('')}</ul>`;
+}
+async function pollSessions() {
+  clearTimeout(sessionsTimer);
+  if (tab !== 'lanes' || laneFilter !== 'sessions' || document.hidden) return;
+  try {
+    const d = await (await fetch('/sessions', { cache: 'no-store' })).json();
+    if (d.sessions) { sessionList = d.sessions; render(); }
+  } catch { /* the stamp shows the server's state */ }
+  sessionsTimer = setTimeout(pollSessions, 6000);
+}
 $('laneSeg').addEventListener('click', (e) => {
   const b = e.target.closest('button[data-lanes]');
-  if (b) { laneFilter = b.dataset.lanes; store.set('m-lanes', laneFilter); render(); }
+  if (b) { laneFilter = b.dataset.lanes; store.set('m-lanes', laneFilter); render(); pollSessions(); }
 });
 
 // ---------- plans ----------
 function renderPlan() {
   if (!planOf(planKey)) planKey = data.plans[0]?.key;
-  const SEG = { gr: 'Rebuild', aa: 'Animation', st: 'Tracker' };
-  $('planSeg').innerHTML = data.plans.map((p) => `<button data-plan="${p.key}" aria-pressed="${p.key === planKey}" aria-label="${esc(p.name)}">${esc(SEG[p.key] ?? p.name)} <span style="opacity:.6">${p.total ? Math.round((p.counts.done / p.total) * 100) : 0}%</span></button>`).join('');
+  const SEG = { rm: 'Roadmap', gr: 'Rebuild', aa: 'Anim.' };
+  $('planSeg').innerHTML = data.plans.map((p) => `<button data-plan="${p.key}" aria-pressed="${p.key === planKey}" aria-label="${esc(p.name)}">${esc(SEG[p.key] ?? p.short)} <span style="opacity:.6">${pct(p.counts.done, p.total)}%</span></button>`).join('');
   const p = planOf(planKey);
   if (!p) { $('plan').innerHTML = '<div class="empty">No plans found.</div>'; return; }
   const c = p.counts;
   const segs = ['done', 'working', 'launched', 'owner', 'ready', 'blocked'].filter((k) => c[k])
     .map((k) => `<div class="${k}" style="flex:${c[k]}"></div>`).join('');
-  const counts = ['done', 'working', 'launched', 'owner', 'ready', 'blocked', 'retired'].filter((k) => c[k])
+  const counts = ['done', 'working', 'launched', 'owner', 'ready', 'blocked', 'retired', 'moved'].filter((k) => c[k])
     .map((k) => `<span><i class="sw ${k}"></i>${c[k]} ${k === 'owner' ? 'your OK' : k}</span>`).join('');
-  const complete = (s) => s.ids.every((id) => ['done', 'retired'].includes(p.tasks[id].status));
+  const complete = (s) => s.ids.length > 0 && s.ids.every((id) => ['done', 'retired', 'moved'].includes(p.tasks[id].status));
   const nComplete = p.stages.filter(complete).length;
   const stages = p.stages.map((s) => {
-    const live = s.ids.filter((id) => p.tasks[id].status !== 'retired');
+    const live = s.ids.filter((id) => !['retired', 'moved'].includes(p.tasks[id].status));
     const done = live.filter((id) => p.tasks[id].status === 'done').length;
     const tiles = s.ids.map((id) => {
       const t = p.tasks[id];
       const ref = `${p.key}:${id}`;
-      return `<button class="t ${t.status}${t.gate ? ' gate' : ''}${queue.includes(ref) ? ' queued' : ''}" data-task="${esc(ref)}" aria-label="${esc(`${taskName(p.key, id)} ${t.title}: ${LABEL[t.status]}`)}"></button>`;
+      // A moved task: a muted "M1" tile; its sheet links to the task that took it over.
+      return `<button class="t ${t.status}${t.gate ? ' gate' : ''}${queue.includes(ref) ? ' queued' : ''}" data-task="${esc(ref)}" aria-label="${esc(`${taskName(p.key, id)} ${t.title}: ${statusLabel(t)}`)}">${t.status === 'moved' ? esc(t.moved.toUpperCase()) : ''}</button>`;
     }).join('');
-    return `<div class="stage ${complete(s) ? 'complete' : ''}"><div class="hd"><span class="nm">${s.n != null ? `<span class="n">${s.n}</span>` : ''}${esc(s.name)}</span><span class="ct">${live.length ? `${done}/${live.length}` : 'retired'}</span></div>
+    const what = !s.ids.length ? '' : s.ids.every((id) => p.tasks[id].status === 'moved') ? 'moved' : 'retired';
+    return `<div class="stage ${complete(s) ? 'complete' : ''}"><div class="hd"><span class="nm">${s.n != null ? `<span class="n">${s.n}</span>` : ''}${esc(s.name)}</span><span class="ct">${live.length ? `${done}/${live.length}` : what}</span></div>
       <div class="tiles">${tiles}</div></div>`;
   }).join('');
   $('plan').innerHTML = `<div class="pmeta">${esc(p.file)} · ${esc(p.branch)}</div>
+    ${p.closed ? `<div class="pclosed">Closed: kept as history.${c.moved ? ` ${c.moved} of its tasks moved to milestones 1 and 2.` : ''}</div>` : ''}
     <div class="total">${segs}</div>
     <div class="counts">${counts}</div>
     ${nComplete ? `<label class="toggle">Hide finished stages (${nComplete})<span class="switch"><input type="checkbox" id="hideDone" ${hideDone ? 'checked' : ''}><span></span></span></label>` : ''}
@@ -540,13 +666,14 @@ function openTask(ref, confirmEnd) {
       }
       rows.push(`<button class="btn primary block" data-act="launch">${queue.includes(ref) ? `Launch the queue (${queue.length})` : queue.length ? `Add and launch the queue (${queue.length + 1})` : 'Launch this task now'}</button>`);
     }
+    if (t.status === 'moved' && t.movedTo && taskOf(t.movedTo)) rows.push(`<button class="btn block" data-act="goto" data-to="${esc(t.movedTo)}">Open ${esc(refName(t.movedTo))}, which took it over</button>`);
     if (launch) rows.push(`<button class="btn block" data-act="end" style="color:var(--critical)">End work on ${esc(launchTasks)}</button>`);
     else if (ended) rows.push(`<div class="d">Work ended ${ago(ended.endedAt)}${ended.stoppedAt ? ', session stopped' : ', stops at its next step'}.</div>`);
     const notes = STARTABLE.has(t.status) ? queueNotes(ref) : [];
     acts = (notes.length ? `<div class="warn">${esc(notes.join(' · '))}</div>` : '') + (rows.length ? `<div class="acts">${rows.join('')}</div>` : '');
   }
   sheet.innerHTML = `<div class="grab"></div><h3>${taskName(k, id)} ${esc(t.title)}</h3>
-    <div class="st"><i class="sw ${t.status}"></i>${LABEL[t.status]}${t.gate ? ' · review gate' : ''}</div>
+    <div class="st"><i class="sw ${t.status}"></i>${esc(statusLabel(t))}${t.gate ? ' · review gate' : ''}</div>
     ${lane ? `<div class="d">In ${esc(laneName(lane))}${lane.activity === 'active' ? ', session at work' : ''}</div>` : ''}
     <div class="d">${bl}</div>
     ${t.ownerOk.length ? `<div class="d">Also needs your OK of ${t.ownerOk.map((g) => taskName(k, g)).join(', ')}</div>` : ''}
@@ -561,6 +688,7 @@ sheet.addEventListener('click', async (e) => {
   const act = b.dataset.act;
   if (act === 'end') { openTask(ref, true); return; }
   if (act === 'cancel') { openTask(ref); return; }
+  if (act === 'goto') { openTask(b.dataset.to); return; }
   closeSheet();
   if (act === 'add') { setQueued([ref], true); toast(`${taskName(...ref.split(':'))} queued. ${queue.length} in the Launch tab.`); }
   else if (act === 'remove') setQueued([ref], false);
@@ -611,7 +739,7 @@ document.addEventListener('click', async (e) => {
 
 // ---------- render and poll ----------
 function render() {
-  if (!data?.plans) return;
+  if (!data?.plans || !window.U) return;
   const before = queue.length;
   queue = queue.filter((ref) => { const [k, id] = ref.split(':'); return STARTABLE.has(planOf(k)?.tasks[id]?.status); });
   if (queue.length !== before) saveQueue();
@@ -643,7 +771,8 @@ async function poll(once) {
   if (once !== true) { clearTimeout(pollTimer); if (!document.hidden) pollTimer = setTimeout(poll, 4000); }
 }
 // No polling while the phone is locked or the tab is in the background.
-document.addEventListener('visibilitychange', () => { if (!document.hidden) poll(); else clearTimeout(pollTimer); });
+document.addEventListener('visibilitychange', () => { if (!document.hidden) { poll(); pollSessions(); } else clearTimeout(pollTimer); });
+window.addEventListener('modules-ready', render);
 setInterval(tick, 1000);
 setTab(TITLES[tab] ? tab : 'overview');
 poll();

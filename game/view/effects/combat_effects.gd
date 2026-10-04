@@ -17,6 +17,10 @@ extends Node3D
 ## on_event(), updates it every drawn frame and clears it at round start.
 ## Particle counts follow the graphics preset, dropping at most by half on
 ## Low so hits still read (set_preset()).
+##
+## It also keeps the blades' brush-stroke trails (WeaponTrail), one per side
+## and hand, fed by MatchView every drawn frame (feed_trail()) and aged on
+## the same clock.
 
 ## The pools, by name, for drawn().
 const FLASHES: StringName = &"Flashes"
@@ -98,6 +102,8 @@ var now: float = 0.0
 var _flashes: Array[Fx] = []
 var _rings: Array[Fx] = []
 var _particles: Array[Particle] = []
+## The blades' trails: side * 2 + hand (TrailState.RIGHT or LEFT).
+var trails: Array[WeaponTrail] = []
 var _pools: Dictionary[StringName, MultiMeshInstance3D] = {}
 var _buffers: Dictionary[StringName, PackedFloat32Array] = {}
 
@@ -107,6 +113,12 @@ func _init() -> void:
 	_add_pool(FLASHES, FLASH_CAPACITY, _glow_material(FLASH_ENERGY), false)
 	_add_pool(RINGS, RING_CAPACITY, _ring_material(), true)
 	_add_pool(PARTICLES, PARTICLE_CAPACITY, _glow_material(PARTICLE_ENERGY), false)
+	for side: int in 2:
+		for hand: String in ["R", "L"]:
+			var trail: WeaponTrail = WeaponTrail.new()
+			trail.name = "Trail%d%s" % [side, hand]
+			add_child(trail)
+			trails.append(trail)
 
 
 # ------------------------------------------------------------------ clock and preset
@@ -218,8 +230,22 @@ func burst(at: Vector3, spec: Dictionary, born: float, seed: int) -> int:
 	return n
 
 
+## Lays down side `side`'s blade in hand `hand` (TrailState.RIGHT or
+## LEFT) for its trail at clock `t`: the trailing span from `inner` to
+## `tip`, with TrailState's strength and kind.
+func feed_trail(side: int, hand: int, t: float, inner: Vector3, tip: Vector3, strength: float, kind: StringName) -> void:
+	trails[side * 2 + hand].feed(t, inner, tip, strength, kind)
+
+
+## The trail of side `side`'s hand `hand`.
+func trail(side: int, hand: int) -> WeaponTrail:
+	return trails[side * 2 + hand]
+
+
 ## Removes every effect (round start, a new match).
 func clear() -> void:
+	for tr: WeaponTrail in trails:
+		tr.clear()
 	_flashes.clear()
 	_rings.clear()
 	_particles.clear()
@@ -268,6 +294,9 @@ func update(t: float) -> void:
 		var d: float = s["size"]
 		_write(buf, i, 0, Basis.from_scale(Vector3(d, d, d)), s["pos"], s["color"])
 	_flush(PARTICLES, _particles.size())
+
+	for tr: WeaponTrail in trails:
+		tr.update(t)
 
 
 ## How many instances a pool draws now.

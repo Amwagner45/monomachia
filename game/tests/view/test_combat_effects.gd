@@ -140,7 +140,7 @@ func test_the_pools_draw_only_what_lives() -> void:
 	effects.clear()
 	assert_eq(effects.drawn(CombatEffects.FLASHES), 0, "cleared at once")
 	assert_eq(effects.drawn(CombatEffects.PARTICLES), 0)
-	assert_eq(effects.get_child_count(), 3, "three pools and nothing else, however many effects")
+	assert_eq(effects.get_child_count(), 7, "three pools and four trails, however many effects")
 
 
 # ------------------------------------------------------------------ the table

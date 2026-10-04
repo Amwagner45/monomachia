@@ -120,6 +120,7 @@ func _process(delta: float) -> void:
 func render(delta: float) -> void:
 	update_fighters(delta)
 	_update_dropped()
+	_feed_trails()
 	effects.update(effects.clock())
 	var me: int = host.view_side()
 	camera.update_rig(delta, host.display_position(me), host.display_position(1 - me))
@@ -131,6 +132,7 @@ func snap_camera() -> void:
 		return
 	update_fighters(0.0)
 	_update_dropped()
+	_feed_trails()
 	effects.update(effects.clock())
 	var me: int = host.view_side()
 	camera.snap(host.display_position(me), host.display_position(1 - me))
@@ -142,6 +144,20 @@ func update_fighters(delta: float) -> void:
 		fighters[i].update_from(host.fighter(i), host.display_position(i), host.display_yaw(i), a, delta, _time)
 		for at: Vector3 in fighters[i].locomotion.footfalls:
 			footfall.emit(i, at)
+
+
+## Lays each held blade, as posed this frame, into its trail, with the
+## trail rules' strength and colour (TrailState) on the frame shown.
+func _feed_trails() -> void:
+	var t: float = effects.clock()
+	var a: float = host.alpha()
+	for i: int in fighters.size():
+		var rules: TrailState = TrailState.of(host.fighter(i), a)
+		var blades: Array[PackedVector3Array] = fighters[i].blade_segments()
+		var width: float = fighters[i].trail_width()
+		for hand: int in mini(2, blades.size()):
+			var span: PackedVector3Array = WeaponTrail.span(blades[hand][0], blades[hand][1], width)
+			effects.feed_trail(i, hand, t, span[0], span[1], rules.intensity(hand), rules.kind)
 
 
 ## True when side `side`'s footsteps fall where its guard shuffle lands its
